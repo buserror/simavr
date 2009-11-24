@@ -1,0 +1,140 @@
+jx_browser_data 79
+# project tree
+0 "root"
+T
+1 "main"
+T
+2 "Makefile"
+F
+"./simavr/Makefile"
+T
+2 "avr_spi.c"
+F
+"./simavr/sim/avr_spi.c"
+T
+2 "avr_spi.h"
+F
+"./simavr/sim/avr_spi.h"
+T
+2 "avr_timer8.c"
+F
+"./simavr/sim/avr_timer8.c"
+T
+2 "avr_timer8.h"
+F
+"./simavr/sim/avr_timer8.h"
+T
+2 "avr_ioport.c"
+F
+"./simavr/sim/avr_ioport.c"
+T
+2 "avr_ioport.h"
+F
+"./simavr/sim/avr_ioport.h"
+T
+2 "avr_eeprom.c"
+F
+"./simavr/sim/avr_eeprom.c"
+T
+2 "avr_eeprom.h"
+F
+"./simavr/sim/avr_eeprom.h"
+T
+2 "avr_uart.c"
+F
+"./simavr/sim/avr_uart.c"
+T
+2 "avr_uart.h"
+F
+"./simavr/sim/avr_uart.h"
+T
+2 "sim_core.c"
+F
+"./simavr/sim/sim_core.c"
+T
+2 "sim_core.h"
+F
+"./simavr/sim/sim_core.h"
+T
+2 "sim_gdb.c"
+F
+"./simavr/sim/sim_gdb.c"
+T
+2 "sim_gdb.h"
+F
+"./simavr/sim/sim_gdb.h"
+T
+2 "sim_elf.c"
+F
+"./simavr/sim/sim_elf.c"
+T
+2 "sim_elf.h"
+F
+"./simavr/sim/sim_elf.h"
+T
+2 "simavr.c"
+F
+"./simavr/sim/simavr.c"
+T
+2 "simavr.h"
+F
+"./simavr/sim/simavr.h"
+F
+T
+1 "tests"
+T
+2 "atmega88_example.c"
+F
+"./tests/atmega88_example.c"
+F
+T
+1 "cores"
+T
+2 "sim_core_declare.h"
+F
+"./simavr/cores/sim_core_declare.h"
+T
+2 "sim_mega88.c"
+F
+"./simavr/cores/sim_mega88.c"
+T
+2 "sim_mega168.c"
+F
+"./simavr/cores/sim_mega168.c"
+T
+2 "sim_mega48.c"
+F
+"./simavr/cores/sim_mega48.c"
+T
+2 "sim_megax8.c"
+F
+"./simavr/cores/sim_megax8.c"
+T
+2 "sim_megax8.h"
+F
+"./simavr/cores/sim_megax8.h"
+T
+2 "sim_tiny85.c"
+F
+"./simavr/cores/sim_tiny85.c"
+T
+2 "sim_mega644.c"
+F
+"./simavr/cores/sim_mega644.c"
+F
+F
+# tasks
+4
+"echo Makefile must be updated manually"
+F
+# build settings
+0
+T
+"simavr"
+""
+"make -k all"
+# search paths
+T "./" T
+F
+# C preprocessor
+F

@@ -1,0 +1,35 @@
+
+simavr -- a simple, lean and mean AVR simulator
+
+http://gitorious.org/simavr
+
+simavr is a new AVR simulator for linux, or any platform that uses avr-gcc. It uses 
+avr-gcc own register definition to simplify creating new targets for supoortted AVR
+devices.
+
+The core was made to be small and compact, and hackable so allow quick protoyping 
+of an AVR project. The simulator loads .elf directly, and there is even a way to
+specify simulation parameters directly in the emulated code using an .elf section.
+
+The status of the project is the core works at about 98% (ie, it works, but there 
+is a known bug). The supported IOs are eeprom, IO ports (including pin interupts), 
+8 bits timers (well, one of mode of the myriad) and a simple UART that makes 
+“printf” work.
+
+gdb support is planned next.
+
+PREQUISTES:
++ avr-gcc ; tested with 4.3.4 (from debian)
+	The code rudely assumes the avr-gcc is in /usr/lib/avr/include/...
++ libelf-dev
+
+BUILD:
++ make
+
+TEST:
++ ./simavr/simavr tests/atmega88_example.axf
+
+There are no command line options for now.. The simulator recognizes attiny85, 
+atmega48,88,168 and atmega644. It's fairly easy to add new cores.
+
+Michel Pollet <buserror@gmail.com>
