@@ -50,6 +50,7 @@ enum {
  * Core states. This will need populating with debug states for gdb
  */
 enum {
+	cpu_Limbo = 0,	// before initialization is finished
 	cpu_Stopped,
 	cpu_Running,
 	cpu_Sleeping,
@@ -134,6 +135,17 @@ typedef struct avr_t {
 		uint16_t sp;
 	} old[OLD_PC_SIZE]; // catches reset..
 	int			old_pci;
+
+#if AVR_STACK_WATCH
+	#define STACK_FRAME_SIZE	32
+	// this records the call/ret pairs, to try to catch
+	// code that munches the stack -under- their own frame
+	struct {
+		uint32_t	pc;
+		uint16_t 	sp;		
+	} stack_frame[STACK_FRAME_SIZE];
+	int			stack_frame_index;
+#endif
 
 	// DEBUG ONLY
 	// keeps track of wich registers gets touched by instructions
@@ -226,7 +238,8 @@ int avr_ioctl(avr_t *avr, uint32_t ctl, void * io_param);
 // register an interupt vector. It's only needed if you want to use the "r_raised" flags
 void avr_register_vector(avr_t *avr, avr_int_vector_t * vector);
 // raise an interupt (if enabled). The interupt is latched and will be called later
-void avr_raise_interupt(avr_t * avr, avr_int_vector_t * vector);
+// return non-zero if the interupt was raised and is now pending
+int avr_raise_interupt(avr_t * avr, avr_int_vector_t * vector);
 // return non-zero if the AVR core has any pending interupts
 int avr_has_pending_interupts(avr_t * avr);
 // return nonzero if a soecific interupt vector is pending
@@ -308,6 +321,45 @@ static inline uint8_t avr_regbit_get_array(avr_t * avr, avr_regbit_t *rb, int co
 #define AVR_IO_REGBIT(_io, _bit) { . reg = (_io), .bit = (_bit), .mask = 1 }
 #define AVR_IO_REGBITS(_io, _bit, _mask) { . reg = (_io), .bit = (_bit), .mask = (_mask) }
 
+/*
+ * Internal IRQ system
+ * 
+ * This subsystem allow any piece of code to "register" a hook to be called when an IRQ is
+ * raised. The IRQ definition is up to the module defining it, for example a IOPORT pin change
+ * might be an IRQ in wich case any oiece of code can be notified when a pin has changed state
+ * 
+ * The notify hooks are chained, and duplicates are filtered out so you can't register a
+ * notify hook twice on one particylar IRQ
+ * 
+ * IRQ calling order is not defined, so don't rely on it.
+ * 
+ * IRQ hook needs to be registered in reset() handlers, ie after all modules init() bits
+ * have been called, to prevent race condition of the initialization order.
+ */
+// internal structure for a hook, never seen by the notify procs
+struct avr_irq_t;
+
+typedef void (*avr_irq_notify_t)(avr_t * avr, struct avr_irq_t * irq, uint32_t value, void * param);
+
+typedef struct avr_irq_hook_t {
+	struct avr_irq_hook_t * next;
+	void * param;
+	int busy;	// prevent reentrance of callbacks
+	avr_irq_notify_t notify;
+} avr_irq_hook_t;
+
+typedef struct avr_irq_t {
+	uint32_t			irq;
+	uint32_t			value;
+	avr_irq_hook_t * 	hook;
+} avr_irq_t;
+
+avr_irq_t * avr_alloc_irq(avr_t * avr, uint32_t base, uint32_t count);
+void avr_init_irq(avr_t * avr, avr_irq_t * irq, uint32_t base, uint32_t count);
+void avr_raise_irq(avr_t * avr, avr_irq_t * irq, uint32_t value);
+// this connects a "source" IRQ to a "destination" IRQ
+void avr_connect_irq(avr_t * avr, avr_irq_t * src, avr_irq_t * dst);
+void avr_irq_register_notify(avr_t * avr, avr_irq_t * irq, avr_irq_notify_t notify, void * param);
 
 #endif /*__SIMAVR_H__*/
 

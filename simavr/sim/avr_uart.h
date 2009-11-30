@@ -38,10 +38,7 @@ typedef struct avr_uart_t {
 
 	avr_int_vector_t rxc;
 	avr_int_vector_t txc;
-	avr_int_vector_t udrc;
-
-	avr_regbit_t	udre; // AVR_IO_REGBIT(UCSR0A, UDRE0),
-	
+	avr_int_vector_t udrc;	
 } avr_uart_t;
 
 void avr_uart_init(avr_t * avr, avr_uart_t * port);

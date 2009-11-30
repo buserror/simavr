@@ -49,21 +49,7 @@ static struct mcu_t {
 		.init = init,
 		.reset = reset,
 	},
-	.eeprom = {
-		.size = E2END+1,
-		.r_eearh = EEARH,
-		.r_eearl = EEARL,
-		.r_eedr = EEDR,
-		.r_eecr = EECR,
-		.eepm = { AVR_IO_REGBIT(EECR, EEPM0), AVR_IO_REGBIT(EECR, EEPM1) },
-		.eempe = AVR_IO_REGBIT(EECR, EEMPE),
-		.eepe = AVR_IO_REGBIT(EECR, EEPE),
-		.eere = AVR_IO_REGBIT(EECR, EERE),
-		.ready = {
-			.enable = AVR_IO_REGBIT(EECR, EERIE),
-			.vector = EE_READY_vect,
-		},
-	},
+	AVR_EEPROM_DECLARE(EE_READY_vect),
 	.porta = {
 		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
 		.pcint = {
@@ -105,7 +91,6 @@ static struct mcu_t {
 		.disabled = AVR_IO_REGBIT(PRR,PRUSART0),
 		.name = '0',
 		.r_udr = UDR0,
-		.udre = AVR_IO_REGBIT(UCSR0A, UDRE0),
 
 		.r_ucsra = UCSR0A,
 		.r_ucsrb = UCSR0B,
@@ -114,14 +99,17 @@ static struct mcu_t {
 		.r_ubrrh = UBRR0H,
 		.rxc = {
 			.enable = AVR_IO_REGBIT(UCSR0B, RXCIE0),
+			.raised = AVR_IO_REGBIT(UCSR0A, RXC0),
 			.vector = USART0_RX_vect,
 		},
 		.txc = {
 			.enable = AVR_IO_REGBIT(UCSR0B, TXCIE0),
+			.raised = AVR_IO_REGBIT(UCSR0A, TXC0),
 			.vector = USART0_TX_vect,
 		},
 		.udrc = {
 			.enable = AVR_IO_REGBIT(UCSR0B, UDRIE0),
+			.raised = AVR_IO_REGBIT(UCSR0A, UDRE0),
 			.vector = USART0_UDRE_vect,
 		},
 	},
@@ -129,7 +117,6 @@ static struct mcu_t {
 		.disabled = AVR_IO_REGBIT(PRR,PRUSART1),
 		.name = '1',
 		.r_udr = UDR1,
-		.udre = AVR_IO_REGBIT(UCSR1A, UDRE1),
 
 		.r_ucsra = UCSR1A,
 		.r_ucsrb = UCSR1B,
@@ -138,14 +125,17 @@ static struct mcu_t {
 		.r_ubrrh = UBRR1H,
 		.rxc = {
 			.enable = AVR_IO_REGBIT(UCSR1B, RXCIE1),
+			.raised = AVR_IO_REGBIT(UCSR1A, RXC1),
 			.vector = USART1_RX_vect,
 		},
 		.txc = {
 			.enable = AVR_IO_REGBIT(UCSR1B, TXCIE1),
+			.raised = AVR_IO_REGBIT(UCSR1A, TXC1),
 			.vector = USART1_TX_vect,
 		},
 		.udrc = {
 			.enable = AVR_IO_REGBIT(UCSR1B, UDRIE1),
+			.raised = AVR_IO_REGBIT(UCSR1A, UDRE1),
 			.vector = USART1_UDRE_vect,
 		},
 	},

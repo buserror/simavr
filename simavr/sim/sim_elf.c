@@ -88,9 +88,8 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 			firmware->bsssize = s->d_size;
 		} else if (!strcmp(name, ".mmcu")) {
 			Elf_Data *s = elf_getdata(scn, NULL);
-			long f_cpu = s ? *((long*)s->d_buf) : 0;
 			firmware->mmcu = *((avr_mcu_t*)s->d_buf);
-			printf("%s: setting speed to %ld\n", __FUNCTION__, f_cpu);
+		//	printf("%s: setting speed to %ld\n", __FUNCTION__, f_cpu);
 		//	avr->frequency = f_cpu;
 		}
 #if ELF_SYMBOLS

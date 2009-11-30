@@ -47,21 +47,7 @@ static struct mcu_t {
 		.init = init,
 		.reset = reset,
 	},
-	.eeprom = {
-		.size = E2END+1,
-		.r_eearh = EEARH,
-		.r_eearl = EEARL,
-		.r_eedr = EEDR,
-		.r_eecr = EECR,
-		.eepm = { AVR_IO_REGBIT(EECR, EEPM0), AVR_IO_REGBIT(EECR, EEPM1) },
-		.eempe = AVR_IO_REGBIT(EECR, EEMPE),
-		.eepe = AVR_IO_REGBIT(EECR, EEPE),
-		.eere = AVR_IO_REGBIT(EECR, EERE),
-		.ready = {
-			.enable = AVR_IO_REGBIT(EECR, EERIE),
-			.vector = EE_RDY_vect,// EE_READY_vect,
-		},
-	},
+	AVR_EEPROM_DECLARE(EE_RDY_vect),
 	.portb = {
 		.name = 'B',  .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
 		.pcint = {

@@ -58,4 +58,27 @@ typedef struct avr_eeprom_desc_t {
 #define AVR_IOCTL_EEPROM_GET	AVR_IOCTL_DEF('e','e','g','p')
 #define AVR_IOCTL_EEPROM_SET	AVR_IOCTL_DEF('e','e','s','p')
 
+
+/*
+ * the eeprom block seems to be very similar across AVRs, 
+ * so here is a macro to declare a "typical" one in a core.
+ */
+
+#define AVR_EEPROM_DECLARE(_vector) \
+	.eeprom = {\
+		.size = E2END+1,\
+		.r_eearh = EEARH,\
+		.r_eearl = EEARL,\
+		.r_eedr = EEDR,\
+		.r_eecr = EECR,\
+		.eepm = { AVR_IO_REGBIT(EECR, EEPM0), AVR_IO_REGBIT(EECR, EEPM1) },\
+		.eempe = AVR_IO_REGBIT(EECR, EEMPE),\
+		.eepe = AVR_IO_REGBIT(EECR, EEPE),\
+		.eere = AVR_IO_REGBIT(EECR, EERE),\
+		.ready = {\
+			.enable = AVR_IO_REGBIT(EECR, EERIE),\
+			.vector = _vector,\
+		},\
+	}
+
 #endif /* __AVR_EEPROM_H__ */

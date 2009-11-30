@@ -46,7 +46,10 @@ static void avr_uart_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * p
 	if (addr == p->r_udr) {
 	//	printf("UDR%c(%02x) = %02x\n", p->name, addr, v);
 		avr_core_watch_write(avr, addr, v);
-		avr_regbit_set(avr, p->udre);
+
+		// if the interupts are not used, still raised the UDRE and TXC flaga
+		avr_raise_interupt(avr, &p->udrc);
+		avr_raise_interupt(avr, &p->txc);
 
 		static char buf[128];
 		static int l = 0;
@@ -57,12 +60,25 @@ static void avr_uart_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * p
 			printf("\e[32m%s\e[0m\n", buf);
 		}
 	}
+	if (addr == p->r_ucsra) {
+		// get the bits before the write
+		uint8_t udre = avr_regbit_get(avr, p->udrc.raised);
+		uint8_t txc = avr_regbit_get(avr, p->txc.raised);
+		
+		avr_core_watch_write(avr, addr, v);
+
+		// if writing one to a one, clear bit
+		if (udre && avr_regbit_get(avr, p->udrc.raised))
+			avr_regbit_clear(avr, p->udrc.raised);
+		if (txc && avr_regbit_get(avr, p->txc.raised))
+			avr_regbit_clear(avr, p->txc.raised);
+	}
 }
 
 void avr_uart_reset(avr_t * avr, struct avr_io_t *io)
 {
 	avr_uart_t * p = (avr_uart_t *)io;
-	avr_regbit_set(avr, p->udre);
+	avr_regbit_set(avr, p->udrc.raised);
 }
 
 static	avr_io_t	_io = {
@@ -79,6 +95,7 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 	printf("%s UART%c UDR=%02x\n", __FUNCTION__, p->name, p->r_udr);
 
 	avr_register_io_write(avr, p->r_udr, avr_uart_write, p);
+	avr_register_io_write(avr, p->r_ucsra, avr_uart_write, p);
 	avr_register_io_read(avr, p->r_udr, avr_uart_read, p);
 
 }

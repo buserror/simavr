@@ -45,7 +45,7 @@ all:	obj ${target}
 obj:
 	@mkdir -p obj
 
-obj/sim_%.o : cores/sim_%.h cores/sim_core_declare.h sim/*.h
+obj/sim_%.o : cores/sim_%.h ${wildcard cores/*.h} ${wildcard sim/*.h}
 obj/sim_%.o : cores/sim_%.c
 	@gcc $(CFLAGS) \
 		-I/usr/lib/avr/include/ \

@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <getopt.h>
 #include "simavr.h"
 #include "sim_elf.h"
 
@@ -61,11 +62,12 @@ int avr_init(avr_t * avr)
 	avr->data = malloc(avr->ramend + 1);
 	memset(avr->data, 0, avr->ramend + 1);
 
-	avr->state = cpu_Running;
+	// cpu is in limbo before init is finished.
+	avr->state = cpu_Limbo;
 	avr->frequency = 1000000;	// can be overriden via avr_mcu_section
-	
 	if (avr->init)
 		avr->init(avr);
+	avr->state = cpu_Running;
 	avr_reset(avr);	
 	return 0;
 }
@@ -135,27 +137,32 @@ int avr_is_interupt_pending(avr_t * avr, avr_int_vector_t * vector)
 	return avr->pending[vector->vector >> 5] & (1 << (vector->vector & 0x1f));
 }
 
-void avr_raise_interupt(avr_t * avr, avr_int_vector_t * vector)
+int avr_raise_interupt(avr_t * avr, avr_int_vector_t * vector)
 {
-	if (!vector->vector)
-		return;
+	if (!vector || !vector->vector)
+		return 0;
 //	printf("%s raising %d\n", __FUNCTION__, vector->vector);
+	// always mark the 'raised' flag to one, even if the interuot is disabled
+	// this allow "pooling" for the "raised" flag, like for non-interupt
+	// driven UART and so so. These flags are often "write one to clear"
+	if (vector->raised.reg)
+		avr_regbit_set(avr, vector->raised);
 	if (vector->enable.reg) {
 		if (!avr_regbit_get(avr, vector->enable))
-			return;
+			return 0;
 	}
 	if (!avr_is_interupt_pending(avr, vector)) {
 		if (!avr->pending_wait)
 			avr->pending_wait = 2;		// latency on interupts ??
 		avr->pending[vector->vector >> 5] |= (1 << (vector->vector & 0x1f));
 
-		if (vector->raised.reg)
-			avr_regbit_set(avr, vector->raised);
 		if (avr->state != cpu_Running) {
 		//	printf("Waking CPU due to interrupt\n");
 			avr->state = cpu_Running;	// in case we were sleeping
 		}
 	}
+	// return 'raised' even if it was already pending
+	return 1;
 }
 
 static void avr_clear_interupt(avr_t * avr, int v)
@@ -167,6 +174,69 @@ static void avr_clear_interupt(avr_t * avr, int v)
 	printf("%s cleared %d\n", __FUNCTION__, vector->vector);
 	if (vector->raised.reg)
 		avr_regbit_clear(avr, vector->raised);
+}
+
+void avr_init_irq(avr_t * avr, avr_irq_t * irq, uint32_t base, uint32_t count)
+{
+	memset(irq, 0, sizeof(avr_irq_t) * count);
+
+	for (int i = 0; i < count; i++)
+		irq[i].irq = base + i;
+}
+
+avr_irq_t * avr_alloc_irq(avr_t * avr, uint32_t base, uint32_t count)
+{
+	avr_irq_t * irq = (avr_irq_t*)malloc(sizeof(avr_irq_t) * count);
+	avr_init_irq(avr, irq, base, count);
+	return irq;
+}
+
+void avr_irq_register_notify(avr_t * avr, avr_irq_t * irq, avr_irq_notify_t notify, void * param)
+{
+	if (!irq || !notify)
+		return;
+	
+	avr_irq_hook_t *hook = irq->hook;
+	while (hook) {
+		if (hook->notify == notify && hook->param == param)
+			return;	// already there
+		hook = hook->next;
+	}
+	hook = malloc(sizeof(avr_irq_hook_t));
+	memset(hook, 0, sizeof(avr_irq_hook_t));
+	hook->next = irq->hook;
+	hook->notify = notify;
+	hook->param = param;
+	irq->hook = hook;
+}
+
+void avr_raise_irq(avr_t * avr, avr_irq_t * irq, uint32_t value)
+{
+	if (!irq || irq->value == value)
+		return ;
+	avr_irq_hook_t *hook = irq->hook;
+	while (hook) {
+		if (hook->notify) {
+			if (hook->busy == 0) {
+				hook->busy++;
+				hook->notify(avr, irq, value, hook->param);
+				hook->busy--;
+			}
+		}
+		hook = hook->next;
+	}
+	irq->value = value;
+}
+
+static void _avr_irq_connect(avr_t * avr, avr_irq_t * irq, uint32_t value, void * param)
+{
+	avr_irq_t * dst = (avr_irq_t*)param;
+	avr_raise_irq(avr, dst, value != 0);
+}
+
+void avr_connect_irq(avr_t * avr, avr_irq_t * src, avr_irq_t * dst)
+{
+	avr_irq_register_notify(avr, src, _avr_irq_connect, dst);
 }
 
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address)
@@ -186,15 +256,14 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc]<<8), addr, v);
 		CRASH();
 	}
-#if 0
+#if AVR_STACK_WATCH
 	/*
-	 * this only happend when the compiler is doctoring the stack before calls. Or
-	 * if there is an invalid pointer somewhere...
+	 * this checks that the current "function" is not doctoring the stack frame that is located
+	 * higher on the stack than it should be. It's a sign of code that has overrun it's stack
+	 * frame and is munching on it's own return address.
 	 */
-	if (addr > _avr_sp_get(avr)) {
-		avr->trace++;
-		STATE("\e[31mmunching stack SP %04x, A=%04x <= %02x\e[0m\n", _avr_sp_get(avr), addr, v);
-		avr->trace--;
+	if (avr->stack_frame_index > 1 && addr > avr->stack_frame[avr->stack_frame_index-2].sp) {
+		printf("\e[31m%04x : munching stack SP %04x, A=%04x <= %02x\e[0m\n", avr->pc, _avr_sp_get(avr), addr, v);
 	}
 #endif
 	avr->data[addr] = v;
@@ -315,13 +384,58 @@ avr_kind_t * avr_kind[] = {
 	NULL
 };
 
-int main(int argc, const char **argv)
+void display_usage()
+{
+	printf("usage: simavr [-t] [-m <device>] [-f <frequency>] firmware\n");
+	printf("       -t: run full scale decoder trace\n");
+	exit(1);
+}
+
+int main(int argc, char *argv[])
 {
 	elf_firmware_t f;
+	long f_cpu = 0;
+	int trace = 0;
+	char name[16] = "";
+	int option_count;
+	int option_index = 0;
 
-	elf_read_firmware(argv[1], &f);
+	struct option long_options[] = {
+		{"help", no_argument, 0, 'h'},
+		{"mcu", required_argument, 0, 'm'},
+		{"freq", required_argument, 0, 'f'},
+		{"trace", no_argument, 0, 't'},
+		{0, 0, 0, 0}
+	};
 
-	printf("firmware %s f=%ld mmcu=%s\n", argv[1], f.mmcu.f_cpu, f.mmcu.name);
+	if (argc == 1)
+		display_usage();
+
+	while ((option_count = getopt_long(argc, argv, "thm:f:", long_options, &option_index)) != -1) {
+		switch (option_count) {
+			case 'h':
+				display_usage();
+				break;
+			case 'm':
+				strcpy(name, optarg);
+				break;
+			case 'f':
+				f_cpu = atoi(optarg);
+				break;
+			case 't':
+				trace++;
+				break;
+		}
+	}
+
+	elf_read_firmware(argv[argc-1], &f);
+
+	if (strlen(name))
+		strcpy(f.mmcu.name, name);
+	if (f_cpu)
+		f.mmcu.f_cpu = f_cpu;
+
+	printf("firmware %s f=%ld mmcu=%s\n", argv[argc-1], f.mmcu.f_cpu, f.mmcu.name);
 
 	avr_kind_t * maker = NULL;
 	for (int i = 0; avr_kind[i] && !maker; i++) {
@@ -347,7 +461,7 @@ int main(int argc, const char **argv)
 		avr_eeprom_desc_t d = { .ee = f.eeprom, .offset = 0, .size = f.eesize };
 		avr_ioctl(avr, AVR_IOCTL_EEPROM_SET, &d);
 	}
-//	avr->trace = 1;
+	avr->trace = trace;
 
 	for (long long i = 0; i < 8000000*10; i++)
 //	for (long long i = 0; i < 80000; i++)

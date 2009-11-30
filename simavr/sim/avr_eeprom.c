@@ -57,7 +57,7 @@ static void avr_eeprom_write(struct avr_t * avr, uint8_t addr, uint8_t v, void *
 	
 	if (eempe && avr_regbit_get(avr, p->eepe)) {	// write operation
 		uint16_t addr = avr->data[p->r_eearl] | (avr->data[p->r_eearh] << 8);
-		printf("eeprom write %04x <- %02x\n", addr, avr->data[p->r_eedr]);
+	//	printf("eeprom write %04x <- %02x\n", addr, avr->data[p->r_eedr]);
 		p->eeprom[addr] = avr->data[p->r_eedr];	
 		// automaticaly clears that bit (?)
 		p->eempe_clear_timer = 0;
@@ -68,7 +68,7 @@ static void avr_eeprom_write(struct avr_t * avr, uint8_t addr, uint8_t v, void *
 	if (avr_regbit_get(avr, p->eere)) {	// read operation
 		uint16_t addr = avr->data[p->r_eearl] | (avr->data[p->r_eearh] << 8);
 		avr->data[p->r_eedr] = p->eeprom[addr];
-		printf("eeprom read %04x : %02x\n", addr, p->eeprom[addr]);
+	//	printf("eeprom read %04x : %02x\n", addr, p->eeprom[addr]);
 	}
 
 	// autocleared

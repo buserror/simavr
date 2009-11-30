@@ -24,6 +24,16 @@
 
 #include "simavr.h"
 
+enum {
+	IOPORT_IRQ_PIN0 = 0,
+	IOPORT_IRQ_PIN1,IOPORT_IRQ_PIN2,IOPORT_IRQ_PIN3,IOPORT_IRQ_PIN4,
+	IOPORT_IRQ_PIN5,IOPORT_IRQ_PIN6,IOPORT_IRQ_PIN7,
+	IOPORT_IRQ_PIN_ALL
+};
+
+// add IOPORT_IRQ_PIN* to this to get the real IRQ
+#define AVR_IOCTL_IOPORT_GETIRQ AVR_IOCTL_DEF('i','o','g',0)
+
 typedef struct avr_ioport_t {
 	avr_io_t	io;
 	char name;
@@ -33,9 +43,11 @@ typedef struct avr_ioport_t {
 
 	avr_int_vector_t pcint;	// PCINT vector
 	uint8_t r_pcint;		// pcint 8 pins mask
-	
+
+	avr_irq_t * irq;
 } avr_ioport_t;
 
 void avr_ioport_init(avr_t * avr, avr_ioport_t * port);
+
 
 #endif /* __AVR_IOPORT_H__ */
