@@ -26,16 +26,36 @@
 #include <stdio.h>
 #include "avr_uart.h"
 
+DEFINE_FIFO(uint8_t, uart_fifo, 128);
+
 static void avr_uart_run(avr_t * avr, avr_io_t * port)
 {
-//	printf("%s\n", __FUNCTION__);
+	avr_uart_t * p = (avr_uart_t *)port;
+	if (p->input_cycle_timer) {
+		p->input_cycle_timer--;
+		if (p->input_cycle_timer == 0) {
+			if (avr_regbit_get(avr, p->rxen))
+				avr_raise_interrupt(avr, &p->rxc);
+		}
+	}
 }
 
 static uint8_t avr_uart_read(struct avr_t * avr, uint8_t addr, void * param)
 {
-//	avr_uart_t * p = (avr_uart_t *)param;
-	uint8_t v = avr->data[addr];
-//	printf("** PIN%c = %02x\n", p->name, v);
+	avr_uart_t * p = (avr_uart_t *)param;
+
+	if (!avr_regbit_get(avr, p->rxen)) {
+		avr->data[addr] = 0;
+		// made to trigger potential watchpoints
+		avr_core_watch_read(avr, addr);
+		return 0;
+	}
+	uint8_t v = uart_fifo_read(&p->input);
+
+	avr->data[addr] = v;
+	// made to trigger potential watchpoints
+	v = avr_core_watch_read(avr, addr);
+	p->input_cycle_timer = uart_fifo_isempty(&p->input) ? 0 : 10;
 	return v;
 }
 
@@ -47,9 +67,9 @@ static void avr_uart_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * p
 	//	printf("UDR%c(%02x) = %02x\n", p->name, addr, v);
 		avr_core_watch_write(avr, addr, v);
 
-		// if the interupts are not used, still raised the UDRE and TXC flaga
-		avr_raise_interupt(avr, &p->udrc);
-		avr_raise_interupt(avr, &p->txc);
+		// if the interrupts are not used, still raised the UDRE and TXC flaga
+		avr_raise_interrupt(avr, &p->udrc);
+		avr_raise_interrupt(avr, &p->txc);
 
 		static char buf[128];
 		static int l = 0;
@@ -59,12 +79,14 @@ static void avr_uart_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * p
 			l = 0;
 			printf("\e[32m%s\e[0m\n", buf);
 		}
-	}
-	if (addr == p->r_ucsra) {
+		// tell other modules we are "outputing" a byte
+		if (avr_regbit_get(avr, p->txen))
+			avr_raise_irq(avr, p->io.irq + UART_IRQ_OUTPUT, v);
+	} else {
 		// get the bits before the write
 		uint8_t udre = avr_regbit_get(avr, p->udrc.raised);
 		uint8_t txc = avr_regbit_get(avr, p->txc.raised);
-		
+
 		avr_core_watch_write(avr, addr, v);
 
 		// if writing one to a one, clear bit
@@ -75,10 +97,28 @@ static void avr_uart_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * p
 	}
 }
 
+void avr_uart_irq_input(avr_t * avr, struct avr_irq_t * irq, uint32_t value, void * param)
+{
+	avr_uart_t * p = (avr_uart_t *)param;
+
+	// check to see fi receiver is enabled
+	if (!avr_regbit_get(avr, p->rxen))
+		return;
+
+	uart_fifo_write(&p->input, value); // add to fifo
+	// raise interrupt, if it was not there
+	if (p->input_cycle_timer == 0)
+		p->input_cycle_timer = 10;	// random number, should be proportional to speed
+}
+
+
 void avr_uart_reset(avr_t * avr, struct avr_io_t *io)
 {
 	avr_uart_t * p = (avr_uart_t *)io;
 	avr_regbit_set(avr, p->udrc.raised);
+	avr_irq_register_notify(avr, p->io.irq + UART_IRQ_INPUT, avr_uart_irq_input, p);
+	p->input_cycle_timer = 0;
+	uart_fifo_reset(&p->input);
 }
 
 static	avr_io_t	_io = {
@@ -92,11 +132,16 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 	p->io = _io;
 	avr_register_io(avr, &p->io);
 
-	printf("%s UART%c UDR=%02x\n", __FUNCTION__, p->name, p->r_udr);
+//	printf("%s UART%c UDR=%02x\n", __FUNCTION__, p->name, p->r_udr);
+
+	// allocate this module's IRQ
+	p->io.irq_count = UART_IRQ_COUNT;
+	p->io.irq = avr_alloc_irq(avr, 0, p->io.irq_count);
+	p->io.irq_ioctl_get = AVR_IOCTL_UART_GETIRQ(p->name);
 
 	avr_register_io_write(avr, p->r_udr, avr_uart_write, p);
-	avr_register_io_write(avr, p->r_ucsra, avr_uart_write, p);
 	avr_register_io_read(avr, p->r_udr, avr_uart_read, p);
 
+	avr_register_io_write(avr, p->r_ucsra, avr_uart_write, p);
 }
 

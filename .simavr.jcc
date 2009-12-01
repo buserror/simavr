@@ -72,6 +72,34 @@ T
 F
 "./simavr/sim/sim_elf.h"
 T
+2 "sim_interrupts.c"
+F
+"./simavr/sim/sim_interrupts.c"
+T
+2 "sim_interrupts.h"
+F
+"./simavr/sim/sim_interrupts.h"
+T
+2 "sim_regbit.h"
+F
+"./simavr/sim/sim_regbit.h"
+T
+2 "sim_irq.c"
+F
+"./simavr/sim/sim_irq.c"
+T
+2 "sim_irq.h"
+F
+"./simavr/sim/sim_irq.h"
+T
+2 "sim_io.c"
+F
+"./simavr/sim/sim_io.c"
+T
+2 "sim_io.h"
+F
+"./simavr/sim/sim_io.h"
+T
 2 "simavr.c"
 F
 "./simavr/sim/simavr.c"
@@ -79,6 +107,10 @@ T
 2 "simavr.h"
 F
 "./simavr/sim/simavr.h"
+T
+2 "fifo_declare.h"
+F
+"./simavr/sim/fifo_declare.h"
 F
 T
 1 "tests"

@@ -39,7 +39,7 @@ static void avr_eeprom_run(avr_t * avr, avr_io_t * port)
 	if (p->ready_raise_timer) {
 		p->ready_raise_timer--;
 		if (p->ready_raise_timer == 0) {
-			avr_raise_interupt(avr, &p->ready);
+			avr_raise_interrupt(avr, &p->ready);
 		}
 	}
 }
@@ -59,7 +59,7 @@ static void avr_eeprom_write(struct avr_t * avr, uint8_t addr, uint8_t v, void *
 		uint16_t addr = avr->data[p->r_eearl] | (avr->data[p->r_eearh] << 8);
 	//	printf("eeprom write %04x <- %02x\n", addr, avr->data[p->r_eedr]);
 		p->eeprom[addr] = avr->data[p->r_eedr];	
-		// automaticaly clears that bit (?)
+		// Automatically clears that bit (?)
 		p->eempe_clear_timer = 0;
 		avr_regbit_clear(avr, p->eempe);
 
@@ -107,8 +107,8 @@ static	avr_io_t	_io = {
 void avr_eeprom_init(avr_t * avr, avr_eeprom_t * p)
 {
 	p->io = _io;
-	printf("%s init (%d bytes) EEL/H:%02x/%02x EED=%02x EEC=%02x\n",
-			__FUNCTION__, p->size, p->r_eearl, p->r_eearh, p->r_eedr, p->r_eecr);
+//	printf("%s init (%d bytes) EEL/H:%02x/%02x EED=%02x EEC=%02x\n",
+//			__FUNCTION__, p->size, p->r_eearl, p->r_eearh, p->r_eedr, p->r_eecr);
 
 	p->eeprom = malloc(p->size);
 	memset(p->eeprom, 0xff, p->size);

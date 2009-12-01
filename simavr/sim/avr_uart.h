@@ -24,6 +24,19 @@
 
 #include "simavr.h"
 
+#include "fifo_declare.h"
+
+DECLARE_FIFO(uint8_t, uart_fifo, 128);
+
+enum {
+	UART_IRQ_INPUT = 0,
+	UART_IRQ_OUTPUT,
+	UART_IRQ_COUNT
+};
+
+// add port number to get the real IRQ
+#define AVR_IOCTL_UART_GETIRQ(_name) AVR_IOCTL_DEF('u','a','r',(_name))
+
 typedef struct avr_uart_t {
 	avr_io_t	io;
 	char name;
@@ -34,11 +47,17 @@ typedef struct avr_uart_t {
 	uint8_t r_ucsrb;
 	uint8_t r_ucsrc;
 
+	avr_regbit_t	rxen;		// receive enabled
+	avr_regbit_t	txen;		// transmit enable
+
 	uint8_t r_ubrrl,r_ubrrh;
 
 	avr_int_vector_t rxc;
 	avr_int_vector_t txc;
 	avr_int_vector_t udrc;	
+
+	uart_fifo_t	input;
+	uint16_t	input_cycle_timer;
 } avr_uart_t;
 
 void avr_uart_init(avr_t * avr, avr_uart_t * port);

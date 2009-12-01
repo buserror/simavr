@@ -38,27 +38,11 @@ static void avr_timer8_run(avr_t * avr, avr_io_t * port)
 		//	printf("timer a firea %d\n", p->compa_next);
 			fflush(stdout);
 			p->compa_next += p->compa_cycles;						
-			avr_raise_interupt(avr, &p->compa);
+			avr_raise_interrupt(avr, &p->compa);
 		} 
 	}
 }
 
-#if 0
-static uint8_t avr_timer8_read(struct avr_t * avr, uint8_t addr, void * param)
-{
-	avr_timer8_t * p = (avr_timer8_t *)param;
-	uint8_t v = avr->data[addr];
-
-	if (addr == p->r_pin) {
-		uint8_t v = avr->data[p->r_port];
-		avr->data[addr] = v;
-		// made to trigger potential watchpoints
-		v = avr_core_watch_read(avr, addr);
-		printf("** PIN%c(%02x) = %02x\n", p->name, addr, v);
-	}
-	return v;
-}
-#endif
 
 static void avr_timer8_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * param)
 {
@@ -75,6 +59,8 @@ static void avr_timer8_write(struct avr_t * avr, uint8_t addr, uint8_t v, void *
 	uint8_t cs = avr_regbit_get_array(avr, p->cs, ARRAY_SIZE(p->cs));
 	if (cs == 0) {
 		printf("%s-%c clock turned off\n", __FUNCTION__, p->name);		
+		p->compa_cycles = 0;
+		return;
 	}
 	uint8_t mode = avr_regbit_get_array(avr, p->wgm, ARRAY_SIZE(p->wgm));
 	uint8_t cs_div = p->cs_div[cs];
@@ -106,13 +92,12 @@ static	avr_io_t	_io = {
 void avr_timer8_init(avr_t * avr, avr_timer8_t * p)
 {
 	p->io = _io;
-	printf("%s timer%c created\n", __FUNCTION__, p->name);
+//	printf("%s timer%c created\n", __FUNCTION__, p->name);
 
 	avr_register_io(avr, &p->io);
-//	avr_register_vector(avr, &port->pcint);
+	avr_register_vector(avr, &p->compa);
 
 	avr_register_io_write(avr, p->cs[0].reg, avr_timer8_write, p);
 	avr_register_io_write(avr, p->r_ocra, avr_timer8_write, p);
 	avr_register_io_write(avr, p->r_ocrb, avr_timer8_write, p);
-	//avr_register_io_read(avr, port->r_pin, avr_ioport_read, port);
 }

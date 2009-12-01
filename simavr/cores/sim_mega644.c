@@ -92,6 +92,9 @@ static struct mcu_t {
 		.name = '0',
 		.r_udr = UDR0,
 
+		.txen = AVR_IO_REGBIT(UCSR0B, TXEN0),
+		.rxen = AVR_IO_REGBIT(UCSR0B, RXEN0),
+
 		.r_ucsra = UCSR0A,
 		.r_ucsrb = UCSR0B,
 		.r_ucsrc = UCSR0C,
@@ -117,6 +120,9 @@ static struct mcu_t {
 		.disabled = AVR_IO_REGBIT(PRR,PRUSART1),
 		.name = '1',
 		.r_udr = UDR1,
+
+		.txen = AVR_IO_REGBIT(UCSR1B, TXEN1),
+		.rxen = AVR_IO_REGBIT(UCSR1B, RXEN1),
 
 		.r_ucsra = UCSR1A,
 		.r_ucsrb = UCSR1B,

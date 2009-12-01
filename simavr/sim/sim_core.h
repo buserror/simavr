@@ -28,7 +28,7 @@
 uint16_t avr_run_one(avr_t * avr);
 
 /*
- * These are for internal access to the stack (for interupts)
+ * These are for internal access to the stack (for interrupts)
  */
 uint16_t _avr_sp_get(avr_t * avr);
 void _avr_sp_set(avr_t * avr, uint16_t sp);

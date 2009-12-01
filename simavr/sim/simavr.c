@@ -32,6 +32,7 @@
 
 #include "sim_core.h"
 #include "avr_eeprom.h"
+#include "avr_uart.h"
 
 void hdump(const char *w, uint8_t *b, size_t l)
 {
@@ -91,153 +92,6 @@ void avr_reset(avr_t * avr)
 
 }
 
-int avr_ioctl(avr_t *avr, uint32_t ctl, void * io_param)
-{
-	avr_io_t * port = avr->io_port;
-	int res = -1;
-	while (port && res == -1) {
-		if (port->ioctl)
-			res = port->ioctl(avr, port, ctl, io_param);
-		port = port->next;
-	}
-	return res;
-}
-
-void avr_register_io(avr_t *avr, avr_io_t * io)
-{
-	io->next = avr->io_port;
-	avr->io_port = io;
-}
-
-void avr_register_io_read(avr_t *avr, uint8_t addr, avr_io_read_t readp, void * param)
-{
-	avr->ior[AVR_DATA_TO_IO(addr)].param = param;
-	avr->ior[AVR_DATA_TO_IO(addr)].r = readp;
-}
-
-void avr_register_io_write(avr_t *avr, uint8_t addr, avr_io_write_t writep, void * param)
-{
-	avr->iow[AVR_DATA_TO_IO(addr)].param = param;
-	avr->iow[AVR_DATA_TO_IO(addr)].w = writep;
-}
-
-void avr_register_vector(avr_t *avr, avr_int_vector_t * vector)
-{
-	if (vector->vector)
-		avr->vector[vector->vector] = vector;
-}
-
-int avr_has_pending_interupts(avr_t * avr)
-{
-	return avr->pending[0] || avr->pending[1];
-}
-
-int avr_is_interupt_pending(avr_t * avr, avr_int_vector_t * vector)
-{
-	return avr->pending[vector->vector >> 5] & (1 << (vector->vector & 0x1f));
-}
-
-int avr_raise_interupt(avr_t * avr, avr_int_vector_t * vector)
-{
-	if (!vector || !vector->vector)
-		return 0;
-//	printf("%s raising %d\n", __FUNCTION__, vector->vector);
-	// always mark the 'raised' flag to one, even if the interuot is disabled
-	// this allow "pooling" for the "raised" flag, like for non-interupt
-	// driven UART and so so. These flags are often "write one to clear"
-	if (vector->raised.reg)
-		avr_regbit_set(avr, vector->raised);
-	if (vector->enable.reg) {
-		if (!avr_regbit_get(avr, vector->enable))
-			return 0;
-	}
-	if (!avr_is_interupt_pending(avr, vector)) {
-		if (!avr->pending_wait)
-			avr->pending_wait = 2;		// latency on interupts ??
-		avr->pending[vector->vector >> 5] |= (1 << (vector->vector & 0x1f));
-
-		if (avr->state != cpu_Running) {
-		//	printf("Waking CPU due to interrupt\n");
-			avr->state = cpu_Running;	// in case we were sleeping
-		}
-	}
-	// return 'raised' even if it was already pending
-	return 1;
-}
-
-static void avr_clear_interupt(avr_t * avr, int v)
-{
-	avr_int_vector_t * vector = avr->vector[v];
-	avr->pending[v >> 5] &= ~(1 << (v & 0x1f));
-	if (!vector)
-		return;
-	printf("%s cleared %d\n", __FUNCTION__, vector->vector);
-	if (vector->raised.reg)
-		avr_regbit_clear(avr, vector->raised);
-}
-
-void avr_init_irq(avr_t * avr, avr_irq_t * irq, uint32_t base, uint32_t count)
-{
-	memset(irq, 0, sizeof(avr_irq_t) * count);
-
-	for (int i = 0; i < count; i++)
-		irq[i].irq = base + i;
-}
-
-avr_irq_t * avr_alloc_irq(avr_t * avr, uint32_t base, uint32_t count)
-{
-	avr_irq_t * irq = (avr_irq_t*)malloc(sizeof(avr_irq_t) * count);
-	avr_init_irq(avr, irq, base, count);
-	return irq;
-}
-
-void avr_irq_register_notify(avr_t * avr, avr_irq_t * irq, avr_irq_notify_t notify, void * param)
-{
-	if (!irq || !notify)
-		return;
-	
-	avr_irq_hook_t *hook = irq->hook;
-	while (hook) {
-		if (hook->notify == notify && hook->param == param)
-			return;	// already there
-		hook = hook->next;
-	}
-	hook = malloc(sizeof(avr_irq_hook_t));
-	memset(hook, 0, sizeof(avr_irq_hook_t));
-	hook->next = irq->hook;
-	hook->notify = notify;
-	hook->param = param;
-	irq->hook = hook;
-}
-
-void avr_raise_irq(avr_t * avr, avr_irq_t * irq, uint32_t value)
-{
-	if (!irq || irq->value == value)
-		return ;
-	avr_irq_hook_t *hook = irq->hook;
-	while (hook) {
-		if (hook->notify) {
-			if (hook->busy == 0) {
-				hook->busy++;
-				hook->notify(avr, irq, value, hook->param);
-				hook->busy--;
-			}
-		}
-		hook = hook->next;
-	}
-	irq->value = value;
-}
-
-static void _avr_irq_connect(avr_t * avr, avr_irq_t * irq, uint32_t value, void * param)
-{
-	avr_irq_t * dst = (avr_irq_t*)param;
-	avr_raise_irq(avr, dst, value != 0);
-}
-
-void avr_connect_irq(avr_t * avr, avr_irq_t * src, avr_irq_t * dst)
-{
-	avr_irq_register_notify(avr, src, _avr_irq_connect, dst);
-}
 
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address)
 {
@@ -279,43 +133,6 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 	return avr->data[addr];
 }
 
-/*
- * check wether interupts are pending. I so, check if the interupt "latency" is reached,
- * and if so triggers the handlers and jump to the vector.
- */
-static void avr_service_interupts(avr_t * avr)
-{
-	if (!avr->sreg[S_I])
-		return;
-
-	if (avr_has_pending_interupts(avr)) {
-		if (avr->pending_wait) {
-			avr->pending_wait--;
-			if (avr->pending_wait == 0) {
-				int done = 0;
-				for (int bi = 0; bi < 2 && !done; bi++) if (avr->pending[bi]) {
-					for (int ii = 0; ii < 32 && !done; ii++)
-						if (avr->pending[bi] & (1 << ii)) {
-
-							int v = (bi * 32) + ii;	// vector
-
-						//	printf("%s calling %d\n", __FUNCTION__, v);
-							_avr_push16(avr, avr->pc >> 1);
-							avr->sreg[S_I] = 0;
-							avr->pc = v * avr->vector_size;
-
-							avr_clear_interupt(avr, v);
-							done++;
-							break;
-						}
-					break;
-				}
-			}
-		} else
-			avr->pending_wait = 2;	// for next one...
-	}
-}
-
 
 int avr_run(avr_t * avr)
 {
@@ -334,7 +151,7 @@ int avr_run(avr_t * avr)
 	//SREG();
 	// if we just re-enabled the interrupts...
 	if (avr->sreg[S_I] && !(avr->data[R_SREG] & (1 << S_I))) {
-	//	printf("*** %s: Renabling interupts\n", __FUNCTION__);
+	//	printf("*** %s: Renabling interrupts\n", __FUNCTION__);
 		avr->pending_wait++;
 	}
 	avr_io_t * port = avr->io_port;
@@ -348,7 +165,7 @@ int avr_run(avr_t * avr)
 
 	if (avr->state == cpu_Sleeping) {
 		if (!avr->sreg[S_I]) {
-			printf("simavr: sleeping with interupts off, quitting gracefuly\n");
+			printf("simavr: sleeping with interrupts off, quitting gracefuly\n");
 			exit(0);
 		}
 		usleep(500);
@@ -358,7 +175,7 @@ int avr_run(avr_t * avr)
 	}
 	// Interrupt servicing might change the PC too
 	if (avr->state == cpu_Running || avr->state == cpu_Sleeping) {
-		avr_service_interupts(avr);
+		avr_service_interrupts(avr);
 
 		avr->data[R_SREG] = 0;
 		for (int i = 0; i < 8; i++)
@@ -462,6 +279,15 @@ int main(int argc, char *argv[])
 		avr_ioctl(avr, AVR_IOCTL_EEPROM_SET, &d);
 	}
 	avr->trace = trace;
+
+	// try to enable "local echo" on the first uart, for testing purposes
+	{
+		avr_irq_t * src = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_OUTPUT);
+		avr_irq_t * dst = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_INPUT);
+		printf("%s:%s activating uart local echo IRQ src %p dst %p\n", __FILE__, __FUNCTION__, src, dst);
+		if (src && dst)
+			avr_connect_irq(avr, src, dst);
+	}
 
 	for (long long i = 0; i < 8000000*10; i++)
 //	for (long long i = 0; i < 80000; i++)

@@ -96,6 +96,9 @@ struct mcu_t SIM_CORENAME = {
 		.name = '0',
 		.r_udr = UDR0,
 
+		.txen = AVR_IO_REGBIT(UCSR0B, TXEN0),
+		.rxen = AVR_IO_REGBIT(UCSR0B, RXEN0),
+
 		.r_ucsra = UCSR0A,
 		.r_ucsrb = UCSR0B,
 		.r_ucsrc = UCSR0C,

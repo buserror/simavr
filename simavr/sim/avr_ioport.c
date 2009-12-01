@@ -33,7 +33,8 @@ static uint8_t avr_ioport_read(struct avr_t * avr, uint8_t addr, void * param)
 	uint8_t v = avr->data[addr];
 
 	if (addr == p->r_pin) {
-		uint8_t v = avr->data[p->r_port];
+		uint8_t ddr = avr->data[p->r_ddr];
+		uint8_t v = (avr->data[p->r_pin] & ~ddr) | (avr->data[p->r_port] & ddr);
 		avr->data[addr] = v;
 		// made to trigger potential watchpoints
 		v = avr_core_watch_read(avr, addr);
@@ -57,66 +58,58 @@ static void avr_ioport_write(struct avr_t * avr, uint8_t addr, uint8_t v, void *
 			// raise the internal IRQ callbacks
 			for (int i = 0; i < 8; i++)
 				if (mask & (1 << i))
-					avr_raise_irq(avr, p->irq + i, (v >> i) & 1);
-			avr_raise_irq(avr, p->irq + IOPORT_IRQ_PIN_ALL, v);
+					avr_raise_irq(avr, p->io.irq + i, (v >> i) & 1);
+			avr_raise_irq(avr, p->io.irq + IOPORT_IRQ_PIN_ALL, v);
 		}
 	}
 }
 
 /*
- * this is out "main" pin change callback, it can be triggered by either the
+ * this is our "main" pin change callback, it can be triggered by either the
  * AVR code, or any external piece of code that see fit to do it.
- * Either way, this will raise pin change interupts, if needed
+ * Either way, this will raise pin change interrupts, if needed
  */
 void avr_ioport_irq_notify(avr_t * avr, struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	avr_ioport_t * p = (avr_ioport_t *)param;
 	if (p->r_pcint) {
-		int raise = avr->data[p->r_pcint] & (1 << irq->irq);
+		uint8_t mask = 1 << irq->irq;
+		// set the real PIN bit. ddr doesn't matter here as it's masked when read.
+		avr->data[p->r_pin] &= ~mask;
+		if (value)
+			avr->data[p->r_pin] |= mask;
+		// if the pcint bit is on, try to raise it
+		int raise = avr->data[p->r_pcint] & mask;
 		if (raise)
-			avr_raise_interupt(avr, &p->pcint);
+			avr_raise_interrupt(avr, &p->pcint);
 	}
-	
-}
-
-static int avr_ioport_ioctl(avr_t * avr, avr_io_t * port, uint32_t ctl, void * io_param)
-{
-	avr_ioport_t * p = (avr_ioport_t *)port;
-	int res = -1;
-
-	switch(ctl) {
-		case AVR_IOCTL_IOPORT_GETIRQ ... AVR_IOCTL_IOPORT_GETIRQ + IOPORT_IRQ_PIN_ALL: {
-			printf("%s: AVR_IOCTL_IOPORT_GETIRQ  %d\n", __FUNCTION__, 0);
-		}	break;
-	}
-	
-	return res;
 }
 
 static void avr_ioport_reset(avr_t * avr, avr_io_t * port)
 {
 	avr_ioport_t * p = (avr_ioport_t *)port;
 	for (int i = 0; i < IOPORT_IRQ_PIN_ALL; i++) 
-		avr_irq_register_notify(avr, p->irq + i, avr_ioport_irq_notify, p);
+		avr_irq_register_notify(avr, p->io.irq + i, avr_ioport_irq_notify, p);
 }
 
 static	avr_io_t	_io = {
 	.kind = "io",
 	.run = avr_ioport_run,
 	.reset = avr_ioport_reset,
-	.ioctl = avr_ioport_ioctl,
 };
 
 void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 {
 	p->io = _io;
-	printf("%s PIN%c 0x%02x DDR%c 0x%02x PORT%c 0x%02x\n",
-		__FUNCTION__,
-		p->name, p->r_pin,
-		p->name, p->r_ddr,
-		p->name, p->r_port);
+//	printf("%s PIN%c 0x%02x DDR%c 0x%02x PORT%c 0x%02x\n", __FUNCTION__,
+//		p->name, p->r_pin,
+//		p->name, p->r_ddr,
+//		p->name, p->r_port);
 
-	p->irq = avr_alloc_irq(avr, 0, IOPORT_IRQ_PIN_ALL+1);
+	// allocate this module's IRQ
+	p->io.irq_count = IOPORT_IRQ_COUNT;
+	p->io.irq = avr_alloc_irq(avr, 0, p->io.irq_count);
+	p->io.irq_ioctl_get = AVR_IOCTL_IOPORT_GETIRQ(p->name);
 	
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->pcint);
