@@ -93,6 +93,18 @@ static int avr_eeprom_ioctl(avr_t * avr, avr_io_t * port, uint32_t ctl, void * i
 			printf("%s: AVR_IOCTL_EEPROM_SET Loaded %d at offset %d\n",
 					__FUNCTION__, desc->size, desc->offset);
 		}	break;
+		case AVR_IOCTL_EEPROM_GET: {
+			avr_eeprom_desc_t * desc = (avr_eeprom_desc_t*)io_param;
+			if (!desc || (desc->offset + desc->size) >= p->size) {
+				printf("%s: AVR_IOCTL_EEPROM_GET Invalid argument\n",
+						__FUNCTION__);
+				return -2;
+			}
+			if (desc->ee)
+				memcpy(desc->ee, p->eeprom + desc->offset, desc->size);
+			else	// allow to get access to the read data, for gdb support
+				desc->ee = p->eeprom + desc->offset;
+		}	break;
 	}
 	
 	return res;

@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include "simavr.h"
+#include "sim_avr.h"
 #include "sim_core.h"
 
 // SREG bit names
@@ -717,6 +717,8 @@ uint16_t avr_run_one(avr_t * avr)
 				}	break;
 				case 0x9598: { // BREAK
 					STATE("break\n");
+					if (avr->gdb)
+						avr->state = cpu_StepDone;
 				}	break;
 				case 0x95a8: { // WDR
 					STATE("wdr\n");

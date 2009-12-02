@@ -22,4 +22,9 @@
 #ifndef __SIM_GDB_H__
 #define __SIM_GDB_H__
 
+int avr_gdb_init(avr_t * avr);
+
+// call from the main AVR decoder thread
+void avr_gdb_processor(avr_t * avr);
+
 #endif

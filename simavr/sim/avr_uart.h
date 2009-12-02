@@ -22,7 +22,7 @@
 #ifndef AVR_UART_H_
 #define AVR_UART_H_
 
-#include "simavr.h"
+#include "sim_avr.h"
 
 #include "fifo_declare.h"
 

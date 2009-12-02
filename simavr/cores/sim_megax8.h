@@ -181,11 +181,13 @@ struct mcu_t SIM_CORENAME = {
 	
 	.spi = {
 		.disabled = AVR_IO_REGBIT(PRR,PRSPI),
+
+		.r_spdr = SPDR,
+		.r_spcr = SPCR,
+		.r_spsr = SPSR,
+
 		.spe = AVR_IO_REGBIT(SPCR, SPE),
-		.dord = AVR_IO_REGBIT(SPCR, DORD),
 		.mstr = AVR_IO_REGBIT(SPCR, MSTR),
-		.cpol = AVR_IO_REGBIT(SPCR, CPOL),
-		.cpha = AVR_IO_REGBIT(SPCR, CPHA),
 
 		.spr = { AVR_IO_REGBIT(SPCR, SPR0), AVR_IO_REGBIT(SPCR, SPR1), AVR_IO_REGBIT(SPSR, SPI2X) },
 		.spi = {

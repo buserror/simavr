@@ -22,7 +22,7 @@
 #ifndef __SIM_IO_H__
 #define __SIM_IO_H__
 
-#include "simavr.h"
+#include "sim_avr.h"
 
 /*
  * used by the ioports to implement their own features

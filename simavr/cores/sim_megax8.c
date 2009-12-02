@@ -19,7 +19,7 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stdio.h>
-#include "simavr.h"
+#include "sim_avr.h"
 
 #include "sim_megax8.h"
 

@@ -20,7 +20,7 @@
  */
 
 #include </usr/include/stdio.h>
-#include "simavr.h"
+#include "sim_avr.h"
 #include "sim_core_declare.h"
 #include "avr_eeprom.h"
 #include "avr_ioport.h"

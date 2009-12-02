@@ -1,5 +1,5 @@
 /*
-	simavr.c
+	sim_avr.c
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
@@ -19,41 +19,13 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h>
-#include <getopt.h>
-#include "simavr.h"
-#include "sim_elf.h"
-
+#include <unistd.h>
+#include "sim_avr.h"
 #include "sim_core.h"
-#include "avr_eeprom.h"
-#include "avr_uart.h"
-
-void hdump(const char *w, uint8_t *b, size_t l)
-{
-	uint32_t i;
-	if (l < 16) {
-		printf("%s: ",w);
-		for (i = 0; i < l; i++) printf("%02x",b[i]);
-	} else {
-		printf("%s:\n",w);
-		for (i = 0; i < l; i++) {
-			if (!(i & 0x1f)) printf("    ");
-			printf("%02x",b[i]);
-			if ((i & 0x1f) == 0x1f) {
-				printf(" ");
-				printf("\n");
-			}
-		}
-	}
-	printf("\n");
-}
-
+#include "sim_gdb.h"
 
 
 int avr_init(avr_t * avr)
@@ -89,7 +61,6 @@ void avr_reset(avr_t * avr)
 			port->reset(avr, port);
 		port = port->next;
 	}
-
 }
 
 
@@ -136,9 +107,18 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 
 int avr_run(avr_t * avr)
 {
-	if (avr->state == cpu_Stopped)
-		return avr->state;
+	avr_gdb_processor(avr);
 
+	if (avr->state == cpu_Stopped) {
+		usleep(500);
+		return avr->state;
+	}
+
+	int step = avr->state == cpu_Step;
+	if (step) {
+		avr->state = cpu_Running;
+	}
+	
 	uint16_t new_pc = avr->pc;
 
 	if (avr->state == cpu_Running) {
@@ -185,8 +165,14 @@ int avr_run(avr_t * avr)
 			} else if (avr->sreg[i])
 				avr->data[R_SREG] |= (1 << i);
 	}
+
+	if (step) {
+		avr->state = cpu_StepDone;
+	}
+
 	return avr->state;
 }
+
 
 extern avr_kind_t tiny85;
 extern avr_kind_t mega48,mega88,mega168;
@@ -201,96 +187,23 @@ avr_kind_t * avr_kind[] = {
 	NULL
 };
 
-void display_usage()
+avr_t * avr_make_mcu_by_name(const char *name)
 {
-	printf("usage: simavr [-t] [-m <device>] [-f <frequency>] firmware\n");
-	printf("       -t: run full scale decoder trace\n");
-	exit(1);
-}
-
-int main(int argc, char *argv[])
-{
-	elf_firmware_t f;
-	long f_cpu = 0;
-	int trace = 0;
-	char name[16] = "";
-	int option_count;
-	int option_index = 0;
-
-	struct option long_options[] = {
-		{"help", no_argument, 0, 'h'},
-		{"mcu", required_argument, 0, 'm'},
-		{"freq", required_argument, 0, 'f'},
-		{"trace", no_argument, 0, 't'},
-		{0, 0, 0, 0}
-	};
-
-	if (argc == 1)
-		display_usage();
-
-	while ((option_count = getopt_long(argc, argv, "thm:f:", long_options, &option_index)) != -1) {
-		switch (option_count) {
-			case 'h':
-				display_usage();
-				break;
-			case 'm':
-				strcpy(name, optarg);
-				break;
-			case 'f':
-				f_cpu = atoi(optarg);
-				break;
-			case 't':
-				trace++;
-				break;
-		}
-	}
-
-	elf_read_firmware(argv[argc-1], &f);
-
-	if (strlen(name))
-		strcpy(f.mmcu.name, name);
-	if (f_cpu)
-		f.mmcu.f_cpu = f_cpu;
-
-	printf("firmware %s f=%d mmcu=%s\n", argv[argc-1], f.mmcu.f_cpu, f.mmcu.name);
-
 	avr_kind_t * maker = NULL;
 	for (int i = 0; avr_kind[i] && !maker; i++) {
 		for (int j = 0; avr_kind[i]->names[j]; j++)
-			if (!strcmp(avr_kind[i]->names[j], f.mmcu.name)) {
+			if (!strcmp(avr_kind[i]->names[j], name)) {
 				maker = avr_kind[i];
 				break;
 			}
 	}
 	if (!maker) {
-		fprintf(stderr, "%s: AVR '%s' now known\n", argv[0], f.mmcu.name);
-		exit(1);
+		fprintf(stderr, "%s: AVR '%s' now known\n", __FUNCTION__, name);
+		return NULL;
 	}
 
 	avr_t * avr = maker->make();
 	printf("Starting %s - flashend %04x ramend %04x e2end %04x\n", avr->mmcu, avr->flashend, avr->ramend, avr->e2end);
-	avr_init(avr);
-	avr->frequency = f.mmcu.f_cpu;
-	avr->codeline = f.codeline;
-	avr_loadcode(avr, f.flash, f.flashsize, 0);
-	avr->codeend = f.flashsize - f.datasize;
-	if (f.eeprom && f.eesize) {
-		avr_eeprom_desc_t d = { .ee = f.eeprom, .offset = 0, .size = f.eesize };
-		avr_ioctl(avr, AVR_IOCTL_EEPROM_SET, &d);
-	}
-	avr->trace = trace;
-
-	// try to enable "local echo" on the first uart, for testing purposes
-	{
-		avr_irq_t * src = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_OUTPUT);
-		avr_irq_t * dst = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_INPUT);
-		printf("%s:%s activating uart local echo IRQ src %p dst %p\n", __FILE__, __FUNCTION__, src, dst);
-		if (src && dst)
-			avr_connect_irq(avr, src, dst);
-	}
-
-	for (long long i = 0; i < 8000000*10; i++)
-//	for (long long i = 0; i < 80000; i++)
-		avr_run(avr);
-	
+	return avr;	
 }
+

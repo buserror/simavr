@@ -22,7 +22,16 @@
 #ifndef AVR_SPI_H_
 #define AVR_SPI_H_
 
-#include "simavr.h"
+#include "sim_avr.h"
+
+enum {
+	SPI_IRQ_INPUT = 0,
+	SPI_IRQ_OUTPUT,
+	SPI_IRQ_COUNT
+};
+
+// add port number to get the real IRQ
+#define AVR_IOCTL_SPI_GETIRQ(_name) AVR_IOCTL_DEF('s','p','i',(_name))
 
 typedef struct avr_spi_t {
 	avr_io_t	io;
@@ -31,12 +40,10 @@ typedef struct avr_spi_t {
 
 	uint8_t	r_spdr;			// data register
 	uint8_t	r_spcr;			// control register
+	uint8_t	r_spsr;			// status register
 	
 	avr_regbit_t spe;		// spi enable
-	avr_regbit_t dord;		// data order
 	avr_regbit_t mstr;		// master/slave
-	avr_regbit_t cpol;		// clock polarity
-	avr_regbit_t cpha;		// phase
 	avr_regbit_t spr[4];	// clock divider
 	
 	avr_int_vector_t spi;	// spi interrupt

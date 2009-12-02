@@ -22,7 +22,7 @@
 #ifndef __SIM_INTERUPTS_H__
 #define __SIM_INTERUPTS_H__
 
-#include "simavr.h"
+#include "sim_avr.h"
 
 // interrupt vector for the IO modules
 typedef struct avr_int_vector_t {

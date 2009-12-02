@@ -1,5 +1,5 @@
 /*
-	simavr.h
+	sim_avr.h
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
@@ -19,8 +19,8 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __SIMAVR_H__
-#define __SIMAVR_H__
+#ifndef __SIM_AVR_H__
+#define __SIM_AVR_H__
 
 #include <stdint.h>
 
@@ -54,6 +54,9 @@ enum {
 	cpu_Stopped,
 	cpu_Running,
 	cpu_Sleeping,
+
+	cpu_Step,
+	cpu_StepDone,
 };
 
 /*
@@ -169,11 +172,14 @@ typedef struct avr_symbol_t {
 	uint32_t	addr;
 } avr_symbol_t;
 
-
+// locate the maker for mcu "name" and allocates a new avr instance
+avr_t * avr_make_mcu_by_name(const char *name);
 // initializes a new AVR instance. Will call the IO registers init(), and then reset()
 int avr_init(avr_t * avr);
 // resets the AVR, and the IO modules
 void avr_reset(avr_t * avr);
+// run one cycle of the AVR, sleep if necessary
+int avr_run(avr_t * avr);
 
 // load code in the "flash"
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address);
@@ -193,5 +199,5 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr);
 #include "sim_interrupts.h"
 #include "sim_irq.h"
 
-#endif /*__SIMAVR_H__*/
+#endif /*__SIM_AVR_H__*/
 

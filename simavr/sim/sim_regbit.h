@@ -22,7 +22,7 @@
 #ifndef __SIM_REGBIT_H__
 #define __SIM_REGBIT_H__
 
-#include "simavr.h"
+#include "sim_avr.h"
 
 #define ARRAY_SIZE(_aa) (sizeof(_aa) / sizeof((_aa)[0]))
 

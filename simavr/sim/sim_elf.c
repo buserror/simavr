@@ -89,7 +89,7 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 		} else if (!strcmp(name, ".mmcu")) {
 			Elf_Data *s = elf_getdata(scn, NULL);
 			firmware->mmcu = *((struct avr_mcu_t*)s->d_buf);
-		//	printf("%s: avr_mcu_t size %ld / read %ld\n", __FUNCTION__, sizeof(avr_mcu_t), s->d_size);
+			printf("%s: avr_mcu_t size %ld / read %ld\n", __FUNCTION__, sizeof(struct avr_mcu_t), s->d_size);
 		//	avr->frequency = f_cpu;
 		}
 #if ELF_SYMBOLS

@@ -3,3 +3,4 @@ obj
 *.hex
 *.s
 simavr/simavr
+simavr/run_avr

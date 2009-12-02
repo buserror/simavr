@@ -16,7 +16,7 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
-target	= simavr
+target	= run_avr
 
 ifeq (${shell uname}, Darwin)
 AVR_ROOT := "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/avr-4/"
@@ -44,7 +44,7 @@ IPATH	+= /opt/local/include
 
 CFLAGS	+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
 LFLAGS	= -L/opt/local/lib/
-LDFLAGS	+= -lelf
+LDFLAGS	+= -lelf -lpthread
 
 all:	obj ${target}
 

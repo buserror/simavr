@@ -22,7 +22,7 @@
 #ifndef __SIM_IRQ_H__
 #define __SIM_IRQ_H__
 
-#include "simavr.h"
+#include "sim_avr.h"
 
 /*
  * Internal IRQ system

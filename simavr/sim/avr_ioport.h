@@ -22,7 +22,7 @@
 #ifndef __AVR_IOPORT_H__
 #define __AVR_IOPORT_H__
 
-#include "simavr.h"
+#include "sim_avr.h"
 
 enum {
 	IOPORT_IRQ_PIN0 = 0,

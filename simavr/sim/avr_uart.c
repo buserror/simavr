@@ -97,7 +97,7 @@ static void avr_uart_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * p
 	}
 }
 
-void avr_uart_irq_input(avr_t * avr, struct avr_irq_t * irq, uint32_t value, void * param)
+static void avr_uart_irq_input(avr_t * avr, struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 

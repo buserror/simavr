@@ -100,17 +100,21 @@ T
 F
 "./simavr/sim/sim_io.h"
 T
-2 "simavr.c"
+2 "sim_avr.c"
 F
-"./simavr/sim/simavr.c"
+"./simavr/sim/sim_avr.c"
 T
-2 "simavr.h"
+2 "sim_avr.h"
 F
-"./simavr/sim/simavr.h"
+"./simavr/sim/sim_avr.h"
 T
 2 "fifo_declare.h"
 F
 "./simavr/sim/fifo_declare.h"
+T
+2 "run_avr.c"
+F
+"./simavr/sim/run_avr.c"
 F
 T
 1 "tests"
@@ -118,6 +122,14 @@ T
 2 "atmega88_example.c"
 F
 "./tests/atmega88_example.c"
+T
+2 "atmega48_disabled_timer.c"
+F
+"./tests/atmega48_disabled_timer.c"
+T
+2 "atmega88_uart_echo.c"
+F
+"./tests/atmega88_uart_echo.c"
 F
 T
 1 "cores"

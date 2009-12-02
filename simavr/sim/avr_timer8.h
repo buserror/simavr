@@ -22,7 +22,7 @@
 #ifndef AVR_TIMER8_H_
 #define AVR_TIMER8_H_
 
-#include "simavr.h"
+#include "sim_avr.h"
 
 typedef struct avr_timer8_t {
 	avr_io_t	io;

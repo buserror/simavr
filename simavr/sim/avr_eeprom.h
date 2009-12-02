@@ -22,7 +22,7 @@
 #ifndef __AVR_EEPROM_H__
 #define __AVR_EEPROM_H__
 
-#include "simavr.h"
+#include "sim_avr.h"
 
 typedef struct avr_eeprom_t {
 	avr_io_t	io;

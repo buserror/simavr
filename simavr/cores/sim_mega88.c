@@ -19,7 +19,7 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "simavr.h"
+#include "sim_avr.h"
 
 #define SIM_VECTOR_SIZE	2
 #define SIM_MMCU		"atmega88"

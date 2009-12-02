@@ -29,7 +29,7 @@
 #endif
 
 #if ELF_SYMBOLS
-#include "simavr.h"
+#include "sim_avr.h"
 #endif
 
 typedef struct elf_firmware_t {

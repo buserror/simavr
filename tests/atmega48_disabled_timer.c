@@ -7,6 +7,7 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/sleep.h>
 
 #include "avr_mcu_section.h"
 AVR_MCU(F_CPU, "atmega48");
@@ -29,5 +30,5 @@ int main(void)
 	// here the interupts are enabled, but the interupt
 	// vector should not be called
 	while(1)
-		;
+		sleep_mode();
 }
