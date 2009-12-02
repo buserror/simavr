@@ -26,20 +26,29 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
+ifeq (${shell uname}, Darwin)
+AVR_ROOT := "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/bin/"
+else
+AVR_ROOT :=
+endif
+AVR := ${AVR_ROOT}avr-
+
+SHELL	 = /bin/bash
+
 sources		:= $(wildcard at*.c)
 
 all :  ${sources:.c=.axf} ${sources:.c=.hex}  ${sources:.c=.s}  
 
 %.hex: %.axf
-		@avr-objcopy -j .text -j .data -O ihex ${<} ${@}
+		@${AVR}objcopy -j .text -j .data -O ihex ${<} ${@}
 
 %.s: %.axf
-		@avr-objdump -j .text -j .data -j .bss -d  ${<} > ${@}
+		@${AVR}objdump -j .text -j .data -j .bss -d  ${<} > ${@}
 
 %.axf: %.c 
 		@echo CC ${<}
 		@part=${<} ; part=$${part/_*}; \
-		avr-gcc -Wall -g -Os -std=gnu99 \
+		${AVR}gcc -Wall -g -Os -std=gnu99 \
 				-mmcu=$$part \
 				-DF_CPU=8000000 \
 				-mcall-prologues -fno-inline-small-functions \
@@ -48,7 +57,7 @@ all :  ${sources:.c=.axf} ${sources:.c=.hex}  ${sources:.c=.s}
 				-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000 \
 				-I../include \
 				${<} -o ${@}
-		@avr-size ${@}|sed '1d'
+		@${AVR}size ${@}|sed '1d'
 
 clean:
 	rm -f *.hex *.o *.axf *.s

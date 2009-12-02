@@ -38,17 +38,21 @@
  *
  */
 
-typedef struct avr_mcu_t {
-	long f_cpu;				// avr is little endian
-	unsigned char id[4];	// signature bytes
-	unsigned char fuse[4];	// optional
+#include <stdint.h>
+
+struct avr_mcu_t
+{
+	uint32_t  f_cpu;			// avr is little endian
+	uint32_t  reserved;
+	uint8_t mid[4];				// signature bytes
+	uint8_t fuse[4];			// optional
 	char name[16];
-} avr_mcu_t;
+} __attribute__((__packed__));
 
 #define AVR_MCU(_speed, _name) \
-const avr_mcu_t _mmcu __attribute__((section(".mmcu"))) = {\
+const struct avr_mcu_t _mmcu __attribute__((section(".mmcu"))) = {\
 	.f_cpu = _speed, \
-	.id = {SIGNATURE_0, SIGNATURE_1, SIGNATURE_2}, \
+	.mid = {SIGNATURE_0, SIGNATURE_1, SIGNATURE_2}, \
 	.name = _name,\
 }
 

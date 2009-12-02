@@ -33,7 +33,7 @@
 #endif
 
 typedef struct elf_firmware_t {
-	avr_mcu_t mmcu;
+	struct avr_mcu_t mmcu;
 	uint8_t * flash;
 	uint32_t flashsize;
 	uint32_t datasize;

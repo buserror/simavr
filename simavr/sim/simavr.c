@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
 	if (f_cpu)
 		f.mmcu.f_cpu = f_cpu;
 
-	printf("firmware %s f=%ld mmcu=%s\n", argv[argc-1], f.mmcu.f_cpu, f.mmcu.name);
+	printf("firmware %s f=%d mmcu=%s\n", argv[argc-1], f.mmcu.f_cpu, f.mmcu.name);
 
 	avr_kind_t * maker = NULL;
 	for (int i = 0; avr_kind[i] && !maker; i++) {

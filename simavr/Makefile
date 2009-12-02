@@ -18,6 +18,12 @@
 
 target	= simavr
 
+ifeq (${shell uname}, Darwin)
+AVR_ROOT := "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/avr-4/"
+else
+AVR_ROOT := /usr/lib/avr
+endif
+
 CFLAGS	=  -g -std=gnu99 -Wall
 CFLAGS	+= -O3  -mfpmath=sse -msse2
 
@@ -48,7 +54,7 @@ obj:
 obj/sim_%.o : cores/sim_%.h ${wildcard cores/*.h} ${wildcard sim/*.h}
 obj/sim_%.o : cores/sim_%.c
 	@gcc $(CFLAGS) \
-		-I/usr/lib/avr/include/ \
+		-I${AVR_ROOT}/include/ \
 		$<  -c -o $@
 	@echo CORE $<
 
