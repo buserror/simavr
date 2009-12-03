@@ -1,5 +1,5 @@
 /*
-	sim_tiny85.c
+	sim_tinyx5.c
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 	                     Jon Escombe <lists@dresco.co.uk>
@@ -20,25 +20,24 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
 #include "sim_avr.h"
 
-#define SIM_VECTOR_SIZE	2
-#define SIM_MMCU		"attiny85"
-#define SIM_CORENAME	mcu_tiny85
-
-#define _AVR_IO_H_
-#define __ASSEMBLER__
-#include "avr/iotn85.h"
-// instanciate the new core
 #include "sim_tinyx5.h"
 
-static avr_t * make()
+void tx5_init(struct avr_t * avr)
 {
-	return &SIM_CORENAME.core;
+	struct mcu_t * mcu = (struct mcu_t*)avr;
+
+	printf("%s init\n", avr->mmcu);
+
+	avr_eeprom_init(avr, &mcu->eeprom);
+	avr_ioport_init(avr, &mcu->portb);
+	avr_timer8_init(avr, &mcu->timer0);
+	avr_timer8_init(avr, &mcu->timer1);
 }
 
-avr_kind_t tiny85 = {
-	.names = { "attiny85" },
-	.make = make
-};
-
+void tx5_reset(struct avr_t * avr)
+{
+//	struct mcu_t * mcu = (struct mcu_t*)avr;
+}

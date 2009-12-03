@@ -1,5 +1,5 @@
 /*
-	sim_tiny85.c
+	sim_tiny25.c
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 	                     Jon Escombe <lists@dresco.co.uk>
@@ -23,12 +23,12 @@
 #include "sim_avr.h"
 
 #define SIM_VECTOR_SIZE	2
-#define SIM_MMCU		"attiny85"
-#define SIM_CORENAME	mcu_tiny85
+#define SIM_MMCU		"attiny25"
+#define SIM_CORENAME	mcu_tiny25
 
 #define _AVR_IO_H_
 #define __ASSEMBLER__
-#include "avr/iotn85.h"
+#include "avr/iotn25.h"
 // instanciate the new core
 #include "sim_tinyx5.h"
 
@@ -37,8 +37,8 @@ static avr_t * make()
 	return &SIM_CORENAME.core;
 }
 
-avr_kind_t tiny85 = {
-	.names = { "attiny85" },
+avr_kind_t tiny25 = {
+	.names = { "attiny25" },
 	.make = make
 };
 
