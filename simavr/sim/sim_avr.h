@@ -155,8 +155,12 @@ typedef struct avr_t {
 	// reset before each new instructions. Allows meaningful traces
 	uint32_t	touched[256 / 32];	// debug
 
-	// placeholder
+	// gdb hooking structure. Only present when gdb server is active
 	struct avr_gdb_t * gdb;
+	// if non-zero, the gdb server will be started when the core
+	// crashed even if not activated at startup
+	// if zero, the simulator will just exit() in case of a crash
+	int		gdb_port;
 } avr_t;
 
 
@@ -193,6 +197,9 @@ void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address);
 void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v);
 uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr);
 
+// called when the core has detected a crash somehow.
+// this might activate gdb server
+void avr_sadly_crashed(avr_t *avr, uint8_t signal);
 
 #include "sim_io.h"
 #include "sim_regbit.h"

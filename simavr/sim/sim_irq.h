@@ -22,7 +22,7 @@
 #ifndef __SIM_IRQ_H__
 #define __SIM_IRQ_H__
 
-#include "sim_avr.h"
+#include <stdint.h>
 
 /*
  * Internal IRQ system
@@ -42,7 +42,7 @@
 // internal structure for a hook, never seen by the notify procs
 struct avr_irq_t;
 
-typedef void (*avr_irq_notify_t)(avr_t * avr, struct avr_irq_t * irq, uint32_t value, void * param);
+typedef void (*avr_irq_notify_t)(struct avr_irq_t * irq, uint32_t value, void * param);
 
 typedef struct avr_irq_hook_t {
 	struct avr_irq_hook_t * next;
@@ -57,11 +57,11 @@ typedef struct avr_irq_t {
 	avr_irq_hook_t * 	hook;
 } avr_irq_t;
 
-avr_irq_t * avr_alloc_irq(avr_t * avr, uint32_t base, uint32_t count);
-void avr_init_irq(avr_t * avr, avr_irq_t * irq, uint32_t base, uint32_t count);
-void avr_raise_irq(avr_t * avr, avr_irq_t * irq, uint32_t value);
+avr_irq_t * avr_alloc_irq(uint32_t base, uint32_t count);
+void avr_init_irq(avr_irq_t * irq, uint32_t base, uint32_t count);
+void avr_raise_irq(avr_irq_t * irq, uint32_t value);
 // this connects a "source" IRQ to a "destination" IRQ
-void avr_connect_irq(avr_t * avr, avr_irq_t * src, avr_irq_t * dst);
-void avr_irq_register_notify(avr_t * avr, avr_irq_t * irq, avr_irq_notify_t notify, void * param);
+void avr_connect_irq(avr_irq_t * src, avr_irq_t * dst);
+void avr_irq_register_notify(avr_irq_t * irq, avr_irq_notify_t notify, void * param);
 
 #endif /* __SIM_IRQ_H__ */

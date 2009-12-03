@@ -33,6 +33,19 @@
 #include <gelf.h>
 
 #include "sim_elf.h"
+#include "avr_eeprom.h"
+
+void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
+{
+	avr->frequency = firmware->mmcu.f_cpu;
+	avr->codeline = firmware->codeline;
+	avr_loadcode(avr, firmware->flash, firmware->flashsize, 0);
+	avr->codeend = firmware->flashsize - firmware->datasize;
+	if (firmware->eeprom && firmware->eesize) {
+		avr_eeprom_desc_t d = { .ee = firmware->eeprom, .offset = 0, .size = firmware->eesize };
+		avr_ioctl(avr, AVR_IOCTL_EEPROM_SET, &d);
+	}
+}
 
 int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 {
@@ -89,7 +102,7 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 		} else if (!strcmp(name, ".mmcu")) {
 			Elf_Data *s = elf_getdata(scn, NULL);
 			firmware->mmcu = *((struct avr_mcu_t*)s->d_buf);
-			printf("%s: avr_mcu_t size %ld / read %ld\n", __FUNCTION__, sizeof(struct avr_mcu_t), s->d_size);
+			//printf("%s: avr_mcu_t size %ld / read %ld\n", __FUNCTION__, sizeof(struct avr_mcu_t), s->d_size);
 		//	avr->frequency = f_cpu;
 		}
 #if ELF_SYMBOLS

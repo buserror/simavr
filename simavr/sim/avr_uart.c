@@ -28,9 +28,10 @@
 
 DEFINE_FIFO(uint8_t, uart_fifo, 128);
 
-static void avr_uart_run(avr_t * avr, avr_io_t * port)
+static void avr_uart_run(avr_io_t * port)
 {
 	avr_uart_t * p = (avr_uart_t *)port;
+	avr_t * avr = p->io.avr;
 	if (p->input_cycle_timer) {
 		p->input_cycle_timer--;
 		if (p->input_cycle_timer == 0) {
@@ -81,7 +82,7 @@ static void avr_uart_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * p
 		}
 		// tell other modules we are "outputing" a byte
 		if (avr_regbit_get(avr, p->txen))
-			avr_raise_irq(avr, p->io.irq + UART_IRQ_OUTPUT, v);
+			avr_raise_irq(p->io.irq + UART_IRQ_OUTPUT, v);
 	} else {
 		// get the bits before the write
 		uint8_t udre = avr_regbit_get(avr, p->udrc.raised);
@@ -97,9 +98,10 @@ static void avr_uart_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * p
 	}
 }
 
-static void avr_uart_irq_input(avr_t * avr, struct avr_irq_t * irq, uint32_t value, void * param)
+static void avr_uart_irq_input(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
+	avr_t * avr = p->io.avr;
 
 	// check to see fi receiver is enabled
 	if (!avr_regbit_get(avr, p->rxen))
@@ -112,11 +114,12 @@ static void avr_uart_irq_input(avr_t * avr, struct avr_irq_t * irq, uint32_t val
 }
 
 
-void avr_uart_reset(avr_t * avr, struct avr_io_t *io)
+void avr_uart_reset(struct avr_io_t *io)
 {
 	avr_uart_t * p = (avr_uart_t *)io;
+	avr_t * avr = p->io.avr;
 	avr_regbit_set(avr, p->udrc.raised);
-	avr_irq_register_notify(avr, p->io.irq + UART_IRQ_INPUT, avr_uart_irq_input, p);
+	avr_irq_register_notify(p->io.irq + UART_IRQ_INPUT, avr_uart_irq_input, p);
 	p->input_cycle_timer = 0;
 	uart_fifo_reset(&p->input);
 }
@@ -136,7 +139,7 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 
 	// allocate this module's IRQ
 	p->io.irq_count = UART_IRQ_COUNT;
-	p->io.irq = avr_alloc_irq(avr, 0, p->io.irq_count);
+	p->io.irq = avr_alloc_irq(0, p->io.irq_count);
 	p->io.irq_ioctl_get = AVR_IOCTL_UART_GETIRQ(p->name);
 
 	avr_register_io_write(avr, p->r_udr, avr_uart_write, p);

@@ -22,15 +22,11 @@
 #include <stdio.h>
 #include "avr_spi.h"
 
-static void avr_spi_run(avr_t * avr, avr_io_t * port)
-{
-//	printf("%s\n", __FUNCTION__);
-}
-
 static uint8_t avr_spi_read(struct avr_t * avr, uint8_t addr, void * param)
 {
 	avr_spi_t * p = (avr_spi_t *)param;
-	uint8_t v = avr->data[addr];
+	uint8_t v = p->input_data_register;
+	p->input_data_register = 0;
 //	printf("** PIN%c = %02x\n", p->name, v);
 	return v;
 }
@@ -42,29 +38,44 @@ static void avr_spi_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * pa
 	if (addr == p->r_spdr) {
 	//	printf("UDR%c(%02x) = %02x\n", p->name, addr, v);
 		avr_core_watch_write(avr, addr, v);
+
+		if (avr_regbit_get(avr, p->spe)) {
+			// in master mode, any byte is sent as it comes..
+			if (avr_regbit_get(avr, p->mstr)) {
+				avr_raise_irq(p->io.irq + SPI_IRQ_OUTPUT, v);
+			}
+		}
 	}
 }
 
-static void avr_spi_irq_input(avr_t * avr, struct avr_irq_t * irq, uint32_t value, void * param)
+static void avr_spi_irq_input(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	avr_spi_t * p = (avr_spi_t *)param;
+	avr_t * avr = p->io.avr;
 
 	// check to see fi receiver is enabled
 	if (!avr_regbit_get(avr, p->spe))
 		return;
 
 	// double buffer the input.. ?
+	p->input_data_register = value;
+	avr_raise_interrupt(avr, &p->spi);
+
+	// if in slave mode, 
+	// 'output' the byte only when we received one...
+	if (!avr_regbit_get(avr, p->mstr)) {
+		avr_raise_irq(p->io.irq + SPI_IRQ_OUTPUT, avr->data[p->r_spdr]);
+	}
 }
 
-void avr_spi_reset(avr_t * avr, struct avr_io_t *io)
+void avr_spi_reset(struct avr_io_t *io)
 {
 	avr_spi_t * p = (avr_spi_t *)io;
-	avr_irq_register_notify(avr, p->io.irq + SPI_IRQ_INPUT, avr_spi_irq_input, p);
+	avr_irq_register_notify(p->io.irq + SPI_IRQ_INPUT, avr_spi_irq_input, p);
 }
 
 static	avr_io_t	_io = {
 	.kind = "spi",
-	.run = avr_spi_run,
 	.reset = avr_spi_reset,
 };
 
@@ -77,7 +88,7 @@ void avr_spi_init(avr_t * avr, avr_spi_t * p)
 
 	// allocate this module's IRQ
 	p->io.irq_count = SPI_IRQ_COUNT;
-	p->io.irq = avr_alloc_irq(avr, 0, p->io.irq_count);
+	p->io.irq = avr_alloc_irq(0, p->io.irq_count);
 	p->io.irq_ioctl_get = AVR_IOCTL_SPI_GETIRQ(p->name);
 
 	avr_register_io_write(avr, p->r_spdr, avr_spi_write, p);

@@ -58,11 +58,22 @@ void avr_reset(avr_t * avr)
 	avr_io_t * port = avr->io_port;
 	while (port) {
 		if (port->reset)
-			port->reset(avr, port);
+			port->reset(port);
 		port = port->next;
 	}
 }
 
+void avr_sadly_crashed(avr_t *avr, uint8_t signal)
+{
+	avr->state = cpu_Stopped;
+	if (avr->gdb_port) {
+		// enable gdb server, and wait
+		if (!avr->gdb)
+			avr_gdb_init(avr);
+	} 
+	if (!avr->gdb)
+		exit(1); // no gdb ?
+}
 
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address)
 {
@@ -107,13 +118,12 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 
 int avr_run(avr_t * avr)
 {
-	avr_gdb_processor(avr);
+	avr_gdb_processor(avr, avr->state == cpu_Stopped);
 
-	if (avr->state == cpu_Stopped) {
-		usleep(500);
+	if (avr->state == cpu_Stopped)
 		return avr->state;
-	}
 
+	// if we are stepping one insruction, we "run" for one..
 	int step = avr->state == cpu_Step;
 	if (step) {
 		avr->state = cpu_Running;
@@ -137,7 +147,7 @@ int avr_run(avr_t * avr)
 	avr_io_t * port = avr->io_port;
 	while (port) {
 		if (port->run)
-			port->run(avr, port);
+			port->run(port);
 		port = port->next;
 	}
 
@@ -148,7 +158,11 @@ int avr_run(avr_t * avr)
 			printf("simavr: sleeping with interrupts off, quitting gracefuly\n");
 			exit(0);
 		}
-		usleep(500);
+		if (avr->gdb) {
+			while (avr_gdb_processor(avr, 1))
+				;
+		} else
+			usleep(500);
 		long sleep = (float)avr->frequency * (1.0f / 500.0f);
 		avr->cycle += sleep;
 	//	avr->state = cpu_Running;

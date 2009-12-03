@@ -25,7 +25,7 @@
 #include "sim_irq.h"
 
 
-void avr_init_irq(avr_t * avr, avr_irq_t * irq, uint32_t base, uint32_t count)
+void avr_init_irq(avr_irq_t * irq, uint32_t base, uint32_t count)
 {
 	memset(irq, 0, sizeof(avr_irq_t) * count);
 
@@ -33,14 +33,14 @@ void avr_init_irq(avr_t * avr, avr_irq_t * irq, uint32_t base, uint32_t count)
 		irq[i].irq = base + i;
 }
 
-avr_irq_t * avr_alloc_irq(avr_t * avr, uint32_t base, uint32_t count)
+avr_irq_t * avr_alloc_irq(uint32_t base, uint32_t count)
 {
 	avr_irq_t * irq = (avr_irq_t*)malloc(sizeof(avr_irq_t) * count);
-	avr_init_irq(avr, irq, base, count);
+	avr_init_irq(irq, base, count);
 	return irq;
 }
 
-void avr_irq_register_notify(avr_t * avr, avr_irq_t * irq, avr_irq_notify_t notify, void * param)
+void avr_irq_register_notify(avr_irq_t * irq, avr_irq_notify_t notify, void * param)
 {
 	if (!irq || !notify)
 		return;
@@ -59,16 +59,17 @@ void avr_irq_register_notify(avr_t * avr, avr_irq_t * irq, avr_irq_notify_t noti
 	irq->hook = hook;
 }
 
-void avr_raise_irq(avr_t * avr, avr_irq_t * irq, uint32_t value)
+void avr_raise_irq(avr_irq_t * irq, uint32_t value)
 {
 	if (!irq || irq->value == value)
 		return ;
 	avr_irq_hook_t *hook = irq->hook;
 	while (hook) {
-		if (hook->notify) {
+		if (hook->notify) {	
+			// prevents reentrance / endless calling loops
 			if (hook->busy == 0) {
 				hook->busy++;
-				hook->notify(avr, irq, value, hook->param);
+				hook->notify(irq, value, hook->param);
 				hook->busy--;
 			}
 		}
@@ -77,13 +78,13 @@ void avr_raise_irq(avr_t * avr, avr_irq_t * irq, uint32_t value)
 	irq->value = value;
 }
 
-static void _avr_irq_connect(avr_t * avr, avr_irq_t * irq, uint32_t value, void * param)
+static void _avr_irq_connect(avr_irq_t * irq, uint32_t value, void * param)
 {
 	avr_irq_t * dst = (avr_irq_t*)param;
-	avr_raise_irq(avr, dst, value);
+	avr_raise_irq(dst, value);
 }
 
-void avr_connect_irq(avr_t * avr, avr_irq_t * src, avr_irq_t * dst)
+void avr_connect_irq(avr_irq_t * src, avr_irq_t * dst)
 {
-	avr_irq_register_notify(avr, src, _avr_irq_connect, dst);
+	avr_irq_register_notify(src, _avr_irq_connect, dst);
 }

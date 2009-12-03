@@ -26,6 +26,7 @@
 #include "avr_ioport.h"
 #include "avr_uart.h"
 #include "avr_timer8.h"
+#include "avr_spi.h"
 
 #define _AVR_IO_H_
 #define __ASSEMBLER__
@@ -41,6 +42,7 @@ static struct mcu_t {
 	avr_ioport_t	porta, portb, portc, portd;
 	avr_uart_t		uart0,uart1;
 	avr_timer8_t	timer0,timer2;
+	avr_spi_t		spi;
 } mcu = {
 	.core = {
 		.mmcu = "atmega644",
@@ -201,6 +203,23 @@ static struct mcu_t {
 			.vector = TIMER2_COMPB_vect,
 		},
 	},
+	.spi = {
+		.disabled = AVR_IO_REGBIT(PRR,PRSPI),
+
+		.r_spdr = SPDR,
+		.r_spcr = SPCR,
+		.r_spsr = SPSR,
+
+		.spe = AVR_IO_REGBIT(SPCR, SPE),
+		.mstr = AVR_IO_REGBIT(SPCR, MSTR),
+
+		.spr = { AVR_IO_REGBIT(SPCR, SPR0), AVR_IO_REGBIT(SPCR, SPR1), AVR_IO_REGBIT(SPSR, SPI2X) },
+		.spi = {
+			.enable = AVR_IO_REGBIT(SPCR, SPIE),
+			.raised = AVR_IO_REGBIT(SPSR, SPIF),
+			.vector = SPI_STC_vect,
+		},
+	},
 };
 
 static avr_t * make()
@@ -228,6 +247,7 @@ static void init(struct avr_t * avr)
 	avr_uart_init(avr, &mcu->uart1);
 	avr_timer8_init(avr, &mcu->timer0);
 	avr_timer8_init(avr, &mcu->timer2);
+	avr_spi_init(avr, &mcu->spi);
 }
 
 static void reset(struct avr_t * avr)

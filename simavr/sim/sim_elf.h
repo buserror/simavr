@@ -28,9 +28,7 @@
 #define ELF_SYMBOLS 1
 #endif
 
-#if ELF_SYMBOLS
 #include "sim_avr.h"
-#endif
 
 typedef struct elf_firmware_t {
 	struct avr_mcu_t mmcu;
@@ -49,5 +47,7 @@ typedef struct elf_firmware_t {
 } elf_firmware_t ;
 
 int elf_read_firmware(const char * file, elf_firmware_t * firmware);
+
+void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware);
 
 #endif /* ELF_H_ */

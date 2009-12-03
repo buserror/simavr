@@ -25,10 +25,10 @@
 #include <stdio.h>
 #include "avr_timer8.h"
 
-static void avr_timer8_run(avr_t * avr, avr_io_t * port)
+static void avr_timer8_run(avr_io_t * port)
 {
 	avr_timer8_t * p = (avr_timer8_t *)port;
-	//printf("%s\n", __FUNCTION__);
+	avr_t * avr = p->io.avr;
 
 	if (p->compa_cycles) {
 		if (p->compa_next == 0) {
@@ -79,7 +79,7 @@ static void avr_timer8_write(struct avr_t * avr, uint8_t addr, uint8_t v, void *
 	
 }
 
-static void avr_timer8_reset(avr_t * avr, avr_io_t * port)
+static void avr_timer8_reset(avr_io_t * port)
 {
 }
 

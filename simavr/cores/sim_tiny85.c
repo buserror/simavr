@@ -120,6 +120,7 @@ static avr_t * make()
 }
 
 avr_kind_t tiny85 = {
+	.names = { "attiny85" },
 	.make = make
 };
 

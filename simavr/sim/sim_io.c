@@ -31,7 +31,7 @@ int avr_ioctl(avr_t *avr, uint32_t ctl, void * io_param)
 	int res = -1;
 	while (port && res == -1) {
 		if (port->ioctl)
-			res = port->ioctl(avr, port, ctl, io_param);
+			res = port->ioctl(port, ctl, io_param);
 		port = port->next;
 	}
 	return res;
@@ -40,6 +40,7 @@ int avr_ioctl(avr_t *avr, uint32_t ctl, void * io_param)
 void avr_register_io(avr_t *avr, avr_io_t * io)
 {
 	io->next = avr->io_port;
+	io->avr = avr;
 	avr->io_port = io;
 }
 

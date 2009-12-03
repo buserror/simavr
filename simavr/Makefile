@@ -29,7 +29,7 @@ CFLAGS	+= -O3  -mfpmath=sse -msse2
 
 cores	= ${wildcard cores/*.c}
 cores_o = ${patsubst cores/%.c, obj/%.o, ${cores}}
-sim		= ${wildcard sim/*.c}
+sim		= ${wildcard sim/sim_*.c} ${wildcard sim/avr_*.c}
 sim_o 	= ${patsubst sim/%.c, obj/%.o, ${sim}}
 
 VPATH	= .
@@ -44,9 +44,9 @@ IPATH	+= /opt/local/include
 
 CFLAGS	+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
 LFLAGS	= -L/opt/local/lib/
-LDFLAGS	+= -lelf -lpthread
+LDFLAGS	+= -lelf 
 
-all:	obj ${target}
+all:	obj ${target} libsimavr.a
 
 obj:
 	@mkdir -p obj
@@ -63,14 +63,20 @@ obj/%.o: %.c
 	@gcc $(CFLAGS) \
 		$<  -c -o $@
 	@echo CC $<
-	
+
+libsimavr.a	:	${cores_o}
+libsimavr.a	:	${sim_o}
+	ar cru $@ $^
+	ranlib $@
+
 ${target}	:	${cores_o}
 ${target}	:	${sim_o}
+${target}	:	obj/${target}.o
 	@gcc $(CFLAGS) $(LFLAGS) \
 		${^} -o $@ \
 		 $(LDFLAGS)
 	@echo LD $@
 
 clean:
-	rm -rf ${target} obj
+	rm -rf ${target} obj *.a
 

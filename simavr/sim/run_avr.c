@@ -27,7 +27,6 @@
 #include "sim_elf.h"
 #include "sim_core.h"
 #include "sim_gdb.h"
-#include "avr_eeprom.h"
 #include "avr_uart.h"
 
 void hdump(const char *w, uint8_t *b, size_t l)
@@ -116,33 +115,25 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	avr_init(avr);
-	avr->frequency = f.mmcu.f_cpu;
-	avr->codeline = f.codeline;
-	avr_loadcode(avr, f.flash, f.flashsize, 0);
-	avr->codeend = f.flashsize - f.datasize;
-	if (f.eeprom && f.eesize) {
-		avr_eeprom_desc_t d = { .ee = f.eeprom, .offset = 0, .size = f.eesize };
-		avr_ioctl(avr, AVR_IOCTL_EEPROM_SET, &d);
-	}
+	avr_load_firmware(avr, &f);
 	avr->trace = trace;
 
 	// try to enable "local echo" on the first uart, for testing purposes
 	{
 		avr_irq_t * src = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_OUTPUT);
 		avr_irq_t * dst = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_INPUT);
-		printf("%s:%s activating uart local echo IRQ src %p dst %p\n", __FILE__, __FUNCTION__, src, dst);
-		if (src && dst)
-			avr_connect_irq(avr, src, dst);
+		if (src && dst) {
+			printf("%s:%s activating uart local echo IRQ src %p dst %p\n", __FILE__, __FUNCTION__, src, dst);
+			avr_connect_irq(src, dst);
+		}
 	}
-
+	// even if not setup at startup, activate gdb if crashing
+	avr->gdb_port = 1234;
 	if (gdb) {
 		avr->state = cpu_Stopped;
 		avr_gdb_init(avr);
 	}
 
-//	for (long long i = 0; i < 8000000*10; i++)
-//	for (long long i = 0; i < 80000; i++)
 	for (;;)
-		avr_run(avr);
-	
+		avr_run(avr);	
 }

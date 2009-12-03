@@ -76,7 +76,7 @@ void avr_dump_state(avr_t * avr);
 		}\
 		printf("Stack Ptr %04x/%04x = %d \n", _avr_sp_get(avr), avr->ramend, avr->ramend - _avr_sp_get(avr));\
 		DUMP_STACK();\
-		exit(1);\
+		avr_sadly_crashed(avr, 0);\
 	}
 
 #endif /* SIM_CORE_H_ */

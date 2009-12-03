@@ -76,7 +76,7 @@ void avr_clear_interrupt(avr_t * avr, int v)
 	avr->pending[v >> 5] &= ~(1 << (v & 0x1f));
 	if (!vector)
 		return;
-	printf("%s cleared %d\n", __FUNCTION__, vector->vector);
+//	printf("%s cleared %d\n", __FUNCTION__, vector->vector);
 	if (vector->raised.reg)
 		avr_regbit_clear(avr, vector->raised);
 }

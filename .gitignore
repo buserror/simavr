@@ -4,3 +4,4 @@ obj
 *.s
 simavr/simavr
 simavr/run_avr
+*.a

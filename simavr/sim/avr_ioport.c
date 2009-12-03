@@ -22,11 +22,6 @@
 #include <stdio.h>
 #include "avr_ioport.h"
 
-static void avr_ioport_run(avr_t * avr, avr_io_t * port)
-{
-	//printf("%s\n", __FUNCTION__);
-}
-
 static uint8_t avr_ioport_read(struct avr_t * avr, uint8_t addr, void * param)
 {
 	avr_ioport_t * p = (avr_ioport_t *)param;
@@ -58,8 +53,8 @@ static void avr_ioport_write(struct avr_t * avr, uint8_t addr, uint8_t v, void *
 			// raise the internal IRQ callbacks
 			for (int i = 0; i < 8; i++)
 				if (mask & (1 << i))
-					avr_raise_irq(avr, p->io.irq + i, (v >> i) & 1);
-			avr_raise_irq(avr, p->io.irq + IOPORT_IRQ_PIN_ALL, v);
+					avr_raise_irq(p->io.irq + i, (v >> i) & 1);
+			avr_raise_irq(p->io.irq + IOPORT_IRQ_PIN_ALL, v);
 		}
 	}
 }
@@ -69,9 +64,10 @@ static void avr_ioport_write(struct avr_t * avr, uint8_t addr, uint8_t v, void *
  * AVR code, or any external piece of code that see fit to do it.
  * Either way, this will raise pin change interrupts, if needed
  */
-void avr_ioport_irq_notify(avr_t * avr, struct avr_irq_t * irq, uint32_t value, void * param)
+void avr_ioport_irq_notify(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	avr_ioport_t * p = (avr_ioport_t *)param;
+	avr_t * avr = p->io.avr;
 	if (p->r_pcint) {
 		uint8_t mask = 1 << irq->irq;
 		// set the real PIN bit. ddr doesn't matter here as it's masked when read.
@@ -85,16 +81,15 @@ void avr_ioport_irq_notify(avr_t * avr, struct avr_irq_t * irq, uint32_t value, 
 	}
 }
 
-static void avr_ioport_reset(avr_t * avr, avr_io_t * port)
+static void avr_ioport_reset(avr_io_t * port)
 {
 	avr_ioport_t * p = (avr_ioport_t *)port;
 	for (int i = 0; i < IOPORT_IRQ_PIN_ALL; i++) 
-		avr_irq_register_notify(avr, p->io.irq + i, avr_ioport_irq_notify, p);
+		avr_irq_register_notify(p->io.irq + i, avr_ioport_irq_notify, p);
 }
 
 static	avr_io_t	_io = {
 	.kind = "io",
-	.run = avr_ioport_run,
 	.reset = avr_ioport_reset,
 };
 
@@ -108,7 +103,7 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 
 	// allocate this module's IRQ
 	p->io.irq_count = IOPORT_IRQ_COUNT;
-	p->io.irq = avr_alloc_irq(avr, 0, p->io.irq_count);
+	p->io.irq = avr_alloc_irq(0, p->io.irq_count);
 	p->io.irq_ioctl_get = AVR_IOCTL_IOPORT_GETIRQ(p->name);
 	
 	avr_register_io(avr, &p->io);

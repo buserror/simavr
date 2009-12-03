@@ -26,9 +26,10 @@
 #include <string.h>
 #include "avr_eeprom.h"
 
-static void avr_eeprom_run(avr_t * avr, avr_io_t * port)
+static void avr_eeprom_run(avr_io_t * port)
 {
 	avr_eeprom_t * p = (avr_eeprom_t *)port;
+	avr_t * avr = p->io.avr;
 	//printf("%s\n", __FUNCTION__);
 	if (p->eempe_clear_timer) {
 		p->eempe_clear_timer--;
@@ -44,7 +45,7 @@ static void avr_eeprom_run(avr_t * avr, avr_io_t * port)
 	}
 }
 
-static void avr_eeprom_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * param)
+static void avr_eeprom_write(avr_t * avr, uint8_t addr, uint8_t v, void * param)
 {
 	avr_eeprom_t * p = (avr_eeprom_t *)param;
 	uint8_t eempe = avr_regbit_get(avr, p->eempe);
@@ -76,7 +77,7 @@ static void avr_eeprom_write(struct avr_t * avr, uint8_t addr, uint8_t v, void *
 	avr_regbit_clear(avr, p->eere);
 }
 
-static int avr_eeprom_ioctl(avr_t * avr, avr_io_t * port, uint32_t ctl, void * io_param)
+static int avr_eeprom_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
 {
 	avr_eeprom_t * p = (avr_eeprom_t *)port;
 	int res = -1;

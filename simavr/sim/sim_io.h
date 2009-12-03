@@ -36,18 +36,19 @@
  * Modules uses that as their first member in their own struct
  */
 typedef struct avr_io_t {
-	struct avr_io_t * next;
+	struct avr_io_t * 	next;
+	avr_t *				avr;		// avr we are attached to
 	const char * 		kind;		// pretty name, for debug
 
 	uint32_t			irq_ioctl_get;	// used to get irqs from this module
 	int					irq_count;	// number of (optional) irqs
 	struct avr_irq_t *	irq;		// optional external IRQs
 	// called at every instruction
-	void (*run)(avr_t * avr, struct avr_io_t *io);
+	void (*run)(struct avr_io_t *io);
 	// called at reset time
-	void (*reset)(avr_t * avr, struct avr_io_t *io);
+	void (*reset)(struct avr_io_t *io);
 	// called externally. allow access to io modules and so on
-	int (*ioctl)(avr_t * avr, struct avr_io_t *io, uint32_t ctl, void *io_param);
+	int (*ioctl)(struct avr_io_t *io, uint32_t ctl, void *io_param);
 } avr_io_t;
 
 /*
