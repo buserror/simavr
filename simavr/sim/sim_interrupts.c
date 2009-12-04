@@ -46,8 +46,9 @@ int avr_raise_interrupt(avr_t * avr, avr_int_vector_t * vector)
 {
 	if (!vector || !vector->vector)
 		return 0;
-//	printf("%s raising %d\n", __FUNCTION__, vector->vector);
-	// always mark the 'raised' flag to one, even if the interuot is disabled
+	if (vector->trace)
+		printf("%s raising %d\n", __FUNCTION__, vector->vector);
+	// always mark the 'raised' flag to one, even if the interrupt is disabled
 	// this allow "pooling" for the "raised" flag, like for non-interrupt
 	// driven UART and so so. These flags are often "write one to clear"
 	if (vector->raised.reg)
@@ -62,7 +63,8 @@ int avr_raise_interrupt(avr_t * avr, avr_int_vector_t * vector)
 		avr->pending[vector->vector >> 5] |= (1 << (vector->vector & 0x1f));
 
 		if (avr->state != cpu_Running) {
-		//	printf("Waking CPU due to interrupt\n");
+			if (vector->trace)
+				printf("Waking CPU due to interrupt\n");
 			avr->state = cpu_Running;	// in case we were sleeping
 		}
 	}
@@ -76,7 +78,8 @@ void avr_clear_interrupt(avr_t * avr, int v)
 	avr->pending[v >> 5] &= ~(1 << (v & 0x1f));
 	if (!vector)
 		return;
-//	printf("%s cleared %d\n", __FUNCTION__, vector->vector);
+	if (vector->trace)
+		printf("%s cleared %d\n", __FUNCTION__, vector->vector);
 	if (vector->raised.reg)
 		avr_regbit_clear(avr, vector->raised);
 }
@@ -101,7 +104,8 @@ void avr_service_interrupts(avr_t * avr)
 
 							int v = (bi * 32) + ii;	// vector
 
-						//	printf("%s calling %d\n", __FUNCTION__, v);
+							if (avr->vector[v] && avr->vector[v]->trace)
+								printf("%s calling %d\n", __FUNCTION__, v);
 							_avr_push16(avr, avr->pc >> 1);
 							avr->sreg[S_I] = 0;
 							avr->pc = v * avr->vector_size;

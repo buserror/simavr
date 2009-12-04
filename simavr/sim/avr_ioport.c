@@ -44,10 +44,10 @@ static void avr_ioport_write(struct avr_t * avr, uint8_t addr, uint8_t v, void *
 	uint8_t oldv = avr->data[addr];
 
 	if (addr == p->r_port) {
-	//	printf("PORT%c(%02x) = %02x (was %02x)\n", p->name, addr, v, oldv);
 
 		avr_core_watch_write(avr, addr, v);
 		if (v != oldv) {
+			//	printf("PORT%c(%02x) = %02x (was %02x)\n", p->name, addr, v, oldv);
 			int mask = v ^ oldv;
 
 			// raise the internal IRQ callbacks
@@ -68,6 +68,8 @@ void avr_ioport_irq_notify(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	avr_ioport_t * p = (avr_ioport_t *)param;
 	avr_t * avr = p->io.avr;
+
+	//	printf("pcint port%c pcint %02x:%02x\n", p->name, p->r_pcint, avr->data[p->r_pcint]);
 	if (p->r_pcint) {
 		uint8_t mask = 1 << irq->irq;
 		// set the real PIN bit. ddr doesn't matter here as it's masked when read.

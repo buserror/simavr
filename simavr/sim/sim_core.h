@@ -39,7 +39,6 @@ void _avr_push16(avr_t * avr, uint16_t v);
  */
 const char * avr_regname(uint8_t reg);
 
-
 /* 
  * DEBUG bits follow 
  * These will diseapear when gdb arrives

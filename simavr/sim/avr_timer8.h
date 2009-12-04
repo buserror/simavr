@@ -40,8 +40,8 @@ typedef struct avr_timer8_t {
 	avr_int_vector_t compb;	// comparator A
 	avr_int_vector_t overflow;	// overflow
 
-
-	uint64_t		compa_cycles, compa_next;
+	uint32_t		compa_cycles;
+	uint32_t		compb_cycles;
 } avr_timer8_t;
 
 void avr_timer8_init(avr_t * avr, avr_timer8_t * port);

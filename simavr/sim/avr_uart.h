@@ -57,7 +57,6 @@ typedef struct avr_uart_t {
 	avr_int_vector_t udrc;	
 
 	uart_fifo_t	input;
-	uint16_t	input_cycle_timer;
 } avr_uart_t;
 
 void avr_uart_init(avr_t * avr, avr_uart_t * port);

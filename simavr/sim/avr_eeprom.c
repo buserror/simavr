@@ -26,23 +26,18 @@
 #include <string.h>
 #include "avr_eeprom.h"
 
-static void avr_eeprom_run(avr_io_t * port)
+static avr_cycle_count_t avr_eempe_clear(struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
-	avr_eeprom_t * p = (avr_eeprom_t *)port;
-	avr_t * avr = p->io.avr;
-	//printf("%s\n", __FUNCTION__);
-	if (p->eempe_clear_timer) {
-		p->eempe_clear_timer--;
-		if (p->eempe_clear_timer == 0) {
-			avr_regbit_clear(avr, p->eempe);
-		}
-	}
-	if (p->ready_raise_timer) {
-		p->ready_raise_timer--;
-		if (p->ready_raise_timer == 0) {
-			avr_raise_interrupt(avr, &p->ready);
-		}
-	}
+	avr_eeprom_t * p = (avr_eeprom_t *)param;
+	avr_regbit_clear(p->io.avr, p->eempe);
+	return 0;
+}
+
+static avr_cycle_count_t avr_eei_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
+{
+	avr_eeprom_t * p = (avr_eeprom_t *)param;
+	avr_raise_interrupt(p->io.avr, &p->ready);
+	return 0;
 }
 
 static void avr_eeprom_write(avr_t * avr, uint8_t addr, uint8_t v, void * param)
@@ -53,7 +48,7 @@ static void avr_eeprom_write(avr_t * avr, uint8_t addr, uint8_t v, void * param)
 	avr_core_watch_write(avr, addr, v);
 
 	if (!eempe && avr_regbit_get(avr, p->eempe)) {
-		p->eempe_clear_timer = 4;	// auto clear, later
+		avr_cycle_timer_register(avr, 4, avr_eempe_clear, p);
 	}
 	
 	if (eempe && avr_regbit_get(avr, p->eepe)) {	// write operation
@@ -61,10 +56,9 @@ static void avr_eeprom_write(avr_t * avr, uint8_t addr, uint8_t v, void * param)
 	//	printf("eeprom write %04x <- %02x\n", addr, avr->data[p->r_eedr]);
 		p->eeprom[addr] = avr->data[p->r_eedr];	
 		// Automatically clears that bit (?)
-		p->eempe_clear_timer = 0;
 		avr_regbit_clear(avr, p->eempe);
 
-		p->ready_raise_timer = 1024; // make a avr_milliseconds_to_cycle(...) 3.4ms here
+		avr_cycle_timer_register_usec(avr, 3400, avr_eei_raise, p); // 3.4ms here
 	}
 	if (avr_regbit_get(avr, p->eere)) {	// read operation
 		uint16_t addr = avr->data[p->r_eearl] | (avr->data[p->r_eearh] << 8);
@@ -113,7 +107,6 @@ static int avr_eeprom_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_para
 
 static	avr_io_t	_io = {
 	.kind = "eeprom",
-	.run = avr_eeprom_run,
 	.ioctl = avr_eeprom_ioctl,
 };
 

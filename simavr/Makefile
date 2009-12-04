@@ -66,8 +66,9 @@ obj/%.o: %.c
 
 libsimavr.a	:	${cores_o}
 libsimavr.a	:	${sim_o}
-	ar cru $@ $^
-	ranlib $@
+	@echo AR $@
+	@ar cru $@ $^
+	@ranlib $@
 
 ${target}	:	${cores_o}
 ${target}	:	${sim_o}

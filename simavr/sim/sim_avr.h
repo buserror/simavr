@@ -24,9 +24,12 @@
 
 #include <stdint.h>
 
+typedef uint64_t avr_cycle_count_t;
+
 struct avr_t;
 typedef uint8_t (*avr_io_read_t)(struct avr_t * avr, uint8_t addr, void * param);
 typedef void (*avr_io_write_t)(struct avr_t * avr, uint8_t addr, uint8_t v, void * param);
+typedef avr_cycle_count_t (*avr_cycle_timer_t)(struct avr_t * avr, avr_cycle_count_t when, void * param);
 
 enum {
 	// SREG bit indexes
@@ -74,11 +77,11 @@ typedef struct avr_t {
 	uint8_t		fuse[4];
 
 	// filled by the ELF data, this allow tracking of invalid jumps
-	uint32_t	codeend;
+	uint32_t			codeend;
 
-	int			state;		// stopped, running, sleeping
-	uint32_t	frequency;	// frequency we are running at
-	uint64_t	cycle;		// current cycle
+	int					state;		// stopped, running, sleeping
+	uint32_t			frequency;	// frequency we are running at
+	avr_cycle_count_t	cycle;		// current cycle
 	
 	// called at init time
 	void (*init)(struct avr_t * avr);
@@ -117,6 +120,17 @@ typedef struct avr_t {
 
 	// queue of io modules
 	struct avr_io_t *io_port;
+
+	// cycle timers are callbacks that will be called when "when" cycle is reached
+	// the bitmap allows quick knowledge of whether there is anything to call
+	// these timers are one shots, then get cleared if the timer function returns zero,
+	// they get reset if the callback function returns a new cycle number
+	uint32_t	cycle_timer_map;
+	struct {
+		avr_cycle_count_t	when;
+		avr_cycle_timer_t	timer;
+		void * param;
+	} cycle_timer[32];
 
 	// interrupt vectors, and their enable/clear registers
 	struct avr_int_vector_t * vector[64];
@@ -188,6 +202,19 @@ int avr_run(avr_t * avr);
 // load code in the "flash"
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address);
 
+// converts a nunber of usec to a nunber of machine cycles, at current speed
+avr_cycle_count_t avr_usec_to_cycles(avr_t * avr, uint32_t usec);
+// converts a number of hz (to megahertz etc) to a number of cycle
+avr_cycle_count_t avr_hz_to_cycles(avr_t * avr, uint32_t hz);
+// converts back a number of cycles to usecs (for usleep)
+uint32_t avr_cycles_to_usec(avr_t * avr, avr_cycle_count_t cycles);
+
+// register for calling 'timer' in 'when' cycles
+void avr_cycle_timer_register(avr_t * avr, avr_cycle_count_t when, avr_cycle_timer_t timer, void * param);
+// register a timer to call in 'when' usec
+void avr_cycle_timer_register_usec(avr_t * avr, uint32_t when, avr_cycle_timer_t timer, void * param);
+// cancel a previously set timer
+void avr_cycle_timer_cancel(avr_t * avr, avr_cycle_timer_t timer, void * param);
 
 /*
  * these are accessors for avr->data but allows watchpoints to be set for gdb

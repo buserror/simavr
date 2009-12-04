@@ -142,7 +142,7 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 }
 
 /*
- * Stack oush accessors. Push/pop 8 and 16 bits
+ * Stack push accessors. Push/pop 8 and 16 bits
  */
 static inline void _avr_push8(avr_t * avr, uint16_t v)
 {
@@ -717,8 +717,14 @@ uint16_t avr_run_one(avr_t * avr)
 				}	break;
 				case 0x9598: { // BREAK
 					STATE("break\n");
-					if (avr->gdb)
+					if (avr->gdb) {
+						// if gdb is on, we break here as in here
+						// and we do so until gdb restores the instruction
+						// that was here before
 						avr->state = cpu_StepDone;
+						new_pc = avr->pc;
+						cycle = 0;
+					}
 				}	break;
 				case 0x95a8: { // WDR
 					STATE("wdr\n");

@@ -86,5 +86,9 @@ static void _avr_irq_connect(avr_irq_t * irq, uint32_t value, void * param)
 
 void avr_connect_irq(avr_irq_t * src, avr_irq_t * dst)
 {
+	if (!src || !dst) {
+		printf("avr_connect_irq invalid irq %p/%p", src, dst);
+		return;
+	}
 	avr_irq_register_notify(src, _avr_irq_connect, dst);
 }

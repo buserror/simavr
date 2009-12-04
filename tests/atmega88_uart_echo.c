@@ -43,7 +43,7 @@ ISR(USART_RX_vect)
 	uint8_t b = UDR0;
 	buffer[bindex++] = b;
 	buffer[bindex] = 0;
-	if (b == '\r')
+	if (b == '\n')
 		done++;
 }
 

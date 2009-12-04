@@ -25,6 +25,6 @@
 int avr_gdb_init(avr_t * avr);
 
 // call from the main AVR decoder thread
-int avr_gdb_processor(avr_t * avr, int sleep);
+int avr_gdb_processor(avr_t * avr, uint32_t sleep);
 
 #endif

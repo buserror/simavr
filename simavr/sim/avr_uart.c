@@ -28,17 +28,12 @@
 
 DEFINE_FIFO(uint8_t, uart_fifo, 128);
 
-static void avr_uart_run(avr_io_t * port)
+static avr_cycle_count_t avr_uart_rxc_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
-	avr_uart_t * p = (avr_uart_t *)port;
-	avr_t * avr = p->io.avr;
-	if (p->input_cycle_timer) {
-		p->input_cycle_timer--;
-		if (p->input_cycle_timer == 0) {
-			if (avr_regbit_get(avr, p->rxen))
-				avr_raise_interrupt(avr, &p->rxc);
-		}
-	}
+	avr_uart_t * p = (avr_uart_t *)param;
+	if (avr_regbit_get(avr, p->rxen))
+		avr_raise_interrupt(avr, &p->rxc);
+	return 0;
 }
 
 static uint8_t avr_uart_read(struct avr_t * avr, uint8_t addr, void * param)
@@ -56,7 +51,10 @@ static uint8_t avr_uart_read(struct avr_t * avr, uint8_t addr, void * param)
 	avr->data[addr] = v;
 	// made to trigger potential watchpoints
 	v = avr_core_watch_read(avr, addr);
-	p->input_cycle_timer = uart_fifo_isempty(&p->input) ? 0 : 10;
+
+	if (!uart_fifo_isempty(&p->input))
+		avr_cycle_timer_register_usec(avr, 100, avr_uart_rxc_raise, p); // should be uart speed dependent
+
 	return v;
 }
 
@@ -65,7 +63,6 @@ static void avr_uart_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * p
 	avr_uart_t * p = (avr_uart_t *)param;
 
 	if (addr == p->r_udr) {
-	//	printf("UDR%c(%02x) = %02x\n", p->name, addr, v);
 		avr_core_watch_write(avr, addr, v);
 
 		// if the interrupts are not used, still raised the UDRE and TXC flaga
@@ -80,6 +77,7 @@ static void avr_uart_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * p
 			l = 0;
 			printf("\e[32m%s\e[0m\n", buf);
 		}
+//		printf("UDR%c(%02x) = %02x\n", p->name, addr, v);
 		// tell other modules we are "outputing" a byte
 		if (avr_regbit_get(avr, p->txen))
 			avr_raise_irq(p->io.irq + UART_IRQ_OUTPUT, v);
@@ -107,10 +105,9 @@ static void avr_uart_irq_input(struct avr_irq_t * irq, uint32_t value, void * pa
 	if (!avr_regbit_get(avr, p->rxen))
 		return;
 
+	if (uart_fifo_isempty(&p->input))
+		avr_cycle_timer_register_usec(avr, 100, avr_uart_rxc_raise, p); // should be uart speed dependent
 	uart_fifo_write(&p->input, value); // add to fifo
-	// raise interrupt, if it was not there
-	if (p->input_cycle_timer == 0)
-		p->input_cycle_timer = 10;	// random number, should be proportional to speed
 }
 
 
@@ -120,13 +117,12 @@ void avr_uart_reset(struct avr_io_t *io)
 	avr_t * avr = p->io.avr;
 	avr_regbit_set(avr, p->udrc.raised);
 	avr_irq_register_notify(p->io.irq + UART_IRQ_INPUT, avr_uart_irq_input, p);
-	p->input_cycle_timer = 0;
+	avr_cycle_timer_cancel(avr, avr_uart_rxc_raise, p);
 	uart_fifo_reset(&p->input);
 }
 
 static	avr_io_t	_io = {
 	.kind = "uart",
-	.run = avr_uart_run,
 	.reset = avr_uart_reset,
 };
 

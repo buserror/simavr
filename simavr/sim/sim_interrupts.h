@@ -30,6 +30,8 @@ typedef struct avr_int_vector_t {
 
 	avr_regbit_t enable;	// IO register index for the "interrupt enable" flag for this vector
 	avr_regbit_t raised;	// IO register index for the register where the "raised" flag is (optional)
+
+	uint8_t			trace;		// only for debug of a vector
 } avr_int_vector_t;
 
 

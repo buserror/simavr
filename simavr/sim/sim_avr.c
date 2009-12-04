@@ -115,6 +115,99 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 	return avr->data[addr];
 }
 
+// converts a number of usec to a number of machine cycles, at current speed
+uint64_t avr_usec_to_cycles(avr_t * avr, uint32_t usec)
+{
+	return avr->frequency * (uint64_t)usec / 1000000;
+}
+
+uint32_t avr_cycles_to_usec(avr_t * avr, uint64_t cycles)
+{
+	return 1000000 * cycles / avr->frequency;
+}
+
+// converts a number of hz (to megahertz etc) to a number of cycle
+uint64_t avr_hz_to_cycles(avr_t * avr, uint32_t hz)
+{
+	return avr->frequency / hz;
+}
+
+void avr_cycle_timer_register(avr_t * avr, uint64_t when, avr_cycle_timer_t timer, void * param)
+{
+	avr_cycle_timer_cancel(avr, timer, param);
+
+	if (avr->cycle_timer_map == 0xffffffff) {
+		fprintf(stderr, "avr_cycle_timer_register is full!\n");
+		return;
+	}
+	when += avr->cycle;
+	for (int i = 0; i < 32; i++)
+		if (!(avr->cycle_timer_map & (1 << i))) {
+			avr->cycle_timer[i].timer = timer;
+			avr->cycle_timer[i].param = param;
+			avr->cycle_timer[i].when = when;
+			avr->cycle_timer_map |= (1 << i);
+			return;
+		}
+}
+
+void avr_cycle_timer_register_usec(avr_t * avr, uint32_t when, avr_cycle_timer_t timer, void * param)
+{
+	avr_cycle_timer_register(avr, avr_usec_to_cycles(avr, when), timer, param);
+}
+
+void avr_cycle_timer_cancel(avr_t * avr, avr_cycle_timer_t timer, void * param)
+{
+	if (!avr->cycle_timer_map)
+		return;
+	for (int i = 0; i < 32; i++)
+		if ((avr->cycle_timer_map & (1 << i)) &&
+				avr->cycle_timer[i].timer == timer &&
+				avr->cycle_timer[i].param == param) {
+			avr->cycle_timer[i].timer = NULL;
+			avr->cycle_timer[i].param = NULL;
+			avr->cycle_timer[i].when = 0;
+			avr->cycle_timer_map &= ~(1 << i);
+			return;
+		}
+}
+
+/*
+ * run thru all the timers, call the ones that needs it,
+ * clear the ones that wants it, and calculate the next
+ * potential cycle we could sleep for...
+ */
+static uint64_t avr_cycle_timer_check(avr_t * avr)
+{
+	if (!avr->cycle_timer_map)
+		return (uint32_t)-1;
+
+	uint64_t min = (uint64_t)-1;
+
+	for (int i = 0; i < 32; i++) {
+		if (!(avr->cycle_timer_map & (1 << i)))
+			continue;
+
+		if (avr->cycle_timer[i].when <= avr->cycle) {
+			// call it
+			avr->cycle_timer[i].when =
+					avr->cycle_timer[i].timer(avr,
+							avr->cycle_timer[i].when,
+							avr->cycle_timer[i].param);
+			if (avr->cycle_timer[i].when == 0) {
+				// clear it
+				avr->cycle_timer[i].timer = NULL;
+				avr->cycle_timer[i].param = NULL;
+				avr->cycle_timer[i].when = 0;
+				avr->cycle_timer_map &= ~(1 << i);
+				continue;
+			}
+		}
+		if (avr->cycle_timer[i].when < min)
+			min = avr->cycle_timer[i].when;
+	}
+	return min - avr->cycle;
+}
 
 int avr_run(avr_t * avr)
 {
@@ -123,7 +216,7 @@ int avr_run(avr_t * avr)
 	if (avr->state == cpu_Stopped)
 		return avr->state;
 
-	// if we are stepping one insruction, we "run" for one..
+	// if we are stepping one instruction, we "run" for one..
 	int step = avr->state == cpu_Step;
 	if (step) {
 		avr->state = cpu_Running;
@@ -134,11 +227,8 @@ int avr_run(avr_t * avr)
 	if (avr->state == cpu_Running) {
 		new_pc = avr_run_one(avr);
 		avr_dump_state(avr);
-	} else
-		avr->cycle ++;
+	}
 
-	// re-synth the SREG
-	//SREG();
 	// if we just re-enabled the interrupts...
 	if (avr->sreg[S_I] && !(avr->data[R_SREG] & (1 << S_I))) {
 	//	printf("*** %s: Renabling interrupts\n", __FUNCTION__);
@@ -150,22 +240,25 @@ int avr_run(avr_t * avr)
 			port->run(port);
 		port = port->next;
 	}
+	avr_cycle_count_t sleep = avr_cycle_timer_check(avr);
 
 	avr->pc = new_pc;
 
 	if (avr->state == cpu_Sleeping) {
 		if (!avr->sreg[S_I]) {
-			printf("simavr: sleeping with interrupts off, quitting gracefuly\n");
+			printf("simavr: sleeping with interrupts off, quitting gracefully\n");
 			exit(0);
 		}
+		/*
+		 * try to sleep for as long as we can (?)
+		 */
+		uint32_t usec = avr_cycles_to_usec(avr, sleep);
 		if (avr->gdb) {
-			while (avr_gdb_processor(avr, 1))
+			while (avr_gdb_processor(avr, usec))
 				;
 		} else
-			usleep(500);
-		long sleep = (float)avr->frequency * (1.0f / 500.0f);
+			usleep(usec);
 		avr->cycle += sleep;
-	//	avr->state = cpu_Running;
 	}
 	// Interrupt servicing might change the PC too
 	if (avr->state == cpu_Running || avr->state == cpu_Sleeping) {

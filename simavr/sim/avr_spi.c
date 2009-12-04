@@ -27,7 +27,7 @@ static uint8_t avr_spi_read(struct avr_t * avr, uint8_t addr, void * param)
 	avr_spi_t * p = (avr_spi_t *)param;
 	uint8_t v = p->input_data_register;
 	p->input_data_register = 0;
-//	printf("** PIN%c = %02x\n", p->name, v);
+//	printf("avr_spi_read = %02x\n", v);
 	return v;
 }
 
@@ -36,7 +36,7 @@ static void avr_spi_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * pa
 	avr_spi_t * p = (avr_spi_t *)param;
 
 	if (addr == p->r_spdr) {
-	//	printf("UDR%c(%02x) = %02x\n", p->name, addr, v);
+//		printf("avr_spi_write = %02x\n", v);
 		avr_core_watch_write(avr, addr, v);
 
 		if (avr_regbit_get(avr, p->spe)) {
@@ -83,6 +83,7 @@ void avr_spi_init(avr_t * avr, avr_spi_t * p)
 {
 	p->io = _io;
 	avr_register_io(avr, &p->io);
+	avr_register_vector(avr, &p->spi);
 
 	printf("%s SPI%c init\n", __FUNCTION__, p->name);
 

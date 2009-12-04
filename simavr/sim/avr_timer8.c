@@ -25,32 +25,33 @@
 #include <stdio.h>
 #include "avr_timer8.h"
 
-static void avr_timer8_run(avr_io_t * port)
+static avr_cycle_count_t avr_timer8_compa(struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
-	avr_timer8_t * p = (avr_timer8_t *)port;
-	avr_t * avr = p->io.avr;
-
-	if (p->compa_cycles) {
-		if (p->compa_next == 0) {
-			p->compa_next = avr->cycle + p->compa_cycles;
-		}
-		if (avr->cycle >= p->compa_next) {
-		//	printf("timer a firea %d\n", p->compa_next);
-			fflush(stdout);
-			p->compa_next += p->compa_cycles;						
-			avr_raise_interrupt(avr, &p->compa);
-		} 
-	}
+	avr_timer8_t * p = (avr_timer8_t *)param;
+	avr_raise_interrupt(avr, &p->compa);
+	return p->compa_cycles ? when + p->compa_cycles : 0;
 }
 
+static avr_cycle_count_t avr_timer8_compb(struct avr_t * avr, avr_cycle_count_t when, void * param)
+{
+	avr_timer8_t * p = (avr_timer8_t *)param;
+	avr_raise_interrupt(avr, &p->compb);
+	return p->compb_cycles ? when + p->compb_cycles : 0;
+}
+
+static uint8_t avr_timer8_tcnt_read(struct avr_t * avr, uint8_t addr, void * param)
+{
+	//avr_timer8_t * p = (avr_timer8_t *)param;
+	// made to trigger potential watchpoints
+	return avr_core_watch_read(avr, addr);
+}
 
 static void avr_timer8_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * param)
 {
 	avr_timer8_t * p = (avr_timer8_t *)param;
-//	uint8_t oldv = avr->data[addr];
 
 	p->compa_cycles = 0;
-	p->compa_next = 0;
+	p->compb_cycles = 0;
 
 	avr_core_watch_write(avr, addr, v);
 	long clock = avr->frequency;
@@ -59,7 +60,8 @@ static void avr_timer8_write(struct avr_t * avr, uint8_t addr, uint8_t v, void *
 	uint8_t cs = avr_regbit_get_array(avr, p->cs, ARRAY_SIZE(p->cs));
 	if (cs == 0) {
 		printf("%s-%c clock turned off\n", __FUNCTION__, p->name);		
-		p->compa_cycles = 0;
+		avr_cycle_timer_cancel(avr, avr_timer8_compa, p);
+		avr_cycle_timer_cancel(avr, avr_timer8_compb, p);
 		return;
 	}
 	uint8_t mode = avr_regbit_get_array(avr, p->wgm, ARRAY_SIZE(p->wgm));
@@ -67,25 +69,33 @@ static void avr_timer8_write(struct avr_t * avr, uint8_t addr, uint8_t v, void *
 	uint16_t ocra = avr->data[p->r_ocra];
 	uint16_t ocrb = avr->data[p->r_ocrb];
 	long f = clock >> cs_div;
-	long fa = f / 2 / (ocra+1), fb = f / 2 / (ocrb+1);
+	long fa = f / (ocra+1), fb = f / (ocrb+1);
 
-	printf("%s-%c clock f=%ld cs=%02x (div %d) = %ldhz\n", __FUNCTION__, p->name, clock, cs, 1 << cs_div, f);
-	printf("%s-%c wgm %d OCRA=%3d = %ldhz\n", __FUNCTION__, p->name, mode, ocra, fa);
-	printf("%s-%c wgm %d OCRB=%3d = %ldhz\n", __FUNCTION__, p->name, mode, ocrb, fb);	
+//	printf("%s-%c clock f=%ld cs=%02x (div %d) = %ldhz\n", __FUNCTION__, p->name, clock, cs, 1 << cs_div, f);
+	if (ocra) printf("%s-%c wgm %d OCRA=%3d = %ldhz\n", __FUNCTION__, p->name, mode, ocra, fa);
+	if (ocrb) printf("%s-%c wgm %d OCRB=%3d = %ldhz\n", __FUNCTION__, p->name, mode, ocrb, fb);
 
-	long cocra = ocra ? avr->frequency / fa : 0;
-	p->compa_cycles = cocra;
-	printf("%s-%c A %ld/%ld = cycles = %ld\n", __FUNCTION__, p->name, (long)avr->frequency, fa, cocra);
-	
+	p->compa_cycles = avr_hz_to_cycles(avr, fa);
+	p->compb_cycles = avr_hz_to_cycles(avr, fb);
+	if (p->compa_cycles)
+		avr_cycle_timer_register(avr, p->compa_cycles, avr_timer8_compa, p);
+	if (p->compb_cycles)
+		avr_cycle_timer_register(avr, p->compb_cycles, avr_timer8_compb, p);
+//	printf("%s-%c A %ld/%ld = cycles = %d\n", __FUNCTION__, p->name, (long)avr->frequency, fa, (int)p->compa_cycles);
+//	printf("%s-%c B %ld/%ld = cycles = %d\n", __FUNCTION__, p->name, (long)avr->frequency, fb, (int)p->compb_cycles);
 }
 
 static void avr_timer8_reset(avr_io_t * port)
 {
+	avr_timer8_t * p = (avr_timer8_t *)port;
+	avr_cycle_timer_cancel(p->io.avr, avr_timer8_compa, p);
+	avr_cycle_timer_cancel(p->io.avr, avr_timer8_compb, p);
+	p->compa_cycles = 0;
+	p->compb_cycles = 0;
 }
 
 static	avr_io_t	_io = {
 	.kind = "timer8",
-	.run = avr_timer8_run,
 	.reset = avr_timer8_reset,
 };
 
@@ -100,4 +110,6 @@ void avr_timer8_init(avr_t * avr, avr_timer8_t * p)
 	avr_register_io_write(avr, p->cs[0].reg, avr_timer8_write, p);
 	avr_register_io_write(avr, p->r_ocra, avr_timer8_write, p);
 	avr_register_io_write(avr, p->r_ocrb, avr_timer8_write, p);
+
+	avr_register_io_read(avr, p->r_tcnt, avr_timer8_tcnt_read, p);
 }

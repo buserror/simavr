@@ -42,9 +42,6 @@ typedef struct avr_eeprom_t {
 	avr_regbit_t 	eere;	// eeprom read enable
 	
 	avr_int_vector_t ready;	// EERIE vector
-
-	uint32_t		eempe_clear_timer;
-	uint32_t		ready_raise_timer;
 } avr_eeprom_t;
 
 void avr_eeprom_init(avr_t * avr, avr_eeprom_t * port);

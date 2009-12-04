@@ -304,7 +304,7 @@ static void gdb_handle_command(avr_gdb_t * g, char * cmd)
 	}
 }
 
-static int gdb_network_handler(avr_gdb_t * g, int dosleep)
+static int gdb_network_handler(avr_gdb_t * g, uint32_t dosleep)
 {
 	fd_set read_set;
 	int max;
@@ -317,7 +317,7 @@ static int gdb_network_handler(avr_gdb_t * g, int dosleep)
 		FD_SET(g->listen, &read_set);
 		max = g->listen + 1;
 	}
-	struct timeval timo = { 0, dosleep ? 500 : 0 };	// short, but not too short interval
+	struct timeval timo = { 0, dosleep };	// short, but not too short interval
 	int ret = select(max, &read_set, NULL, NULL, &timo);
 
 	if (ret == 0)
