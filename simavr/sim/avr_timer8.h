@@ -29,7 +29,7 @@ typedef struct avr_timer8_t {
 	char name;
 	avr_regbit_t	disabled;	// bit in the PRR
 
-	uint8_t			r_ocra, r_ocrb, r_ocrc, r_tcnt;
+	avr_io_addr_t	r_ocra, r_ocrb, r_ocrc, r_tcnt;
 	
 	avr_regbit_t	wgm[4];
 	avr_regbit_t	cs[4];

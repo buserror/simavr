@@ -42,15 +42,15 @@ typedef struct avr_uart_t {
 	char name;
 	avr_regbit_t	disabled;	// bit in the PRR
 	
-	uint8_t r_udr;
-	uint8_t r_ucsra;
-	uint8_t r_ucsrb;
-	uint8_t r_ucsrc;
+	avr_io_addr_t r_udr;
+	avr_io_addr_t r_ucsra;
+	avr_io_addr_t r_ucsrb;
+	avr_io_addr_t r_ucsrc;
 
 	avr_regbit_t	rxen;		// receive enabled
 	avr_regbit_t	txen;		// transmit enable
 
-	uint8_t r_ubrrl,r_ubrrh;
+	avr_io_addr_t r_ubrrl,r_ubrrh;
 
 	avr_int_vector_t rxc;
 	avr_int_vector_t txc;

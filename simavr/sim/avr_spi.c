@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include "avr_spi.h"
 
-static uint8_t avr_spi_read(struct avr_t * avr, uint8_t addr, void * param)
+static uint8_t avr_spi_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
 {
 	avr_spi_t * p = (avr_spi_t *)param;
 	uint8_t v = p->input_data_register;
@@ -31,7 +31,7 @@ static uint8_t avr_spi_read(struct avr_t * avr, uint8_t addr, void * param)
 	return v;
 }
 
-static void avr_spi_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * param)
+static void avr_spi_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_spi_t * p = (avr_spi_t *)param;
 

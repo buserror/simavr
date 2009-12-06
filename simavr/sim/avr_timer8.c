@@ -39,14 +39,14 @@ static avr_cycle_count_t avr_timer8_compb(struct avr_t * avr, avr_cycle_count_t 
 	return p->compb_cycles ? when + p->compb_cycles : 0;
 }
 
-static uint8_t avr_timer8_tcnt_read(struct avr_t * avr, uint8_t addr, void * param)
+static uint8_t avr_timer8_tcnt_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
 {
 	//avr_timer8_t * p = (avr_timer8_t *)param;
 	// made to trigger potential watchpoints
 	return avr_core_watch_read(avr, addr);
 }
 
-static void avr_timer8_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * param)
+static void avr_timer8_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_timer8_t * p = (avr_timer8_t *)param;
 

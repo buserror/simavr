@@ -40,7 +40,7 @@ static avr_cycle_count_t avr_eei_raise(struct avr_t * avr, avr_cycle_count_t whe
 	return 0;
 }
 
-static void avr_eeprom_write(avr_t * avr, uint8_t addr, uint8_t v, void * param)
+static void avr_eeprom_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_eeprom_t * p = (avr_eeprom_t *)param;
 	uint8_t eempe = avr_regbit_get(avr, p->eempe);

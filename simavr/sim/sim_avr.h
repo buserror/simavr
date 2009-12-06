@@ -25,10 +25,11 @@
 #include <stdint.h>
 
 typedef uint64_t avr_cycle_count_t;
+typedef uint16_t	avr_io_addr_t;
 
 struct avr_t;
-typedef uint8_t (*avr_io_read_t)(struct avr_t * avr, uint8_t addr, void * param);
-typedef void (*avr_io_write_t)(struct avr_t * avr, uint8_t addr, uint8_t v, void * param);
+typedef uint8_t (*avr_io_read_t)(struct avr_t * avr, avr_io_addr_t addr, void * param);
+typedef void (*avr_io_write_t)(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param);
 typedef avr_cycle_count_t (*avr_cycle_timer_t)(struct avr_t * avr, avr_cycle_count_t when, void * param);
 
 enum {
@@ -103,6 +104,7 @@ typedef struct avr_t {
 
 	/*
 	 * callback when specific IO registers are read/written
+	 * these should probably be allocated dynamically in init()..
 	 */
 	struct {
 		void * param;
@@ -165,7 +167,7 @@ typedef struct avr_t {
 #endif
 
 	// DEBUG ONLY
-	// keeps track of wich registers gets touched by instructions
+	// keeps track of which registers gets touched by instructions
 	// reset before each new instructions. Allows meaningful traces
 	uint32_t	touched[256 / 32];	// debug
 

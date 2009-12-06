@@ -36,7 +36,7 @@ static avr_cycle_count_t avr_uart_rxc_raise(struct avr_t * avr, avr_cycle_count_
 	return 0;
 }
 
-static uint8_t avr_uart_read(struct avr_t * avr, uint8_t addr, void * param)
+static uint8_t avr_uart_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 
@@ -58,7 +58,7 @@ static uint8_t avr_uart_read(struct avr_t * avr, uint8_t addr, void * param)
 	return v;
 }
 
-static void avr_uart_write(struct avr_t * avr, uint8_t addr, uint8_t v, void * param)
+static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 

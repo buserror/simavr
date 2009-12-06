@@ -38,12 +38,12 @@ enum {
 typedef struct avr_ioport_t {
 	avr_io_t	io;
 	char name;
-	uint8_t r_port;
-	uint8_t r_ddr;
-	uint8_t r_pin;
+	avr_io_addr_t r_port;
+	avr_io_addr_t r_ddr;
+	avr_io_addr_t r_pin;
 
 	avr_int_vector_t pcint;	// PCINT vector
-	uint8_t r_pcint;		// pcint 8 pins mask
+	avr_io_addr_t r_pcint;		// pcint 8 pins mask
 } avr_ioport_t;
 
 void avr_ioport_init(avr_t * avr, avr_ioport_t * port);

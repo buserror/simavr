@@ -60,9 +60,9 @@ typedef struct avr_io_t {
 // one after instanciation, for whatever purpose...
 void avr_register_io(avr_t *avr, avr_io_t * io);
 // register a callback for when IO register "addr" is read
-void avr_register_io_read(avr_t *avr, uint8_t addr, avr_io_read_t read, void * param);
+void avr_register_io_read(avr_t *avr, avr_io_addr_t addr, avr_io_read_t read, void * param);
 // register a callback for when the IO register is written. callback has to set the memory itself
-void avr_register_io_write(avr_t *avr, uint8_t addr, avr_io_write_t write, void * param);
+void avr_register_io_write(avr_t *avr, avr_io_addr_t addr, avr_io_write_t write, void * param);
 // call every IO modules until one responds to this
 int avr_ioctl(avr_t *avr, uint32_t ctl, void * io_param);
 // get the specific irq for a module, check AVR_IOCTL_IOPORT_GETIRQ for example

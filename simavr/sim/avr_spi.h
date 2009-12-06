@@ -38,9 +38,9 @@ typedef struct avr_spi_t {
 	char name;
 	avr_regbit_t	disabled;	// bit in the PRR
 
-	uint8_t	r_spdr;			// data register
-	uint8_t	r_spcr;			// control register
-	uint8_t	r_spsr;			// status register
+	avr_io_addr_t	r_spdr;			// data register
+	avr_io_addr_t	r_spcr;			// control register
+	avr_io_addr_t	r_spsr;			// status register
 	
 	avr_regbit_t spe;		// spi enable
 	avr_regbit_t mstr;		// master/slave

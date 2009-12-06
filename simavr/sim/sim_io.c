@@ -44,13 +44,13 @@ void avr_register_io(avr_t *avr, avr_io_t * io)
 	avr->io_port = io;
 }
 
-void avr_register_io_read(avr_t *avr, uint8_t addr, avr_io_read_t readp, void * param)
+void avr_register_io_read(avr_t *avr, avr_io_addr_t addr, avr_io_read_t readp, void * param)
 {
 	avr->ior[AVR_DATA_TO_IO(addr)].param = param;
 	avr->ior[AVR_DATA_TO_IO(addr)].r = readp;
 }
 
-void avr_register_io_write(avr_t *avr, uint8_t addr, avr_io_write_t writep, void * param)
+void avr_register_io_write(avr_t *avr, avr_io_addr_t addr, avr_io_write_t writep, void * param)
 {
 	avr->iow[AVR_DATA_TO_IO(addr)].param = param;
 	avr->iow[AVR_DATA_TO_IO(addr)].w = writep;

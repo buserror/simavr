@@ -31,9 +31,11 @@
  * (or consecutive bits). This allows a way to set/get/clear them.
  * gcc is happy passing these as register value, so you don't need to
  * use a pointer when passing them along to functions.
+ *
+ * 9 bits ought to be enough, as it's the maximum I've seen (atmega2560)
  */
 typedef struct avr_regbit_t {
-	unsigned long reg : 8, bit : 3, mask : 8;
+	unsigned long reg : 9, bit : 3, mask : 8;
 } avr_regbit_t;
 
 /*
