@@ -78,4 +78,25 @@ typedef struct avr_eeprom_desc_t {
 		},\
 	}
 
+/*
+ * macro definition without a high address bit register,
+ * which is not implemented in some tiny AVRs.
+ */
+
+#define AVR_EEPROM_DECLARE_8BIT(_vector) \
+	.eeprom = {\
+		.size = E2END+1,\
+		.r_eearl = EEARL,\
+		.r_eedr = EEDR,\
+		.r_eecr = EECR,\
+		.eepm = { AVR_IO_REGBIT(EECR, EEPM0), AVR_IO_REGBIT(EECR, EEPM1) },\
+		.eempe = AVR_IO_REGBIT(EECR, EEMPE),\
+		.eepe = AVR_IO_REGBIT(EECR, EEPE),\
+		.eere = AVR_IO_REGBIT(EECR, EERE),\
+		.ready = {\
+			.enable = AVR_IO_REGBIT(EECR, EERIE),\
+			.vector = _vector,\
+		},\
+	}
+
 #endif /* __AVR_EEPROM_H__ */

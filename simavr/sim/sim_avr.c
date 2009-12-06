@@ -281,11 +281,13 @@ int avr_run(avr_t * avr)
 }
 
 
+extern avr_kind_t tiny13;
 extern avr_kind_t tiny25,tiny45,tiny85;
 extern avr_kind_t mega48,mega88,mega168;
 extern avr_kind_t mega644;
 
 avr_kind_t * avr_kind[] = {
+	&tiny13,
 	&tiny25,
 	&tiny45,
 	&tiny85,

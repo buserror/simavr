@@ -50,9 +50,13 @@ static void avr_eeprom_write(avr_t * avr, uint8_t addr, uint8_t v, void * param)
 	if (!eempe && avr_regbit_get(avr, p->eempe)) {
 		avr_cycle_timer_register(avr, 4, avr_eempe_clear, p);
 	}
-	
+
 	if (eempe && avr_regbit_get(avr, p->eepe)) {	// write operation
-		uint16_t addr = avr->data[p->r_eearl] | (avr->data[p->r_eearh] << 8);
+		uint16_t addr;
+		if (p->r_eearh)
+			addr = avr->data[p->r_eearl] | (avr->data[p->r_eearh] << 8);
+		else
+			addr = avr->data[p->r_eearl];
 	//	printf("eeprom write %04x <- %02x\n", addr, avr->data[p->r_eedr]);
 		p->eeprom[addr] = avr->data[p->r_eedr];	
 		// Automatically clears that bit (?)
@@ -61,7 +65,11 @@ static void avr_eeprom_write(avr_t * avr, uint8_t addr, uint8_t v, void * param)
 		avr_cycle_timer_register_usec(avr, 3400, avr_eei_raise, p); // 3.4ms here
 	}
 	if (avr_regbit_get(avr, p->eere)) {	// read operation
-		uint16_t addr = avr->data[p->r_eearl] | (avr->data[p->r_eearh] << 8);
+		uint16_t addr;
+		if (p->r_eearh)
+			addr = avr->data[p->r_eearl] | (avr->data[p->r_eearh] << 8);
+		else
+			addr = avr->data[p->r_eearl];
 		avr->data[p->r_eedr] = p->eeprom[addr];
 	//	printf("eeprom read %04x : %02x\n", addr, p->eeprom[addr]);
 	}

@@ -46,7 +46,7 @@ CFLAGS	+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
 LFLAGS	= -L/opt/local/lib/
 LDFLAGS	+= -lelf 
 
-all:	obj ${target} libsimavr.a
+all:	obj libsimavr.a ${target}
 
 obj:
 	@mkdir -p obj
@@ -70,8 +70,7 @@ libsimavr.a	:	${sim_o}
 	@ar cru $@ $^
 	@ranlib $@
 
-${target}	:	${cores_o}
-${target}	:	${sim_o}
+${target}	:	libsimavr.a
 ${target}	:	obj/${target}.o
 	@gcc $(CFLAGS) $(LFLAGS) \
 		${^} -o $@ \
