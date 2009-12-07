@@ -1,6 +1,12 @@
 /*
-	sim_megax8.c
+	button.h
 
+	This defines a sample for a very simple "peripheral" 
+	that can talk to an AVR core.
+	It is in fact a bit more involved than strictly necessary,
+	but is made to demonstrante a few useful features that are
+	easy to use.
+	
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
  	This file is part of simavr.
@@ -18,29 +24,24 @@
 	You should have received a copy of the GNU General Public License
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <stdio.h>
-#include "sim_avr.h"
 
-#include "sim_megax8.h"
+#ifndef __BUTTON_H__
+#define __BUTTON_H__
 
-void mx8_init(struct avr_t * avr)
-{
-	struct mcu_t * mcu = (struct mcu_t*)avr;
+#include "sim_irq.h"
 
-	printf("%s init\n", avr->mmcu);
+enum {
+	IRQ_BUTTON_OUT = 0,
+	IRQ_BUTTON_COUNT
+};
 
-	avr_eeprom_init(avr, &mcu->eeprom);
-	avr_ioport_init(avr, &mcu->portb);
-	avr_ioport_init(avr, &mcu->portc);
-	avr_ioport_init(avr, &mcu->portd);
-	avr_uart_init(avr, &mcu->uart);
-	avr_timer8_init(avr, &mcu->timer0);
-	avr_timer8_init(avr, &mcu->timer2);
-	avr_spi_init(avr, &mcu->spi);
-	avr_twi_init(avr, &mcu->twi);
-}
+typedef struct button_t {
+	avr_irq_t * irq;	// output irq
+	struct avr_t * avr;
+	uint8_t value;
+} button_t;
 
-void mx8_reset(struct avr_t * avr)
-{
-//	struct mcu_t * mcu = (struct mcu_t*)avr;
-}
+void button_init(struct avr_t * avr, button_t * b);
+
+void button_press(button_t * b, uint32_t duration_usec);
+#endif /* __BUTTON_H__*/

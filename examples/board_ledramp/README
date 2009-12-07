@@ -1,0 +1,15 @@
+
+This contains a sample program to demonstrate the use of simavr
+using 'custom' code, and own "peripherals". It shows how it is
+possible to "hook" code to the AVR pins, and also how to make
+"peripherals" and also hook them up to AVR pins.
+
+The demo will display a running "led ramp" that are the representation
+of the PORTB pins of the mega48.
+
+The mega48 firmware runs a timer and a pin-change interrupt that
+will react to a "button press".
+
+The display uses opengl and "glut" so it should be very portable.
+On most linux you will need "freeglut-dev" package.
+

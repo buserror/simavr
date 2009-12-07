@@ -29,6 +29,7 @@
 #include "avr_uart.h"
 #include "avr_timer8.h"
 #include "avr_spi.h"
+#include "avr_twi.h"
 
 void mx8_init(struct avr_t * avr);
 void mx8_reset(struct avr_t * avr);
@@ -43,6 +44,7 @@ struct mcu_t {
 	avr_uart_t		uart;
 	avr_timer8_t	timer0,timer2;
 	avr_spi_t		spi;
+	avr_twi_t		twi;
 };
 
 #ifdef SIM_CORENAME
@@ -196,6 +198,33 @@ struct mcu_t SIM_CORENAME = {
 			.vector = SPI_STC_vect,
 		},
 	},
+
+	.twi = {
+		.disabled = AVR_IO_REGBIT(PRR,PRTWI),
+
+		.r_twcr = TWCR,
+		.r_twsr = TWSR,
+		.r_twbr = TWBR,
+		.r_twdr = TWDR,
+		.r_twar = TWAR,
+		.r_twamr = TWAMR,
+
+		.twen = AVR_IO_REGBIT(TWCR, TWEN),
+		.twea = AVR_IO_REGBIT(TWCR, TWEA),
+		.twsta = AVR_IO_REGBIT(TWCR, TWSTA),
+		.twsto = AVR_IO_REGBIT(TWCR, TWSTO),
+		.twwc = AVR_IO_REGBIT(TWCR, TWWC),
+
+		.twsr = AVR_IO_REGBITS(TWSR, TWS3, 0x1f),	// 5 bits
+		.twps = AVR_IO_REGBITS(TWSR, TWPS0, 0x3),	// 2 bits
+
+		.twi = {
+			.enable = AVR_IO_REGBIT(TWCR, TWIE),
+			.raised = AVR_IO_REGBIT(TWSR, TWINT),
+			.vector = TWI_vect,
+		},
+	},
+	
 };
 #endif /* SIM_CORENAME */
 

@@ -1,13 +1,3 @@
-#
-# This makefile take each "at*" file, extracts it's part name
-# And compile it into an ELF binary.
-# It also disassemble it for debugging purposes.
-# 
-# The code is compiled "optimized" to the max.
-# 
-# The wierd "-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000"
-# is used to tell the linker not to discard the .mmcu section,
-# otherwise the --gc-sections will delete it.
 # 
 # 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 #
@@ -26,14 +16,28 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
+board=	ledramp
+firm_src = ${wildcard at*${board}.c}
+firmware = ${firm_src:.c=.axf}
+simavr = ../../
 
-SHELL	 = /bin/bash
+IPATH = .
+IPATH += ../parts
+IPATH += ${simavr}/include
+IPATH += ${simavr}/simavr/sim
 
-sources		:= $(wildcard at*.c)
+VPATH = .
+VPATH += ../parts
 
-all :  ${sources:.c=.axf} ${sources:.c=.hex}  ${sources:.c=.s}  
+LDFLAGS += -lglut -lpthread
 
-include ../Makefile.common
+all: obj ${firmware} ${board}
+
+include ${simavr}/Makefile.common
+
+${board} : ${OBJ}/button.o
+${board} : ${OBJ}/${board}.o
+	gcc -MD ${CFLAGS} -o $@ $^ $(LDFLAGS) ${simavr}/simavr/libsimavr.a
 
 clean:
-	rm -f *.hex *.o *.axf *.s
+	rm -rf obj *.hex *.a *.axf ${board}
