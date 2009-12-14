@@ -3,11 +3,6 @@
 # And compile it into an ELF binary.
 # It also disassemble it for debugging purposes.
 # 
-# The code is compiled "optimized" to the max.
-# 
-# The wierd "-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000"
-# is used to tell the linker not to discard the .mmcu section,
-# otherwise the --gc-sections will delete it.
 # 
 # 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 #

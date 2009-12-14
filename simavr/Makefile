@@ -25,16 +25,15 @@ cores_o = ${patsubst cores/%.c, obj/%.o, ${cores}}
 sim		= ${wildcard sim/sim_*.c} ${wildcard sim/avr_*.c}
 sim_o 	= ${patsubst sim/%.c, obj/%.o, ${sim}}
 
-VPATH	= .
-VPATH	+= cores
+VPATH	= cores
 VPATH	+= sim
 
-IPATH	= .
-IPATH	+= sim
+IPATH	= sim
 IPATH	+= ../../shared
 IPATH	+= ../include
-IPATH	+= /opt/local/include
 
+# Thats for MacPorts libelf
+IPATH	+= /opt/local/include
 LFLAGS	= -L/opt/local/lib/
 
 all:	obj libsimavr.a ${target}
