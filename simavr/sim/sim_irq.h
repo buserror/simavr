@@ -39,25 +39,39 @@
  * IRQ hook needs to be registered in reset() handlers, ie after all modules init() bits
  * have been called, to prevent race condition of the initialization order.
  */
-// internal structure for a hook, never seen by the notify procs
 struct avr_irq_t;
 
 typedef void (*avr_irq_notify_t)(struct avr_irq_t * irq, uint32_t value, void * param);
 
+// internal structure for a hook, never seen by the notify procs
 typedef struct avr_irq_hook_t {
 	struct avr_irq_hook_t * next;
-	void * param;
 	int busy;	// prevent reentrance of callbacks
-	avr_irq_notify_t notify;
+	
+	struct avr_irq_t * chain;	// raise the IRQ on this too - optional if "notify" is on
+	avr_irq_notify_t notify;	// called when IRQ is raised - optional if "chain" is on
+	void * param;				// "notify" parameter
 } avr_irq_hook_t;
 
+enum {
+	IRQ_FLAG_NOT		= (1 << 0),	// change polarity of the IRQ
+	IRQ_FLAG_FILTERED	= (1 << 1),	// do not "notify" if "value" is the same as previous raise
+	IRQ_FLAG_ALLOC		= (1 << 2), // this irq structure was malloced via avr_alloc_irq
+};
+
+/*
+ * Public IRQ structure
+ */
 typedef struct avr_irq_t {
 	uint32_t			irq;
 	uint32_t			value;
+	uint8_t				flags;	// IRQ_*
 	avr_irq_hook_t * 	hook;
 } avr_irq_t;
 
 avr_irq_t * avr_alloc_irq(uint32_t base, uint32_t count);
+void avr_free_irq(avr_irq_t * irq, uint32_t count);
+
 void avr_init_irq(avr_irq_t * irq, uint32_t base, uint32_t count);
 void avr_raise_irq(avr_irq_t * irq, uint32_t value);
 // this connects a "source" IRQ to a "destination" IRQ

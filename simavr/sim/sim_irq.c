@@ -37,7 +37,35 @@ avr_irq_t * avr_alloc_irq(uint32_t base, uint32_t count)
 {
 	avr_irq_t * irq = (avr_irq_t*)malloc(sizeof(avr_irq_t) * count);
 	avr_init_irq(irq, base, count);
+	for (int i = 0; i < count; i++)
+		irq[i].flags |= IRQ_FLAG_ALLOC;	
 	return irq;
+}
+
+static avr_irq_hook_t * _avr_alloc_irq_hook(avr_irq_t * irq)
+{
+	avr_irq_hook_t *hook = malloc(sizeof(avr_irq_hook_t));
+	memset(hook, 0, sizeof(avr_irq_hook_t));
+	hook->next = irq->hook;
+	irq->hook = hook;
+	return hook;
+}
+
+void avr_free_irq(avr_irq_t * irq, uint32_t count)
+{
+	for (int i = 0; i < count; i++) {
+		// purge hooks
+		avr_irq_hook_t *hook = irq->hook;
+		while (hook) {
+			avr_irq_hook_t * next = hook->next;
+			free(hook);
+			hook = next;
+		}
+		irq->hook = NULL;
+	}
+	// if that irq list was allocated by us, free it
+	if (irq->flags & IRQ_FLAG_ALLOC)
+		free(irq);
 }
 
 void avr_irq_register_notify(avr_irq_t * irq, avr_irq_notify_t notify, void * param)
@@ -51,44 +79,50 @@ void avr_irq_register_notify(avr_irq_t * irq, avr_irq_notify_t notify, void * pa
 			return;	// already there
 		hook = hook->next;
 	}
-	hook = malloc(sizeof(avr_irq_hook_t));
-	memset(hook, 0, sizeof(avr_irq_hook_t));
-	hook->next = irq->hook;
+	hook = _avr_alloc_irq_hook(irq);
 	hook->notify = notify;
 	hook->param = param;
-	irq->hook = hook;
 }
 
 void avr_raise_irq(avr_irq_t * irq, uint32_t value)
 {
-	if (!irq || irq->value == value)
+	if (!irq)
 		return ;
+	uint32_t output = (irq->flags & IRQ_FLAG_NOT) ? !value : value;
+	if (irq->value == output && (irq->flags & IRQ_FLAG_FILTERED))
+		return;
 	avr_irq_hook_t *hook = irq->hook;
 	while (hook) {
-		if (hook->notify) {	
+		avr_irq_hook_t * next = hook->next;
 			// prevents reentrance / endless calling loops
-			if (hook->busy == 0) {
-				hook->busy++;
-				hook->notify(irq, value, hook->param);
-				hook->busy--;
-			}
-		}
-		hook = hook->next;
+		if (hook->busy == 0) {
+			hook->busy++;
+			if (hook->notify)
+				hook->notify(irq, output,  hook->param);
+			if (hook->chain)
+				avr_raise_irq(hook->chain, output);
+			hook->busy--;
+		}			
+		hook = next;
 	}
-	irq->value = value;
-}
-
-static void _avr_irq_connect(avr_irq_t * irq, uint32_t value, void * param)
-{
-	avr_irq_t * dst = (avr_irq_t*)param;
-	avr_raise_irq(dst, value);
+	// the value is set after the callbacks are called, so the callbacks
+	// can themselves compare for old/new values between their parameter
+	// they are passed (new value) and the previous irq->value
+	irq->value = output;
 }
 
 void avr_connect_irq(avr_irq_t * src, avr_irq_t * dst)
 {
-	if (!src || !dst) {
+	if (!src || !dst || src == dst) {
 		printf("avr_connect_irq invalid irq %p/%p", src, dst);
 		return;
 	}
-	avr_irq_register_notify(src, _avr_irq_connect, dst);
+	avr_irq_hook_t *hook = src->hook;
+	while (hook) {
+		if (hook->chain == dst)
+			return;	// already there
+		hook = hook->next;
+	}
+	hook = _avr_alloc_irq_hook(src);
+	hook->chain = dst;
 }
