@@ -141,6 +141,8 @@ typedef struct avr_t {
 
 	// DEBUG ONLY
 	int		trace;
+
+#if CONFIG_SIMAVR_TRACE
 	struct avr_symbol_t ** codeline;
 
 	/* DEBUG ONLY
@@ -170,6 +172,7 @@ typedef struct avr_t {
 	// keeps track of which registers gets touched by instructions
 	// reset before each new instructions. Allows meaningful traces
 	uint32_t	touched[256 / 32];	// debug
+#endif
 
 	// gdb hooking structure. Only present when gdb server is active
 	struct avr_gdb_t * gdb;

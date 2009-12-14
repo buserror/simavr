@@ -56,6 +56,14 @@ T
 F
 "./simavr/sim/avr_uart.h"
 T
+2 "sim_vcd_file.c"
+F
+"./simavr/sim/sim_vcd_file.c"
+T
+2 "sim_vcd_file.h"
+F
+"./simavr/sim/sim_vcd_file.h"
+T
 2 "sim_twi.c"
 F
 "./simavr/sim/sim_twi.c"

@@ -34,6 +34,7 @@ const char * _sreg_bit_name = "cznvshti";
  * This is used only for debugging purposes to be able to
  * print the effects of each instructions on registers
  */
+#if CONFIG_SIMAVR_TRACE
 #define REG_TOUCH(a, r) (a)->touched[(r) >> 5] |= (1 << ((r) & 0x1f))
 #define REG_ISTOUCHED(a, r) ((a)->touched[(r) >> 5] & (1 << ((r) & 0x1f)))
 
@@ -76,6 +77,11 @@ int donttrace = 0;
 		printf("%c", avr->sreg[_sbi] ? toupper(_sreg_bit_name[_sbi]) : '.');\
 	printf("\n");\
 }
+#else
+#define REG_TOUCH(a, r)
+#define STATE(_f, args...)
+#define SREG()
+#endif
 
 /*
  * Set a register (r < 256)
@@ -202,10 +208,16 @@ const char * avr_regname(uint8_t reg)
  */
 static void _avr_invalid_opcode(avr_t * avr)
 {
+#if CONFIG_SIMAVR_TRACE
 	printf("\e[31m*** %04x: %-25s Invalid Opcode SP=%04x O=%04x \e[0m\n",
 			avr->pc, avr->codeline[avr->pc>>1]->symbol, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
+#else
+	printf("\e[31m*** %04x: Invalid Opcode SP=%04x O=%04x \e[0m\n",
+			avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
+#endif
 }
 
+#if CONFIG_SIMAVR_TRACE
 /*
  * Dump changed registers when tracing
  */
@@ -235,6 +247,7 @@ void avr_dump_state(avr_t * avr)
 		}
 	printf("\n");
 }
+#endif
 
 #define get_r_d_10(o) \
 		const uint8_t r = ((o >> 5) & 0x10) | (o & 0xf); \
@@ -247,6 +260,7 @@ void avr_dump_state(avr_t * avr)
 /*
  * Add a "jump" address to the jump trace buffer
  */
+#if CONFIG_SIMAVR_TRACE
 #define TRACE_JUMP()\
 	avr->old[avr->old_pci].pc = avr->pc;\
 	avr->old[avr->old_pci].sp = _avr_sp_get(avr);\
@@ -263,6 +277,13 @@ void avr_dump_state(avr_t * avr)
 #else
 #define STACK_FRAME_PUSH()
 #define STACK_FRAME_POP()
+#endif
+#else /* CONFIG_SIMAVR_TRACE */
+
+#define TRACE_JUMP()
+#define STACK_FRAME_PUSH()
+#define STACK_FRAME_POP()
+
 #endif
 
 /****************************************************************************\
@@ -368,7 +389,9 @@ uint16_t avr_run_one(avr_t * avr)
 	uint32_t	new_pc = avr->pc + 2;	// future "default" pc
 	int 		cycle = 1;
 
+#if CONFIG_SIMAVR_TRACE
 	avr->touched[0] = avr->touched[1] = avr->touched[2] = 0;
+#endif
 
 	switch (opcode & 0xf000) {
 		case 0x0000: {

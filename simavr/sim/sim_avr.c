@@ -226,7 +226,9 @@ int avr_run(avr_t * avr)
 
 	if (avr->state == cpu_Running) {
 		new_pc = avr_run_one(avr);
+#if CONFIG_SIMAVR_TRACE
 		avr_dump_state(avr);
+#endif
 	}
 
 	// if we just re-enabled the interrupts...

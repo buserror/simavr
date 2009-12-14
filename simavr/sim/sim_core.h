@@ -34,6 +34,8 @@ uint16_t _avr_sp_get(avr_t * avr);
 void _avr_sp_set(avr_t * avr, uint16_t sp);
 void _avr_push16(avr_t * avr, uint16_t v);
 
+#if CONFIG_SIMAVR_TRACE
+
 /*
  * Get a "pretty" register name
  */
@@ -77,5 +79,14 @@ void avr_dump_state(avr_t * avr);
 		DUMP_STACK();\
 		avr_sadly_crashed(avr, 0);\
 	}
+#else /* CONFIG_SIMAVR_TRACE */
+
+#define CRASH() { \
+		avr_sadly_crashed(avr, 0);\
+	}
+#define DUMP_STACK()
+#define DUMP_REG();
+
+#endif 
 
 #endif /* SIM_CORE_H_ */

@@ -38,7 +38,9 @@
 void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 {
 	avr->frequency = firmware->mmcu.f_cpu;
+#if CONFIG_SIMAVR_TRACE
 	avr->codeline = firmware->codeline;
+#endif
 	avr_loadcode(avr, firmware->flash, firmware->flashsize, 0);
 	avr->codeend = firmware->flashsize - firmware->datasize;
 	if (firmware->eeprom && firmware->eesize) {
