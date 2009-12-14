@@ -164,12 +164,33 @@ int main(int argc, char *argv[])
 		avr_gdb_init(avr);
 	}
 
+	/*
+	 *	VCD file initialization
+	 *	
+	 *	This will allow you to create a "wave" file and display it in gtkwave
+	 *	Pressing "r" and "s" during the demo will start and stop recording
+	 *	the pin changes
+	 */
+	avr_vcd_init(avr, "gtkwave_output.vcd", &vcd_file, 1000 /* usec */);
+	avr_vcd_add_signal(&vcd_file, 
+		avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), IOPORT_IRQ_PIN_ALL), 8 /* bits */ ,
+		"portb" );
+	avr_vcd_add_signal(&vcd_file, 
+		button.irq + IRQ_BUTTON_OUT, 1 /* bits */ ,
+		"button" );
+
+	// 'raise' it, it's a "pullup"
+	avr_raise_irq(button.irq + IRQ_BUTTON_OUT, 1);
+
 	printf( "Demo launching: 'LED' bar is PORTB, updated every 1/64s by the AVR\n"
 			"   firmware using a timer. If you press 'space' this presses a virtual\n"
 			"   'button' that is hooked to the virtual PORTC pin 0 and will\n"
 			"   trigger a 'pin change interrupt' in the AVR core, and will 'invert'\n"
 			"   the display.\n"
-			"   Press 'q' to quit\n");
+			"   Press 'q' to quit\n\n"
+			"   Press 'r' to start recording a 'wave' file\n"
+			"   Press 's' to stop recording\n"
+			);
 
 	/*
 	 * OpenGL init, can be ignored
