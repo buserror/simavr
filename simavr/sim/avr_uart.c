@@ -28,6 +28,17 @@
 
 DEFINE_FIFO(uint8_t, uart_fifo, 128);
 
+static avr_cycle_count_t avr_uart_txc_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
+{
+	avr_uart_t * p = (avr_uart_t *)param;
+	if (avr_regbit_get(avr, p->txen)) {
+		// if the interrupts are not used, still raised the UDRE and TXC flaga
+		avr_raise_interrupt(avr, &p->udrc);
+		avr_raise_interrupt(avr, &p->txc);
+	}
+	return 0;
+}
+
 static avr_cycle_count_t avr_uart_rxc_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
@@ -65,9 +76,8 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 	if (addr == p->r_udr) {
 		avr_core_watch_write(avr, addr, v);
 
-		// if the interrupts are not used, still raised the UDRE and TXC flaga
-		avr_raise_interrupt(avr, &p->udrc);
-		avr_raise_interrupt(avr, &p->txc);
+		avr_regbit_clear(avr, p->udrc.raised);
+		avr_cycle_timer_register_usec(avr, 100, avr_uart_txc_raise, p); // should be uart speed dependent
 
 		static char buf[128];
 		static int l = 0;
@@ -118,7 +128,12 @@ void avr_uart_reset(struct avr_io_t *io)
 	avr_regbit_set(avr, p->udrc.raised);
 	avr_irq_register_notify(p->io.irq + UART_IRQ_INPUT, avr_uart_irq_input, p);
 	avr_cycle_timer_cancel(avr, avr_uart_rxc_raise, p);
+	avr_cycle_timer_cancel(avr, avr_uart_txc_raise, p);
 	uart_fifo_reset(&p->input);
+
+	// DEBUG allow printf without fidding with enabling the uart
+	avr_regbit_set(avr, p->txen);
+
 }
 
 static	avr_io_t	_io = {
