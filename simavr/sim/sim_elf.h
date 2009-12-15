@@ -31,7 +31,18 @@
 #include "sim_avr.h"
 
 typedef struct elf_firmware_t {
-	struct avr_mcu_t mmcu;
+	char  mmcu[64];
+	uint32_t	frequency;
+
+	char		tracename[128];	// trace filename
+	uint32_t	traceperiod;
+	int			tracecount;
+	struct {
+		uint8_t mask;
+		uint16_t addr;
+		char	name[64];
+	} trace[32];
+	
 	uint8_t * flash;
 	uint32_t flashsize;
 	uint32_t datasize;

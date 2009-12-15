@@ -103,15 +103,15 @@ int main(int argc, char *argv[])
 	elf_read_firmware(argv[argc-1], &f);
 
 	if (strlen(name))
-		strcpy(f.mmcu.name, name);
+		strcpy(f.mmcu, name);
 	if (f_cpu)
-		f.mmcu.f_cpu = f_cpu;
+		f.frequency = f_cpu;
 
-	printf("firmware %s f=%d mmcu=%s\n", argv[argc-1], (int)f.mmcu.f_cpu, f.mmcu.name);
+	printf("firmware %s f=%d mmcu=%s\n", argv[argc-1], (int)f.frequency, f.mmcu);
 
-	avr_t * avr = avr_make_mcu_by_name(f.mmcu.name);
+	avr_t * avr = avr_make_mcu_by_name(f.mmcu);
 	if (!avr) {
-		fprintf(stderr, "%s: AVR '%s' now known\n", argv[0], f.mmcu.name);
+		fprintf(stderr, "%s: AVR '%s' now known\n", argv[0], f.mmcu);
 		exit(1);
 	}
 	avr_init(avr);
