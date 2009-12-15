@@ -34,6 +34,7 @@ int avr_vcd_init(struct avr_t * avr, const char * filename, avr_vcd_t * vcd, uin
 	memset(vcd, 0, sizeof(avr_vcd_t));
 	vcd->avr = avr;
 	strncpy(vcd->filename, filename, sizeof(vcd->filename));
+	vcd->period_usec = period;
 	vcd->period = avr_usec_to_cycles(vcd->avr, period);
 	
 	for (int i = 0; i < AVR_VCD_MAX_SIGNALS; i++) {
@@ -84,7 +85,7 @@ static avr_cycle_count_t _avr_vcd_timer(struct avr_t * avr, avr_cycle_count_t wh
 		if (s->touched) {
 			if (done == 0) {
 				fprintf(vcd->output, "#%ld\n", 
-					avr_cycles_to_usec(vcd->avr, when - vcd->start));
+					avr_cycles_to_usec(vcd->avr, when - vcd->start) / vcd->period_usec);
 			}
 			char out[32];
 			fprintf(vcd->output, "%s\n", _avr_vcd_get_signal_text(s, out));
@@ -121,7 +122,7 @@ int avr_vcd_start(avr_vcd_t * vcd)
 		perror(vcd->filename);
 		return -1;
 	}
-	fprintf(vcd->output, "$timescale 1us $end\n");
+	fprintf(vcd->output, "$timescale %dus $end\n", vcd->period_usec);
 	fprintf(vcd->output, "$scope module logic $end\n");
 
 	for (int i = 0; i < vcd->signal_count; i++) {

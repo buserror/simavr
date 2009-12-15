@@ -54,6 +54,7 @@ typedef struct avr_vcd_t {
 	int signal_count;
 	avr_vcd_signal_t	signal [AVR_VCD_MAX_SIGNALS];	
 	uint64_t period;
+	uint32_t period_usec;
 	uint64_t start;
 } avr_vcd_t;
 
