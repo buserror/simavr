@@ -30,6 +30,7 @@ void mx8_init(struct avr_t * avr)
 	printf("%s init\n", avr->mmcu);
 
 	avr_eeprom_init(avr, &mcu->eeprom);
+	avr_extint_init(avr, &mcu->extint);
 	avr_ioport_init(avr, &mcu->portb);
 	avr_ioport_init(avr, &mcu->portc);
 	avr_ioport_init(avr, &mcu->portd);

@@ -26,6 +26,7 @@
 
 #include "sim_core_declare.h"
 #include "avr_eeprom.h"
+#include "avr_extint.h"
 #include "avr_ioport.h"
 #include "avr_timer8.h"
 
@@ -38,6 +39,7 @@ void tx5_reset(struct avr_t * avr);
 struct mcu_t {
 	avr_t core;
 	avr_eeprom_t 	eeprom;
+	avr_extint_t	extint;
 	avr_ioport_t	portb;
 	avr_timer8_t	timer0, timer1;
 };
@@ -60,6 +62,18 @@ struct mcu_t SIM_CORENAME = {
 		.reset = tx5_reset,
 	},
 	AVR_EEPROM_DECLARE(EE_RDY_vect),
+	.extint = {
+		.eint[0] = {
+			.port_ioctl = AVR_IOCTL_IOPORT_GETIRQ('B'),
+			.port_pin = PB2,
+			.isc = { AVR_IO_REGBIT(MCUCR, ISC00), AVR_IO_REGBIT(MCUCR, ISC01) },
+			.vector = {
+				.enable = AVR_IO_REGBIT(GIMSK, INT0),
+				.raised = AVR_IO_REGBIT(GIFR, INTF0),
+				.vector = INT0_vect,
+			},
+		}
+	},
 	.portb = {
 		.name = 'B',  .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
 		.pcint = {

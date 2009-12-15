@@ -23,6 +23,7 @@
 #include "sim_avr.h"
 #include "sim_core_declare.h"
 #include "avr_eeprom.h"
+#include "avr_extint.h"
 #include "avr_ioport.h"
 #include "avr_uart.h"
 #include "avr_timer8.h"
@@ -40,6 +41,7 @@ static void reset(struct avr_t * avr);
 static struct mcu_t {
 	avr_t core;
 	avr_eeprom_t 	eeprom;
+	avr_extint_t	extint;
 	avr_ioport_t	porta, portb, portc, portd;
 	avr_uart_t		uart0,uart1;
 	avr_timer8_t	timer0,timer2;
@@ -54,6 +56,11 @@ static struct mcu_t {
 		.reset = reset,
 	},
 	AVR_EEPROM_DECLARE(EE_READY_vect),
+	.extint = {
+		AVR_EXTINT_DECLARE(0, 'D', PD2),
+		AVR_EXTINT_DECLARE(1, 'D', PD3),
+		AVR_EXTINT_DECLARE(2, 'B', PB3),
+	},
 	.porta = {
 		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
 		.pcint = {
@@ -268,6 +275,7 @@ static void init(struct avr_t * avr)
 	printf("%s init\n", avr->mmcu);
 	
 	avr_eeprom_init(avr, &mcu->eeprom);
+	avr_extint_init(avr, &mcu->extint);
 	avr_ioport_init(avr, &mcu->porta);
 	avr_ioport_init(avr, &mcu->portb);
 	avr_ioport_init(avr, &mcu->portc);

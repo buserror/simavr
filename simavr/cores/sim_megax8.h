@@ -25,6 +25,7 @@
 
 #include "sim_core_declare.h"
 #include "avr_eeprom.h"
+#include "avr_extint.h"
 #include "avr_ioport.h"
 #include "avr_uart.h"
 #include "avr_timer8.h"
@@ -40,6 +41,7 @@ void mx8_reset(struct avr_t * avr);
 struct mcu_t {
 	avr_t core;
 	avr_eeprom_t 	eeprom;
+	avr_extint_t	extint;
 	avr_ioport_t	portb,portc,portd;
 	avr_uart_t		uart;
 	avr_timer8_t	timer0,timer2;
@@ -65,6 +67,10 @@ struct mcu_t SIM_CORENAME = {
 		.reset = mx8_reset,
 	},
 	AVR_EEPROM_DECLARE(EE_READY_vect),
+	.extint = {
+		AVR_EXTINT_DECLARE(0, 'D', PD2),
+		AVR_EXTINT_DECLARE(1, 'D', PD3),
+	},
 	.portb = {
 		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
 		.pcint = {
