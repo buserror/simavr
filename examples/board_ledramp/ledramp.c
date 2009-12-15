@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <libgen.h>
 
 #include <GL/glut.h>
 #include <pthread.h>
@@ -29,12 +30,14 @@
 #include "avr_ioport.h"
 #include "sim_elf.h"
 #include "sim_gdb.h"
+#include "sim_vcd_file.h"
 
 #include "button.h"
 
 button_t button;
 int do_button_press = 0;
 avr_t * avr = NULL;
+avr_vcd_t vcd_file;
 uint8_t	pin_state = 0;	// current port B
 
 float pixsize = 64;
@@ -93,6 +96,14 @@ void keyCB(unsigned char key, int x, int y)	/* called on key press */
 		case ' ':
 			do_button_press++; // pass the message to the AVR thread
 			break;
+		case 'r':
+			printf("Starting VCD trace\n");
+			avr_vcd_start(&vcd_file);
+			break;
+		case 's':
+			printf("Stopping VCD trace\n");
+			avr_vcd_stop(&vcd_file);
+			break;
 	}
 }
 
@@ -128,8 +139,11 @@ int main(int argc, char *argv[])
 {
 	elf_firmware_t f;
 	const char * fname =  "atmega48_ledramp.axf";
-	
-	elf_read_firmware(fname, &f);
+	char path[256];
+
+	sprintf(path, "%s/%s", dirname(argv[0]), fname);
+	printf("Firmware pathname is %s\n", path);
+	elf_read_firmware(path, &f);
 
 	printf("firmware %s f=%d mmcu=%s\n", fname, (int)f.mmcu.f_cpu, f.mmcu.name);
 
@@ -147,8 +161,6 @@ int main(int argc, char *argv[])
 	avr_connect_irq(
 		button.irq + IRQ_BUTTON_OUT,
 		avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('C'), 0));
-	// 'raise' it, it's a "pullup"
-	avr_raise_irq(button.irq + IRQ_BUTTON_OUT, 1);
 
 	// connect all the pins on port B to our callback
 	for (int i = 0; i < 8; i++)
