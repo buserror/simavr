@@ -101,10 +101,15 @@ static inline void _avr_set_r(avr_t * avr, uint8_t r, uint8_t v)
 	}
 	if (r > 31) {
 		uint8_t io = AVR_DATA_TO_IO(r);
-		if (avr->iow[io].w)
-			avr->iow[io].w(avr, r, v, avr->iow[io].param);
+		if (avr->io[io].w.c)
+			avr->io[io].w.c(avr, r, v, avr->io[io].w.param);
 		else
 			avr->data[r] = v;
+		if (avr->io[io].irq) {
+			avr_raise_irq(avr->io[io].irq + AVR_IOMEM_IRQ_ALL, v);
+			for (int i = 0; i < 8; i++)
+				avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);				
+		}
 	} else
 		avr->data[r] = v;
 }
@@ -141,8 +146,15 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 {
 	if (addr > 31 && addr < 256) {
 		uint8_t io = AVR_DATA_TO_IO(addr);
-		if (avr->ior[io].r)
-			avr->data[addr] = avr->ior[io].r(avr, addr, avr->ior[io].param);
+		if (avr->io[io].r.c)
+			avr->data[addr] = avr->io[io].r.c(avr, addr, avr->io[io].r.param);
+		
+		if (avr->io[io].irq) {
+			uint8_t v = avr->data[addr];
+			avr_raise_irq(avr->io[io].irq + AVR_IOMEM_IRQ_ALL, v);
+			for (int i = 0; i < 8; i++)
+				avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);				
+		}
 	}
 	return avr_core_watch_read(avr, addr);
 }

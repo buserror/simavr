@@ -46,14 +46,16 @@ void avr_register_io(avr_t *avr, avr_io_t * io)
 
 void avr_register_io_read(avr_t *avr, avr_io_addr_t addr, avr_io_read_t readp, void * param)
 {
-	avr->ior[AVR_DATA_TO_IO(addr)].param = param;
-	avr->ior[AVR_DATA_TO_IO(addr)].r = readp;
+	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
+	avr->io[a].r.param = param;
+	avr->io[a].r.c = readp;
 }
 
 void avr_register_io_write(avr_t *avr, avr_io_addr_t addr, avr_io_write_t writep, void * param)
 {
-	avr->iow[AVR_DATA_TO_IO(addr)].param = param;
-	avr->iow[AVR_DATA_TO_IO(addr)].w = writep;
+	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
+	avr->io[a].w.param = param;
+	avr->io[a].w.c = writep;
 }
 
 struct avr_irq_t * avr_io_getirq(avr_t * avr, uint32_t ctl, int index)
@@ -67,3 +69,17 @@ struct avr_irq_t * avr_io_getirq(avr_t * avr, uint32_t ctl, int index)
 	return NULL;
 	
 }
+
+
+avr_irq_t * avr_iomem_getirq(avr_t * avr, avr_io_addr_t addr, int index)
+{
+	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
+	if (avr->io[a].irq == NULL) {
+		avr->io[a].irq = avr_alloc_irq(0, 9);
+		// mark the pin ones as filtered, so they only are raised when changing
+		for (int i = 0; i < 8; i++)
+			avr->io[a].irq[i].flags |= IRQ_FLAG_FILTERED;
+	}
+	return index < 9 ? avr->io[a].irq + index : NULL;
+}
+

@@ -107,13 +107,16 @@ typedef struct avr_t {
 	 * these should probably be allocated dynamically in init()..
 	 */
 	struct {
-		void * param;
-		avr_io_read_t r;
-	} ior[MAX_IOs];
-	struct {
-		void * param;
-		avr_io_write_t w;
-	} iow[MAX_IOs];
+		struct avr_irq_t * irq;	// optional, used only if asked for with avr_iomem_getirq()
+		struct {
+			void * param;
+			avr_io_read_t c;
+		} r;
+		struct {
+			void * param;
+			avr_io_write_t c;
+		} w;
+	} io[MAX_IOs];
 
 	// flash memory (initialized to 0xff, and code loaded into it)
 	uint8_t *	flash;
@@ -174,6 +177,12 @@ typedef struct avr_t {
 	uint32_t	touched[256 / 32];	// debug
 #endif
 
+	// this is the VCD file that gets allocated if the 
+	// firmware that is loaded explicitely asks for a trace
+	// to be generated, and allocates it's own symbols
+	// using AVR_MMCU_TAG_VCD_TRACE (see avr_mcu_section.h)
+	struct avr_vcd_t * vcd;
+	
 	// gdb hooking structure. Only present when gdb server is active
 	struct avr_gdb_t * gdb;
 	// if non-zero, the gdb server will be started when the core
