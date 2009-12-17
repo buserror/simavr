@@ -37,7 +37,8 @@ include ${simavr}/Makefile.common
 
 ${board} : ${OBJ}/button.o
 ${board} : ${OBJ}/${board}.o
-	gcc -MD ${CFLAGS} -o $@ $^ $(LDFLAGS) ${simavr}/simavr/libsimavr.a
+	@echo LD $@
+	@gcc -MD ${CFLAGS} -o $@ $^ $(LDFLAGS) ${simavr}/simavr/libsimavr.a
 
 clean:
-	rm -rf obj *.hex *.a *.axf ${board}
+	rm -rf obj *.hex *.a *.axf ${board} *.vcd

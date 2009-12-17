@@ -48,6 +48,14 @@ T
 F
 "./simavr/sim/avr_eeprom.h"
 T
+2 "avr_extint.c"
+F
+"./simavr/sim/avr_extint.c"
+T
+2 "avr_extint.h"
+F
+"./simavr/sim/avr_extint.h"
+T
 2 "avr_uart.c"
 F
 "./simavr/sim/avr_uart.c"
@@ -170,6 +178,10 @@ T
 F
 "./simavr/cores/sim_mega168.c"
 T
+2 "sim_mega328.c"
+F
+"./simavr/cores/sim_mega328.c"
+T
 2 "sim_mega48.c"
 F
 "./simavr/cores/sim_mega48.c"
@@ -186,9 +198,41 @@ T
 F
 "./simavr/cores/sim_tiny85.c"
 T
+2 "sim_tiny25.c"
+F
+"./simavr/cores/sim_tiny25.c"
+T
+2 "sim_tiny45.c"
+F
+"./simavr/cores/sim_tiny45.c"
+T
+2 "sim_tinyx5.c"
+F
+"./simavr/cores/sim_tinyx5.c"
+T
+2 "sim_tinyx5.h"
+F
+"./simavr/cores/sim_tinyx5.h"
+T
 2 "sim_mega644.c"
 F
 "./simavr/cores/sim_mega644.c"
+T
+2 "sim_mega164.c"
+F
+"./simavr/cores/sim_mega164.c"
+T
+2 "sim_mega324.c"
+F
+"./simavr/cores/sim_mega324.c"
+T
+2 "sim_megax4.h"
+F
+"./simavr/cores/sim_megax4.h"
+T
+2 "sim_megax4.c"
+F
+"./simavr/cores/sim_megax4.c"
 F
 T
 1 "examples"
@@ -208,6 +252,22 @@ T
 2 "button.h"
 F
 "./examples/parts/button.h"
+T
+2 "atmega168_timer_64led.c"
+F
+"./examples/board_timer_64led/atmega168_timer_64led.c"
+T
+2 "timer_64led.c"
+F
+"./examples/board_timer_64led/timer_64led.c"
+T
+2 "hc595.c"
+F
+"./examples/parts/hc595.c"
+T
+2 "hc595.h"
+F
+"./examples/parts/hc595.h"
 F
 F
 # tasks

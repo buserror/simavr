@@ -1,7 +1,7 @@
 
 all:
-	make -C board_ledramp
+	for bi in board_*; do make -C $$bi; done
 
 clean:
-	make -C board_ledramp clean
+	for bi in board_*; do make -C $$bi clean; done
 
