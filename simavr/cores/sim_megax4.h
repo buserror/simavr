@@ -1,5 +1,5 @@
 /*
-	sim_megax8.h
+	sim_megax4.h
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
@@ -19,10 +19,10 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __SIM_MEGAX4_H__
+#define __SIM_MEGAX4_H__
 
-#ifndef __SIM_MEGAX8_H__
-#define __SIM_MEGAX8_H__
-
+#include "sim_avr.h"
 #include "sim_core_declare.h"
 #include "avr_eeprom.h"
 #include "avr_extint.h"
@@ -32,18 +32,18 @@
 #include "avr_spi.h"
 #include "avr_twi.h"
 
-void mx8_init(struct avr_t * avr);
-void mx8_reset(struct avr_t * avr);
+void mx4_init(struct avr_t * avr);
+void mx4_reset(struct avr_t * avr);
 
 /*
- * This is a template for all of the x8 devices, hopefuly
+ * This is a template for all of the x4 devices, hopefuly
  */
 struct mcu_t {
 	avr_t core;
 	avr_eeprom_t 	eeprom;
 	avr_extint_t	extint;
-	avr_ioport_t	portb,portc,portd;
-	avr_uart_t		uart;
+	avr_ioport_t	porta, portb, portc, portd;
+	avr_uart_t		uart0,uart1;
 	avr_timer8_t	timer0,timer2;
 	avr_spi_t		spi;
 	avr_twi_t		twi;
@@ -51,9 +51,6 @@ struct mcu_t {
 
 #ifdef SIM_CORENAME
 
-#ifndef SIM_VECTOR_SIZE
-#error SIM_VECTOR_SIZE is not declared
-#endif
 #ifndef SIM_MMCU
 #error SIM_MMCU is not declared
 #endif
@@ -61,18 +58,19 @@ struct mcu_t {
 struct mcu_t SIM_CORENAME = {
 	.core = {
 		.mmcu = SIM_MMCU,
-		DEFAULT_CORE(SIM_VECTOR_SIZE),
+		DEFAULT_CORE(4),
 
-		.init = mx8_init,
-		.reset = mx8_reset,
+		.init = mx4_init,
+		.reset = mx4_reset,
 	},
 	AVR_EEPROM_DECLARE(EE_READY_vect),
 	.extint = {
-		AVR_EXTINT_DECLARE(0, 'D', 2),
-		AVR_EXTINT_DECLARE(1, 'D', 3),
+		AVR_EXTINT_DECLARE(0, 'D', PD2),
+		AVR_EXTINT_DECLARE(1, 'D', PD3),
+		AVR_EXTINT_DECLARE(2, 'B', PB3),
 	},
-	.portb = {
-		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
+	.porta = {
+		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
 		.pcint = {
 			.enable = AVR_IO_REGBIT(PCICR, PCIE0),
 			.raised = AVR_IO_REGBIT(PCIFR, PCIF0),
@@ -80,8 +78,8 @@ struct mcu_t SIM_CORENAME = {
 		},
 		.r_pcint = PCMSK0,
 	},
-	.portc = {
-		.name = 'C', .r_port = PORTC, .r_ddr = DDRC, .r_pin = PINC,
+	.portb = {
+		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
 		.pcint = {
 			.enable = AVR_IO_REGBIT(PCICR, PCIE1),
 			.raised = AVR_IO_REGBIT(PCIFR, PCIF1),
@@ -89,8 +87,8 @@ struct mcu_t SIM_CORENAME = {
 		},
 		.r_pcint = PCMSK1,
 	},
-	.portd = {
-		.name = 'D', .r_port = PORTD, .r_ddr = DDRD, .r_pin = PIND,
+	.portc = {
+		.name = 'C', .r_port = PORTC, .r_ddr = DDRC, .r_pin = PINC,
 		.pcint = {
 			.enable = AVR_IO_REGBIT(PCICR, PCIE2),
 			.raised = AVR_IO_REGBIT(PCIFR, PCIF2),
@@ -98,8 +96,17 @@ struct mcu_t SIM_CORENAME = {
 		},
 		.r_pcint = PCMSK2,
 	},
+	.portd = {
+		.name = 'D', .r_port = PORTD, .r_ddr = DDRD, .r_pin = PIND,
+		.pcint = {
+			.enable = AVR_IO_REGBIT(PCICR, PCIE3),
+			.raised = AVR_IO_REGBIT(PCIFR, PCIF3),
+			.vector = PCINT3_vect,
+		},
+		.r_pcint = PCMSK3,
+	},
 
-	.uart = {
+	.uart0 = {
 		.disabled = AVR_IO_REGBIT(PRR,PRUSART0),
 		.name = '0',
 		.r_udr = UDR0,
@@ -115,23 +122,51 @@ struct mcu_t SIM_CORENAME = {
 		.rxc = {
 			.enable = AVR_IO_REGBIT(UCSR0B, RXCIE0),
 			.raised = AVR_IO_REGBIT(UCSR0A, RXC0),
-			.vector = USART_RX_vect,
+			.vector = USART0_RX_vect,
 		},
 		.txc = {
 			.enable = AVR_IO_REGBIT(UCSR0B, TXCIE0),
 			.raised = AVR_IO_REGBIT(UCSR0A, TXC0),
-			.vector = USART_TX_vect,
+			.vector = USART0_TX_vect,
 		},
 		.udrc = {
 			.enable = AVR_IO_REGBIT(UCSR0B, UDRIE0),
 			.raised = AVR_IO_REGBIT(UCSR0A, UDRE0),
-			.vector = USART_UDRE_vect,
+			.vector = USART0_UDRE_vect,
+		},
+	},
+	.uart1 = {
+		.disabled = AVR_IO_REGBIT(PRR,PRUSART1),
+		.name = '1',
+		.r_udr = UDR1,
+
+		.txen = AVR_IO_REGBIT(UCSR1B, TXEN1),
+		.rxen = AVR_IO_REGBIT(UCSR1B, RXEN1),
+
+		.r_ucsra = UCSR1A,
+		.r_ucsrb = UCSR1B,
+		.r_ucsrc = UCSR1C,
+		.r_ubrrl = UBRR1L,
+		.r_ubrrh = UBRR1H,
+		.rxc = {
+			.enable = AVR_IO_REGBIT(UCSR1B, RXCIE1),
+			.raised = AVR_IO_REGBIT(UCSR1A, RXC1),
+			.vector = USART1_RX_vect,
+		},
+		.txc = {
+			.enable = AVR_IO_REGBIT(UCSR1B, TXCIE1),
+			.raised = AVR_IO_REGBIT(UCSR1A, TXC1),
+			.vector = USART1_TX_vect,
+		},
+		.udrc = {
+			.enable = AVR_IO_REGBIT(UCSR1B, UDRIE1),
+			.raised = AVR_IO_REGBIT(UCSR1A, UDRE1),
+			.vector = USART1_UDRE_vect,
 		},
 	},
 
 	.timer0 = {
 		.name = '0',
-		.disabled = AVR_IO_REGBIT(PRR,PRTIM0),
 		.wgm = { AVR_IO_REGBIT(TCCR0A, WGM00), AVR_IO_REGBIT(TCCR0A, WGM01), AVR_IO_REGBIT(TCCR0B, WGM02) },
 		.cs = { AVR_IO_REGBIT(TCCR0B, CS00), AVR_IO_REGBIT(TCCR0B, CS01), AVR_IO_REGBIT(TCCR0B, CS02) },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ },
@@ -158,7 +193,6 @@ struct mcu_t SIM_CORENAME = {
 	},
 	.timer2 = {
 		.name = '2',
-		.disabled = AVR_IO_REGBIT(PRR,PRTIM2),
 		.wgm = { AVR_IO_REGBIT(TCCR2A, WGM20), AVR_IO_REGBIT(TCCR2A, WGM21), AVR_IO_REGBIT(TCCR2B, WGM22) },
 		.cs = { AVR_IO_REGBIT(TCCR2B, CS20), AVR_IO_REGBIT(TCCR2B, CS21), AVR_IO_REGBIT(TCCR2B, CS22) },
 		.cs_div = { 0, 0, 3 /* 8 */, 5 /* 32 */, 6 /* 64 */, 7 /* 128 */, 8 /* 256 */, 10 /* 1024 */ },
@@ -186,7 +220,6 @@ struct mcu_t SIM_CORENAME = {
 			.vector = TIMER2_COMPB_vect,
 		},
 	},
-	
 	.spi = {
 		.disabled = AVR_IO_REGBIT(PRR,PRSPI),
 
@@ -204,7 +237,7 @@ struct mcu_t SIM_CORENAME = {
 			.vector = SPI_STC_vect,
 		},
 	},
-
+	
 	.twi = {
 		.disabled = AVR_IO_REGBIT(PRR,PRTWI),
 
@@ -230,8 +263,9 @@ struct mcu_t SIM_CORENAME = {
 			.vector = TWI_vect,
 		},
 	},
-	
+
 };
+
 #endif /* SIM_CORENAME */
 
-#endif /* __SIM_MEGAX8_H__ */
+#endif /* __SIM_MEGAX4_H__ */

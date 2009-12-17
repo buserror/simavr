@@ -1,5 +1,5 @@
 /*
-	sim_mega644.c
+	sim_mega164.c
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
@@ -21,12 +21,12 @@
 
 #include "sim_avr.h"
 
-#define SIM_MMCU		"atmega644"
-#define SIM_CORENAME	mcu_mega644
+#define SIM_MMCU		"atmega164"
+#define SIM_CORENAME	mcu_mega164
 
 #define _AVR_IO_H_
 #define __ASSEMBLER__
-#include "avr/iom644.h"
+#include "avr/iom164.h"
 // instanciate the new core
 #include "sim_megax4.h"
 
@@ -35,8 +35,8 @@ static avr_t * make()
 	return &SIM_CORENAME.core;
 }
 
-avr_kind_t mega644 = {
-	.names = { "atmega644", "atmega644p" },
+avr_kind_t mega164 = {
+	.names = { "atmega164", "atmega164p", "atmega164pa" },
 	.make = make
 };
 

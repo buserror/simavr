@@ -1,5 +1,5 @@
 /*
-	sim_mega644.c
+	sim_megax4.c
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
@@ -18,25 +18,32 @@
 	You should have received a copy of the GNU General Public License
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+#include <stdio.h>
 #include "sim_avr.h"
 
-#define SIM_MMCU		"atmega644"
-#define SIM_CORENAME	mcu_mega644
-
-#define _AVR_IO_H_
-#define __ASSEMBLER__
-#include "avr/iom644.h"
-// instanciate the new core
 #include "sim_megax4.h"
 
-static avr_t * make()
+void mx4_init(struct avr_t * avr)
 {
-	return &SIM_CORENAME.core;
+	struct mcu_t * mcu = (struct mcu_t*)avr;
+
+	printf("%s init\n", avr->mmcu);
+	
+	avr_eeprom_init(avr, &mcu->eeprom);
+	avr_extint_init(avr, &mcu->extint);
+	avr_ioport_init(avr, &mcu->porta);
+	avr_ioport_init(avr, &mcu->portb);
+	avr_ioport_init(avr, &mcu->portc);
+	avr_ioport_init(avr, &mcu->portd);
+	avr_uart_init(avr, &mcu->uart0);
+	avr_uart_init(avr, &mcu->uart1);
+	avr_timer8_init(avr, &mcu->timer0);
+	avr_timer8_init(avr, &mcu->timer2);
+	avr_spi_init(avr, &mcu->spi);
+	avr_twi_init(avr, &mcu->twi);
 }
 
-avr_kind_t mega644 = {
-	.names = { "atmega644", "atmega644p" },
-	.make = make
-};
-
+void mx4_reset(struct avr_t * avr)
+{
+//	struct mcu_t * mcu = (struct mcu_t*)avr;
+}
