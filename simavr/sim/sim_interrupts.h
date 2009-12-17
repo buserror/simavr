@@ -23,14 +23,15 @@
 #define __SIM_INTERUPTS_H__
 
 #include "sim_avr.h"
+#include "sim_irq.h"
 
 // interrupt vector for the IO modules
 typedef struct avr_int_vector_t {
-	uint8_t vector;		// vector number, zero (reset) is reserved
-
+	uint8_t vector;			// vector number, zero (reset) is reserved
 	avr_regbit_t enable;	// IO register index for the "interrupt enable" flag for this vector
 	avr_regbit_t raised;	// IO register index for the register where the "raised" flag is (optional)
 
+	avr_irq_t		irq;		// raised to 1 when queued, to zero when called
 	uint8_t			trace;		// only for debug of a vector
 } avr_int_vector_t;
 
@@ -51,5 +52,9 @@ int avr_is_interrupt_pending(avr_t * avr, avr_int_vector_t * vector);
 void avr_clear_interrupt(avr_t * avr, int v);
 // called by the core at each cycle to check whether an interrupt is pending
 void avr_service_interrupts(avr_t * avr);
+
+// return the IRQ that is raised when the vector is enabled and called/cleared
+// this allows tracing of pending interupts
+avr_irq_t * avr_get_interupt_irq(avr_t * avr, uint8_t v);
 
 #endif /* __SIM_INTERUPTS_H__ */

@@ -28,8 +28,10 @@
 
 void avr_register_vector(avr_t *avr, avr_int_vector_t * vector)
 {
-	if (vector->vector)
+	if (vector->vector) {
+		vector->irq.irq = vector->vector;
 		avr->vector[vector->vector] = vector;
+	}
 }
 
 int avr_has_pending_interrupts(avr_t * avr)
@@ -61,6 +63,7 @@ int avr_raise_interrupt(avr_t * avr, avr_int_vector_t * vector)
 		if (!avr->pending_wait)
 			avr->pending_wait = 2;		// latency on interrupts ??
 		avr->pending[vector->vector >> 5] |= (1 << (vector->vector & 0x1f));
+		avr_raise_irq(&vector->irq, 1);
 
 		if (avr->state != cpu_Running) {
 			if (vector->trace)
@@ -80,8 +83,15 @@ void avr_clear_interrupt(avr_t * avr, int v)
 		return;
 	if (vector->trace)
 		printf("%s cleared %d\n", __FUNCTION__, vector->vector);
+	avr_raise_irq(&vector->irq, 0);
 	if (vector->raised.reg)
 		avr_regbit_clear(avr, vector->raised);
+}
+
+avr_irq_t * avr_get_interupt_irq(avr_t * avr, uint8_t v)
+{
+	avr_int_vector_t * vector = avr->vector[v];
+	return vector ? &vector->irq : NULL;
 }
 
 /*
