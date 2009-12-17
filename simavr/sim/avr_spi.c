@@ -22,6 +22,20 @@
 #include <stdio.h>
 #include "avr_spi.h"
 
+static avr_cycle_count_t avr_spi_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
+{
+	avr_spi_t * p = (avr_spi_t *)param;
+	
+	if (avr_regbit_get(avr, p->spe)) {
+		// in master mode, any byte is sent as it comes..
+		if (avr_regbit_get(avr, p->mstr)) {
+			avr_raise_interrupt(avr, &p->spi);
+			avr_raise_irq(p->io.irq + SPI_IRQ_OUTPUT, avr->data[p->r_spdr]);
+		}
+	}
+	return 0;
+}
+
 static uint8_t avr_spi_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
 {
 	avr_spi_t * p = (avr_spi_t *)param;
@@ -36,15 +50,9 @@ static void avr_spi_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, voi
 	avr_spi_t * p = (avr_spi_t *)param;
 
 	if (addr == p->r_spdr) {
-//		printf("avr_spi_write = %02x\n", v);
+	//	printf("avr_spi_write = %02x\n", v);
 		avr_core_watch_write(avr, addr, v);
-
-		if (avr_regbit_get(avr, p->spe)) {
-			// in master mode, any byte is sent as it comes..
-			if (avr_regbit_get(avr, p->mstr)) {
-				avr_raise_irq(p->io.irq + SPI_IRQ_OUTPUT, v);
-			}
-		}
+		avr_cycle_timer_register_usec(avr, 100, avr_spi_raise, p); // should be speed dependent
 	}
 }
 
