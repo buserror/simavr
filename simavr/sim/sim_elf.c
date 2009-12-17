@@ -56,7 +56,7 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 	avr_vcd_init(avr, 
 		firmware->tracename[0] ? firmware->tracename: "gtkwave_trace.vcd",
 		avr->vcd,
-		firmware->traceperiod >= 5 ? firmware->traceperiod : 5);
+		firmware->traceperiod >= 1000 ? firmware->traceperiod : 1000);
 	
 	printf("Creating VCD trace file '%s'\n", avr->vcd->filename);
 	for (int ti = 0; ti < firmware->tracecount; ti++) {
