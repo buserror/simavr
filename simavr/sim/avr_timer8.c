@@ -68,21 +68,27 @@ static void avr_timer8_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, 
 	uint8_t cs_div = p->cs_div[cs];
 	uint16_t ocra = avr->data[p->r_ocra];
 	uint16_t ocrb = avr->data[p->r_ocrb];
-	long f = clock >> cs_div;
-	long fa = f / (ocra+1), fb = f / (ocrb+1);
 
-//	printf("%s-%c clock f=%ld cs=%02x (div %d) = %ldhz\n", __FUNCTION__, p->name, clock, cs, 1 << cs_div, f);
-	if (ocra) printf("%s-%c wgm %d OCRA=%3d = %ldhz\n", __FUNCTION__, p->name, mode, ocra, fa);
-	if (ocrb) printf("%s-%c wgm %d OCRB=%3d = %ldhz\n", __FUNCTION__, p->name, mode, ocrb, fb);
+	if (mode == 0) {
+		long f = clock >> cs_div;
+		long fa = f / (ocra+1), fb = f / (ocrb+1);
 
-	p->compa_cycles = avr_hz_to_cycles(avr, fa);
-	p->compb_cycles = avr_hz_to_cycles(avr, fb);
-	if (p->compa_cycles)
-		avr_cycle_timer_register(avr, p->compa_cycles, avr_timer8_compa, p);
-	if (p->compb_cycles)
-		avr_cycle_timer_register(avr, p->compb_cycles, avr_timer8_compb, p);
-//	printf("%s-%c A %ld/%ld = cycles = %d\n", __FUNCTION__, p->name, (long)avr->frequency, fa, (int)p->compa_cycles);
-//	printf("%s-%c B %ld/%ld = cycles = %d\n", __FUNCTION__, p->name, (long)avr->frequency, fb, (int)p->compb_cycles);
+	//	printf("%s-%c clock f=%ld cs=%02x (div %d) = %ldhz\n", __FUNCTION__, p->name, clock, cs, 1 << cs_div, f);
+		if (ocra) printf("%s-%c wgm %d OCRA=%3d = %ldhz\n", __FUNCTION__, p->name, mode, ocra, fa);
+		if (ocrb) printf("%s-%c wgm %d OCRB=%3d = %ldhz\n", __FUNCTION__, p->name, mode, ocrb, fb);
+
+		p->compa_cycles = avr_hz_to_cycles(avr, fa);
+		p->compb_cycles = avr_hz_to_cycles(avr, fb);
+		if (p->compa_cycles > 1)
+			avr_cycle_timer_register(avr, p->compa_cycles, avr_timer8_compa, p);
+		if (p->compb_cycles > 1)
+			avr_cycle_timer_register(avr, p->compb_cycles, avr_timer8_compb, p);
+		printf("%s-%c A %ld/%ld = cycles = %d\n", __FUNCTION__, p->name, (long)avr->frequency, fa, (int)p->compa_cycles);
+		printf("%s-%c B %ld/%ld = cycles = %d\n", __FUNCTION__, p->name, (long)avr->frequency, fb, (int)p->compb_cycles);
+	} else if (mode == 3) { // fast pwm
+		avr_raise_irq(p->io.irq + TIMER8_IRQ_OUT_PWM0, ocra);
+		avr_raise_irq(p->io.irq + TIMER8_IRQ_OUT_PWM1, ocrb);
+	}
 }
 
 static void avr_timer8_reset(avr_io_t * port)
@@ -104,8 +110,16 @@ void avr_timer8_init(avr_t * avr, avr_timer8_t * p)
 	p->io = _io;
 //	printf("%s timer%c created\n", __FUNCTION__, p->name);
 
+	// allocate this module's IRQ
+	p->io.irq_count = TIMER8_IRQ_COUNT;
+	p->io.irq = avr_alloc_irq(0, p->io.irq_count);
+	p->io.irq_ioctl_get = AVR_IOCTL_TIMER8_GETIRQ(p->name);
+	p->io.irq[TIMER8_IRQ_OUT_PWM0].flags |= IRQ_FLAG_FILTERED;
+	p->io.irq[TIMER8_IRQ_OUT_PWM1].flags |= IRQ_FLAG_FILTERED;
+
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->compa);
+	avr_register_vector(avr, &p->compb);
 
 	avr_register_io_write(avr, p->cs[0].reg, avr_timer8_write, p);
 	avr_register_io_write(avr, p->r_ocra, avr_timer8_write, p);

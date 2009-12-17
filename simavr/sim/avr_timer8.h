@@ -24,6 +24,16 @@
 
 #include "sim_avr.h"
 
+enum {
+	TIMER8_IRQ_OUT_PWM0 = 0,
+	TIMER8_IRQ_OUT_PWM1,
+	TIMER8_IRQ_COUNT
+};
+
+// Get the internal IRQ corresponding to the INT
+#define AVR_IOCTL_TIMER8_GETIRQ(_name) AVR_IOCTL_DEF('t','i','8',(_name))
+
+
 typedef struct avr_timer8_t {
 	avr_io_t	io;
 	char name;
