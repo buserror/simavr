@@ -34,16 +34,22 @@
  * This structure registers IRQ change hooks to various "source" IRQs
  * and dumps their values (if changed) at certains intervals into the VCD file
  */
- 
+
 #define AVR_VCD_MAX_SIGNALS 32
+#define AVR_VCD_LOG_SIZE	128
 
 typedef struct avr_vcd_signal_t {
 	avr_irq_t 	irq;		// receiving IRQ
 	char	alias;			// vcd one character alias
 	int		size;			// in bits
 	char	name[32];		// full human name	
-	int		touched;		// mark it ready to be flushed in VCD
 } avr_vcd_signal_t;
+
+typedef struct avr_vcd_log_t {
+	uint64_t 	when;
+	avr_vcd_signal_t * signal;
+	uint32_t value;
+} avr_vcd_log_t;
 
 typedef struct avr_vcd_t {
 	struct avr_t *	avr;	// AVR we are attaching timers to..
@@ -53,16 +59,20 @@ typedef struct avr_vcd_t {
 
 	int signal_count;
 	avr_vcd_signal_t	signal [AVR_VCD_MAX_SIGNALS];	
+
 	uint64_t period;
-	uint32_t period_usec;
 	uint64_t start;
+
+	uint32_t		logindex;
+	avr_vcd_log_t	log[AVR_VCD_LOG_SIZE];
 } avr_vcd_t;
 
-// initializes a new VCD trace file, opens it and returns zero if all is well
+// initializes a new VCD trace file, and returns zero if all is well
 int avr_vcd_init(struct avr_t * avr, 
 	const char * filename, 	// filename to write
 	avr_vcd_t * vcd,		// vcd struct to initialize
-	uint32_t	period );	// period is in cycles
+	uint32_t	period );	// file flushing period is in usec
+void avr_vcd_close(avr_vcd_t * vcd);
 
 // Add a trace signal to the vcd file. Must be called before avr_vcd_start()
 int avr_vcd_add_signal(avr_vcd_t * vcd, 
