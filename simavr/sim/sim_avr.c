@@ -26,6 +26,7 @@
 #include "sim_avr.h"
 #include "sim_core.h"
 #include "sim_gdb.h"
+#include "sim_vcd_file.h"
 
 
 int avr_init(avr_t * avr)
@@ -43,6 +44,13 @@ int avr_init(avr_t * avr)
 	avr->state = cpu_Running;
 	avr_reset(avr);	
 	return 0;
+}
+
+void avr_terminate(avr_t * avr)
+{
+	if (avr->vcd)
+		avr_vcd_close(avr->vcd);
+	avr->vcd = NULL;
 }
 
 void avr_reset(avr_t * avr)

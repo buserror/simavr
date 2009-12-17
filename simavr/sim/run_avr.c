@@ -135,5 +135,7 @@ int main(int argc, char *argv[])
 	}
 
 	for (;;)
-		avr_run(avr);	
+		avr_run(avr);
+	
+	avr_terminate(avr);
 }

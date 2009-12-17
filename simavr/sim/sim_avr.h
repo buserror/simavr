@@ -212,6 +212,8 @@ int avr_init(avr_t * avr);
 void avr_reset(avr_t * avr);
 // run one cycle of the AVR, sleep if necessary
 int avr_run(avr_t * avr);
+// finish any pending operations 
+void avr_terminate(avr_t * avr);
 
 // load code in the "flash"
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address);
