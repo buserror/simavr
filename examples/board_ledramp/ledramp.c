@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 	 *	Pressing "r" and "s" during the demo will start and stop recording
 	 *	the pin changes
 	 */
-	avr_vcd_init(avr, "gtkwave_output.vcd", &vcd_file, 1000 /* usec */);
+	avr_vcd_init(avr, "gtkwave_output.vcd", &vcd_file, 100000 /* usec */);
 	avr_vcd_add_signal(&vcd_file, 
 		avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), IOPORT_IRQ_PIN_ALL), 8 /* bits */ ,
 		"portb" );
