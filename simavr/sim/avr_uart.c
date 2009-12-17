@@ -144,7 +144,6 @@ static	avr_io_t	_io = {
 void avr_uart_init(avr_t * avr, avr_uart_t * p)
 {
 	p->io = _io;
-	avr_register_io(avr, &p->io);
 
 //	printf("%s UART%c UDR=%02x\n", __FUNCTION__, p->name, p->r_udr);
 
@@ -152,6 +151,11 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 	p->io.irq_count = UART_IRQ_COUNT;
 	p->io.irq = avr_alloc_irq(0, p->io.irq_count);
 	p->io.irq_ioctl_get = AVR_IOCTL_UART_GETIRQ(p->name);
+
+	avr_register_io(avr, &p->io);
+	avr_register_vector(avr, &p->rxc);
+	avr_register_vector(avr, &p->txc);
+	avr_register_vector(avr, &p->udrc);
 
 	avr_register_io_write(avr, p->r_udr, avr_uart_write, p);
 	avr_register_io_read(avr, p->r_udr, avr_uart_read, p);
