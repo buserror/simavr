@@ -124,23 +124,23 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 }
 
 // converts a number of usec to a number of machine cycles, at current speed
-uint64_t avr_usec_to_cycles(avr_t * avr, uint32_t usec)
+avr_cycle_count_t avr_usec_to_cycles(avr_t * avr, uint32_t usec)
 {
-	return avr->frequency * (uint64_t)usec / 1000000;
+	return avr->frequency * (avr_cycle_count_t)usec / 1000000;
 }
 
-uint32_t avr_cycles_to_usec(avr_t * avr, uint64_t cycles)
+uint32_t avr_cycles_to_usec(avr_t * avr, avr_cycle_count_t cycles)
 {
 	return 1000000 * cycles / avr->frequency;
 }
 
 // converts a number of hz (to megahertz etc) to a number of cycle
-uint64_t avr_hz_to_cycles(avr_t * avr, uint32_t hz)
+avr_cycle_count_t avr_hz_to_cycles(avr_t * avr, uint32_t hz)
 {
 	return avr->frequency / hz;
 }
 
-void avr_cycle_timer_register(avr_t * avr, uint64_t when, avr_cycle_timer_t timer, void * param)
+void avr_cycle_timer_register(avr_t * avr, avr_cycle_count_t when, avr_cycle_timer_t timer, void * param)
 {
 	avr_cycle_timer_cancel(avr, timer, param);
 
@@ -185,18 +185,18 @@ void avr_cycle_timer_cancel(avr_t * avr, avr_cycle_timer_t timer, void * param)
  * clear the ones that wants it, and calculate the next
  * potential cycle we could sleep for...
  */
-static uint64_t avr_cycle_timer_check(avr_t * avr)
+static avr_cycle_count_t avr_cycle_timer_check(avr_t * avr)
 {
 	if (!avr->cycle_timer_map)
-		return (uint32_t)-1;
+		return (avr_cycle_count_t)-1;
 
-	uint64_t min = (uint64_t)-1;
+	avr_cycle_count_t min = (avr_cycle_count_t)-1;
 
 	for (int i = 0; i < 32; i++) {
 		if (!(avr->cycle_timer_map & (1 << i)))
 			continue;
-
-		if (avr->cycle_timer[i].when <= avr->cycle) {
+		// do it several times, in case we're late
+		while (avr->cycle_timer[i].when && avr->cycle_timer[i].when <= avr->cycle) {
 			// call it
 			avr->cycle_timer[i].when =
 					avr->cycle_timer[i].timer(avr,
@@ -208,10 +208,10 @@ static uint64_t avr_cycle_timer_check(avr_t * avr)
 				avr->cycle_timer[i].param = NULL;
 				avr->cycle_timer[i].when = 0;
 				avr->cycle_timer_map &= ~(1 << i);
-				continue;
+				break;
 			}
 		}
-		if (avr->cycle_timer[i].when < min)
+		if (avr->cycle_timer[i].when && avr->cycle_timer[i].when < min)
 			min = avr->cycle_timer[i].when;
 	}
 	return min - avr->cycle;
@@ -257,18 +257,20 @@ int avr_run(avr_t * avr)
 	if (avr->state == cpu_Sleeping) {
 		if (!avr->sreg[S_I]) {
 			printf("simavr: sleeping with interrupts off, quitting gracefully\n");
+			avr_terminate(avr);
 			exit(0);
 		}
 		/*
 		 * try to sleep for as long as we can (?)
 		 */
 		uint32_t usec = avr_cycles_to_usec(avr, sleep);
+	//	printf("sleep usec %d cycles %d\n", usec, sleep);
 		if (avr->gdb) {
 			while (avr_gdb_processor(avr, usec))
 				;
 		} else
 			usleep(usec);
-		avr->cycle += sleep;
+		avr->cycle += 1 + sleep;
 	}
 	// Interrupt servicing might change the PC too
 	if (avr->state == cpu_Running || avr->state == cpu_Sleeping) {
