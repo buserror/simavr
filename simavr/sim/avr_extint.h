@@ -28,8 +28,8 @@
 
 
 enum {
-	EXTINT_IRQ_INT0 = 0,
-	EXTINT_IRQ_INT1, EXTINT_IRQ_INT2, EXTINT_IRQ_INT3,
+	EXTINT_IRQ_OUT_INT0 = 0,
+	EXTINT_IRQ_OUT_INT1, EXTINT_IRQ_OUT_INT2, EXTINT_IRQ_OUT_INT3,
 	EXTINT_COUNT
 };
 
@@ -70,6 +70,18 @@ void avr_extint_init(avr_t * avr, avr_extint_t * p);
 				.raised = AVR_IO_REGBIT(EIFR, INTF##_index), \
 				.vector = INT##_index##_vect, \
 			},\
+		}
+
+#define AVR_EXTINT_TINY_DECLARE(_index, _portname, _portpin, _IFR) \
+		.eint[_index] = { \
+			.port_ioctl = AVR_IOCTL_IOPORT_GETIRQ(_portname), \
+			.port_pin = _portpin, \
+			.isc = { AVR_IO_REGBIT(MCUCR, ISC##_index##0), AVR_IO_REGBIT(MCUCR, ISC##_index##1) }, \
+			.vector = { \
+				.enable = AVR_IO_REGBIT(GIMSK, INT##_index), \
+				.raised = AVR_IO_REGBIT(_IFR, INTF##_index), \
+				.vector = INT##_index##_vect, \
+			}, \
 		}
 
 #endif /* AVR_EXTINT_H_ */

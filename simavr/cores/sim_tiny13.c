@@ -25,7 +25,7 @@
 #include "sim_core_declare.h"
 #include "avr_eeprom.h"
 #include "avr_ioport.h"
-#include "avr_timer8.h"
+#include "avr_timer.h"
 
 #define _AVR_IO_H_
 #define __ASSEMBLER__
@@ -39,7 +39,7 @@ static struct mcu_t {
 	avr_t core;
 	avr_eeprom_t 	eeprom;
 	avr_ioport_t	portb;
-	avr_timer8_t	timer0;
+	avr_timer_t		timer0;
 } mcu = {
 	.core = {
 		.mmcu = "attiny13",
@@ -70,6 +70,12 @@ static struct mcu_t {
 	.timer0 = {
 		.name = '0',
 		.wgm = { AVR_IO_REGBIT(TCCR0A, WGM00), AVR_IO_REGBIT(TCCR0A, WGM01), AVR_IO_REGBIT(TCCR0B, WGM02) },
+		.wgm_op = {
+			[0] = AVR_TIMER_WGM_NORMAL8(),
+			[2] = AVR_TIMER_WGM_CTC(),
+			[3] = AVR_TIMER_WGM_FASTPWM(),
+			[7] = AVR_TIMER_WGM_FASTPWM(),
+		},
 		.cs = { AVR_IO_REGBIT(TCCR0B, CS00), AVR_IO_REGBIT(TCCR0B, CS01), AVR_IO_REGBIT(TCCR0B, CS02) },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ },
 
@@ -113,7 +119,7 @@ static void init(struct avr_t * avr)
 
 	avr_eeprom_init(avr, &mcu->eeprom);
 	avr_ioport_init(avr, &mcu->portb);
-	avr_timer8_init(avr, &mcu->timer0);
+	avr_timer_init(avr, &mcu->timer0);
 }
 
 static void reset(struct avr_t * avr)

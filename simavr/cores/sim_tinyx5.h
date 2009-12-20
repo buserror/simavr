@@ -28,7 +28,8 @@
 #include "avr_eeprom.h"
 #include "avr_extint.h"
 #include "avr_ioport.h"
-#include "avr_timer8.h"
+#include "avr_adc.h"
+#include "avr_timer.h"
 
 void tx5_init(struct avr_t * avr);
 void tx5_reset(struct avr_t * avr);
@@ -41,7 +42,8 @@ struct mcu_t {
 	avr_eeprom_t 	eeprom;
 	avr_extint_t	extint;
 	avr_ioport_t	portb;
-	avr_timer8_t	timer0, timer1;
+	avr_adc_t		adc;
+	avr_timer_t	timer0, timer1;
 };
 
 #ifdef SIM_CORENAME
@@ -63,16 +65,7 @@ struct mcu_t SIM_CORENAME = {
 	},
 	AVR_EEPROM_DECLARE(EE_RDY_vect),
 	.extint = {
-		.eint[0] = {
-			.port_ioctl = AVR_IOCTL_IOPORT_GETIRQ('B'),
-			.port_pin = PB2,
-			.isc = { AVR_IO_REGBIT(MCUCR, ISC00), AVR_IO_REGBIT(MCUCR, ISC01) },
-			.vector = {
-				.enable = AVR_IO_REGBIT(GIMSK, INT0),
-				.raised = AVR_IO_REGBIT(GIFR, INTF0),
-				.vector = INT0_vect,
-			},
-		}
+		AVR_EXTINT_TINY_DECLARE(0, 'B', PB2, GIFR),
 	},
 	.portb = {
 		.name = 'B',  .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
@@ -83,9 +76,41 @@ struct mcu_t SIM_CORENAME = {
 		},
 		.r_pcint = PCMSK,
 	},
+	.adc = {
+		.r_admux = ADMUX,
+		.mux = { AVR_IO_REGBIT(ADMUX, MUX0), AVR_IO_REGBIT(ADMUX, MUX1),
+					AVR_IO_REGBIT(ADMUX, MUX2), AVR_IO_REGBIT(ADMUX, MUX3),},
+		.ref = { AVR_IO_REGBIT(ADMUX, REFS0), AVR_IO_REGBIT(ADMUX, REFS1), AVR_IO_REGBIT(ADMUX, REFS2), },
+		.adlar = AVR_IO_REGBIT(ADMUX, ADLAR),
+		.r_adcsra = ADCSRA,
+		.aden = AVR_IO_REGBIT(ADCSRA, ADEN),
+		.adsc = AVR_IO_REGBIT(ADCSRA, ADSC),
+		.adate = AVR_IO_REGBIT(ADCSRA, ADATE),
+		.adps = { AVR_IO_REGBIT(ADCSRA, ADPS0), AVR_IO_REGBIT(ADCSRA, ADPS1), AVR_IO_REGBIT(ADCSRA, ADPS2),},
+
+		.r_adch = ADCH,
+		.r_adcl = ADCL,
+
+		.r_adcsrb = ADCSRB,
+		.adts = { AVR_IO_REGBIT(ADCSRB, ADTS0), AVR_IO_REGBIT(ADCSRB, ADTS1), AVR_IO_REGBIT(ADCSRB, ADTS2),},
+		.bin = AVR_IO_REGBIT(ADCSRB, BIN),
+		.ipr = AVR_IO_REGBIT(ADCSRA, IPR),
+
+		.adc = {
+			.enable = AVR_IO_REGBIT(ADCSRA, ADIE),
+			.raised = AVR_IO_REGBIT(ADCSRA, ADIF),
+			.vector = ADC_vect,
+		},
+	},
 	.timer0 = {
 		.name = '0',
 		.wgm = { AVR_IO_REGBIT(TCCR0A, WGM00), AVR_IO_REGBIT(TCCR0A, WGM01), AVR_IO_REGBIT(TCCR0B, WGM02) },
+		.wgm_op = {
+			[0] = AVR_TIMER_WGM_NORMAL8(),
+			[2] = AVR_TIMER_WGM_CTC(),
+			[3] = AVR_TIMER_WGM_FASTPWM(),
+			[7] = AVR_TIMER_WGM_FASTPWM(),
+		},
 		.cs = { AVR_IO_REGBIT(TCCR0B, CS00), AVR_IO_REGBIT(TCCR0B, CS01), AVR_IO_REGBIT(TCCR0B, CS02) },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ },
 
