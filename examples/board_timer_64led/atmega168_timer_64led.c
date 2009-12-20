@@ -94,6 +94,7 @@ void tick_init()
 	// needs to do that before changing the timer registers
 	// ASYNC timer using a 32k crystal
 	ASSR |= (1 << AS2);
+    TCCR2A = (1 << WGM21);
     TCCR2B = (3 << CS20);
     OCR2A = 127;
     TIMSK2  |= (1 << OCIE2A);

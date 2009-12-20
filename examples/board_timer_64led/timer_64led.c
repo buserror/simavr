@@ -29,7 +29,7 @@
 #include "sim_avr.h"
 #include "avr_ioport.h"
 #include "avr_spi.h"
-#include "avr_timer8.h"
+#include "avr_timer.h"
 #include "sim_elf.h"
 #include "sim_gdb.h"
 #include "sim_vcd_file.h"
@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
 	avr_connect_irq(i_reset, shifter.irq + IRQ_HC595_IN_RESET);
 	avr_connect_irq(i_latch, shifter.irq + IRQ_HC595_IN_LATCH);
 
-	avr_irq_t * i_pwm = avr_io_getirq(avr, AVR_IOCTL_TIMER8_GETIRQ('0'), TIMER8_IRQ_OUT_PWM0);
+	avr_irq_t * i_pwm = avr_io_getirq(avr, AVR_IOCTL_TIMER_GETIRQ('0'), TIMER_IRQ_OUT_PWM0);
 	avr_irq_register_notify(
 		i_pwm,
 		pwm_changed_hook, 
