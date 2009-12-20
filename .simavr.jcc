@@ -24,13 +24,13 @@ T
 F
 "./simavr/sim/avr_spi.h"
 T
-2 "avr_timer8.c"
+2 "avr_timer.c"
 F
-"./simavr/sim/avr_timer8.c"
+"./simavr/sim/avr_timer.c"
 T
-2 "avr_timer8.h"
+2 "avr_timer.h"
 F
-"./simavr/sim/avr_timer8.h"
+"./simavr/sim/avr_timer.h"
 T
 2 "avr_ioport.c"
 F

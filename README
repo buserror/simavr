@@ -30,6 +30,7 @@ PREQUISTES:
 	The code rudely assumes the avr-gcc is in /usr/lib/avr/include/...
 	On OSX, the Makefile tries to use the Arduino.app toolchain & headers
 + libelf-dev
++ glut (or freeglut) to build the example "boards" in examples/
 
 BUILD:
 + make
