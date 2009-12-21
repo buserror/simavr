@@ -71,6 +71,8 @@ typedef struct avr_timer_t {
 	uint64_t		compa_cycles;
 	uint64_t		compb_cycles;
 	uint64_t		tov_cycles;
+	uint64_t		tov_base;	// we we last were called
+	uint16_t		tov_top;	// current top value to calculate tnct
 } avr_timer_t;
 
 void avr_timer_init(avr_t * avr, avr_timer_t * port);
