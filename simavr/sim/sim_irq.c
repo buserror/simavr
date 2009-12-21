@@ -24,6 +24,15 @@
 #include <string.h>
 #include "sim_irq.h"
 
+// internal structure for a hook, never seen by the notify procs
+typedef struct avr_irq_hook_t {
+	struct avr_irq_hook_t * next;
+	int busy;	// prevent reentrance of callbacks
+	
+	struct avr_irq_t * chain;	// raise the IRQ on this too - optional if "notify" is on
+	avr_irq_notify_t notify;	// called when IRQ is raised - optional if "chain" is on
+	void * param;				// "notify" parameter
+} avr_irq_hook_t;
 
 void avr_init_irq(avr_irq_t * irq, uint32_t base, uint32_t count)
 {

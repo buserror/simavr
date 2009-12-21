@@ -43,15 +43,6 @@ struct avr_irq_t;
 
 typedef void (*avr_irq_notify_t)(struct avr_irq_t * irq, uint32_t value, void * param);
 
-// internal structure for a hook, never seen by the notify procs
-typedef struct avr_irq_hook_t {
-	struct avr_irq_hook_t * next;
-	int busy;	// prevent reentrance of callbacks
-	
-	struct avr_irq_t * chain;	// raise the IRQ on this too - optional if "notify" is on
-	avr_irq_notify_t notify;	// called when IRQ is raised - optional if "chain" is on
-	void * param;				// "notify" parameter
-} avr_irq_hook_t;
 
 enum {
 	IRQ_FLAG_NOT		= (1 << 0),	// change polarity of the IRQ
@@ -63,19 +54,23 @@ enum {
  * Public IRQ structure
  */
 typedef struct avr_irq_t {
-	uint32_t			irq;
-	uint32_t			value;
-	uint8_t				flags;	// IRQ_*
-	avr_irq_hook_t * 	hook;
+	uint32_t			irq;		// any value the user needs
+	uint32_t			value;		// current value
+	uint8_t				flags;		// IRQ_* flags
+	struct avr_irq_hook_t * hook;	// list of hooks to be notified
 } avr_irq_t;
 
+// allocates 'count' IRQs, initializes their "irq" starting from 'base' and increment
 avr_irq_t * avr_alloc_irq(uint32_t base, uint32_t count);
 void avr_free_irq(avr_irq_t * irq, uint32_t count);
 
+// init 'count' IRQs, initializes their "irq" starting from 'base' and increment
 void avr_init_irq(avr_irq_t * irq, uint32_t base, uint32_t count);
+// 'raise' an IRQ. Ie call their 'hooks', and raise any chained IRQs, and set the new 'value'
 void avr_raise_irq(avr_irq_t * irq, uint32_t value);
 // this connects a "source" IRQ to a "destination" IRQ
 void avr_connect_irq(avr_irq_t * src, avr_irq_t * dst);
+// register a notification 'hook' for 'irq' -- 'param' is anything that your want passed back as argument
 void avr_irq_register_notify(avr_irq_t * irq, avr_irq_notify_t notify, void * param);
 
 #endif /* __SIM_IRQ_H__ */
