@@ -38,8 +38,8 @@
 	.flashend = FLASHEND, \
 	.e2end = E2END, \
 	.vector_size = _vector_size, \
-	.signature = { SIGNATURE_0,SIGNATURE_1,SIGNATURE_2 }, \
 	.fuse = { LFUSE_DEFAULT, HFUSE_DEFAULT, EFUSE_DEFAULT }
-
+// Disable signature for now, for ubuntu, gentoo and other using old avr toolchain
+//	.signature = { SIGNATURE_0,SIGNATURE_1,SIGNATURE_2 }, 
 
 #endif /* __SIM_CORE_DECLARE_H__ */
