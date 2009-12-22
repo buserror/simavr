@@ -126,7 +126,7 @@ void avr_twi_init(avr_t * avr, avr_twi_t * p)
 	twi_slave_init(&p->slave, p);
 	twi_bus_init(&p->bus);
 
-	printf("%s TWI%c init\n", __FUNCTION__, p->name);
+	//printf("%s TWI%c init\n", __FUNCTION__, p->name);
 
 	// allocate this module's IRQ
 	p->io.irq_count = TWI_IRQ_COUNT;

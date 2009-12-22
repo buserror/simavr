@@ -93,7 +93,7 @@ void avr_spi_init(avr_t * avr, avr_spi_t * p)
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->spi);
 
-	printf("%s SPI%c init\n", __FUNCTION__, p->name);
+	//printf("%s SPI%c init\n", __FUNCTION__, p->name);
 
 	// allocate this module's IRQ
 	p->io.irq_count = SPI_IRQ_COUNT;
