@@ -47,6 +47,11 @@ static uint16_t _timer_get_tcnt(avr_timer_t * p)
 	return p->io.avr->data[p->r_tcnt] |
 				(p->r_tcnth ? (p->io.avr->data[p->r_tcnth] << 8) : 0);
 }
+static uint16_t _timer_get_icr(avr_timer_t * p)
+{
+	return p->io.avr->data[p->r_icr] |
+				(p->r_tcnth ? (p->io.avr->data[p->r_icrh] << 8) : 0);
+}
 
 static avr_cycle_count_t avr_timer_compa(struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
@@ -156,15 +161,15 @@ static void avr_timer_configure(avr_timer_t * p, uint32_t clock, uint32_t top)
 
 	printf("%s-%c clock %d top %d a %d b %d\n", __FUNCTION__, p->name, clock, top, ocra, ocrb);
 	p->tov_cycles = frequency / t; // avr_hz_to_cycles(frequency, t);
-	printf("%s-%c TOP %.2fHz = cycles = %d\n", __FUNCTION__, p->name, t, (int)p->tov_cycles);
+	printf("%s-%c TOP %.2fHz = %d cycles\n", __FUNCTION__, p->name, t, (int)p->tov_cycles);
 
 	if (ocra && ocra <= top) {
 		p->compa_cycles = frequency / fa; // avr_hz_to_cycles(p->io.avr, fa);
-		printf("%s-%c A %.2fHz = cycles = %d\n", __FUNCTION__, p->name, fa, (int)p->compa_cycles);
+		printf("%s-%c A %.2fHz = %d cycles\n", __FUNCTION__, p->name, fa, (int)p->compa_cycles);
 	}
 	if (ocrb && ocrb <= top) {
 		p->compb_cycles = frequency / fb; // avr_hz_to_cycles(p->io.avr, fb);
-		printf("%s-%c B %.2fHz = cycles = %d\n", __FUNCTION__, p->name, fb, (int)p->compb_cycles);
+		printf("%s-%c B %.2fHz = %d cycles\n", __FUNCTION__, p->name, fb, (int)p->compb_cycles);
 	}
 
 	if (p->tov_cycles > 1) {
@@ -179,6 +184,8 @@ static void avr_timer_reconfigure(avr_timer_t * p)
 {
 	avr_t * avr = p->io.avr;
 
+	avr_timer_wgm_t zero={0};
+	p->mode = zero;
 	// cancel everything
 	p->compa_cycles = 0;
 	p->compb_cycles = 0;
@@ -204,21 +211,47 @@ static void avr_timer_reconfigure(avr_timer_t * p)
 	uint8_t cs_div = p->cs_div[cs];
 	uint32_t f = clock >> cs_div;
 
+	p->mode = p->wgm_op[mode];
 	//printf("%s-%c clock %d, div %d(/%d) = %d ; mode %d\n", __FUNCTION__, p->name, clock, cs, 1 << cs_div, f, mode);
-	switch (p->wgm_op[mode].kind) {
+	switch (p->mode.kind) {
 		case avr_timer_wgm_normal:
-			avr_timer_configure(p, f, (1 << p->wgm_op[mode].size) - 1);
+			avr_timer_configure(p, f, (1 << p->mode.size) - 1);
 			break;
 		case avr_timer_wgm_ctc: {
 			avr_timer_configure(p, f, _timer_get_ocra(p));
 		}	break;
-		case avr_timer_wgm_fast_pwm: {
-			avr_raise_irq(p->io.irq + TIMER_IRQ_OUT_PWM0, _timer_get_ocra(p));
-			avr_raise_irq(p->io.irq + TIMER_IRQ_OUT_PWM1, _timer_get_ocra(p));
+		case avr_timer_wgm_pwm: {
+			uint16_t top = p->mode.top == avr_timer_wgm_reg_ocra ? _timer_get_ocra(p) : _timer_get_icr(p);
+			avr_timer_configure(p, f, top);
 		}	break;
+		case avr_timer_wgm_fast_pwm:
+		//	avr_timer_configure(p, f, (1 << p->mode.size) - 1);
+			break;
 		default:
-			printf("%s-%c unsupported timer mode wgm=%d (%d)\n", __FUNCTION__, p->name, mode, p->wgm_op[mode].kind);
+			printf("%s-%c unsupported timer mode wgm=%d (%d)\n", __FUNCTION__, p->name, mode, p->mode.kind);
 	}	
+}
+
+static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+{
+	avr_timer_t * p = (avr_timer_t *)param;
+	avr_core_watch_write(avr, addr, v);
+	switch (p->mode.kind) {
+		case avr_timer_wgm_pwm:
+			if (p->mode.top != avr_timer_wgm_reg_ocra) {
+				avr_raise_irq(p->io.irq + TIMER_IRQ_OUT_PWM0, _timer_get_ocra(p));
+				avr_raise_irq(p->io.irq + TIMER_IRQ_OUT_PWM1, _timer_get_ocrb(p));
+			}
+			break;
+		case avr_timer_wgm_fast_pwm:
+			avr_raise_irq(p->io.irq + TIMER_IRQ_OUT_PWM0, _timer_get_ocra(p));
+			avr_raise_irq(p->io.irq + TIMER_IRQ_OUT_PWM1, _timer_get_ocrb(p));
+			break;
+		default:
+			printf("%s-%c mode %d\n", __FUNCTION__, p->name, p->mode.kind);
+			avr_timer_reconfigure(p);
+			break;
+	}
 }
 
 static void avr_timer_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
@@ -246,7 +279,7 @@ static	avr_io_t	_io = {
 void avr_timer_init(avr_t * avr, avr_timer_t * p)
 {
 	p->io = _io;
-	printf("%s timer%c created OCRA %02x OCRAH %02x\n", __FUNCTION__, p->name, p->r_ocra,  p->r_ocrah);
+	//printf("%s timer%c created\n", __FUNCTION__, p->name);
 
 	// allocate this module's IRQ
 	p->io.irq_count = TIMER_IRQ_COUNT;
@@ -258,6 +291,8 @@ void avr_timer_init(avr_t * avr, avr_timer_t * p)
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->compa);
 	avr_register_vector(avr, &p->compb);
+	avr_register_vector(avr, &p->overflow);
+	avr_register_vector(avr, &p->icr);
 
 	avr_register_io_write(avr, p->cs[0].reg, avr_timer_write, p);
 
@@ -266,7 +301,7 @@ void avr_timer_init(avr_t * avr, avr_timer_t * p)
 	 * high bytes because the datasheet says that the low address is always
 	 * the trigger.
 	 */
-	avr_register_io_write(avr, p->r_ocra, avr_timer_write, p);
+	avr_register_io_write(avr, p->r_ocra, avr_timer_write_ocr, p);
 	avr_register_io_write(avr, p->r_ocrb, avr_timer_write, p);
 	avr_register_io_write(avr, p->r_tcnt, avr_timer_tcnt_write, p);
 

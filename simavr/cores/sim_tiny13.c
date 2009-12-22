@@ -75,8 +75,8 @@ static struct mcu_t {
 		.wgm_op = {
 			[0] = AVR_TIMER_WGM_NORMAL8(),
 			[2] = AVR_TIMER_WGM_CTC(),
-			[3] = AVR_TIMER_WGM_FASTPWM(),
-			[7] = AVR_TIMER_WGM_FASTPWM(),
+			[3] = AVR_TIMER_WGM_FASTPWM8(),
+			[7] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR0B, CS00), AVR_IO_REGBIT(TCCR0B, CS01), AVR_IO_REGBIT(TCCR0B, CS02) },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ },

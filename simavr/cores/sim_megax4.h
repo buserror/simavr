@@ -197,8 +197,8 @@ struct mcu_t SIM_CORENAME = {
 		.wgm_op = {
 			[0] = AVR_TIMER_WGM_NORMAL8(),
 			[2] = AVR_TIMER_WGM_CTC(),
-			[3] = AVR_TIMER_WGM_FASTPWM(),
-			[7] = AVR_TIMER_WGM_FASTPWM(),
+			[3] = AVR_TIMER_WGM_FASTPWM8(),
+			[7] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR0B, CS00), AVR_IO_REGBIT(TCCR0B, CS01), AVR_IO_REGBIT(TCCR0B, CS02) },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ },
@@ -231,9 +231,12 @@ struct mcu_t SIM_CORENAME = {
 		.wgm_op = {
 			[0] = AVR_TIMER_WGM_NORMAL16(),
 			[4] = AVR_TIMER_WGM_CTC(),
-			[5] = AVR_TIMER_WGM_FASTPWM(),
-			[6] = AVR_TIMER_WGM_FASTPWM(),
-			[7] = AVR_TIMER_WGM_FASTPWM(),
+			[5] = AVR_TIMER_WGM_FASTPWM8(),
+			[6] = AVR_TIMER_WGM_FASTPWM9(),
+			[7] = AVR_TIMER_WGM_FASTPWM10(),
+			[12] = AVR_TIMER_WGM_ICCTC(),
+			[14] = AVR_TIMER_WGM_ICPWM(),
+			[15] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR1B, CS10), AVR_IO_REGBIT(TCCR1B, CS11), AVR_IO_REGBIT(TCCR1B, CS12) },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */  /* External clock T1 is not handled */},
@@ -241,7 +244,8 @@ struct mcu_t SIM_CORENAME = {
 		.r_ocra = OCR1AL,
 		.r_ocrb = OCR1BL,
 		.r_tcnt = TCNT1L,
-
+		.r_icr = ICR1L,
+		.r_icrh = ICR1H,
 		.r_ocrah = OCR1AH,	// 16 bits timers have two bytes of it
 		.r_ocrbh = OCR1BH,
 		.r_tcnth = TCNT1H,
@@ -273,8 +277,8 @@ struct mcu_t SIM_CORENAME = {
 		.wgm_op = {
 			[0] = AVR_TIMER_WGM_NORMAL8(),
 			[2] = AVR_TIMER_WGM_CTC(),
-			[3] = AVR_TIMER_WGM_FASTPWM(),
-			[7] = AVR_TIMER_WGM_FASTPWM(),
+			[3] = AVR_TIMER_WGM_FASTPWM8(),
+			[7] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR2B, CS20), AVR_IO_REGBIT(TCCR2B, CS21), AVR_IO_REGBIT(TCCR2B, CS22) },
 		.cs_div = { 0, 0, 3 /* 8 */, 5 /* 32 */, 6 /* 64 */, 7 /* 128 */, 8 /* 256 */, 10 /* 1024 */ },

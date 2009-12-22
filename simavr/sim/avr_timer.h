@@ -37,7 +37,13 @@ enum {
 	avr_timer_wgm_none = 0,	// invalid mode
 	avr_timer_wgm_normal,
 	avr_timer_wgm_ctc,
+	avr_timer_wgm_pwm,
 	avr_timer_wgm_fast_pwm,
+};
+enum {
+	avr_timer_wgm_reg_constant = 0,
+	avr_timer_wgm_reg_ocra,
+	avr_timer_wgm_reg_icr,
 };
 typedef struct avr_timer_wgm_t {
 	uint32_t top: 8, bottom: 8, size : 8, kind : 8;
@@ -45,8 +51,13 @@ typedef struct avr_timer_wgm_t {
 
 #define AVR_TIMER_WGM_NORMAL8() { .kind = avr_timer_wgm_normal, .size=8 }
 #define AVR_TIMER_WGM_NORMAL16() { .kind = avr_timer_wgm_normal, .size=16 }
-#define AVR_TIMER_WGM_CTC() { .kind = avr_timer_wgm_ctc }
-#define AVR_TIMER_WGM_FASTPWM() { .kind = avr_timer_wgm_fast_pwm }
+#define AVR_TIMER_WGM_CTC() { .kind = avr_timer_wgm_ctc, .top = avr_timer_wgm_reg_ocra }
+#define AVR_TIMER_WGM_ICCTC() { .kind = avr_timer_wgm_ctc, .top = avr_timer_wgm_reg_icr }
+#define AVR_TIMER_WGM_FASTPWM8() { .kind = avr_timer_wgm_fast_pwm, .size=8 }
+#define AVR_TIMER_WGM_FASTPWM9() { .kind = avr_timer_wgm_fast_pwm, .size=9 }
+#define AVR_TIMER_WGM_FASTPWM10() { .kind = avr_timer_wgm_fast_pwm, .size=10 }
+#define AVR_TIMER_WGM_OCPWM() { .kind = avr_timer_wgm_pwm, .top = avr_timer_wgm_reg_ocra }
+#define AVR_TIMER_WGM_ICPWM() { .kind = avr_timer_wgm_pwm, .top = avr_timer_wgm_reg_icr }
 
 typedef struct avr_timer_t {
 	avr_io_t	io;
@@ -68,6 +79,7 @@ typedef struct avr_timer_t {
 	avr_int_vector_t overflow;	// overflow
 	avr_int_vector_t icr;	// input capture
 
+	avr_timer_wgm_t	mode;
 	uint64_t		compa_cycles;
 	uint64_t		compb_cycles;
 	uint64_t		tov_cycles;
