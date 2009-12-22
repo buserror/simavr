@@ -33,13 +33,20 @@
  * This declares a typical AVR core, using constants what appears
  * to be in every io*.h file...
  */
+#ifdef SIGNATURE_0
 #define DEFAULT_CORE(_vector_size) \
 	.ramend = RAMEND, \
 	.flashend = FLASHEND, \
 	.e2end = E2END, \
 	.vector_size = _vector_size, \
-	.fuse = { LFUSE_DEFAULT, HFUSE_DEFAULT, EFUSE_DEFAULT }
+	.fuse = { LFUSE_DEFAULT, HFUSE_DEFAULT, EFUSE_DEFAULT }, \
+	.signature = { SIGNATURE_0,SIGNATURE_1,SIGNATURE_2 }
+#else
 // Disable signature for now, for ubuntu, gentoo and other using old avr toolchain
-//	.signature = { SIGNATURE_0,SIGNATURE_1,SIGNATURE_2 }, 
-
+#define DEFAULT_CORE(_vector_size) \
+	.ramend = RAMEND, \
+	.flashend = FLASHEND, \
+	.e2end = E2END, \
+	.vector_size = _vector_size
+#endif
 #endif /* __SIM_CORE_DECLARE_H__ */
