@@ -31,11 +31,20 @@ DECLARE_FIFO(uint8_t, uart_fifo, 128);
 enum {
 	UART_IRQ_INPUT = 0,
 	UART_IRQ_OUTPUT,
+	UART_IRQ_OUT_XON,		// signaled when input fifo is not full
+	UART_IRQ_OUT_XOFF,		// signaled when input fifo IS full
 	UART_IRQ_COUNT
 };
 
 // add port number to get the real IRQ
 #define AVR_IOCTL_UART_GETIRQ(_name) AVR_IOCTL_DEF('u','a','r',(_name))
+
+enum {
+	// the uart code monitors for firmware that pool on
+	// reception registers, and can do an atomic usleep()
+	// if it's detected, this helps regulating CPU
+	AVR_UART_FLAG_POOL_SLEEP = (1 << 0),
+};
 
 typedef struct avr_uart_t {
 	avr_io_t	io;
@@ -49,6 +58,7 @@ typedef struct avr_uart_t {
 
 	avr_regbit_t	rxen;		// receive enabled
 	avr_regbit_t	txen;		// transmit enable
+	avr_regbit_t	u2x;		// double UART speed
 
 	avr_io_addr_t r_ubrrl,r_ubrrh;
 
@@ -57,7 +67,13 @@ typedef struct avr_uart_t {
 	avr_int_vector_t udrc;	
 
 	uart_fifo_t	input;
+
+	uint32_t		flags;
 } avr_uart_t;
+
+/* takes a uint32_t* as parameter */
+#define AVR_IOCTL_UART_SET_FLAGS(_name)	AVR_IOCTL_DEF('u','a','s',(_name))
+#define AVR_IOCTL_UART_GET_FLAGS(_name)	AVR_IOCTL_DEF('u','a','g',(_name))
 
 void avr_uart_init(avr_t * avr, avr_uart_t * port);
 

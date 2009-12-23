@@ -24,7 +24,9 @@
  */
 
 #include <stdio.h>
+#include <unistd.h>
 #include "avr_uart.h"
+#include "sim_hex.h"
 
 DEFINE_FIFO(uint8_t, uart_fifo, 128);
 
@@ -47,6 +49,33 @@ static avr_cycle_count_t avr_uart_rxc_raise(struct avr_t * avr, avr_cycle_count_
 	return 0;
 }
 
+static uint8_t avr_uart_rxc_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
+{
+	avr_uart_t * p = (avr_uart_t *)param;
+	uint8_t v = avr_core_watch_read(avr, addr);
+
+	//
+	// if RX is enabled, and there is nothing to read, and
+	// the AVR core is reading this register, it's probably
+	// to pool the RXC TXC flag and spinloop
+	// so here we introduce a usleep to make it a bit lighter
+	// on CPU and let data arrive
+	//
+	uint8_t ri = !avr_regbit_get(avr, p->rxen) || !avr_regbit_get(avr, p->rxc.raised);
+	uint8_t ti = !avr_regbit_get(avr, p->txen) || !avr_regbit_get(avr, p->txc.raised);
+
+	if (p->flags & AVR_UART_FLAG_POOL_SLEEP) {
+
+		if (ri && ti)
+			usleep(1);
+	}
+	// if reception is idle and the fifo is empty, tell whomever there is room
+	if (avr_regbit_get(avr, p->rxen) && uart_fifo_isempty(&p->input))
+		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XON, 1);
+
+	return v;
+}
+
 static uint8_t avr_uart_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
@@ -67,6 +96,19 @@ static uint8_t avr_uart_read(struct avr_t * avr, avr_io_addr_t addr, void * para
 		avr_cycle_timer_register_usec(avr, 100, avr_uart_rxc_raise, p); // should be uart speed dependent
 
 	return v;
+}
+
+static void avr_uart_baud_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+{
+	avr_uart_t * p = (avr_uart_t *)param;
+	avr_core_watch_write(avr, addr, v);
+	uint32_t val = avr->data[p->r_ubrrl] | (avr->data[p->r_ubrrh] << 8);
+	uint32_t baud = avr->frequency / (val+1);
+	if (avr_regbit_get(avr, p->u2x))
+		baud /= 8;
+	else
+		baud /= 16;
+	printf("UART-%c configured to %04x = %d baud\n", p->name, val, baud);
 }
 
 static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
@@ -118,6 +160,9 @@ static void avr_uart_irq_input(struct avr_irq_t * irq, uint32_t value, void * pa
 	if (uart_fifo_isempty(&p->input))
 		avr_cycle_timer_register_usec(avr, 100, avr_uart_rxc_raise, p); // should be uart speed dependent
 	uart_fifo_write(&p->input, value); // add to fifo
+
+	if (uart_fifo_isfull(&p->input))
+		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, 1);
 }
 
 
@@ -136,9 +181,34 @@ void avr_uart_reset(struct avr_io_t *io)
 
 }
 
+#define AVR_IOCTL_UART_SET_FLAGS(_name)	AVR_IOCTL_DEF('u','a','s',(_name))
+#define AVR_IOCTL_UART_GET_FLAGS(_name)	AVR_IOCTL_DEF('u','a','g',(_name))
+
+static int avr_uart_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
+{
+	avr_uart_t * p = (avr_uart_t *)port;
+	int res = -1;
+
+	if (!io_param)
+		return res;
+
+	if (ctl == AVR_IOCTL_UART_SET_FLAGS(p->name)) {
+		p->flags = *(uint32_t*)io_param;
+		res = 0;
+	}
+	if (ctl == AVR_IOCTL_UART_GET_FLAGS(p->name)) {
+		*(uint32_t*)io_param = p->flags;
+		res = 0;
+	}
+
+	return res;
+}
+
+
 static	avr_io_t	_io = {
 	.kind = "uart",
 	.reset = avr_uart_reset,
+	.ioctl = avr_uart_ioctl,
 };
 
 void avr_uart_init(avr_t * avr, avr_uart_t * p)
@@ -152,6 +222,8 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 	p->io.irq = avr_alloc_irq(0, p->io.irq_count);
 	p->io.irq_ioctl_get = AVR_IOCTL_UART_GETIRQ(p->name);
 
+	p->flags = AVR_UART_FLAG_POOL_SLEEP;
+
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->rxc);
 	avr_register_vector(avr, &p->txc);
@@ -159,7 +231,10 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 
 	avr_register_io_write(avr, p->r_udr, avr_uart_write, p);
 	avr_register_io_read(avr, p->r_udr, avr_uart_read, p);
+	// monitor code that reads the rxc flag, and delay it a bit
+	avr_register_io_read(avr, p->rxc.raised.reg, avr_uart_rxc_read, p);
 
 	avr_register_io_write(avr, p->r_ucsra, avr_uart_write, p);
+	avr_register_io_write(avr, p->r_ubrrl, avr_uart_baud_write, p);
 }
 
