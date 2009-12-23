@@ -19,6 +19,7 @@
 target	= run_avr
 
 CFLAGS	+= -O3  -mfpmath=sse -msse2
+#CFLAGS	+= -DCONFIG_SIMAVR_TRACE=1
 
 cores	= ${wildcard cores/*.c}
 cores_o = ${patsubst cores/%.c, obj/%.o, ${cores}}
