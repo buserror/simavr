@@ -26,7 +26,9 @@
 #include "sim_avr.h"
 #include "sim_core.h"
 #include "sim_gdb.h"
+#include "avr_uart.h"
 #include "sim_vcd_file.h"
+#include "avr_mcu_section.h"
 
 
 int avr_init(avr_t * avr)
@@ -73,6 +75,7 @@ void avr_reset(avr_t * avr)
 
 void avr_sadly_crashed(avr_t *avr, uint8_t signal)
 {
+	printf("%s\n", __FUNCTION__);
 	avr->state = cpu_Stopped;
 	if (avr->gdb_port) {
 		// enable gdb server, and wait
@@ -81,6 +84,36 @@ void avr_sadly_crashed(avr_t *avr, uint8_t signal)
 	} 
 	if (!avr->gdb)
 		exit(1); // no gdb ?
+}
+
+static void _avr_io_command_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+{
+	printf("%s %02x\n", __FUNCTION__, v);
+	switch (v) {
+		case SIMAVR_CMD_VCD_START_TRACE:
+			if (avr->vcd)
+				avr_vcd_start(avr->vcd);
+			break;
+		case SIMAVR_CMD_VCD_STOP_TRACE:
+			if (avr->vcd)
+				avr_vcd_stop(avr->vcd);
+			break;
+		case SIMAVR_CMD_UART_LOOPBACK: {
+			avr_irq_t * src = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_OUTPUT);
+			avr_irq_t * dst = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_INPUT);
+			if (src && dst) {
+				printf("%s activating uart local echo IRQ src %p dst %p\n", __FUNCTION__, src, dst);
+				avr_connect_irq(src, dst);
+			}
+		}	break;
+
+	}
+}
+
+void avr_set_command_register(avr_t * avr, avr_io_addr_t addr)
+{
+	if (addr)
+		avr_register_io_write(avr, addr, _avr_io_command_write, NULL);
 }
 
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address)

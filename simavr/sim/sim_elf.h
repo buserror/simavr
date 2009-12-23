@@ -43,13 +43,17 @@ typedef struct elf_firmware_t {
 		char	name[64];
 	} trace[32];
 	
-	uint8_t * flash;
-	uint32_t flashsize;
-	uint32_t datasize;
-	uint32_t bsssize;
+	// register to listen to for commands from the firmware
+	uint16_t	command_register_addr;
+
+	uint32_t	flashbase;	// base address
+	uint8_t * 	flash;
+	uint32_t	flashsize;
+	uint32_t 	datasize;
+	uint32_t 	bsssize;
 	// read the .eeprom section of the elf, too
-	uint8_t * eeprom;
-	uint32_t eesize;
+	uint8_t * 	eeprom;
+	uint32_t 	eesize;
 
 #if ELF_SYMBOLS
 	avr_symbol_t **  codeline;

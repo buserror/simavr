@@ -42,13 +42,13 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 #if CONFIG_SIMAVR_TRACE
 	avr->codeline = firmware->codeline;
 #endif
-	avr_loadcode(avr, firmware->flash, firmware->flashsize, 0);
-	avr->codeend = firmware->flashsize - firmware->datasize;
+	avr_loadcode(avr, firmware->flash, firmware->flashsize, firmware->flashbase);
+	avr->codeend = firmware->flashsize + firmware->flashbase - firmware->datasize;
 	if (firmware->eeprom && firmware->eesize) {
 		avr_eeprom_desc_t d = { .ee = firmware->eeprom, .offset = 0, .size = firmware->eesize };
 		avr_ioctl(avr, AVR_IOCTL_EEPROM_SET, &d);
 	}
-
+	avr_set_command_register(avr, firmware->command_register_addr);
 	if (firmware->tracecount == 0)
 		return;
 	avr->vcd = malloc(sizeof(*avr->vcd));
@@ -93,7 +93,10 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 				}
 		}
 	}
-	avr_vcd_start(avr->vcd);
+	// if the firmware has specified a command register, do NOT start the trace here
+	// the firmware probably knows best when to start/stop it
+	if (!firmware->command_register_addr)
+		avr_vcd_start(avr->vcd);
 }
 
 static void elf_parse_mmcu_section(elf_firmware_t * firmware, uint8_t * src, uint32_t size)
@@ -128,6 +131,9 @@ static void elf_parse_mmcu_section(elf_firmware_t * firmware, uint8_t * src, uin
 			case AVR_MMCU_TAG_VCD_PERIOD: {
 				firmware->traceperiod =
 					src[0] | (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
+			}	break;
+			case AVR_MMCU_TAG_SIMAVR_COMMAND: {
+				firmware->command_register_addr = src[0] | (src[1] << 8);
 			}	break;
 		}
 		size -= next;

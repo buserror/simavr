@@ -48,9 +48,17 @@ enum {
 	AVR_MMCU_TAG_HFUSE,
 	AVR_MMCU_TAG_EFUSE,
 	AVR_MMCU_TAG_SIGNATURE,
+	AVR_MMCU_TAG_SIMAVR_COMMAND,
 	AVR_MMCU_TAG_VCD_FILENAME,
 	AVR_MMCU_TAG_VCD_PERIOD,	
 	AVR_MMCU_TAG_VCD_TRACE,
+};
+
+enum {
+	SIMAVR_CMD_NONE = 0,
+	SIMAVR_CMD_VCD_START_TRACE,
+	SIMAVR_CMD_VCD_STOP_TRACE,
+	SIMAVR_CMD_UART_LOOPBACK,
 };
 
 #if __AVR__
@@ -66,6 +74,12 @@ struct avr_mmcu_string_t {
 	uint8_t tag;
 	uint8_t len;
 	char string[]; 
+} __attribute__((__packed__));
+
+struct avr_mmcu_addr_t {
+	uint8_t tag;
+	uint8_t len;
+	void * what;
 } __attribute__((__packed__));
 
 struct avr_mmcu_vcd_trace_t {
@@ -98,12 +112,24 @@ const uint8_t _##_tag _MMCU_ = { _tag, 1, _val }
 	.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2 + sizeof(_name),\
 	.name = _name
 
-// specified the nane and wanted period (usec) for a VCD file
+// specified the name and wanted period (usec) for a VCD file
 // thid is not mandatory, a default one will be created if
 // symbols are declared themselves
 #define AVR_MCU_VCD_FILE(_name, _period) \
 	AVR_MCU_STRING(AVR_MMCU_TAG_VCD_FILENAME, _name);\
 	AVR_MCU_LONG(AVR_MMCU_TAG_VCD_PERIOD, _period)
+
+// It is possible to send "commands" to simavr from the
+// firmware itself. For this to work you need to specify
+// an IO register that is to be used for a write-only
+// bridge. A favourite is one of the usual "GPIO register"
+// that most (all ?) AVR have
+#define AVR_MCU_SIMAVR_COMMAND(_register) \
+	const struct avr_mmcu_addr_t _simavr_command_register _MMCU_ = {\
+		.tag = AVR_MMCU_TAG_SIMAVR_COMMAND,\
+		.len = sizeof(void *),\
+		.what = (void*)_register, \
+	}
 
 /*
  * This the has to be used if you want to add other tags to the .mmcu section

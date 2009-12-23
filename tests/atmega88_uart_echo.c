@@ -21,7 +21,8 @@
  */
 #include "avr_mcu_section.h"
 AVR_MCU(F_CPU, "atmega88");
-
+// tell simavr to listen to commands written in this (unused) register
+AVR_MCU_SIMAVR_COMMAND(&GPIOR0);
 
 static int uart_putchar(char c, FILE *stream) {
   if (c == '\n')
@@ -49,6 +50,9 @@ ISR(USART_RX_vect)
 
 int main()
 {
+	// this tell simavr to put the UART in loopback mode
+	GPIOR0 = SIMAVR_CMD_UART_LOOPBACK;
+
 	stdout = &mystdout;
 
 	// enable receiver
