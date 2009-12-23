@@ -61,7 +61,9 @@ void avr_dump_state(avr_t * avr);
 		for (int i = avr->stack_frame_index; i; i--) {\
 			int pci = i-1;\
 			printf("\e[31m*** %04x: %-25s sp %04x\e[0m\n",\
-					avr->stack_frame[pci].pc, avr->codeline[avr->stack_frame[pci].pc>>1]->symbol, avr->stack_frame[pci].sp);\
+					avr->stack_frame[pci].pc, \
+					avr->codeline ? avr->codeline[avr->stack_frame[pci].pc>>1]->symbol : "unknown", \
+							avr->stack_frame[pci].sp);\
 		}
 #else
 #define DUMP_STACK()
@@ -73,7 +75,7 @@ void avr_dump_state(avr_t * avr);
 		for (int i = OLD_PC_SIZE-1; i > 0; i--) {\
 			int pci = (avr->old_pci + i) & 0xf;\
 			printf("\e[31m*** %04x: %-25s RESET -%d; sp %04x\e[0m\n",\
-					avr->old[pci].pc, avr->codeline[avr->old[pci].pc>>1]->symbol, OLD_PC_SIZE-i, avr->old[pci].sp);\
+					avr->old[pci].pc, avr->codeline ? avr->codeline[avr->old[pci].pc>>1]->symbol : "unknown", OLD_PC_SIZE-i, avr->old[pci].sp);\
 		}\
 		printf("Stack Ptr %04x/%04x = %d \n", _avr_sp_get(avr), avr->ramend, avr->ramend - _avr_sp_get(avr));\
 		DUMP_STACK();\

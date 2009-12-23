@@ -58,7 +58,7 @@ int donttrace = 0;
 
 #define STATE(_f, args...) { \
 	if (avr->trace) {\
-		if (avr->codeline[avr->pc>>1]) {\
+		if (avr->codeline && avr->codeline[avr->pc>>1]) {\
 			const char * symn = avr->codeline[avr->pc>>1]->symbol; \
 			int dont = 0 && dont_trace(symn);\
 			if (dont!=donttrace) { \
