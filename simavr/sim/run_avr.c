@@ -21,86 +21,74 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <getopt.h>
+#include <libgen.h>
 #include <string.h>
 #include "sim_avr.h"
 #include "sim_elf.h"
 #include "sim_core.h"
 #include "sim_gdb.h"
-#include "avr_uart.h"
+#include "sim_hex.h"
 
-void hdump(const char *w, uint8_t *b, size_t l)
+extern avr_kind_t * avr_kind[];
+
+void display_usage(char * app)
 {
-	uint32_t i;
-	if (l < 16) {
-		printf("%s: ",w);
-		for (i = 0; i < l; i++) printf("%02x",b[i]);
-	} else {
-		printf("%s:\n",w);
-		for (i = 0; i < l; i++) {
-			if (!(i & 0x1f)) printf("    ");
-			printf("%02x",b[i]);
-			if ((i & 0x1f) == 0x1f) {
-				printf(" ");
-				printf("\n");
-			}
-		}
-	}
-	printf("\n");
-}
-
-
-void display_usage()
-{
-	printf("usage: simavr [-t] [-g] [-m <device>] [-f <frequency>] firmware\n");
+	printf("usage: %s [-t] [-g] [-m <device>] [-f <frequency>] firmware\n", app);
 	printf("       -t: run full scale decoder trace\n");
 	printf("       -g: listen for gdb connection on port 1234\n");
+	printf("   Supported AVR cores:\n");
+	for (int i = 0; avr_kind[i]; i++) {
+		printf("       ");
+		for (int ti = 0; ti < 4 && avr_kind[i]->names[ti]; ti++)
+			printf("%s ", avr_kind[i]->names[ti]);
+		printf("\n");
+	}
 	exit(1);
 }
 
 int main(int argc, char *argv[])
 {
-	elf_firmware_t f;
+	elf_firmware_t f = {0};
 	long f_cpu = 0;
 	int trace = 0;
 	int gdb = 0;
 	char name[16] = "";
-	int option_count;
-	int option_index = 0;
-
-	struct option long_options[] = {
-		{"help", no_argument, 0, 'h'},
-		{"mcu", required_argument, 0, 'm'},
-		{"freq", required_argument, 0, 'f'},
-		{"trace", no_argument, 0, 't'},
-		{"gdb", no_argument, 0, 'g'},
-		{0, 0, 0, 0}
-	};
 
 	if (argc == 1)
-		display_usage();
+		display_usage(basename(argv[0]));
 
-	while ((option_count = getopt_long(argc, argv, "tghm:f:", long_options, &option_index)) != -1) {
-		switch (option_count) {
-			case 'h':
-				display_usage();
+	for (int pi = 1; pi < argc; pi++) {
+		if (!strcmp(argv[pi], "-h") || !strcmp(argv[pi], "-help")) {
+				display_usage(basename(argv[0]));
+		} else if (!strcmp(argv[pi], "-m") || !strcmp(argv[pi], "-mcu")) {
+			if (pi < argc-1)
+				strcpy(name, argv[++pi]);
+			else
+				display_usage(basename(argv[0]));
+		} else if (!strcmp(argv[pi], "-f") || !strcmp(argv[pi], "-freq")) {
+			if (pi < argc-1)
+				f_cpu = atoi(argv[++pi]);
+			else
+				display_usage(basename(argv[0]));
 				break;
-			case 'm':
-				strcpy(name, optarg);
-				break;
-			case 'f':
-				f_cpu = atoi(optarg);
-				break;
-			case 't':
+		} else if (!strcmp(argv[pi], "-t") || !strcmp(argv[pi], "-trace")) {
 				trace++;
-				break;
-			case 'g':
-				gdb++;
-				break;
+		} else if (!strcmp(argv[pi], "-g") || !strcmp(argv[pi], "-gdb")) {
+			gdb++;
 		}
 	}
 
-	elf_read_firmware(argv[argc-1], &f);
+	char * filename = argv[argc-1];
+	char * suffix = strrchr(filename, '.');
+	if (suffix && !strcasecmp(suffix, ".hex")) {
+		if (!name[0] || !f_cpu) {
+			fprintf(stderr, "%s: -mcu and -freq are mandatory to load .hex files\n", argv[0]);
+			exit(1);
+		}
+		f.flash = read_ihex_file(filename, &f.flashsize, &f.flashbase);
+	} else {
+		elf_read_firmware(filename, &f);
+	}
 
 	if (strlen(name))
 		strcpy(f.mmcu, name);
@@ -116,17 +104,12 @@ int main(int argc, char *argv[])
 	}
 	avr_init(avr);
 	avr_load_firmware(avr, &f);
+	if (f.flashbase) {
+		printf("Attempted to load a booloader at %04x\n", f.flashbase);
+		avr->pc = f.flashbase;
+	}
 	avr->trace = trace;
 
-	// try to enable "local echo" on the first uart, for testing purposes
-	{
-		avr_irq_t * src = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_OUTPUT);
-		avr_irq_t * dst = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_INPUT);
-		if (src && dst) {
-			printf("%s:%s activating uart local echo IRQ src %p dst %p\n", __FILE__, __FUNCTION__, src, dst);
-			avr_connect_irq(src, dst);
-		}
-	}
 	// even if not setup at startup, activate gdb if crashing
 	avr->gdb_port = 1234;
 	if (gdb) {

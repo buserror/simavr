@@ -32,6 +32,7 @@
 #include <poll.h>
 #include <pthread.h>
 #include "sim_avr.h"
+#include "sim_hex.h"
 #include "avr_eeprom.h"
 
 #define DBG(w)
@@ -49,33 +50,6 @@ typedef struct avr_gdb_t {
 	} watch[32];
 } avr_gdb_t;
 
-    // decode line text hex to binary
-int read_hex_string(const char * src, uint8_t * buffer, int maxlen)
-{
-    uint8_t * dst = buffer;
-    int ls = 0;
-    uint8_t b = 0;
-    while (*src && maxlen--) {
-        char c = *src++;
-        switch (c) {
-            case 'a' ... 'f':   b = (b << 4) | (c - 'a' + 0xa); break;
-            case 'A' ... 'F':   b = (b << 4) | (c - 'A' + 0xa); break;
-            case '0' ... '9':   b = (b << 4) | (c - '0'); break;
-            default:
-                if (c > ' ') {
-                    fprintf(stderr, "%s: huh '%c' (%s)\n", __FUNCTION__, c, src);
-                    return -1;
-                }
-                continue;
-        }
-        if (ls & 1) {
-            *dst++ = b; b = 0;
-        }
-        ls++;
-    }
-
-    return dst - buffer;
-}
 
 static void gdb_send_reply(avr_gdb_t * g, char * cmd)
 {
