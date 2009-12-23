@@ -301,7 +301,7 @@ void avr_dump_state(avr_t * avr)
 /****************************************************************************\
  *
  * Helper functions for calculating the status register bit values.
- * See the Atmel data sheet for the instuction set for more info.
+ * See the Atmel data sheet for the instruction set for more info.
  *
 \****************************************************************************/
 
@@ -375,21 +375,21 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, uint32_t pc)
  * 
  * The decoder was written by following the datasheet in no particular order.
  * As I went along, I noticed "bit patterns" that could be used to factor opcodes
- * However, a lot of these only becane apparent later on, so SOME instructions
+ * However, a lot of these only became apparent later on, so SOME instructions
  * (skip of bit set etc) are compact, and some could use some refactoring (the ALU
  * ones scream to be factored).
  * I assume that the decoder could easily be 2/3 of it's current size.
  * 
  * + It lacks the "extended" XMega jumps. 
- * + It also doesn't check wether the core it's
- *   emulating is suposed to have the fancy instructions, like multiply and such.
+ * + It also doesn't check whether the core it's
+ *   emulating is supposed to have the fancy instructions, like multiply and such.
  * 
  * for now all instructions take "one" cycle, the cycle+=<extra> needs to be added.
  */
 uint16_t avr_run_one(avr_t * avr)
 {
 	/*
-	 * this traces spurious reset or bad jump/opcodes and dumps the last 32 "jumps" to track it down
+	 * this traces spurious reset or bad jumps
 	 */
 	if ((avr->pc == 0 && avr->cycle > 0) || avr->pc >= avr->codeend) {
 		avr->trace = 1;

@@ -43,7 +43,7 @@ enum {
 	// real SREG
 	R_SREG	= 32+0x3f,
 
-	// maximum number of IO regisrer, on normal AVRs
+	// maximum number of IO registers, on normal AVRs
 	MAX_IOs	= 256 - 32,	// minus 32 GP registers
 };
 
@@ -51,16 +51,18 @@ enum {
 #define AVR_IO_TO_DATA(v) ((v) + 32)
 
 /*
- * Core states. This will need populating with debug states for gdb
+ * Core states.
  */
 enum {
 	cpu_Limbo = 0,	// before initialization is finished
-	cpu_Stopped,
-	cpu_Running,
-	cpu_Sleeping,
+	cpu_Stopped,	// all is stopped, timers included
 
-	cpu_Step,
-	cpu_StepDone,
+	cpu_Running,	// we're free running
+
+	cpu_Sleeping,	// we're now sleeping until an interrupt
+
+	cpu_Step,		// run ONE instruction, then...
+	cpu_StepDone,	// tell gdb it's all OK, and give it registers
 };
 
 /*
@@ -82,6 +84,10 @@ typedef struct avr_t {
 
 	int					state;		// stopped, running, sleeping
 	uint32_t			frequency;	// frequency we are running at
+
+	// cycles gets incremented when sleeping and when running; it corresponds
+	// not only to "cycles that runs" but also "cycles that might have run"
+	// like, sleeping.
 	avr_cycle_count_t	cycle;		// current cycle
 	
 	// called at init time
@@ -96,15 +102,21 @@ typedef struct avr_t {
 
 	/* 
 	 * ** current PC **
-	 * Note that the PC is reoresenting /bytes/ while the AVR value is
+	 * Note that the PC is representing /bytes/ while the AVR value is
 	 * assumed to be "words". This is in line with what GDB does...
-	 * this is why you will see >>1 ane <<1 in the decoder to handle jumps
+	 * this is why you will see >>1 and <<1 in the decoder to handle jumps.
+	 * It CAN be a little confusing, so concentrate, young grasshopper.
 	 */
 	uint32_t	pc;
 
 	/*
-	 * callback when specific IO registers are read/written
-	 * these should probably be allocated dynamically in init()..
+	 * callback when specific IO registers are read/written.
+	 * There is one drawback here, there is in way of knowing what is the
+	 * "beginning of useful sram" on a core, so there is no way to deduce
+	 * what is the maximum IO register for a core, and thus, we can't
+	 * allocate this table dynamically.
+	 * If you wanted to emulate the BIG AVRs, and XMegas, this would need
+	 * work.
 	 */
 	struct {
 		struct avr_irq_t * irq;	// optional, used only if asked for with avr_iomem_getirq()
@@ -142,7 +154,7 @@ typedef struct avr_t {
 	uint8_t		pending_wait;	// number of cycles to wait for pending
 	uint32_t	pending[2];		// pending interrupts
 
-	// DEBUG ONLY
+	// DEBUG ONLY -- value ignored if CONFIG_SIMAVR_TRACE = 0
 	int		trace;
 
 #if CONFIG_SIMAVR_TRACE
@@ -177,14 +189,16 @@ typedef struct avr_t {
 	uint32_t	touched[256 / 32];	// debug
 #endif
 
+	// VALUE CHANGE DUMP file (waveforms)
 	// this is the VCD file that gets allocated if the 
-	// firmware that is loaded explicitely asks for a trace
+	// firmware that is loaded explicitly asks for a trace
 	// to be generated, and allocates it's own symbols
 	// using AVR_MMCU_TAG_VCD_TRACE (see avr_mcu_section.h)
 	struct avr_vcd_t * vcd;
 	
 	// gdb hooking structure. Only present when gdb server is active
 	struct avr_gdb_t * gdb;
+
 	// if non-zero, the gdb server will be started when the core
 	// crashed even if not activated at startup
 	// if zero, the simulator will just exit() in case of a crash
@@ -218,7 +232,7 @@ void avr_terminate(avr_t * avr);
 // load code in the "flash"
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address);
 
-// converts a nunber of usec to a nunber of machine cycles, at current speed
+// converts a number of usec to a nunber of machine cycles, at current speed
 avr_cycle_count_t avr_usec_to_cycles(avr_t * avr, uint32_t usec);
 // converts a number of hz (to megahertz etc) to a number of cycle
 avr_cycle_count_t avr_hz_to_cycles(avr_t * avr, uint32_t hz);
