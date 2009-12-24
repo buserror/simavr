@@ -25,6 +25,7 @@
 #include <ctype.h>
 #include "sim_avr.h"
 #include "sim_core.h"
+#include "avr_flash.h"
 
 // SREG bit names
 const char * _sreg_bit_name = "cznvshti";
@@ -388,6 +389,7 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, uint32_t pc)
  */
 uint16_t avr_run_one(avr_t * avr)
 {
+#if CONFIG_SIMAVR_TRACE
 	/*
 	 * this traces spurious reset or bad jumps
 	 */
@@ -396,14 +398,12 @@ uint16_t avr_run_one(avr_t * avr)
 		STATE("RESET\n");
 		CRASH();
 	}
+	avr->touched[0] = avr->touched[1] = avr->touched[2] = 0;
+#endif
 
 	uint32_t	opcode = (avr->flash[avr->pc + 1] << 8) | avr->flash[avr->pc];
 	uint32_t	new_pc = avr->pc + 2;	// future "default" pc
 	int 		cycle = 1;
-
-#if CONFIG_SIMAVR_TRACE
-	avr->touched[0] = avr->touched[1] = avr->touched[2] = 0;
-#endif
 
 	switch (opcode & 0xf000) {
 		case 0x0000: {
@@ -763,6 +763,10 @@ uint16_t avr_run_one(avr_t * avr)
 				}	break;
 				case 0x95a8: { // WDR
 					STATE("wdr\n");
+				}	break;
+				case 0x95e8: { // SPM
+					STATE("spm\n");
+					avr_ioctl(avr, AVR_IOCTL_FLASH_SPM, 0);
 				}	break;
 				case 0x9409: { // IJMP Indirect jump
 					uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
