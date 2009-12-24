@@ -1,8 +1,73 @@
 
-It's not working. don't get all excited. It loads and run the bootloader, but
-thats all.
-It /will/ work at some point, but it's not. It's missing a heck of a lot.
+This will emulate an arduino. Right now it loads the bootloader, then wait on it's "serial port"
+(a UDP socket on port 4321) until someone programs it... eventualy it timesout and run the previous
+app that was programmed.
 
-Told ya. forget about it ! :=)
+To actualy program it, you need "socat" to make a bridge between avrdude and simavr.
+
+% socat -d -d PTY UDP:localhost:4321
+	2009/12/24 16:19:26 socat[26974] N PTY is /dev/pts/10
+	2009/12/24 16:19:26 socat[26974] N opening connection to AF=2 127.0.0.1:4321
+	2009/12/24 16:19:26 socat[26974] N successfully connected from local address AF=2 127.0.0.1:48246
+	2009/12/24 16:19:26 socat[26974] N starting data transfer loop with FDs [3,3] and [6,6]
+
+Once that bridge is setup, launch simduino:
+
+% ./simduino
+	Starting atmega328 - flashend 7fff ramend 08ff e2end 03ff
+	atmega328 init
+	avr_flash_init init SPM 0057
+	read_ihex_file: ./ATmegaBOOT_168_atmega328.ihex, unsupported check type 03
+	Booloader 7800: 1950
+	uart_udp_init bridge on port 4321
+	UART-0 configured to 0010 = 58823 baud
+
+What that is done, you have a few seconds to program it:
+
+% avrdude -p m328p -c arduino -P /dev/pts/10 -U flash:w:atmega328p_dummy_blinky.hex
+
+	avrdude: AVR device initialized and ready to accept instructions
+	
+	Reading | ################################################## | 100% 0.01s
+	
+	avrdude: Device signature = 0x1e950f
+	avrdude: NOTE: FLASH memory has been specified, an erase cycle will be performed
+	         To disable this feature, specify the -D option.
+	avrdude: erasing chip
+	avrdude: reading input file "atmega328p_dummy_blinky.hex"
+	avrdude: input file atmega328p_dummy_blinky.hex auto detected as Intel Hex
+	avrdude: writing flash (394 bytes):
+	
+	Writing | ################################################## | 100% 0.15s
+	
+	avrdude: 394 bytes of flash written
+	avrdude: verifying flash memory against atmega328p_dummy_blinky.hex:
+	avrdude: load data flash data from input file atmega328p_dummy_blinky.hex:
+	avrdude: input file atmega328p_dummy_blinky.hex auto detected as Intel Hex
+	avrdude: input file atmega328p_dummy_blinky.hex contains 394 bytes
+	avrdude: reading on-chip flash data:
+	
+	Reading | ################################################## | 100% 0.13s
+	
+	avrdude: verifying ...
+	avrdude: 394 bytes of flash verified
+	
+	avrdude: safemode: Fuses OK
+	
+	avrdude done.  Thank you.
+
+simduino will display that:
+
+	Erasing page 0000 (128)
+	Writing page 0000 (128)
+	Erasing page 0001 (128)
+	Writing page 0001 (128)
+	Erasing page 0002 (128)
+	Writing page 0002 (128)
+	Erasing page 0003 (128)
+	Writing page 0003 (128)
+
+And then jump to the program that was programmed. The example doesn't do anything useful, it's
+a placeholder...
 
 Michel Pollet <buserror@gmail.com>

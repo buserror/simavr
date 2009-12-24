@@ -34,7 +34,7 @@
 #include "avr_uart.h"
 #include "sim_hex.h"
 
-DEFINE_FIFO(uint8_t,uart_udp_fifo, 128);
+DEFINE_FIFO(uint8_t,uart_udp_fifo, 512);
 
 /*
  * called when a byte is send via the uart on the AVR
@@ -42,6 +42,8 @@ DEFINE_FIFO(uint8_t,uart_udp_fifo, 128);
 static void uart_udp_in_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	uart_udp_t * p = (uart_udp_t*)param;
+//	printf("uart_udp_in_hook %02x\n", value);
+	uart_udp_fifo_write(&p->in, value);
 }
 
 /*
@@ -51,13 +53,15 @@ static void uart_udp_in_hook(struct avr_irq_t * irq, uint32_t value, void * para
 static void uart_udp_xon_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	uart_udp_t * p = (uart_udp_t*)param;
-	if (!p->xon)
-		printf("uart_udp_xon_hook\n");
+//	if (!p->xon)
+//		printf("uart_udp_xon_hook\n");
 	p->xon = 1;
 	// try to empty our fifo, the uart_udp_xoff_hook() will be called when
 	// other side is full
 	while (p->xon && !uart_udp_fifo_isempty(&p->out)) {
-		avr_raise_irq(p->irq + IRQ_UART_UDP_BYTE_OUT, uart_udp_fifo_read(&p->out));
+		uint8_t byte = uart_udp_fifo_read(&p->out);
+	//	printf("uart_udp_xon_hook send %02x\n", byte);
+		avr_raise_irq(p->irq + IRQ_UART_UDP_BYTE_OUT, byte);
 	}
 }
 
@@ -67,8 +71,8 @@ static void uart_udp_xon_hook(struct avr_irq_t * irq, uint32_t value, void * par
 static void uart_udp_xoff_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	uart_udp_t * p = (uart_udp_t*)param;
-	if (p->xon)
-		printf("uart_udp_xoff_hook\n");
+//	if (p->xon)
+//		printf("uart_udp_xoff_hook\n");
 	p->xon = 0;
 }
 
@@ -77,28 +81,42 @@ static void * uart_udp_thread(void * param)
 	uart_udp_t * p = (uart_udp_t*)param;
 
 	while (1) {
-		fd_set read_set;
-		int max;
+		fd_set read_set, write_set;
+		int max = p->s + 1;
 		FD_ZERO(&read_set);
+		FD_ZERO(&write_set);
 
 		FD_SET(p->s, &read_set);
-		max = p->s + 1;
+		if (!uart_udp_fifo_isempty(&p->in))
+			FD_SET(p->s, &write_set);
 
-		struct timeval timo = { 0, 100 };	// short, but not too short interval
-		int ret = select(max, &read_set, NULL, NULL, &timo);
+		struct timeval timo = { 0, 500 };	// short, but not too short interval
+		int ret = select(max, &read_set, &write_set, NULL, &timo);
 
 		if (FD_ISSET(p->s, &read_set)) {
-			uint8_t buffer[1024];
+			uint8_t buffer[512];
 
 			socklen_t len = sizeof(p->peer);
 			ssize_t r = recvfrom(p->s, buffer, sizeof(buffer)-1, 0, (struct sockaddr*)&p->peer, &len);
 
-			hdump("udp", buffer, len);
+		//	hdump("udp recv", buffer, r);
 
 			// write them in fifo
 			uint8_t * src = buffer;
 			while (r-- && !uart_udp_fifo_isfull(&p->out))
 				uart_udp_fifo_write(&p->out, *src++);
+			if (r > 0)
+				printf("UDP dropped %d bytes\n", r);
+		}
+		if (FD_ISSET(p->s, &write_set)) {
+			uint8_t buffer[512];
+			// write them in fifo
+			uint8_t * dst = buffer;
+			while (!uart_udp_fifo_isempty(&p->in) && dst < (buffer+sizeof(buffer)))
+				*dst++ = uart_udp_fifo_read(&p->in);
+			socklen_t len = dst - buffer;
+			size_t r = sendto(p->s, buffer, len, 0, (struct sockaddr*)&p->peer, sizeof(p->peer));
+		//	hdump("udp send", buffer, r);
 		}
 	}
 }
@@ -124,12 +142,20 @@ void uart_udp_init(struct avr_t * avr, uart_udp_t * p)
 		return ;
 	}
 
+	printf("uart_udp_init bridge on port %d\n", 4321);
+
 	pthread_create(&p->thread, NULL, uart_udp_thread, p);
 
 }
 
 void uart_udp_connect(uart_udp_t * p, char uart)
 {
+	// disable the stdio dump, as we are sending binary there
+	uint32_t f = 0;
+	avr_ioctl(p->avr, AVR_IOCTL_UART_GET_FLAGS(uart), &f);
+	f &= ~AVR_UART_FLAG_STDIO;
+	avr_ioctl(p->avr, AVR_IOCTL_UART_SET_FLAGS(uart), &f);
+
 	avr_irq_t * src = avr_io_getirq(p->avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_OUTPUT);
 	avr_irq_t * dst = avr_io_getirq(p->avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_INPUT);
 	avr_irq_t * xon = avr_io_getirq(p->avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_OUT_XON);

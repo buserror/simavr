@@ -33,7 +33,7 @@ enum {
 	IRQ_UART_UDP_COUNT
 };
 
-DECLARE_FIFO(uint8_t,uart_udp_fifo, 128);
+DECLARE_FIFO(uint8_t,uart_udp_fifo, 512);
 
 typedef struct uart_udp_t {
 	avr_irq_t *	irq;		// irq list
