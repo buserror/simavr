@@ -26,7 +26,7 @@
 
 #include "fifo_declare.h"
 
-DECLARE_FIFO(uint8_t, uart_fifo, 128);
+DECLARE_FIFO(uint8_t, uart_fifo, 64);
 
 enum {
 	UART_IRQ_INPUT = 0,
@@ -44,6 +44,7 @@ enum {
 	// reception registers, and can do an atomic usleep()
 	// if it's detected, this helps regulating CPU
 	AVR_UART_FLAG_POOL_SLEEP = (1 << 0),
+	AVR_UART_FLAG_STDIO = (1 << 1),			// print lines on the console
 };
 
 typedef struct avr_uart_t {

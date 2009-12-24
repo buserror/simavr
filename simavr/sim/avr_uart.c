@@ -28,7 +28,7 @@
 #include "avr_uart.h"
 #include "sim_hex.h"
 
-DEFINE_FIFO(uint8_t, uart_fifo, 128);
+DEFINE_FIFO(uint8_t, uart_fifo, 64);
 
 static avr_cycle_count_t avr_uart_txc_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
@@ -54,6 +54,7 @@ static uint8_t avr_uart_rxc_read(struct avr_t * avr, avr_io_addr_t addr, void * 
 	avr_uart_t * p = (avr_uart_t *)param;
 	uint8_t v = avr_core_watch_read(avr, addr);
 
+	//static uint8_t old = 0xff; if (v != old) printf("UCSRA read %02x\n", v); old = v;
 	//
 	// if RX is enabled, and there is nothing to read, and
 	// the AVR core is reading this register, it's probably
@@ -80,6 +81,9 @@ static uint8_t avr_uart_read(struct avr_t * avr, avr_io_addr_t addr, void * para
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 
+	// clear the rxc bit in case the code is using pooling
+	avr_regbit_clear(avr, p->rxc.raised);
+
 	if (!avr_regbit_get(avr, p->rxen)) {
 		avr->data[addr] = 0;
 		// made to trigger potential watchpoints
@@ -88,6 +92,7 @@ static uint8_t avr_uart_read(struct avr_t * avr, avr_io_addr_t addr, void * para
 	}
 	uint8_t v = uart_fifo_read(&p->input);
 
+	//printf("UART read %02x %s\n", v, uart_fifo_isempty(&p->input) ? "EMPTY!" : "");
 	avr->data[addr] = v;
 	// made to trigger potential watchpoints
 	v = avr_core_watch_read(avr, addr);
@@ -121,15 +126,17 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 		avr_regbit_clear(avr, p->udrc.raised);
 		avr_cycle_timer_register_usec(avr, 100, avr_uart_txc_raise, p); // should be uart speed dependent
 
-		static char buf[128];
-		static int l = 0;
-		buf[l++] = v < ' ' ? '.' : v;
-		buf[l] = 0;
-		if (v == '\n' || l == 127) {
-			l = 0;
-			printf("\e[32m%s\e[0m\n", buf);
+		if (p->flags & AVR_UART_FLAG_STDIO) {
+			static char buf[128];
+			static int l = 0;
+			buf[l++] = v < ' ' ? '.' : v;
+			buf[l] = 0;
+			if (v == '\n' || l == 127) {
+				l = 0;
+				printf("\e[32m%s\e[0m\n", buf);
+			}
 		}
-//		printf("UDR%c(%02x) = %02x\n", p->name, addr, v);
+	//	printf("UDR%c(%02x) = %02x\n", p->name, addr, v);
 		// tell other modules we are "outputing" a byte
 		if (avr_regbit_get(avr, p->txen))
 			avr_raise_irq(p->io.irq + UART_IRQ_OUTPUT, v);
@@ -160,6 +167,8 @@ static void avr_uart_irq_input(struct avr_irq_t * irq, uint32_t value, void * pa
 	if (uart_fifo_isempty(&p->input))
 		avr_cycle_timer_register_usec(avr, 100, avr_uart_rxc_raise, p); // should be uart speed dependent
 	uart_fifo_write(&p->input, value); // add to fifo
+
+//	printf("UART IRQ in %02x (%d/%d) %s\n", value, p->input.read, p->input.write, uart_fifo_isfull(&p->input) ? "FULL!!" : "");
 
 	if (uart_fifo_isfull(&p->input))
 		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, 1);
@@ -222,7 +231,7 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 	p->io.irq = avr_alloc_irq(0, p->io.irq_count);
 	p->io.irq_ioctl_get = AVR_IOCTL_UART_GETIRQ(p->name);
 
-	p->flags = AVR_UART_FLAG_POOL_SLEEP;
+	p->flags = AVR_UART_FLAG_POOL_SLEEP|AVR_UART_FLAG_STDIO;
 
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->rxc);
