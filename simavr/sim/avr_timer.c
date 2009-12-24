@@ -103,14 +103,16 @@ static uint8_t avr_timer_tcnt_read(struct avr_t * avr, avr_io_addr_t addr, void 
 	avr_timer_t * p = (avr_timer_t *)param;
 	// made to trigger potential watchpoints
 
-	uint64_t when = avr->cycle - p->tov_base;
+	if (p->tov_cycles) {
+		uint64_t when = avr->cycle - p->tov_base;
 
-	uint16_t tcnt = (when * p->tov_top) / p->tov_cycles;
-//	printf("%s-%c when = %d tcnt = %d/%d\n", __FUNCTION__, p->name, (uint32_t)when, tcnt, p->tov_top);
+		uint16_t tcnt = (when * p->tov_top) / p->tov_cycles;
+	//	printf("%s-%c when = %d tcnt = %d/%d\n", __FUNCTION__, p->name, (uint32_t)when, tcnt, p->tov_top);
 
-	avr->data[p->r_tcnt] = tcnt;
-	if (p->r_tcnth)
-		avr->data[p->r_tcnth] = tcnt >> 8;
+		avr->data[p->r_tcnt] = tcnt;
+		if (p->r_tcnth)
+			avr->data[p->r_tcnth] = tcnt >> 8;
+	}
 	
 	return avr_core_watch_read(avr, addr);
 }
