@@ -22,8 +22,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <libgen.h>
-
+#if __APPLE__
+#include <GLUT/glut.h>
+#else
 #include <GL/glut.h>
+#endif
 #include <pthread.h>
 
 #include "sim_avr.h"

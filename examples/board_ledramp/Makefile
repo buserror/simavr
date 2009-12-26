@@ -31,7 +31,12 @@ IPATH += ${simavr}/simavr/sim
 VPATH = .
 VPATH += ../parts
 
-LDFLAGS += -lglut -lpthread
+LDFLAGS += -lpthread
+ifneq (${shell uname}, Darwin)
+LDFLAGS += -lglut
+else
+LDFLAGS += -framework GLUT -framework OpenGL 
+endif
 
 all: obj ${firmware} ${board}
 
@@ -40,7 +45,7 @@ include ${simavr}/Makefile.common
 ${board} : ${OBJ}/button.o
 ${board} : ${OBJ}/${board}.o
 	@echo LD $@
-	@gcc -MD ${CFLAGS} -o $@ $^ $(LDFLAGS) ${simavr}/simavr/libsimavr.a
+	@gcc -MD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS) ${simavr}/simavr/libsimavr.a
 
 clean:
 	rm -rf obj *.hex *.a *.axf ${board} *.vcd
