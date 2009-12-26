@@ -47,11 +47,11 @@ void avr_flash_init(avr_t * avr, avr_flash_t * p);
 
 #define AVR_IOCTL_FLASH_SPM		AVR_IOCTL_DEF('f','s','p','m')
 
-#define AVR_SELFPROG_DECLARE(_spmr, _vector) \
+#define AVR_SELFPROG_DECLARE(_spmr, _spen, _vector) \
 	.selfprog = {\
 		.r_spm = _spmr,\
 		.spm_pagesize = SPM_PAGESIZE,\
-		.selfprgen = AVR_IO_REGBIT(_spmr, SELFPRGEN),\
+		.selfprgen = AVR_IO_REGBIT(_spmr, _spen),\
 		.pgers = AVR_IO_REGBIT(_spmr, PGERS),\
 		.pgwrt = AVR_IO_REGBIT(_spmr, PGWRT),\
 		.blbset = AVR_IO_REGBIT(_spmr, BLBSET),\
