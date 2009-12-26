@@ -28,10 +28,42 @@
 
 DECLARE_FIFO(uint8_t, uart_fifo, 64);
 
+/*
+ * The method of "connecting" the the UART from external code is to use 4 IRQS.
+ * The easy one is UART->YOU, where you will be called with the byte everytime
+ * the AVR firmware sends one. Do whatever you like with it.
+ *
+ * The slightly more tricky one is the INPUT part. Since the AVR is quite a bit
+ * slower than your code most likely, there is a way for the AVR UART to tell
+ * you to "pause" sending it bytes when it's own input buffer is full.
+ * So, the UART will send XON to you when it's fifo is empty, XON means you can
+ * send as many bytes as you have until XOFF is send. Note that these are two
+ * IRQs because you /will/ be caused with XOFF when sending a byte in INPUT...
+ * So it's a reentrant process.
+ *
+ * When XOFF has been called, do not send any new bytes, they would be dropped.
+ * Instead wait for XON again and continue.
+ * See examples/parts/uart_udp.c for a full implementation
+ *
+ * Pseudo code:
+ *
+ * volatile int off = 0;
+ * void irq_xon()
+ * {
+ * 	off = 0;
+ * 	while (!off && bytes_lefts)
+ *     avr_raise_irq(UART_IRQ_INPUT, a_byte);
+ * }
+ * void irq_xoff()
+ * {
+ *  off = 1;
+ * }
+ *
+ */
 enum {
 	UART_IRQ_INPUT = 0,
 	UART_IRQ_OUTPUT,
-	UART_IRQ_OUT_XON,		// signaled when input fifo is not full
+	UART_IRQ_OUT_XON,		// signaled (continuously) when input fifo is not full
 	UART_IRQ_OUT_XOFF,		// signaled when input fifo IS full
 	UART_IRQ_COUNT
 };
