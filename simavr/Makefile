@@ -62,4 +62,3 @@ ${target}	:	obj/${target}.o
 
 clean:
 	rm -rf ${target} obj *.a
-
