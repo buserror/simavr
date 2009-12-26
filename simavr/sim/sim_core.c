@@ -84,6 +84,41 @@ int donttrace = 0;
 #define SREG()
 #endif
 
+void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
+{
+	if (addr > avr->ramend) {
+		printf("*** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x out of ram\n",
+				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc]<<8), addr, v);
+		CRASH();
+	}
+	if (addr < 32) {
+		printf("*** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x low registers\n",
+				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc]<<8), addr, v);
+		CRASH();
+	}
+#if AVR_STACK_WATCH
+	/*
+	 * this checks that the current "function" is not doctoring the stack frame that is located
+	 * higher on the stack than it should be. It's a sign of code that has overrun it's stack
+	 * frame and is munching on it's own return address.
+	 */
+	if (avr->stack_frame_index > 1 && addr > avr->stack_frame[avr->stack_frame_index-2].sp) {
+		printf("\e[31m%04x : munching stack SP %04x, A=%04x <= %02x\e[0m\n", avr->pc, _avr_sp_get(avr), addr, v);
+	}
+#endif
+	avr->data[addr] = v;
+}
+
+uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
+{
+	if (addr > avr->ramend) {
+		printf("*** Invalid read address PC=%04x SP=%04x O=%04x Address %04x out of ram (%04x)\n",
+				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc]<<8), addr, avr->ramend);
+		CRASH();
+	}
+	return avr->data[addr];
+}
+
 /*
  * Set a register (r < 256)
  * if it's an IO regisrer (> 31) also (try to) call any callback that was

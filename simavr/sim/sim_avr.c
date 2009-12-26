@@ -121,134 +121,6 @@ void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address)
 	memcpy(avr->flash + address, code, size);
 }
 
-void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
-{
-	if (addr > avr->ramend) {
-		printf("*** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x out of ram\n",
-				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc]<<8), addr, v);
-		CRASH();
-	}
-	if (addr < 32) {
-		printf("*** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x low registers\n",
-				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc]<<8), addr, v);
-		CRASH();
-	}
-#if AVR_STACK_WATCH
-	/*
-	 * this checks that the current "function" is not doctoring the stack frame that is located
-	 * higher on the stack than it should be. It's a sign of code that has overrun it's stack
-	 * frame and is munching on it's own return address.
-	 */
-	if (avr->stack_frame_index > 1 && addr > avr->stack_frame[avr->stack_frame_index-2].sp) {
-		printf("\e[31m%04x : munching stack SP %04x, A=%04x <= %02x\e[0m\n", avr->pc, _avr_sp_get(avr), addr, v);
-	}
-#endif
-	avr->data[addr] = v;
-}
-
-uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
-{
-	if (addr > avr->ramend) {
-		printf("*** Invalid read address PC=%04x SP=%04x O=%04x Address %04x out of ram (%04x)\n",
-				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc]<<8), addr, avr->ramend);
-		CRASH();
-	}
-	return avr->data[addr];
-}
-
-// converts a number of usec to a number of machine cycles, at current speed
-avr_cycle_count_t avr_usec_to_cycles(avr_t * avr, uint32_t usec)
-{
-	return avr->frequency * (avr_cycle_count_t)usec / 1000000;
-}
-
-uint32_t avr_cycles_to_usec(avr_t * avr, avr_cycle_count_t cycles)
-{
-	return 1000000 * cycles / avr->frequency;
-}
-
-// converts a number of hz (to megahertz etc) to a number of cycle
-avr_cycle_count_t avr_hz_to_cycles(avr_t * avr, uint32_t hz)
-{
-	return avr->frequency / hz;
-}
-
-void avr_cycle_timer_register(avr_t * avr, avr_cycle_count_t when, avr_cycle_timer_t timer, void * param)
-{
-	avr_cycle_timer_cancel(avr, timer, param);
-
-	if (avr->cycle_timer_map == 0xffffffff) {
-		fprintf(stderr, "avr_cycle_timer_register is full!\n");
-		return;
-	}
-	when += avr->cycle;
-	for (int i = 0; i < 32; i++)
-		if (!(avr->cycle_timer_map & (1 << i))) {
-			avr->cycle_timer[i].timer = timer;
-			avr->cycle_timer[i].param = param;
-			avr->cycle_timer[i].when = when;
-			avr->cycle_timer_map |= (1 << i);
-			return;
-		}
-}
-
-void avr_cycle_timer_register_usec(avr_t * avr, uint32_t when, avr_cycle_timer_t timer, void * param)
-{
-	avr_cycle_timer_register(avr, avr_usec_to_cycles(avr, when), timer, param);
-}
-
-void avr_cycle_timer_cancel(avr_t * avr, avr_cycle_timer_t timer, void * param)
-{
-	if (!avr->cycle_timer_map)
-		return;
-	for (int i = 0; i < 32; i++)
-		if ((avr->cycle_timer_map & (1 << i)) &&
-				avr->cycle_timer[i].timer == timer &&
-				avr->cycle_timer[i].param == param) {
-			avr->cycle_timer[i].timer = NULL;
-			avr->cycle_timer[i].param = NULL;
-			avr->cycle_timer[i].when = 0;
-			avr->cycle_timer_map &= ~(1 << i);
-			return;
-		}
-}
-
-/*
- * run thru all the timers, call the ones that needs it,
- * clear the ones that wants it, and calculate the next
- * potential cycle we could sleep for...
- */
-static avr_cycle_count_t avr_cycle_timer_check(avr_t * avr)
-{
-	if (!avr->cycle_timer_map)
-		return (avr_cycle_count_t)-1;
-
-	avr_cycle_count_t min = (avr_cycle_count_t)-1;
-
-	for (int i = 0; i < 32; i++) {
-		if (!(avr->cycle_timer_map & (1 << i)))
-			continue;
-		// do it several times, in case we're late
-		while (avr->cycle_timer[i].when && avr->cycle_timer[i].when <= avr->cycle) {
-			// call it
-			avr->cycle_timer[i].when =
-					avr->cycle_timer[i].timer(avr,
-							avr->cycle_timer[i].when,
-							avr->cycle_timer[i].param);
-			if (avr->cycle_timer[i].when == 0) {
-				// clear it
-				avr->cycle_timer[i].timer = NULL;
-				avr->cycle_timer[i].param = NULL;
-				avr->cycle_timer[i].when = 0;
-				avr->cycle_timer_map &= ~(1 << i);
-				break;
-			}
-		}
-		if (avr->cycle_timer[i].when && avr->cycle_timer[i].when < min)
-			min = avr->cycle_timer[i].when;
-	}
-	return min - avr->cycle;
-}
 
 int avr_run(avr_t * avr)
 {
@@ -283,7 +155,7 @@ int avr_run(avr_t * avr)
 			port->run(port);
 		port = port->next;
 	}
-	avr_cycle_count_t sleep = avr_cycle_timer_check(avr);
+	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
 
 	avr->pc = new_pc;
 

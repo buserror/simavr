@@ -235,19 +235,6 @@ void avr_set_command_register(avr_t * avr, avr_io_addr_t addr);
 // load code in the "flash"
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address);
 
-// converts a number of usec to a nunber of machine cycles, at current speed
-avr_cycle_count_t avr_usec_to_cycles(avr_t * avr, uint32_t usec);
-// converts a number of hz (to megahertz etc) to a number of cycle
-avr_cycle_count_t avr_hz_to_cycles(avr_t * avr, uint32_t hz);
-// converts back a number of cycles to usecs (for usleep)
-uint32_t avr_cycles_to_usec(avr_t * avr, avr_cycle_count_t cycles);
-
-// register for calling 'timer' in 'when' cycles
-void avr_cycle_timer_register(avr_t * avr, avr_cycle_count_t when, avr_cycle_timer_t timer, void * param);
-// register a timer to call in 'when' usec
-void avr_cycle_timer_register_usec(avr_t * avr, uint32_t when, avr_cycle_timer_t timer, void * param);
-// cancel a previously set timer
-void avr_cycle_timer_cancel(avr_t * avr, avr_cycle_timer_t timer, void * param);
 
 /*
  * these are accessors for avr->data but allows watchpoints to be set for gdb
@@ -265,6 +252,7 @@ void avr_sadly_crashed(avr_t *avr, uint8_t signal);
 #include "sim_regbit.h"
 #include "sim_interrupts.h"
 #include "sim_irq.h"
+#include "sim_cycle_timers.h"
 
 #endif /*__SIM_AVR_H__*/
 
