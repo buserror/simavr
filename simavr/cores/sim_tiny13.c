@@ -24,6 +24,8 @@
 #include "sim_avr.h"
 #include "sim_core_declare.h"
 #include "avr_eeprom.h"
+#include "avr_watchdog.h"
+#include "avr_extint.h"
 #include "avr_ioport.h"
 #include "avr_timer.h"
 
@@ -38,6 +40,8 @@ static void reset(struct avr_t * avr);
 static struct mcu_t {
 	avr_t core;
 	avr_eeprom_t 	eeprom;
+	avr_watchdog_t	watchdog;
+	avr_extint_t	extint;
 	avr_ioport_t	portb;
 	avr_timer_t		timer0;
 } mcu = {
@@ -60,6 +64,13 @@ static struct mcu_t {
 		.reset = reset,
 	},
 	AVR_EEPROM_DECLARE_8BIT(EE_RDY_vect),
+	// tiny13 has different names for these...
+	#define WDIF WDTIF
+	#define WDIE WDTIE
+	AVR_WATCHDOG_DECLARE(WDTCR, WDT_vect),
+	.extint = {
+		AVR_EXTINT_TINY_DECLARE(0, 'B', 1, GIFR),
+	},
 	.portb = {
 		.name = 'B',  .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
 		.pcint = {
@@ -120,6 +131,8 @@ static void init(struct avr_t * avr)
 	printf("%s init\n", avr->mmcu);
 
 	avr_eeprom_init(avr, &mcu->eeprom);
+	avr_watchdog_init(avr, &mcu->watchdog);
+	avr_extint_init(avr, &mcu->extint);
 	avr_ioport_init(avr, &mcu->portb);
 	avr_timer_init(avr, &mcu->timer0);
 }

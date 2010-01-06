@@ -32,6 +32,7 @@ void tx5_init(struct avr_t * avr)
 	printf("%s init\n", avr->mmcu);
 
 	avr_eeprom_init(avr, &mcu->eeprom);
+	avr_watchdog_init(avr, &mcu->watchdog);
 	avr_extint_init(avr, &mcu->extint);
 	avr_ioport_init(avr, &mcu->portb);
 	avr_adc_init(avr, &mcu->adc);

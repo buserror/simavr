@@ -26,6 +26,7 @@
 
 #include "sim_core_declare.h"
 #include "avr_eeprom.h"
+#include "avr_watchdog.h"
 #include "avr_extint.h"
 #include "avr_ioport.h"
 #include "avr_adc.h"
@@ -40,6 +41,7 @@ void tx5_reset(struct avr_t * avr);
 struct mcu_t {
 	avr_t core;
 	avr_eeprom_t 	eeprom;
+	avr_watchdog_t	watchdog;
 	avr_extint_t	extint;
 	avr_ioport_t	portb;
 	avr_adc_t		adc;
@@ -64,6 +66,7 @@ struct mcu_t SIM_CORENAME = {
 		.reset = tx5_reset,
 	},
 	AVR_EEPROM_DECLARE(EE_RDY_vect),
+	AVR_WATCHDOG_DECLARE(WDTCR, WDT_vect),
 	.extint = {
 		AVR_EXTINT_TINY_DECLARE(0, 'B', PB2, GIFR),
 	},

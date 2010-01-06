@@ -22,6 +22,7 @@
 #include </usr/include/stdio.h>
 #include "sim_core_declare.h"
 #include "avr_eeprom.h"
+#include "avr_watchdog.h"
 #include "avr_extint.h"
 #include "avr_ioport.h"
 #include "avr_uart.h"
@@ -40,6 +41,7 @@ static void reset(struct avr_t * avr);
 static struct mcu_t {
 	avr_t core;
 	avr_eeprom_t 	eeprom;
+	avr_watchdog_t	watchdog;
 	avr_extint_t	extint;
 	avr_ioport_t	portb, portd;
 	avr_uart_t		uart;
@@ -53,6 +55,7 @@ static struct mcu_t {
 		.reset = reset,
 	},
 	AVR_EEPROM_DECLARE_8BIT(EEPROM_READY_vect),
+	AVR_WATCHDOG_DECLARE(WDTCSR, WDT_OVERFLOW_vect),
 	.extint = {
 		AVR_EXTINT_TINY_DECLARE(0, 'D', 2, EIFR),
 		AVR_EXTINT_TINY_DECLARE(1, 'D', 3, EIFR),
@@ -198,6 +201,8 @@ static void init(struct avr_t * avr)
 	printf("%s init\n", avr->mmcu);
 
 	avr_eeprom_init(avr, &mcu->eeprom);
+	avr_watchdog_init(avr, &mcu->watchdog);
+	avr_extint_init(avr, &mcu->extint);
 	avr_ioport_init(avr, &mcu->portb);
 	avr_ioport_init(avr, &mcu->portd);
 	avr_uart_init(avr, &mcu->uart);
