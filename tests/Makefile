@@ -3,7 +3,6 @@
 # And compile it into an ELF binary.
 # It also disassemble it for debugging purposes.
 # 
-# 
 # 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 #
 #	This file is part of simavr.
@@ -26,7 +25,11 @@ SHELL	 = /bin/bash
 
 sources		:= $(wildcard at*.c)
 
-all :  ${sources:.c=.axf} ${sources:.c=.hex}  ${sources:.c=.s}  
+all :  ${sources:.c=.axf}
+# if you want hex files
+#all : ${sources:.c=.hex}
+# if you need assembler output
+#all :  ${sources:.c=.s}  
 
 include ../Makefile.common
 
