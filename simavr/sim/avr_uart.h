@@ -38,7 +38,7 @@ DECLARE_FIFO(uint8_t, uart_fifo, 64);
  * you to "pause" sending it bytes when it's own input buffer is full.
  * So, the UART will send XON to you when it's fifo is empty, XON means you can
  * send as many bytes as you have until XOFF is send. Note that these are two
- * IRQs because you /will/ be caused with XOFF when sending a byte in INPUT...
+ * IRQs because you /will/ be called with XOFF when sending a byte in INPUT...
  * So it's a reentrant process.
  *
  * When XOFF has been called, do not send any new bytes, they would be dropped.

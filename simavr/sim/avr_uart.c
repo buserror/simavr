@@ -34,7 +34,7 @@ static avr_cycle_count_t avr_uart_txc_raise(struct avr_t * avr, avr_cycle_count_
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 	if (avr_regbit_get(avr, p->txen)) {
-		// if the interrupts are not used, still raised the UDRE and TXC flaga
+		// if the interrupts are not used, still raised the UDRE and TXC flag
 		avr_raise_interrupt(avr, &p->udrc);
 		avr_raise_interrupt(avr, &p->txc);
 	}
@@ -190,9 +190,6 @@ void avr_uart_reset(struct avr_io_t *io)
 
 }
 
-#define AVR_IOCTL_UART_SET_FLAGS(_name)	AVR_IOCTL_DEF('u','a','s',(_name))
-#define AVR_IOCTL_UART_GET_FLAGS(_name)	AVR_IOCTL_DEF('u','a','g',(_name))
-
 static int avr_uart_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
 {
 	avr_uart_t * p = (avr_uart_t *)port;
@@ -212,7 +209,6 @@ static int avr_uart_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
 
 	return res;
 }
-
 
 static	avr_io_t	_io = {
 	.kind = "uart",

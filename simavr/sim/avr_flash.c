@@ -92,7 +92,7 @@ static	avr_io_t	_io = {
 void avr_flash_init(avr_t * avr, avr_flash_t * p)
 {
 	p->io = _io;
-	printf("%s init SPM %04x\n", __FUNCTION__, p->r_spm);
+//	printf("%s init SPM %04x\n", __FUNCTION__, p->r_spm);
 
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->flash);
