@@ -26,6 +26,7 @@
 #include "sim_avr.h"
 #include "sim_core.h"
 #include "avr_flash.h"
+#include "avr_watchdog.h"
 
 // SREG bit names
 const char * _sreg_bit_name = "cznvshti";
@@ -798,6 +799,7 @@ uint16_t avr_run_one(avr_t * avr)
 				}	break;
 				case 0x95a8: { // WDR
 					STATE("wdr\n");
+					avr_ioctl(avr, AVR_IOCTL_WATCHDOG_RESET, 0);
 				}	break;
 				case 0x95e8: { // SPM
 					STATE("spm\n");
