@@ -130,10 +130,10 @@ static inline void _avr_set_r(avr_t * avr, uint8_t r, uint8_t v)
 	REG_TOUCH(avr, r);
 
 	if (r == R_SREG) {
-		avr->data[r] = v;
+		avr->data[R_SREG] = v;
 		// unsplit the SREG
 		for (int i = 0; i < 8; i++)
-			avr->sreg[i] = (avr->data[R_SREG] & (1 << i)) != 0;
+			avr->sreg[i] = (v & (1 << i)) != 0;
 		SREG();
 	}
 	if (r > 31) {
@@ -181,8 +181,22 @@ static inline void _avr_set_ram(avr_t * avr, uint16_t addr, uint8_t v)
  */
 static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 {
-	if (addr > 31 && addr < 256) {
+	if (addr == R_SREG) {
+		/*
+		 * SREG is special it's reconstructed when read
+		 * while the core itself uses the "shortcut" array
+		 */
+		avr->data[R_SREG] = 0;
+		for (int i = 0; i < 8; i++)
+			if (avr->sreg[i] > 1) {
+				printf("** Invalid SREG!!\n");
+				CRASH();
+			} else if (avr->sreg[i])
+				avr->data[R_SREG] |= (1 << i);
+		
+	} else if (addr > 31 && addr < 256) {
 		uint8_t io = AVR_DATA_TO_IO(addr);
+		
 		if (avr->io[io].r.c)
 			avr->data[addr] = avr->io[io].r.c(avr, addr, avr->io[io].r.param);
 		
@@ -301,7 +315,7 @@ void avr_dump_state(avr_t * avr)
 #define get_r_d_10(o) \
 		const uint8_t r = ((o >> 5) & 0x10) | (o & 0xf); \
 		const uint8_t d = (o >> 4) & 0x1f;\
-		const uint8_t vd = avr->data[d], vr =avr->data[r];
+		const uint8_t vd = avr->data[d], vr = avr->data[r];
 #define get_k_r16(o) \
 		const uint8_t r = 16 + ((o >> 4) & 0xf); \
 		const uint8_t k = ((o & 0x0f00) >> 4) | (o & 0xf);
@@ -1197,15 +1211,12 @@ uint16_t avr_run_one(avr_t * avr)
 					uint8_t r = (opcode >> 4) & 0x1f;
 					uint8_t A = ((((opcode >> 9) & 3) << 4) | ((opcode) & 0xf)) + 32;
 					STATE("out %s, %s[%02x]\n", avr_regname(A), avr_regname(r), avr->data[r]);
-					// todo: store to IO register
 					_avr_set_ram(avr, A, avr->data[r]);
-				//	avr->data[A] = ;
 				}	break;
 				case 0xb000: {	// IN Rd,A 1011 0AAr rrrr AAAA
 					uint8_t r = (opcode >> 4) & 0x1f;
 					uint8_t A = ((((opcode >> 9) & 3) << 4) | ((opcode) & 0xf)) + 32;
 					STATE("in %s, %s[%02x]\n", avr_regname(r), avr_regname(A), avr->data[A]);
-					// todo: get the IO register
 					_avr_set_r(avr, r, _avr_get_ram(avr, A));
 				}	break;
 				default: _avr_invalid_opcode(avr);

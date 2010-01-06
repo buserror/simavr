@@ -131,9 +131,8 @@ int avr_run(avr_t * avr)
 
 	// if we are stepping one instruction, we "run" for one..
 	int step = avr->state == cpu_Step;
-	if (step) {
+	if (step)
 		avr->state = cpu_Running;
-	}
 	
 	uint16_t new_pc = avr->pc;
 
@@ -145,16 +144,21 @@ int avr_run(avr_t * avr)
 	}
 
 	// if we just re-enabled the interrupts...
-	if (avr->sreg[S_I] && !(avr->data[R_SREG] & (1 << S_I))) {
-	//	printf("*** %s: Renabling interrupts\n", __FUNCTION__);
+	// double buffer the I flag, to detect that edge
+	if (avr->sreg[S_I] && !avr->i_shadow)
 		avr->pending_wait++;
-	}
+	avr->i_shadow = avr->sreg[S_I];
+	
+	// run IO modules that wants it
 	avr_io_t * port = avr->io_port;
 	while (port) {
 		if (port->run)
 			port->run(port);
 		port = port->next;
 	}
+	
+	// run the cycle timers, get the suggested sleeo time
+	// until the next timer is due
 	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
 
 	avr->pc = new_pc;
@@ -177,22 +181,13 @@ int avr_run(avr_t * avr)
 			usleep(usec);
 		avr->cycle += 1 + sleep;
 	}
-	// Interrupt servicing might change the PC too
-	if (avr->state == cpu_Running || avr->state == cpu_Sleeping) {
+	// Interrupt servicing might change the PC too, during 'sleep'
+	if (avr->state == cpu_Running || avr->state == cpu_Sleeping)
 		avr_service_interrupts(avr);
-
-		avr->data[R_SREG] = 0;
-		for (int i = 0; i < 8; i++)
-			if (avr->sreg[i] > 1) {
-				printf("** Invalid SREG!!\n");
-				CRASH();
-			} else if (avr->sreg[i])
-				avr->data[R_SREG] |= (1 << i);
-	}
-
-	if (step) {
+	
+	// if we were stepping, use this state to inform remote gdb
+	if (step)
 		avr->state = cpu_StepDone;
-	}
 
 	return avr->state;
 }

@@ -99,6 +99,7 @@ typedef struct avr_t {
 	// in the opcode decoder.
 	// This array is re-synthetized back/forth when SREG changes
 	uint8_t		sreg[8];
+	uint8_t		i_shadow;	// used to detect edges on I flag
 
 	/* 
 	 * ** current PC **
