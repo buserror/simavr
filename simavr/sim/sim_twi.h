@@ -28,27 +28,34 @@
 
 #include <stdint.h>
 
+enum twi_event {
+    TWI_START,
+    TWI_STOP,
+	// return non-zero if this slave address is handled by this slave
+	// if NULL, the "address" field is used instead. If this function
+	// is present, 'address' field is not used.
+    TWI_PROBE,
+    TWI_NACK /* Masker NACKed a receive byte.  */
+};
+
+#define TWI_ADDRESS_READ_MASK	0x01
+
 typedef struct twi_slave_t {
 	struct twi_bus_t * bus;	// bus we are attached to
 	struct twi_slave_t * next;	// daisy chain on the bus
 	
-	void * param;		// module parameter
+	void * param;		// module private parameter
 	uint8_t	address;	// slave address (lowest bit is not used, it's for the W bit)
 	int byte_index;		// byte index in the transaction (since last start, restart)
 
-	// return non-zero if this slave address is handled by this slave
-	// if NULL, the "address" field is used instead. If this function
-	// is present, 'address' field is not used.
-	int (*has_address)(struct twi_slave_t* p, uint8_t address);	// optional
-
 	// handle start conditionto address+w, restart means "stop" wasn't called
-	int (*start)(struct twi_slave_t* p, uint8_t address, int restart);
+	int (*event)(struct twi_slave_t* p, uint8_t address, enum twi_event event);
+
 	// handle a data write, after a (re)start
 	int (*write)(struct twi_slave_t* p, uint8_t v);
+
 	// handle a data read, after a (re)start
 	uint8_t (*read)(struct twi_slave_t* p);
-	// stop condition detected
-	void (*stop)(struct twi_slave_t* p);
 } twi_slave_t;
 
 
@@ -64,7 +71,7 @@ int twi_bus_write(twi_bus_t * bus, uint8_t data);
 uint8_t twi_bus_read(twi_bus_t * bus);
 void twi_bus_stop(twi_bus_t * bus);
 
-void twi_slave_init(twi_slave_t * slave, void * param);
+void twi_slave_init(twi_slave_t * slave, uint8_t address, void * param);
 void twi_slave_detach(twi_slave_t * slave);
 int twi_slave_match(twi_slave_t * slave, uint8_t address);
 

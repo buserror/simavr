@@ -57,7 +57,7 @@ typedef struct avr_twi_t {
 	avr_io_addr_t	r_twdr;			// data register
 	
 	avr_regbit_t twen;		// twi enable bit
-	avr_regbit_t twea;		// enabke acknowledge bit
+	avr_regbit_t twea;		// enable acknowledge bit
 	avr_regbit_t twsta;		// start condition
 	avr_regbit_t twsto;		// stop condition
 	avr_regbit_t twwc;		// write collision

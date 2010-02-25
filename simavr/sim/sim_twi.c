@@ -22,10 +22,12 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include "sim_twi.h"
 
 void twi_bus_init(twi_bus_t * bus)
 {
+	memset(bus, 0, sizeof(twi_bus_t));
 }
 
 void twi_bus_attach(twi_bus_t * bus, twi_slave_t * slave)
@@ -40,14 +42,17 @@ int twi_bus_start(twi_bus_t * bus, uint8_t address)
 {
 	// if we already have a peer, check to see if it's 
 	// still matching, if so, skip the lookup
-	if (bus->peer && twi_slave_match(bus->peer, address))
-		return bus->peer->start(bus->peer, address, 1);
+	if (bus->peer) {
+		if (twi_slave_match(bus->peer, address))
+			return bus->peer->event(bus->peer, address, TWI_START);
+		twi_bus_stop(bus);
+	}
 		
 	bus->peer = NULL;
 	twi_slave_t *s = bus->slave;
 	while (s) {
 		if (twi_slave_match(s, address)) {
-			if (s->start(s, address, 0)) {
+			if (s->event(s, address, TWI_START)) {
 				bus->peer = s;
 				s->byte_index = 0;
 				return 1;
@@ -60,8 +65,10 @@ int twi_bus_start(twi_bus_t * bus, uint8_t address)
 
 void twi_bus_stop(twi_bus_t * bus)
 {
-	if (bus->peer && bus->peer->stop)
-		bus->peer->stop(bus->peer);
+	if (bus->peer) {
+		bus->peer->event(bus->peer, 0, TWI_STOP);
+		bus->peer->byte_index = 0;
+	}
 	bus->peer = NULL;
 }
 
@@ -87,8 +94,10 @@ uint8_t twi_bus_read(twi_bus_t * bus)
 	return res;	
 }
 
-void twi_slave_init(twi_slave_t * slave, void * param)
+void twi_slave_init(twi_slave_t * slave, uint8_t address, void * param)
 {
+	memset(slave, 0, sizeof(twi_slave_t));
+	slave->address = address;
 	slave->param = param;
 }
 
@@ -114,8 +123,8 @@ void twi_slave_detach(twi_slave_t * slave)
 
 int twi_slave_match(twi_slave_t * slave, uint8_t address)
 {
-	if (slave->has_address)
-		return slave->has_address(slave, address);
-	return (address & ~1) == (slave->address & ~1);
+	if (slave->address)
+		return (address & ~1) == (slave->address & ~1);
+	return slave->event(slave, address, TWI_PROBE);
 }
 

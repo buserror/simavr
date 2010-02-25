@@ -70,14 +70,16 @@ static void avr_twi_irq_input(struct avr_irq_t * irq, uint32_t value, void * par
 #endif
 }
 
-static int twi_slave_has_address(struct twi_slave_t* p, uint8_t address)
+static int twi_slave_event(struct twi_slave_t* p, uint8_t address, enum twi_event event)
 {
-	return 0;
-}
-
-	// handle start conditionto address+w, restart means "stop" wasn't called
-static int twi_slave_start(struct twi_slave_t* p, uint8_t address, int restart)
-{
+	switch (event) {
+		case TWI_START:
+			break;
+		case TWI_STOP:
+			break;
+		case TWI_PROBE:
+			break;
+	}
 	return 0;
 }
 
@@ -93,18 +95,25 @@ static uint8_t twi_slave_read(struct twi_slave_t* p)
 	return 0;
 }
 
-	// stop condition detected
-static void twi_slave_stop(struct twi_slave_t* p)
-{
-}
-
 static twi_slave_t slave_driver = {
-	.has_address = twi_slave_has_address,
-	.start = twi_slave_start,
-	.stop = twi_slave_stop,
+	.event = twi_slave_event,
 	.write = twi_slave_write,
 	.read = twi_slave_read
 };
+
+static int avr_twi_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
+{
+	avr_twi_t * p = (avr_twi_t *)port;
+	int res = -1;
+
+	if (ctl == AVR_IOCTL_TWI_GETSLAVE(p->name)) {
+		*(twi_slave_t**)io_param = &p->slave;
+	} else if (ctl == AVR_IOCTL_TWI_GETBUS(p->name)) {
+		*(twi_bus_t**)io_param = &p->bus;
+	}
+
+	return res;
+}
 
 void avr_twi_reset(struct avr_io_t *io)
 {
@@ -115,6 +124,7 @@ void avr_twi_reset(struct avr_io_t *io)
 static	avr_io_t	_io = {
 	.kind = "twi",
 	.reset = avr_twi_reset,
+	.ioctl = avr_twi_ioctl,
 };
 
 void avr_twi_init(avr_t * avr, avr_twi_t * p)
@@ -123,7 +133,7 @@ void avr_twi_init(avr_t * avr, avr_twi_t * p)
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->twi);
 	p->slave = slave_driver;	// get default callbacks
-	twi_slave_init(&p->slave, p);
+	twi_slave_init(&p->slave, 0, p);
 	twi_bus_init(&p->bus);
 
 	//printf("%s TWI%c init\n", __FUNCTION__, p->name);
