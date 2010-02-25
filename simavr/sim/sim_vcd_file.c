@@ -87,7 +87,7 @@ static void avr_vcd_flush_log(avr_vcd_t * vcd)
 		return;
 //	printf("avr_vcd_flush_log %d\n", vcd->logindex);
 	uint32_t oldbase = 0;	// make sure it's different
-	char out[32];
+	char out[48];
 
 #if AVR_VCD_MAX_SIGNALS > 32
 	uint64_t seen = 0;
@@ -163,7 +163,7 @@ int avr_vcd_start(avr_vcd_t * vcd)
 	fprintf(vcd->output, "$dumpvars\n");
 	for (int i = 0; i < vcd->signal_count; i++) {
 		avr_vcd_signal_t * s = &vcd->signal[i];
-		char out[32];
+		char out[48];
 		fprintf(vcd->output, "%s\n", _avr_vcd_get_signal_text(s, out, s->irq.value));
 	}
 	fprintf(vcd->output, "$end\n");
