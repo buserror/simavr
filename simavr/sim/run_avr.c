@@ -34,9 +34,11 @@ extern avr_kind_t * avr_kind[];
 void display_usage(char * app)
 {
 	printf("usage: %s [-t] [-g] [-m <device>] [-f <frequency>] firmware\n", app);
-	printf("       -t: run full scale decoder trace\n");
-	printf("       -g: listen for gdb connection on port 1234\n");
-	printf("   Supported AVR cores:\n");
+	printf("       -t: run full scale decoder trace\n"
+		   "       -g: listen for gdb connection on port 1234\n"
+		   "       -ff: Loads next .hex file as flash\n"
+		   "       -ee: Loads next .hec file as eeprom\n"
+		   "   Supported AVR cores:\n");
 	for (int i = 0; avr_kind[i]; i++) {
 		printf("       ");
 		for (int ti = 0; ti < 4 && avr_kind[i]->names[ti]; ti++)
@@ -53,13 +55,14 @@ int main(int argc, char *argv[])
 	int trace = 0;
 	int gdb = 0;
 	char name[16] = "";
+	uint32_t loadBase = AVR_SEGMENT_OFFSET_FLASH;
 
 	if (argc == 1)
 		display_usage(basename(argv[0]));
 
 	for (int pi = 1; pi < argc; pi++) {
 		if (!strcmp(argv[pi], "-h") || !strcmp(argv[pi], "-help")) {
-				display_usage(basename(argv[0]));
+			display_usage(basename(argv[0]));
 		} else if (!strcmp(argv[pi], "-m") || !strcmp(argv[pi], "-mcu")) {
 			if (pi < argc-1)
 				strcpy(name, argv[++pi]);
@@ -70,24 +73,48 @@ int main(int argc, char *argv[])
 				f_cpu = atoi(argv[++pi]);
 			else
 				display_usage(basename(argv[0]));
-				break;
 		} else if (!strcmp(argv[pi], "-t") || !strcmp(argv[pi], "-trace")) {
-				trace++;
+			trace++;
 		} else if (!strcmp(argv[pi], "-g") || !strcmp(argv[pi], "-gdb")) {
 			gdb++;
+		} else if (!strcmp(argv[pi], "-ee")) {
+			loadBase = AVR_SEGMENT_OFFSET_EEPROM;
+		} else if (!strcmp(argv[pi], "-ff")) {
+			loadBase = AVR_SEGMENT_OFFSET_FLASH;			
+		} else if (argv[pi][0] != '-') {
+			char * filename = argv[pi];
+			char * suffix = strrchr(filename, '.');
+			if (suffix && !strcasecmp(suffix, ".hex")) {
+				if (!name[0] || !f_cpu) {
+					fprintf(stderr, "%s: -mcu and -freq are mandatory to load .hex files\n", argv[0]);
+					exit(1);
+				}
+				struct ihex_chunk_t chunk[4];
+				int cnt = read_ihex_chunks(filename, chunk, 4);
+				if (cnt <= 0) {
+					fprintf(stderr, "%s: Unable to load IHEX file %s\n", 
+						argv[0], argv[pi]);
+					exit(1);
+				}
+				printf("Loaded %d section of ihex\n", cnt);
+				for (int ci = 0; ci < cnt; ci++) {
+					if (chunk[ci].baseaddr < (1*1024*1024)) {
+						f.flash = chunk[ci].data;
+						f.flashsize = chunk[ci].size;
+						f.flashbase = chunk[ci].baseaddr;
+						printf("Load HEX flash %08x, %d\n", f.flashbase, f.flashsize);
+					} else if (chunk[ci].baseaddr >= AVR_SEGMENT_OFFSET_EEPROM ||
+							chunk[ci].baseaddr + loadBase >= AVR_SEGMENT_OFFSET_EEPROM) {
+						// eeprom!
+						f.eeprom = chunk[ci].data;
+						f.eesize = chunk[ci].size;
+						printf("Load HEX eeprom %08x, %d\n", chunk[ci].baseaddr, f.eesize);
+					}
+				}
+			} else {
+				elf_read_firmware(filename, &f);
+			}
 		}
-	}
-
-	char * filename = argv[argc-1];
-	char * suffix = strrchr(filename, '.');
-	if (suffix && !strcasecmp(suffix, ".hex")) {
-		if (!name[0] || !f_cpu) {
-			fprintf(stderr, "%s: -mcu and -freq are mandatory to load .hex files\n", argv[0]);
-			exit(1);
-		}
-		f.flash = read_ihex_file(filename, &f.flashsize, &f.flashbase);
-	} else {
-		elf_read_firmware(filename, &f);
 	}
 
 	if (strlen(name))
