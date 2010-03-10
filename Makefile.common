@@ -48,7 +48,7 @@ endif
 # otherwise the --gc-sections will delete it.
 
 %.hex: %.axf
-	@${AVR}objcopy -j .text -j .data -O ihex ${<} ${@}
+	@${AVR}objcopy -j .text -j .data -j .eeprom -O ihex ${<} ${@}
 
 %.s: %.axf
 	@${AVR}objdump -j .text -j .data -j .bss -d  ${<} > ${@}
