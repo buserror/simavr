@@ -137,3 +137,98 @@ uint8_t * read_ihex_file(const char * fname, uint32_t * dsize, uint32_t * start)
 	fclose(f);
 	return res;
 }
+
+
+int read_ihex_chunks(const char * fname, struct ihex_chunk_t * chunks, int max_chunks)
+{
+	if (!fname || !chunks || !max_chunks)
+		return -1;
+	memset((void*)chunks, 0, sizeof(chunks[0]) * max_chunks);
+	FILE * f = fopen(fname, "r");
+	if (!f) {
+		perror(fname);
+		return -1;
+	}
+	uint32_t segment = 0;	// segment address
+	int chunk = 0;
+	chunks[0].baseaddr = ~0;
+
+	while (!feof(f)) {
+		char line[128];
+		if (!fgets(line, sizeof(line)-1, f))
+			continue;
+		if (line[0] != ':') {
+			fprintf(stderr, "AVR: '%s' invalid ihex format (%.4s)\n", fname, line);
+			break;
+		}
+		uint8_t bline[64];
+
+		int len = read_hex_string(line + 1, bline, sizeof(bline));
+		if (len <= 0)
+			continue;
+
+		uint8_t chk = 0;
+		{	// calculate checksum
+			uint8_t * src = bline;
+			int tlen = len-1;
+			while (tlen--)
+				chk += *src++;
+			chk = 0x100 - chk;
+		}
+		if (chk != bline[len-1]) {
+			fprintf(stderr, "%s: %s, invalid checksum %02x/%02x\n", __FUNCTION__, fname, chk, bline[len-1]);
+			break;
+		}
+		uint32_t addr = 0;
+		switch (bline[3]) {
+			case 0: // normal data
+				addr = segment + (bline[1] << 8) | bline[2];
+				break;
+			case 1: // end of file
+				continue;
+			case 2: // extended address 2 bytes
+				segment = ((bline[4] << 8) | bline[5]) << 4;
+				continue;
+			case 4:
+				segment = ((bline[4] << 8) | bline[5]) << 16;
+				continue;
+			default:
+				fprintf(stderr, "%s: %s, unsupported check type %02x\n", __FUNCTION__, fname, bline[3]);
+				continue;
+		}
+		if (addr != chunks[chunk].baseaddr + chunks[chunk].size) {
+			if (chunks[chunk].size)
+				chunk++;
+			chunks[chunk].baseaddr = addr;
+		}
+		chunks[chunk].data = realloc(chunks[chunk].data, chunks[chunk].size + bline[0]);
+		memcpy(chunks[chunk].data + chunks[chunk].size, bline + 4, bline[0]);
+		chunks[chunk].size += bline[0];
+	}
+	if (chunks[chunk].size)
+		chunk++;
+	fclose(f);
+	return chunk;
+}
+
+
+#ifdef IHEX_TEST
+// gcc -std=gnu99 -Isimavr/sim simavr/sim/sim_hex.c -o sim_hex -DIHEX_TEST
+int main(int argc, char * argv[])
+{
+	struct ihex_chunk_t chunk[4];
+	
+	for (int fi = 1; fi < argc; fi++) {
+		int c = read_ihex_chunks(argv[fi], chunk, 4);
+		if (c == -1) {
+			perror(argv[fi]);
+			continue;
+		}
+		for (int ci = 0; ci < c; ci++) {
+			char n[96];
+			sprintf(n, "%s[%d] = %08x", argv[fi], ci, chunk[ci].baseaddr);
+			hdump(n, chunk[ci].data, chunk[ci].size);
+		}
+	}
+}
+#endif

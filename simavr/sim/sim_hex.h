@@ -28,6 +28,20 @@
 // parses a hex text string 'src' of at max 'maxlen' characters, decodes it into 'buffer'
 int read_hex_string(const char * src, uint8_t * buffer, int maxlen);
 
+// a .hex file chunk (base address + size)
+struct ihex_chunk_t {
+	uint32_t baseaddr;	// offset it started at in the .hex file
+	uint8_t * data;		// read data
+	uint32_t size;		// read data size
+};
+
+/*
+ * Read a .hex file, detects the various different chunks in it from their starting
+ * addresses and fills up the chunks passed as arguments up to max_chunks.
+ * Returns the number of chunks found, or -1 if an error occurs.
+ */
+int read_ihex_chunks(const char * fname, struct ihex_chunk_t * chunks, int max_chunks);
+
 // reads IHEX file 'fname', puts it's decoded size in *'dsize' and returns
 // a newly allocated buffer with the binary data (or NULL, if error)
 uint8_t * read_ihex_file(const char * fname, uint32_t * dsize, uint32_t * start);
