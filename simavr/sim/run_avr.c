@@ -1,7 +1,7 @@
 /*
 	run_avr.c
 
-	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Copyright 2008, 2010 Michel Pollet <buserror@gmail.com>
 
  	This file is part of simavr.
 
@@ -122,8 +122,6 @@ int main(int argc, char *argv[])
 	if (f_cpu)
 		f.frequency = f_cpu;
 
-	printf("firmware %s f=%d mmcu=%s\n", argv[argc-1], (int)f.frequency, f.mmcu);
-
 	avr_t * avr = avr_make_mcu_by_name(f.mmcu);
 	if (!avr) {
 		fprintf(stderr, "%s: AVR '%s' now known\n", argv[0], f.mmcu);
@@ -132,7 +130,7 @@ int main(int argc, char *argv[])
 	avr_init(avr);
 	avr_load_firmware(avr, &f);
 	if (f.flashbase) {
-		printf("Attempted to load a booloader at %04x\n", f.flashbase);
+		printf("Attempted to load a bootloader at %04x\n", f.flashbase);
 		avr->pc = f.flashbase;
 	}
 	avr->trace = trace;
