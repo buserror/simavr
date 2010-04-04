@@ -54,6 +54,8 @@ static int avr_flash_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param
 	avr_t * avr = p->io.avr;
 
 	uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
+	if (avr->rampz)
+		z |= avr->data[avr->rampz] << 16;
 	uint16_t r01 = avr->data[0] | (avr->data[1] << 8);
 
 //	printf("AVR_IOCTL_FLASH_SPM %02x Z:%04x R01:%04x\n", avr->data[p->r_spm], z,r01);
