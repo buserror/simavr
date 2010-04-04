@@ -105,19 +105,19 @@ static void elf_parse_mmcu_section(elf_firmware_t * firmware, uint8_t * src, uin
 		uint8_t tag = *src++;
 		uint8_t ts = *src++;
 		int next = size > 2 + ts ? 2 + ts : size;
-		printf("elf_parse_mmcu_section %d, %d / %d\n", tag, ts, size);
+	//	printf("elf_parse_mmcu_section %d, %d / %d\n", tag, ts, size);
 		switch (tag) {
 			case AVR_MMCU_TAG_FREQUENCY:
 				firmware->frequency =
 					src[0] | (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
 				break;
 			case AVR_MMCU_TAG_NAME:
-				strcpy(firmware->mmcu, src);
+				strcpy(firmware->mmcu, (char*)src);
 				break;		
 			case AVR_MMCU_TAG_VCD_TRACE: {
 				uint8_t mask = src[0];
 				uint16_t addr = src[1] | (src[2] << 8);
-				char * name = src + 3;
+				char * name = (char*)src + 3;
 				printf("AVR_MMCU_TAG_VCD_TRACE %04x:%02x - %s\n", addr, mask, name);
 				firmware->trace[firmware->tracecount].mask = mask;
 				firmware->trace[firmware->tracecount].addr = addr;
@@ -126,7 +126,7 @@ static void elf_parse_mmcu_section(elf_firmware_t * firmware, uint8_t * src, uin
 				firmware->tracecount++;
 			}	break;
 			case AVR_MMCU_TAG_VCD_FILENAME: {
-				strcpy(firmware->tracename, src);
+				strcpy(firmware->tracename, (char*)src);
 			}	break;
 			case AVR_MMCU_TAG_VCD_PERIOD: {
 				firmware->traceperiod =

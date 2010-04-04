@@ -50,7 +50,7 @@ static void avr_watchdog_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void 
 {
 	avr_watchdog_t * p = (avr_watchdog_t *)param;
 	// backup the registers
-	uint8_t wd = avr->data[p->wdce.reg];
+	// uint8_t wd = avr->data[p->wdce.reg];
 	uint8_t wdce_o = avr_regbit_get(avr, p->wdce);	// old
 	uint8_t wde_o = avr_regbit_get(avr, p->wde);
 	uint8_t wdp_o[4];
@@ -106,7 +106,7 @@ static int avr_watchdog_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_pa
 
 static void avr_watchdog_reset(avr_io_t * port)
 {
-	avr_watchdog_t * p = (avr_watchdog_t *)port;
+//	avr_watchdog_t * p = (avr_watchdog_t *)port;
 
 }
 

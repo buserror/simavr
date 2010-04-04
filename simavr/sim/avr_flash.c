@@ -32,13 +32,6 @@ static avr_cycle_count_t avr_progen_clear(struct avr_t * avr, avr_cycle_count_t 
 	return 0;
 }
 
-static uint8_t avr_flash_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
-{
-	avr_flash_t * p = (avr_flash_t *)param;
-	uint8_t v = avr_core_watch_read(avr, addr);
-	printf("avr_flash_read %02x\n", v);
-	return v;
-}
 
 static void avr_flash_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {

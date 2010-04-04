@@ -182,7 +182,7 @@ int read_ihex_chunks(const char * fname, struct ihex_chunk_t * chunks, int max_c
 		uint32_t addr = 0;
 		switch (bline[3]) {
 			case 0: // normal data
-				addr = segment + (bline[1] << 8) | bline[2];
+				addr = segment | (bline[1] << 8) | bline[2];
 				break;
 			case 1: // end of file
 				continue;

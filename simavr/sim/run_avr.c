@@ -50,7 +50,7 @@ void display_usage(char * app)
 
 int main(int argc, char *argv[])
 {
-	elf_firmware_t f = {0};
+	elf_firmware_t f = {{0}};
 	long f_cpu = 0;
 	int trace = 0;
 	int gdb = 0;

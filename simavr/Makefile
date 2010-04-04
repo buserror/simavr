@@ -18,7 +18,7 @@
 
 target	= run_avr
 
-CFLAGS	+= -O3  -mfpmath=sse -msse2
+CFLAGS	+= -O3  -mfpmath=sse -msse2 -Wall
 #CFLAGS	+= -DCONFIG_SIMAVR_TRACE=1
 
 cores	= ${wildcard cores/*.c}

@@ -108,7 +108,7 @@ static void avr_vcd_flush_log(avr_vcd_t * vcd)
 			
 		if (base > oldbase || li == 0) {
 			seen = 0;
-			fprintf(vcd->output, "#%ld\n", base);
+			fprintf(vcd->output, "#%uld\n", base);
 			oldbase = base;
 		}
 		seen |= (1 << l->signal->irq.irq);	// mark this trace as seen for this timestamp
@@ -136,6 +136,7 @@ int avr_vcd_add_signal(avr_vcd_t * vcd,
 	s->size = signal_bit_size;
 	s->alias = ' ' + vcd->signal_count ;
 	avr_connect_irq(signal_irq, &s->irq);
+	return 0;
 }
 
 
@@ -169,6 +170,7 @@ int avr_vcd_start(avr_vcd_t * vcd)
 	fprintf(vcd->output, "$end\n");
 	vcd->start = vcd->avr->cycle;
 	avr_cycle_timer_register(vcd->avr, vcd->period, _avr_vcd_timer, vcd);	
+	return 0;
 }
 
 int avr_vcd_stop(avr_vcd_t * vcd)
@@ -180,6 +182,7 @@ int avr_vcd_stop(avr_vcd_t * vcd)
 	if (vcd->output)
 		fclose(vcd->output);
 	vcd->output = NULL;
+	return 0;
 }
 
 
