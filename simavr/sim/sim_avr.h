@@ -78,6 +78,7 @@ typedef struct avr_t {
 	uint8_t		vector_size;
 	uint8_t		signature[3];
 	uint8_t		fuse[4];
+	avr_io_addr_t	rampz;	// optional, only for ELPM/SPM on >64Kb cores
 
 	// filled by the ELF data, this allow tracking of invalid jumps
 	uint32_t			codeend;

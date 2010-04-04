@@ -819,21 +819,25 @@ uint16_t avr_run_one(avr_t * avr)
 					STATE("spm\n");
 					avr_ioctl(avr, AVR_IOCTL_FLASH_SPM, 0);
 				}	break;
-				case 0x9409: { // IJMP Indirect jump
+				case 0x9409:   // IJMP Indirect jump 					1001 0100 0000 1001
+				case 0x9419:   // EIJMP Indirect jump 					1001 0100 0001 1001   bit 4 is "indirect"
+				case 0x9509:   // ICALL Indirect Call to Subroutine		1001 0101 0000 1001
+				case 0x9519: { // EICALL Indirect Call to Subroutine	1001 0101 0001 1001   bit 8 is "push pc"
+					int e = opcode & 0x10;
+					int p = opcode & 0x100;
+					if (e && !avr->eind)
+						_avr_invalid_opcode(avr);
 					uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
-					STATE("ijmp Z[%04x]\n", z << 1);
+					if (e)
+						z |= avr->data[avr->eind] << 16;
+					STATE("%si%s Z[%04x]\n", e?"e":"", p?"call":"jmp", z << 1);
+					if (p) {
+						cycle++;
+						_avr_push16(avr, new_pc >> 1);
+					}
 					new_pc = z << 1;
 					cycle++;
 					TRACE_JUMP();
-				}	break;
-				case 0x9509: { // ICALL Indirect Call to Subroutine
-					uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
-					STATE("icall Z[%04x]\n", z << 1);
-					_avr_push16(avr, new_pc >> 1);
-					new_pc = z << 1;
-					cycle += 2;
-					TRACE_JUMP();
-					STACK_FRAME_PUSH();
 				}	break;
 				case 0x9518: 	// RETI
 				case 0x9508: {	// RET
@@ -885,6 +889,23 @@ uint16_t avr_run_one(avr_t * avr)
 							_avr_set_r(avr, r, avr->flash[z]);
 							if (op == 1) {
 								z++;
+								_avr_set_r(avr, R_ZH, z >> 8);
+								_avr_set_r(avr, R_ZL, z);
+							}
+							cycle += 2;
+						}	break;
+						case 0x9006:
+						case 0x9007: {	// ELPM Extended Load Program Memory 1001 000d dddd 01oo
+							if (!avr->rampz)
+								_avr_invalid_opcode(avr);
+							uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8) | (avr->data[avr->rampz] << 16);
+							uint8_t r = (opcode >> 4) & 0x1f;
+							int op = opcode & 3;
+							STATE("elpm %s, (Z[%02x:%04x]%s)\n", avr_regname(r), z >> 16, z&0xffff, opcode?"+":"");
+							_avr_set_r(avr, r, avr->flash[z]);
+							if (op == 3) {
+								z++;
+								_avr_set_r(avr, avr->rampz, z >> 16);
 								_avr_set_r(avr, R_ZH, z >> 8);
 								_avr_set_r(avr, R_ZL, z);
 							}
