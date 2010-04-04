@@ -65,4 +65,19 @@ void avr_watchdog_init(avr_t * avr, avr_watchdog_t * p);
 		},\
 	}
 
+/* no WDP3, WDIE, WDIF in atmega128 */
+#define AVR_WATCHDOG_DECLARE_128(_WDSR, _vec) \
+	.watchdog = {\
+		.wdrf = AVR_IO_REGBIT(MCUSR, WDRF),\
+		.wdce = AVR_IO_REGBIT(_WDSR, WDCE),\
+		.wde = AVR_IO_REGBIT(_WDSR, WDE),\
+		.wdp = { AVR_IO_REGBIT(_WDSR, WDP0),AVR_IO_REGBIT(_WDSR, WDP1),\
+				AVR_IO_REGBIT(_WDSR, WDP2) },\
+		.watchdog = {\
+			.enable = AVR_IO_REGBIT(_WDSR, 6),\
+			.raised = AVR_IO_REGBIT(_WDSR, 7),\
+			.vector = _vec,\
+		},\
+	}
+
 #endif /* __AVR_WATCHDOG_H___ */

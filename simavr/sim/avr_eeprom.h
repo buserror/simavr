@@ -79,6 +79,27 @@ typedef struct avr_eeprom_desc_t {
 	}
 
 /*
+ * no EEPM registers in atmega128
+ */
+#define AVR_EEPROM_DECLARE_NOEEPM(_vector)		\
+	.eeprom = {\
+		.size = E2END+1,\
+		.r_eearh = EEARH,\
+		.r_eearl = EEARL,\
+		.r_eedr = EEDR,\
+		.r_eecr = EECR,\
+		.eepm = { },		\
+		.eempe = AVR_IO_REGBIT(EECR, EEMWE),\
+		.eepe = AVR_IO_REGBIT(EECR, EEWE),\
+		.eere = AVR_IO_REGBIT(EECR, EERE),\
+		.ready = {\
+			.enable = AVR_IO_REGBIT(EECR, EERIE),\
+			.vector = _vector,\
+		},\
+	}
+
+
+/*
  * macro definition without a high address bit register,
  * which is not implemented in some tiny AVRs.
  */
