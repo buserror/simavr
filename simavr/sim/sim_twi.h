@@ -27,42 +27,61 @@
 #define SIM_TWI_H_
 
 #include <stdint.h>
+#include "sim_irq.h"
 
-enum twi_event {
-    TWI_START,
-    TWI_STOP,
-	// return non-zero if this slave address is handled by this slave
-	// if NULL, the "address" field is used instead. If this function
-	// is present, 'address' field is not used.
-    TWI_PROBE,
-    TWI_NACK /* Masker NACKed a receive byte.  */
+/*
+ * The TWI system is designed to be representing the same state as 
+ * a TWI/i2c bus itself. So each "state" of the bus is an IRQ sent
+ * by the master to the slave, with a couple sent from the
+ * slave to the master.
+ * This is designed to decorelate the operations on the "bus" so
+ * the firmware has time to "run" before acknowledging a byte, for
+ * example.
+ * 
+ * IRQ Timeline goes as follow  with an example transaction that
+ * does write addres, write registrer, read a byte after a i2c restart
+ * then stops the transaction.
+ * 
+ * Master:	START	MOSI	START	MISO	ACK	STOP
+ * Slave:		ACK		ACK		ACK		MISO	
+ */
+enum twi_state_e {
+	TWI_MASTER_STOP = 0,
+	TWI_MASTER_START,			// master does a start with address
+	TWI_MASTER_MOSI,			// master i2c write
+	TWI_MASTER_MISO,			// master i2c read
+	TWI_MASTER_ACK,				// master i2c ACK after a i2c read
+	TWI_MASTER_STATE_COUNT,
+
+	TWI_SLAVE_MISO = 0,			// slave i2c read.
+	TWI_SLAVE_ACK,				// slave acknowledges TWI_MASTER_MOSI
+	TWI_SLAVE_STATE_COUNT,	
 };
 
 #define TWI_ADDRESS_READ_MASK	0x01
 
 typedef struct twi_slave_t {
+	avr_irq_t		irq[TWI_SLAVE_STATE_COUNT];
+
 	struct twi_bus_t * bus;	// bus we are attached to
 	struct twi_slave_t * next;	// daisy chain on the bus
 	
-	void * param;		// module private parameter
-	uint8_t	address;	// slave address (lowest bit is not used, it's for the W bit)
-	int byte_index;		// byte index in the transaction (since last start, restart)
-
-	// handle start conditionto address+w, restart means "stop" wasn't called
-	int (*event)(struct twi_slave_t* p, uint8_t address, enum twi_event event);
-
-	// handle a data write, after a (re)start
-	int (*write)(struct twi_slave_t* p, uint8_t v);
-
-	// handle a data read, after a (re)start
-	uint8_t (*read)(struct twi_slave_t* p);
+	uint32_t		address;	// can specify up to 4 matching addresses here
+	int				match;		// we are selected on the bus
+	int				index;		// byte index in the transaction
+	
+	uint8_t			latch;		// last received byte
 } twi_slave_t;
 
 
 typedef struct twi_bus_t {
+	avr_irq_t		irq[TWI_MASTER_STATE_COUNT];
+	
 	struct twi_slave_t * slave;	// daisy chain on the bus
-
 	struct twi_slave_t * peer;	// during a transaction, this is the selected slave
+
+	uint8_t			latch;		// last received byte
+	uint8_t			ack;		// last received ack
 } twi_bus_t;
 
 void twi_bus_init(twi_bus_t * bus);
@@ -73,6 +92,5 @@ void twi_bus_stop(twi_bus_t * bus);
 
 void twi_slave_init(twi_slave_t * slave, uint8_t address, void * param);
 void twi_slave_detach(twi_slave_t * slave);
-int twi_slave_match(twi_slave_t * slave, uint8_t address);
 
 #endif /*  SIM_TWI_H_ */

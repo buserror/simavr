@@ -25,9 +25,81 @@
 #include <string.h>
 #include "sim_twi.h"
 
+static void twi_bus_master_irq_notify(struct avr_irq_t * irq, uint32_t value, void * param)
+{
+	switch (irq->irq) {
+		case TWI_MASTER_STOP:
+			bus->peer = NULL;
+			break;
+		case TWI_MASTER_START:
+			bus->peer = NULL;
+			bus->ack = 0;
+			break;
+		case TWI_MASTER_MISO:
+			bus->ack = 0;
+			break;
+		case TWI_MASTER_MOSI:
+			bus->ack = 0;
+			break;
+		case TWI_MASTER_ACK:
+			if (!peer) {
+			}
+			break;
+	}
+}
+
+static void twi_bus_slave_irq_notify(struct avr_irq_t * irq, uint32_t value, void * param)
+{
+	twi_slave_t * slave = (twi_slave_t*)param;
+	twi_bus_t * bus = slave->bus;
+	switch (irq->irq) {
+		case TWI_SLAVE_MISO:
+			bus->latch = value;
+			break;
+		case TWI_SLAVE_ACK:
+			if (!bus->peer) {
+				bus->peer = slave;
+				printf("twi bus: slave %x selected\n", slave->address);
+			}
+			bus->ack = 0x80 | (value & 1);
+			break;
+	}
+}
+
+static void twi_slave_master_irq_notify(struct avr_irq_t * irq, uint32_t value, void * param)
+{
+	twi_slave_t * slave = (twi_slave_t*)param;
+	switch (irq->irq) {
+		case TWI_MASTER_STOP:
+			if (slave->match) {
+				// we were target
+			}
+			slave->match = 0;
+			break;
+		case TWI_MASTER_START:
+			if ((value & 0xfe) == slave->address & 0xfe) {
+				if (slave->match) {
+					// restart
+				}
+				slave->match = 1;
+				avr_raise_irq(slave->irq + TWI_SLAVE_ACK, 1);
+			}
+			break;
+		case TWI_MASTER_MISO:
+			break;
+		case TWI_MASTER_MOSI:
+			break;
+		case TWI_MASTER_ACK:
+			break;
+	}
+}
+
 void twi_bus_init(twi_bus_t * bus)
 {
 	memset(bus, 0, sizeof(twi_bus_t));
+	avr_init_irq(bus->irq, 0, TWI_STATE_COUNT);
+	for (int i = 0; i < TWI_MASTER_STATE_COUNT; i++)
+		avr_irq_register_notify(bus->irq + i, twi_bus_master_irq_notify, bus);
 }
 
 void twi_bus_attach(twi_bus_t * bus, twi_slave_t * slave)
@@ -36,40 +108,22 @@ void twi_bus_attach(twi_bus_t * bus, twi_slave_t * slave)
 	slave->bus = bus;
 	slave->next = bus->slave;
 	bus->slave = slave;
+	
+	for (int i = 0; i < TWI_SLAVE_STATE_COUNT; i++)
+		avr_irq_register_notify(slave->irq + i, twi_bus_slave_irq_notify, slave);
+	for (int i = 0; i < TWI_MASTER_STATE_COUNT; i++)
+		avr_irq_register_notify(bus->irq + i, twi_slave_irq_notify, slave);
 }
 
 int twi_bus_start(twi_bus_t * bus, uint8_t address)
 {
-	// if we already have a peer, check to see if it's 
-	// still matching, if so, skip the lookup
-	if (bus->peer) {
-		if (twi_slave_match(bus->peer, address))
-			return bus->peer->event(bus->peer, address, TWI_START);
-		twi_bus_stop(bus);
-	}
-		
-	bus->peer = NULL;
-	twi_slave_t *s = bus->slave;
-	while (s) {
-		if (twi_slave_match(s, address)) {
-			if (s->event(s, address, TWI_START)) {
-				bus->peer = s;
-				s->byte_index = 0;
-				return 1;
-			}
-		}
-		s = s->next;
-	}
-	return 0;
+	avr_raise_irq(bus->irq + TWI_MASTER_START, address);
+	return bus->peer != NULL ? 1 : 0;
 }
 
 void twi_bus_stop(twi_bus_t * bus)
 {
-	if (bus->peer) {
-		bus->peer->event(bus->peer, 0, TWI_STOP);
-		bus->peer->byte_index = 0;
-	}
-	bus->peer = NULL;
+	avr_raise_irq(bus->irq + TWI_MASTER_STOP, 0);
 }
 
 int twi_bus_write(twi_bus_t * bus, uint8_t data)
@@ -99,6 +153,7 @@ void twi_slave_init(twi_slave_t * slave, uint8_t address, void * param)
 	memset(slave, 0, sizeof(twi_slave_t));
 	slave->address = address;
 	slave->param = param;
+
 }
 
 void twi_slave_detach(twi_slave_t * slave)
