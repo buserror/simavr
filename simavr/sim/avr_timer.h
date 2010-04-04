@@ -65,7 +65,7 @@ typedef struct avr_timer_t {
 	avr_regbit_t	disabled;	// bit in the PRR
 
 	avr_io_addr_t	r_ocra, r_ocrb, r_ocrc, r_tcnt, r_icr;
-	avr_io_addr_t	r_ocrah, r_ocrbh, r_tcnth, r_icrh;
+	avr_io_addr_t	r_ocrah, r_ocrbh, r_ocrch, r_tcnth, r_icrh;
 	
 	avr_regbit_t	wgm[4];
 	avr_timer_wgm_t	wgm_op[16];
@@ -75,13 +75,15 @@ typedef struct avr_timer_t {
 	avr_regbit_t	as2;		// asynchronous clock 32khz
 
 	avr_int_vector_t compa;	// comparator A
-	avr_int_vector_t compb;	// comparator A
+	avr_int_vector_t compb;	// comparator B
+	avr_int_vector_t compc;	// comparator C TODO: code
 	avr_int_vector_t overflow;	// overflow
 	avr_int_vector_t icr;	// input capture
 
 	avr_timer_wgm_t	mode;
 	uint64_t		compa_cycles;
 	uint64_t		compb_cycles;
+	uint64_t		compc_cycles;
 	uint64_t		tov_cycles;
 	uint64_t		tov_base;	// we we last were called
 	uint16_t		tov_top;	// current top value to calculate tnct

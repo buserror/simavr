@@ -304,7 +304,10 @@ void avr_timer_init(avr_t * avr, avr_timer_t * p)
 	 * the trigger.
 	 */
 	avr_register_io_write(avr, p->r_ocra, avr_timer_write_ocr, p);
-	avr_register_io_write(avr, p->r_ocrb, avr_timer_write, p);
+	if (p->r_ocrb) // not all timers have B register
+		avr_register_io_write(avr, p->r_ocrb, avr_timer_write, p);
+	if(p->r_ocrc)	// but some have a C one
+		avr_register_io_write(avr, p->r_ocrc, avr_timer_write, p);
 	avr_register_io_write(avr, p->r_tcnt, avr_timer_tcnt_write, p);
 
 	avr_register_io_read(avr, p->r_tcnt, avr_timer_tcnt_read, p);
