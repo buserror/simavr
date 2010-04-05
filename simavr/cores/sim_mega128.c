@@ -69,9 +69,14 @@ struct mcu_t {
 	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
 	AVR_WATCHDOG_DECLARE_128(WDTCR, _VECTOR(0)),
 	.extint = {
-		AVR_EXTINT_DECLARE(0, 'D', PD2),
-		AVR_EXTINT_DECLARE(1, 'D', PD3),
-		AVR_EXTINT_DECLARE(2, 'B', PB3),
+		AVR_EXTINT_DECLARE(0, 'D', PD0),
+		AVR_EXTINT_DECLARE(1, 'D', PD1),
+		AVR_EXTINT_DECLARE(2, 'D', PD2),
+		AVR_EXTINT_DECLARE(3, 'D', PD3),
+		AVR_EXTINT_DECLARE(4, 'E', PE4),
+		AVR_EXTINT_DECLARE(5, 'E', PE5),
+		AVR_EXTINT_DECLARE(6, 'E', PE6),
+		AVR_EXTINT_DECLARE(7, 'E', PE7),
 	},
 	.porta = {  // no PCINTs in atmega128
 		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
@@ -403,7 +408,7 @@ static avr_t * make()
 }
 
 avr_kind_t mega128 = {
-        .names = { "mega128", "mega128L" },
+        .names = { "atmega128", "atmega128L" },
         .make = make
 };
 
