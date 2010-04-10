@@ -47,6 +47,7 @@ const struct avr_mmcu_vcd_trace_t _mytrace[]  _MMCU_ = {
 	{ AVR_MCU_VCD_SYMBOL("TCNT1H"), .what = (void*)&TCNT1H, },	
 	{ AVR_MCU_VCD_SYMBOL("tick"), .mask = (1 << 0), .what = (void*)&PORTB, },	
 	{ AVR_MCU_VCD_SYMBOL("reset_timer"), .mask = (1 << 1), .what = (void*)&PORTB, },	
+	{ AVR_MCU_VCD_SYMBOL("OC2A"), .mask = (1 << 3), .what = (void*)&PORTB, },
 };
 
 volatile uint16_t tcnt;
@@ -68,14 +69,16 @@ int main()
 	// timer prescaler to 64
 	TCCR1B |= (0<<CS12 | 1<<CS11 | 1<<CS10);
 
-	DDRB = 3;
+	DDRB = 5;
 	
 	//
 	// now enable a tick counter
 	// using an asynchronous mode
 	//
 	ASSR |= (1 << AS2);		// use "external" 32.7k crystal source
-	TCCR2A = (1 << WGM21); // use CLK/8 prescale value, clear timer/counter on compareA match
+	// use CLK/8 prescale value, clear timer/counter on compareA match
+	// toggle OC2A pin too
+	TCCR2A = (1 << WGM21) | (1 << COM2A0);
     TCCR2B = (2 << CS20); // prescaler
     OCR2A = 63;	// 64 hz
     TIMSK2  |= (1 << OCIE2A);
