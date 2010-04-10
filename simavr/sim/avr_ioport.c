@@ -95,9 +95,40 @@ static void avr_ioport_reset(avr_io_t * port)
 		avr_irq_register_notify(p->io.irq + i, avr_ioport_irq_notify, p);
 }
 
+static int avr_ioport_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
+{
+	avr_ioport_t * p = (avr_ioport_t *)port;
+	int res = -1;
+
+	switch(ctl) {
+		case AVR_IOCTL_IOPORT_GETIRQ_REGBIT: {
+			avr_ioport_getirq_t * r = (avr_ioport_getirq_t*)io_param;
+
+			if (r->bit.reg == p->r_port || r->bit.reg == p->r_pin || r->bit.reg == p->r_ddr) {
+				// it's us ! check the special case when the "all pins" irq is requested
+				int o = 0;
+				if (r->bit.mask == 0xff)
+					r->irq[o++] = &p->io.irq[IOPORT_IRQ_PIN_ALL];
+				else {
+					// otherwise fil up the ones needed
+					for (int bi = 0; bi < 8; bi++)
+						if (r->bit.mask & (1 << bi))
+							r->irq[o++] = &p->io.irq[r->bit.bit + bi];
+				}
+				if (o < 8)
+					r->irq[o] = NULL;
+				return o;
+			}
+		}	break;
+	}
+
+	return res;
+}
+
 static	avr_io_t	_io = {
 	.kind = "io",
 	.reset = avr_ioport_reset,
+	.ioctl = avr_ioport_ioctl,
 };
 
 void avr_ioport_init(avr_t * avr, avr_ioport_t * p)

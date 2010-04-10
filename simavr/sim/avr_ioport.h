@@ -35,6 +35,16 @@ enum {
 // add port name (uppercase) to get the real IRQ
 #define AVR_IOCTL_IOPORT_GETIRQ(_name) AVR_IOCTL_DEF('i','o','g',(_name))
 
+
+// this ioctl takes a avr_regbit_t, compares the register address
+// to PORT/PIN/DDR and return the corresponding IRQ(s) if it matches
+typedef struct avr_ioport_getirq_t {
+	avr_regbit_t bit;	// bit wanted
+	avr_irq_t * irq[8];	// result, terminated by NULL if < 8
+} avr_ioport_getirq_t;
+
+#define AVR_IOCTL_IOPORT_GETIRQ_REGBIT AVR_IOCTL_DEF('i','o','g','r')
+
 typedef struct avr_ioport_t {
 	avr_io_t	io;
 	char name;
