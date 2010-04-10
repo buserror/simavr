@@ -117,8 +117,6 @@ struct mcu_t SIM_CORENAME = {
 		.cs = { AVR_IO_REGBIT(TCCR0B, CS00), AVR_IO_REGBIT(TCCR0B, CS01), AVR_IO_REGBIT(TCCR0B, CS02) },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ },
 
-		.r_ocra = OCR0A,
-		.r_ocrb = OCR0B,
 		.r_tcnt = TCNT0,
 
 		.overflow = {
@@ -126,15 +124,23 @@ struct mcu_t SIM_CORENAME = {
 			.raised = AVR_IO_REGBIT(TIFR, TOV0),
 			.vector = TIMER0_OVF_vect,
 		},
-		.compa = {
-			.enable = AVR_IO_REGBIT(TIMSK, OCIE0A),
-			.raised = AVR_IO_REGBIT(TIFR, OCF0A),
-			.vector = TIMER0_COMPA_vect,
-		},
-		.compb = {
-			.enable = AVR_IO_REGBIT(TIMSK, OCIE0B),
-			.raised = AVR_IO_REGBIT(TIFR, OCF0B),
-			.vector = TIMER0_COMPB_vect,
+		.comp = {
+			[AVR_TIMER_COMPA] = {
+				.r_ocr = OCR0A,
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK, OCIE0A),
+					.raised = AVR_IO_REGBIT(TIFR, OCF0A),
+					.vector = TIMER0_COMPA_vect,
+				},
+			},
+			[AVR_TIMER_COMPB] = {
+				.r_ocr = OCR0B,
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK, OCIE0B),
+					.raised = AVR_IO_REGBIT(TIFR, OCF0B),
+					.vector = TIMER0_COMPB_vect,
+				},
+			},
 		},
 	},
 	.timer1 = {
@@ -143,9 +149,6 @@ struct mcu_t SIM_CORENAME = {
 		.cs = { AVR_IO_REGBIT(TCCR1, CS10), AVR_IO_REGBIT(TCCR1, CS11), AVR_IO_REGBIT(TCCR1, CS12), AVR_IO_REGBIT(TCCR1, CS13) },
 		.cs_div = { 0, 0, 1 /* 2 */, 2 /* 4 */, 3 /* 8 */, 4 /* 16 */ },
 
-		.r_ocra = OCR1A,
-		.r_ocrb = OCR1B,
-		.r_ocrc = OCR1C,
 		.r_tcnt = TCNT1,
 
 		.overflow = {
@@ -153,19 +156,28 @@ struct mcu_t SIM_CORENAME = {
 			.raised = AVR_IO_REGBIT(TIFR, TOV1),
 			.vector = TIMER1_OVF_vect,
 		},
-		.compa = {
-			.enable = AVR_IO_REGBIT(TIMSK, OCIE1A),
-			.raised = AVR_IO_REGBIT(TIFR, OCF1A),
-			.vector = TIMER1_COMPA_vect,
-		},
-		.compb = {
-			.enable = AVR_IO_REGBIT(TIMSK, OCIE1B),
-			.raised = AVR_IO_REGBIT(TIFR, OCF1B),
-			.vector = TIMER1_COMPB_vect,
+		.comp = {
+			[AVR_TIMER_COMPA] = {
+				.r_ocr = OCR1A,
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK, OCIE1A),
+					.raised = AVR_IO_REGBIT(TIFR, OCF1A),
+					.vector = TIMER1_COMPA_vect,
+				},
+			},
+			[AVR_TIMER_COMPB] = {
+				.r_ocr = OCR1B,
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK, OCIE1B),
+					.raised = AVR_IO_REGBIT(TIFR, OCF1B),
+					.vector = TIMER1_COMPB_vect,
+				},
+			},
+			[AVR_TIMER_COMPC] = {
+				.r_ocr = OCR1C,
+			},
 		},
 	},
-
-
 };
 #endif /* SIM_CORENAME */
 

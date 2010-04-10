@@ -114,8 +114,6 @@ static struct mcu_t {
 		.cs = { AVR_IO_REGBIT(TCCR0B, CS00), AVR_IO_REGBIT(TCCR0B, CS01), AVR_IO_REGBIT(TCCR0B, CS02) },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ },
 
-		.r_ocra = OCR0A,
-		.r_ocrb = OCR0B,
 		.r_tcnt = TCNT0,
 
 		.overflow = {
@@ -123,15 +121,23 @@ static struct mcu_t {
 			.raised = AVR_IO_REGBIT(TIFR, TOV0),
 			.vector = TIMER0_OVF_vect,
 		},
-		.compa = {
-			.enable = AVR_IO_REGBIT(TIMSK, OCIE0A),
-			.raised = AVR_IO_REGBIT(TIFR, OCF0A),
-			.vector = TIMER0_COMPA_vect,
-		},
-		.compb = {
-			.enable = AVR_IO_REGBIT(TIMSK, OCIE0B),
-			.raised = AVR_IO_REGBIT(TIFR, OCF0B),
-			.vector = TIMER0_COMPB_vect,
+		.comp = {
+			[AVR_TIMER_COMPA] = {
+				.r_ocr = OCR0A,
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK, OCIE0A),
+					.raised = AVR_IO_REGBIT(TIFR, OCF0A),
+					.vector = TIMER0_COMPA_vect,
+				},
+			},
+			[AVR_TIMER_COMPB] = {
+				.r_ocr = OCR0B,
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK, OCIE0B),
+					.raised = AVR_IO_REGBIT(TIFR, OCF0B),
+					.vector = TIMER0_COMPB_vect,
+				}
+			}
 		},
 	},
 	.timer1 = {
@@ -152,13 +158,9 @@ static struct mcu_t {
 		.cs = { AVR_IO_REGBIT(TCCR1B, CS10), AVR_IO_REGBIT(TCCR1B, CS11), AVR_IO_REGBIT(TCCR1B, CS12) },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */  /* External clock T1 is not handled */},
 
-		.r_ocra = OCR1AL,
-		.r_ocrb = OCR1BL,
 		.r_tcnt = TCNT1L,
 		.r_icr = ICR1L,
 		.r_icrh = ICR1H,
-		.r_ocrah = OCR1AH,	// 16 bits timers have two bytes of it
-		.r_ocrbh = OCR1BH,
 		.r_tcnth = TCNT1H,
 
 		.overflow = {
@@ -166,22 +168,32 @@ static struct mcu_t {
 			.raised = AVR_IO_REGBIT(TIFR, TOV1),
 			.vector = TIMER1_OVF_vect,
 		},
-		.compa = {
-			.enable = AVR_IO_REGBIT(TIMSK, OCIE1A),
-			.raised = AVR_IO_REGBIT(TIFR, OCF1A),
-			.vector = TIMER1_COMPA_vect,
-		},
-		.compb = {
-			.enable = AVR_IO_REGBIT(TIMSK, OCIE1B),
-			.raised = AVR_IO_REGBIT(TIFR, OCF1B),
-			.vector = TIMER1_COMPB_vect,
-		},
 		.icr = {
 			.enable = AVR_IO_REGBIT(TIMSK, ICIE1),
 			.raised = AVR_IO_REGBIT(TIFR, ICF1),
 			.vector = TIMER1_CAPT_vect,
 		},
-	},
+		.comp = {
+			[AVR_TIMER_COMPA] = {
+				.r_ocr = OCR1AL,
+				.r_ocrh = OCR1AH,	// 16 bits timers have two bytes of it
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK, OCIE1A),
+					.raised = AVR_IO_REGBIT(TIFR, OCF1A),
+					.vector = TIMER1_COMPA_vect,
+				},
+			},
+			[AVR_TIMER_COMPB] = {
+				.r_ocr = OCR1BL,
+				.r_ocrh = OCR1BH,
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK, OCIE1B),
+					.raised = AVR_IO_REGBIT(TIFR, OCF1B),
+					.vector = TIMER1_COMPB_vect,
+				}
+			}
+		}
+	}
 };
 
 static avr_t * make()

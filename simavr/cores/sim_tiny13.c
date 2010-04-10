@@ -92,8 +92,6 @@ static struct mcu_t {
 		.cs = { AVR_IO_REGBIT(TCCR0B, CS00), AVR_IO_REGBIT(TCCR0B, CS01), AVR_IO_REGBIT(TCCR0B, CS02) },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ },
 
-		.r_ocra = OCR0A,
-		.r_ocrb = OCR0B,
 		.r_tcnt = TCNT0,
 
 		.overflow = {
@@ -101,17 +99,25 @@ static struct mcu_t {
 			.raised = AVR_IO_REGBIT(TIFR0, TOV0),
 			.vector = TIM0_OVF_vect,
 		},
-		.compa = {
-			.enable = AVR_IO_REGBIT(TIMSK0, OCIE0A),
-			.raised = AVR_IO_REGBIT(TIFR0, OCF0A),
-			.vector = TIM0_COMPA_vect,
-		},
-		.compb = {
-			.enable = AVR_IO_REGBIT(TIMSK0, OCIE0B),
-			.raised = AVR_IO_REGBIT(TIFR0, OCF0B),
-			.vector = TIM0_COMPB_vect,
-		},
-	},
+		.comp = {
+			[AVR_TIMER_COMPA] = {
+				.r_ocr = OCR0A,
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK0, OCIE0A),
+					.raised = AVR_IO_REGBIT(TIFR0, OCF0A),
+					.vector = TIM0_COMPA_vect,
+				}
+			},
+			[AVR_TIMER_COMPB] = {
+				.r_ocr = OCR0B,
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK0, OCIE0B),
+					.raised = AVR_IO_REGBIT(TIFR0, OCF0B),
+					.vector = TIM0_COMPB_vect,
+				}
+			}
+		}
+	}
 };
 
 static avr_t * make()

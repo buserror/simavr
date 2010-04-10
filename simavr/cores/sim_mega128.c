@@ -199,7 +199,6 @@ struct mcu_t {
 		// asynchronous timer source bit.. if set, use 32khz frequency
 		.as2 = AVR_IO_REGBIT(ASSR, AS0),
 		
-		.r_ocra = OCR0,
 		.r_tcnt = TCNT0,
 
 		.overflow = {
@@ -207,10 +206,15 @@ struct mcu_t {
 			.raised = AVR_IO_REGBIT(TIFR, TOV0),
 			.vector = TIMER0_OVF_vect,
 		},
-		.compa = {
-			.enable = AVR_IO_REGBIT(TIMSK, OCIE0),
-			.raised = AVR_IO_REGBIT(TIFR, OCF0),
-			.vector = TIMER0_COMP_vect,
+		.comp = {
+			[AVR_TIMER_COMPA] = {
+				.r_ocr = OCR0,
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK, OCIE0),
+					.raised = AVR_IO_REGBIT(TIFR, OCF0),
+					.vector = TIMER0_COMP_vect,
+				},
+			},
 		},
 	},
 	.timer1 = {
@@ -234,15 +238,9 @@ struct mcu_t {
 		.cs = { AVR_IO_REGBIT(TCCR1B, CS10), AVR_IO_REGBIT(TCCR1B, CS11), AVR_IO_REGBIT(TCCR1B, CS12) },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */  /* TODO: 2 External clocks */},
 
-		.r_ocra = OCR1AL,
-		.r_ocrb = OCR1BL,
-		.r_ocrc = OCR1CL,
 		.r_tcnt = TCNT1L,
 		.r_icr = ICR1L,
 		.r_icrh = ICR1H,
-		.r_ocrah = OCR1AH,	// 16 bits timers have two bytes of it
-		.r_ocrbh = OCR1BH,
-		.r_ocrch = OCR1CH,
 		.r_tcnth = TCNT1H,
 
 		.overflow = {
@@ -250,26 +248,41 @@ struct mcu_t {
 			.raised = AVR_IO_REGBIT(TIFR, TOV1),
 			.vector = TIMER1_OVF_vect,
 		},
-		.compa = {
-			.enable = AVR_IO_REGBIT(TIMSK, OCIE1A),
-			.raised = AVR_IO_REGBIT(TIFR, OCF1A),
-			.vector = TIMER1_COMPA_vect,
-		},
-		.compb = {
-			.enable = AVR_IO_REGBIT(TIMSK, OCIE1B),
-			.raised = AVR_IO_REGBIT(TIFR, OCF1B),
-			.vector = TIMER1_COMPB_vect,
-		},
-		.compc = {
-			.enable = AVR_IO_REGBIT(ETIMSK, OCIE1C),
-			.raised = AVR_IO_REGBIT(ETIFR, OCF1C),
-			.vector = TIMER1_COMPC_vect,
-		},
 		.icr = {
 			.enable = AVR_IO_REGBIT(TIMSK, TICIE1),
 			.raised = AVR_IO_REGBIT(TIFR, ICF1),
 			.vector = TIMER1_CAPT_vect,
 		},
+		.comp = {
+			[AVR_TIMER_COMPA] = {
+				.r_ocr = OCR1AL,
+				.r_ocrh = OCR1AH,	// 16 bits timers have two bytes of it
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK, OCIE1A),
+					.raised = AVR_IO_REGBIT(TIFR, OCF1A),
+					.vector = TIMER1_COMPA_vect,
+				},
+			},
+			[AVR_TIMER_COMPB] = {
+				.r_ocr = OCR1BL,
+				.r_ocrh = OCR1BH,
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK, OCIE1B),
+					.raised = AVR_IO_REGBIT(TIFR, OCF1B),
+					.vector = TIMER1_COMPB_vect,
+				},
+			},
+			[AVR_TIMER_COMPC] = {
+				.r_ocr = OCR1CL,
+				.r_ocrh = OCR1CH,
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(ETIMSK, OCIE1C),
+					.raised = AVR_IO_REGBIT(ETIFR, OCF1C),
+					.vector = TIMER1_COMPC_vect,
+				},
+			},
+		},
+
 	},
 	.timer2 = {
 		.name = '2',
@@ -283,7 +296,6 @@ struct mcu_t {
 		.cs = { AVR_IO_REGBIT(TCCR2, CS20), AVR_IO_REGBIT(TCCR2, CS21), AVR_IO_REGBIT(TCCR2, CS22) },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ /* TODO external clock */ },
 
-		.r_ocra = OCR2,
 		.r_tcnt = TCNT2,
 		
 		.overflow = {
@@ -291,10 +303,15 @@ struct mcu_t {
 			.raised = AVR_IO_REGBIT(TIFR, TOV2),
 			.vector = TIMER2_OVF_vect,
 		},
-		.compa = {  // compa is just COMP
-			.enable = AVR_IO_REGBIT(TIMSK, OCIE2),
-			.raised = AVR_IO_REGBIT(TIFR, OCF2),
-			.vector = TIMER2_COMP_vect,
+		.comp = {
+			[AVR_TIMER_COMPA] = {
+				.r_ocr = OCR2,
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK, OCIE2),
+					.raised = AVR_IO_REGBIT(TIFR, OCF2),
+					.vector = TIMER2_COMP_vect,
+				},
+			},
 		},
 	},
 	.timer3 = {
@@ -321,15 +338,9 @@ struct mcu_t {
 		.cs = { AVR_IO_REGBIT(TCCR3B, CS30), AVR_IO_REGBIT(TCCR3B, CS31), AVR_IO_REGBIT(TCCR3B, CS32) },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */  /* TODO: 2 External clocks */},
 
-		.r_ocra = OCR3AL,
-		.r_ocrb = OCR3BL,
-		.r_ocrc = OCR3CL,
 		.r_tcnt = TCNT3L,
 		.r_icr = ICR3L,
 		.r_icrh = ICR3H,
-		.r_ocrah = OCR3AH,	// 16 bits timers have two bytes of it
-		.r_ocrbh = OCR3BH,
-		.r_ocrch = OCR3CH,
 		.r_tcnth = TCNT3H,
 
 		.overflow = {
@@ -337,20 +348,40 @@ struct mcu_t {
 			.raised = AVR_IO_REGBIT(ETIFR, TOV3),
 			.vector = TIMER3_OVF_vect,
 		},
-		.compa = {
-			.enable = AVR_IO_REGBIT(ETIMSK, OCIE3A),
-			.raised = AVR_IO_REGBIT(ETIFR, OCF3A),
-			.vector = TIMER3_COMPA_vect,
-		},
-		.compb = {
-			.enable = AVR_IO_REGBIT(ETIMSK, OCIE3B),
-			.raised = AVR_IO_REGBIT(ETIFR, OCF3B),
-			.vector = TIMER3_COMPB_vect,
-		},
-		.compc = {
-			.enable = AVR_IO_REGBIT(ETIMSK, OCIE3C),
-			.raised = AVR_IO_REGBIT(ETIFR, OCF3C),
-			.vector = TIMER3_COMPC_vect,
+		.comp = {
+			[AVR_TIMER_COMPA] = {
+				.r_ocr = OCR3AL,
+				.r_ocrh = OCR3AH,	// 16 bits timers have two bytes of it
+				.com = { AVR_IO_REGBIT(TCCR3A, COM3A1), AVR_IO_REGBIT(TCCR3A, COM3A0) },
+				.com_pin = AVR_IO_REGBIT(PORTE, PE3),
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(ETIMSK, OCIE3A),
+					.raised = AVR_IO_REGBIT(ETIFR, OCF3A),
+					.vector = TIMER3_COMPA_vect,
+				}
+			},
+			[AVR_TIMER_COMPB] = {
+				.r_ocr = OCR3BL,
+				.r_ocrh = OCR3BH,
+				.com = { AVR_IO_REGBIT(TCCR3A, COM3B1), AVR_IO_REGBIT(TCCR3A, COM3B0) },
+				.com_pin = AVR_IO_REGBIT(PORTE, PE4),
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(ETIMSK, OCIE3B),
+					.raised = AVR_IO_REGBIT(ETIFR, OCF3B),
+					.vector = TIMER3_COMPB_vect,
+				}
+			},
+			[AVR_TIMER_COMPC] = {
+				.r_ocr = OCR3CL,
+				.r_ocrh = OCR3CH,
+				.com = { AVR_IO_REGBIT(TCCR3A, COM3C1), AVR_IO_REGBIT(TCCR3A, COM3C0) },
+				.com_pin = AVR_IO_REGBIT(PORTE, PE5),
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(ETIMSK, OCIE3C),
+					.raised = AVR_IO_REGBIT(ETIFR, OCF3C),
+					.vector = TIMER3_COMPC_vect,
+				}
+			}
 		},
 		.icr = {
 			.enable = AVR_IO_REGBIT(ETIMSK, TICIE3),
