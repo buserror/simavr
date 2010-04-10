@@ -69,11 +69,17 @@ void avr_ioport_irq_notify(struct avr_irq_t * irq, uint32_t value, void * param)
 	avr_ioport_t * p = (avr_ioport_t *)param;
 	avr_t * avr = p->io.avr;
 
+	int output = value & 0x100;
+	value &= 0xff;
 	uint8_t mask = 1 << irq->irq;
 		// set the real PIN bit. ddr doesn't matter here as it's masked when read.
 	avr->data[p->r_pin] &= ~mask;
 	if (value)
 		avr->data[p->r_pin] |= mask;
+
+	if (output)	// if the IRQ was marked as Output, also do the IO write
+		avr_ioport_write(avr, p->r_port, (avr->data[p->r_port] & ~mask) | (value ? mask : 0), p);
+
 	if (p->r_pcint) {
 		// if the pcint bit is on, try to raise it
 		int raise = avr->data[p->r_pcint] & mask;
