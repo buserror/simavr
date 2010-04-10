@@ -70,18 +70,6 @@ static void avr_twi_irq_input(struct avr_irq_t * irq, uint32_t value, void * par
 #endif
 }
 
-static int twi_slave_event(struct twi_slave_t* p, uint8_t address, enum twi_event event)
-{
-	switch (event) {
-		case TWI_START:
-			break;
-		case TWI_STOP:
-			break;
-		case TWI_PROBE:
-			break;
-	}
-	return 0;
-}
 
 	// handle a data write, after a (re)start
 static int twi_slave_write(struct twi_slave_t* p, uint8_t v)
@@ -95,11 +83,6 @@ static uint8_t twi_slave_read(struct twi_slave_t* p)
 	return 0;
 }
 
-static twi_slave_t slave_driver = {
-	.event = twi_slave_event,
-	.write = twi_slave_write,
-	.read = twi_slave_read
-};
 
 static int avr_twi_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
 {
@@ -132,7 +115,7 @@ void avr_twi_init(avr_t * avr, avr_twi_t * p)
 	p->io = _io;
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->twi);
-	p->slave = slave_driver;	// get default callbacks
+//	p->slave = slave_driver;	// get default callbacks
 	twi_slave_init(&p->slave, 0, p);
 	twi_bus_init(&p->bus);
 
