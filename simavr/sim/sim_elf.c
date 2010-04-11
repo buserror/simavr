@@ -228,7 +228,7 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 					} else {
 						// code
 						if (firmware->codeline[sym.st_value >> 1] == NULL) {
-							avr_symbol_t * s = firmware->codeline[sym.st_value >> 1] = malloc(sizeof(avr_symbol_t*));
+							avr_symbol_t * s = firmware->codeline[sym.st_value >> 1] = malloc(sizeof(avr_symbol_t));
 							s->symbol = strdup(name);
 							s->addr = sym.st_value;
 						}
