@@ -100,7 +100,7 @@ typedef struct avr_timer_t {
 		avr_int_vector_t	interrupt;		// interrupt vector
 		avr_io_addr_t		r_ocr;			// comparator register low byte
 		avr_io_addr_t		r_ocrh;			// comparator register hi byte
-		avr_regbit_t		com[2];			// comparator output mode registers
+		avr_regbit_t		com;			// comparator output mode registers
 		avr_regbit_t		com_pin;		// where comparator output is connected
 		uint64_t			comp_cycles;
 	} comp[AVR_TIMER_COMP_COUNT];

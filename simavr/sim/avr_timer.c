@@ -53,8 +53,7 @@ static avr_cycle_count_t avr_timer_comp(avr_timer_t *p, avr_cycle_count_t when, 
 	avr_raise_interrupt(avr, &p->comp[comp].interrupt);
 
 	// check output compare mode and set/clear pins
-	uint8_t mode = avr_regbit_get_array(avr, p->comp[comp].com,
-	        ARRAY_SIZE(p->comp[comp].com));
+	uint8_t mode = avr_regbit_get(avr, p->comp[comp].com);
 	avr_irq_t * irq = &p->io.irq[TIMER_IRQ_OUT_COMP + comp];
 
 	switch (mode) {
