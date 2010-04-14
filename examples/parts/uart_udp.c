@@ -106,7 +106,7 @@ static void * uart_udp_thread(void * param)
 			while (r-- && !uart_udp_fifo_isfull(&p->out))
 				uart_udp_fifo_write(&p->out, *src++);
 			if (r > 0)
-				printf("UDP dropped %d bytes\n", r);
+				printf("UDP dropped %zu bytes\n", r);
 		}
 		if (FD_ISSET(p->s, &write_set)) {
 			uint8_t buffer[512];

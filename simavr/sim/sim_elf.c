@@ -272,12 +272,12 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 	//	hdump("code", data_text->d_buf, data_text->d_size);
 		memcpy(firmware->flash + offset, data_text->d_buf, data_text->d_size);
 		offset += data_text->d_size;
-		printf("Loaded %d .text\n", data_text->d_size);
+		printf("Loaded %zu .text\n", data_text->d_size);
 	}
 	if (data_data) {
 	//	hdump("data", data_data->d_buf, data_data->d_size);
 		memcpy(firmware->flash + offset, data_data->d_buf, data_data->d_size);
-		printf("Loaded %d .data\n", data_data->d_size);
+		printf("Loaded %zu .data\n", data_data->d_size);
 		offset += data_data->d_size;
 		firmware->datasize = data_data->d_size;
 	}
@@ -285,7 +285,7 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 	//	hdump("eeprom", data_ee->d_buf, data_ee->d_size);
 		firmware->eeprom = malloc(data_ee->d_size);
 		memcpy(firmware->eeprom, data_ee->d_buf, data_ee->d_size);
-		printf("Loaded %d .eeprom\n", data_ee->d_size);
+		printf("Loaded %zu .eeprom\n", data_ee->d_size);
 		firmware->eesize = data_ee->d_size;
 	}
 //	hdump("flash", avr->flash, offset);
