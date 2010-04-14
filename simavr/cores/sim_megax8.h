@@ -141,6 +141,8 @@ struct mcu_t SIM_CORENAME = {
 		.mux = { AVR_IO_REGBIT(ADMUX, MUX0), AVR_IO_REGBIT(ADMUX, MUX1),
 					AVR_IO_REGBIT(ADMUX, MUX2), AVR_IO_REGBIT(ADMUX, MUX3),},
 		.ref = { AVR_IO_REGBIT(ADMUX, REFS0), AVR_IO_REGBIT(ADMUX, REFS1)},
+		.ref_values = { [1] = ADC_VREF_AVCC, [3] = ADC_VREF_V110, },
+
 		.adlar = AVR_IO_REGBIT(ADMUX, ADLAR),
 		.r_adcsra = ADCSRA,
 		.aden = AVR_IO_REGBIT(ADCSRA, ADEN),
@@ -154,6 +156,14 @@ struct mcu_t SIM_CORENAME = {
 		.r_adcsrb = ADCSRB,
 		.adts = { AVR_IO_REGBIT(ADCSRB, ADTS0), AVR_IO_REGBIT(ADCSRB, ADTS1), AVR_IO_REGBIT(ADCSRB, ADTS2),},
 
+		.muxmode = {
+			[0] = AVR_ADC_SINGLE(0), [1] = AVR_ADC_SINGLE(1),
+			[2] = AVR_ADC_SINGLE(2), [3] = AVR_ADC_SINGLE(3),
+			[4] = AVR_ADC_SINGLE(4), [5] = AVR_ADC_SINGLE(5),
+			[6] = AVR_ADC_SINGLE(6), [7] = AVR_ADC_TEMP(),
+			[14] = AVR_ADC_REF(1100),	// 1.1V
+			[15] = AVR_ADC_REF(0),		// GND
+		},
 		.adc = {
 			.enable = AVR_IO_REGBIT(ADCSRA, ADIE),
 			.raised = AVR_IO_REGBIT(ADCSRA, ADIF),
