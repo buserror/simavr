@@ -71,6 +71,12 @@ static uint8_t avr_adc_read_l(struct avr_t * avr, avr_io_addr_t addr, void * par
 	}
 	uint32_t vref = 3300;
 	switch (ref) {
+		case ADC_VREF_VCC:
+			if (!avr->vcc)
+				printf("ADC Warning : missing VCC analog voltage\n");
+			else
+				vref = avr->vcc;
+			break;
 		case ADC_VREF_AREF:
 			if (!avr->aref)
 				printf("ADC Warning : missing AREF analog voltage\n");

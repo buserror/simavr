@@ -67,6 +67,7 @@ typedef struct avr_adc_mux_t {
 
 enum {
 	ADC_VREF_AREF	= 0,	// default mode
+	ADC_VREF_VCC,
 	ADC_VREF_AVCC,
 	ADC_VREF_V110	= 1100,
 	ADC_VREF_V256	= 2560,

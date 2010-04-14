@@ -164,6 +164,8 @@ struct mcu_t {
 					AVR_IO_REGBIT(ADMUX, MUX2), AVR_IO_REGBIT(ADMUX, MUX3),
 					AVR_IO_REGBIT(ADMUX, MUX4),},
 		.ref = { AVR_IO_REGBIT(ADMUX, REFS0), AVR_IO_REGBIT(ADMUX, REFS1)},
+		.ref_values = { [1] = ADC_VREF_AVCC, [3] = ADC_VREF_V256 },
+
 		.adlar = AVR_IO_REGBIT(ADMUX, ADLAR),
 		.r_adcsra = ADCSRA,
 		.aden = AVR_IO_REGBIT(ADCSRA, ADEN),
@@ -176,6 +178,30 @@ struct mcu_t {
 
 		//.r_adcsrb = ADCSRB,
 		// .adts = { AVR_IO_REGBIT(ADCSRB, ADTS0), AVR_IO_REGBIT(ADCSRB, ADTS1), AVR_IO_REGBIT(ADCSRB, ADTS2),},
+
+		.muxmode = {
+			[0] = AVR_ADC_SINGLE(0), [1] = AVR_ADC_SINGLE(1),
+			[2] = AVR_ADC_SINGLE(2), [3] = AVR_ADC_SINGLE(3),
+			[4] = AVR_ADC_SINGLE(4), [5] = AVR_ADC_SINGLE(5),
+			[6] = AVR_ADC_SINGLE(6), [7] = AVR_ADC_SINGLE(7),
+
+			[ 8] = AVR_ADC_DIFF(0, 0,  10), [ 9] = AVR_ADC_DIFF(1, 0,  10),
+			[10] = AVR_ADC_DIFF(0, 0, 200), [11] = AVR_ADC_DIFF(1, 0, 200),
+			[12] = AVR_ADC_DIFF(2, 2,  10), [13] = AVR_ADC_DIFF(3, 2,  10),
+			[14] = AVR_ADC_DIFF(2, 2, 200), [15] = AVR_ADC_DIFF(3, 2, 200),
+
+			[16] = AVR_ADC_DIFF(0, 1,   1), [17] = AVR_ADC_DIFF(1, 1,   1),
+			[18] = AVR_ADC_DIFF(2, 1,   1), [19] = AVR_ADC_DIFF(3, 1,   1),
+			[20] = AVR_ADC_DIFF(4, 1,   1), [21] = AVR_ADC_DIFF(5, 1,   1),
+			[22] = AVR_ADC_DIFF(6, 1,   1), [23] = AVR_ADC_DIFF(7, 1,   1),
+
+			[24] = AVR_ADC_DIFF(0, 2,   1), [25] = AVR_ADC_DIFF(1, 2,   1),
+			[26] = AVR_ADC_DIFF(2, 2,   1), [27] = AVR_ADC_DIFF(3, 2,   1),
+			[28] = AVR_ADC_DIFF(4, 2,   1), [29] = AVR_ADC_DIFF(5, 2,   1),
+
+			[30] = AVR_ADC_REF(1230),	// 1.1V
+			[31] = AVR_ADC_REF(0),		// GND
+		},
 
 		.adc = {
 			.enable = AVR_IO_REGBIT(ADCSRA, ADIE),
