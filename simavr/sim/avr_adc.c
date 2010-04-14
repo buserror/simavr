@@ -19,27 +19,211 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "avr_adc.h"
 
+static avr_cycle_count_t avr_adc_int_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
+{
+	avr_adc_t * p = (avr_adc_t *)param;
+	if (avr_regbit_get(avr, p->aden)) {
+		// if the interrupts are not used, still raised the UDRE and TXC flag
+		avr_raise_interrupt(avr, &p->adc);
+		avr_regbit_clear(avr, p->adsc);
+		p->first = 0;
+		p->read_status = 0;
+	}
+	return 0;
+}
+
+static uint8_t avr_adc_read_l(struct avr_t * avr, avr_io_addr_t addr, void * param)
+{
+	avr_adc_t * p = (avr_adc_t *)param;
+
+	if (p->read_status)	// conversion already done
+		return avr_core_watch_read(avr, addr);
+
+	uint8_t refi = avr_regbit_get_array(avr, p->ref, ARRAY_SIZE(p->ref));
+	uint16_t ref = p->ref_values[refi];
+	uint8_t muxi = avr_regbit_get_array(avr, p->mux, ARRAY_SIZE(p->mux));
+	avr_adc_mux_t mux = p->muxmode[muxi];
+	// optional shift left/right
+	uint8_t shift = avr_regbit_get(avr, p->adlar) ? 0 : 6;
+
+	uint32_t reg = 0;
+	switch (mux.kind) {
+		case ADC_MUX_SINGLE:
+			reg = p->adc_values[mux.src];
+			break;
+		case ADC_MUX_DIFF:
+			if (mux.gain == 0)
+				mux.gain = 1;
+			reg = ((uint32_t)p->adc_values[mux.src] * mux.gain) -
+					((uint32_t)p->adc_values[mux.diff] * mux.gain);
+			break;
+		case ADC_MUX_TEMP:
+			reg = p->temp; // assumed to be already calibrated somehow
+			break;
+		case ADC_MUX_REF:
+			reg = mux.src; // reference voltage
+			break;
+	}
+	uint32_t vref = 3300;
+	switch (ref) {
+		case ADC_VREF_AREF:
+			if (!avr->aref)
+				printf("ADC Warning : missing AREF analog voltage\n");
+			else
+				vref = avr->aref;
+			break;
+		case ADC_VREF_AVCC:
+			if (!avr->avcc)
+				printf("ADC Warning : missing AVCC analog voltage\n");
+			else
+				vref = avr->avcc;
+			break;
+		default:
+			vref = ref;
+	}
+//	printf("ADCL %d:%3d:%3d read %4d vref %d:%d=%d\n",
+//			mux.kind, mux.diff, mux.src,
+//			reg, refi, ref, vref);
+	reg = (reg * 0x3ff) / vref;	// scale to 10 bits ADC
+//	printf("ADC to 10 bits 0x%x %d\n", reg, reg);
+	if (reg > 0x3ff) {
+		printf("ADC Warning channel %d clipped %u/%u VREF %d\n", mux.kind, reg, 0x3ff, vref);
+		reg = 0x3ff;
+	}
+	reg <<= shift;
+//	printf("ADC to 10 bits %x shifted %d\n", reg, shift);
+	avr->data[p->r_adcl] = reg;
+	avr->data[p->r_adch] = reg >> 8;
+	p->read_status = 1;
+	return avr_core_watch_read(avr, addr);
+}
+
 /*
- * PLACEHOLDER ADC MODULE
+ * From Datasheet:
+ * "When ADCL is read, the ADC Data Register is not updated until ADCH is read.
+ * Consequently, if the result is left adjusted and no more than 8-bit
+ * precision is required, it is sufficient to read ADCH.
+ * Otherwise, ADCL must be read first, then ADCH."
+ * So here if the H is read before the L, we still call the L to update the
+ * register value.
  */
+static uint8_t avr_adc_read_h(struct avr_t * avr, avr_io_addr_t addr, void * param)
+{
+	avr_adc_t * p = (avr_adc_t *)param;
+	// no "break" here on purpose
+	switch (p->read_status) {
+		case 0:
+			avr_adc_read_l(avr, p->r_adcl, param);
+		case 1:
+			p->read_status = 2;
+		default:
+			return avr_core_watch_read(avr, addr);
+	}
+}
+
+static void avr_adc_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+{
+	avr_adc_t * p = (avr_adc_t *)param;
+	uint8_t adsc = avr_regbit_get(avr, p->adsc);
+	uint8_t aden = avr_regbit_get(avr, p->aden);
+
+	avr->data[p->adsc.reg] = v;
+
+	// can't write zero to adsc
+	if (adsc && !avr_regbit_get(avr, p->adsc)) {
+		avr_regbit_set(avr, p->adsc);
+		v = avr->data[p->adsc.reg];
+	}
+	if (!aden && avr_regbit_get(avr, p->aden)) {
+		// first conversion
+		p->first = 1;
+		printf("ADC Start AREF %d AVCC %d\n", avr->aref, avr->avcc);
+	}
+	if (aden && !avr_regbit_get(avr, p->aden)) {
+		// stop ADC
+		avr_cycle_timer_cancel(avr, avr_adc_int_raise, p);
+		avr_regbit_clear(avr, p->adsc);
+	}
+	if (!adsc && avr_regbit_get(avr, p->adsc)) {
+		// start one!
+		uint8_t muxi = avr_regbit_get_array(avr, p->mux, ARRAY_SIZE(p->mux));
+		union {
+			avr_adc_mux_t mux;
+			uint32_t v;
+		} e = { .mux = p->muxmode[muxi] };
+		avr_raise_irq(p->io.irq + ADC_IRQ_OUT_TRIGGER, e.v);
+
+		// clock prescaler are just a bit shift.. and 0 means 1
+		uint32_t div = avr_regbit_get_array(avr, p->adps, ARRAY_SIZE(p->adps));
+		if (!div) div++;
+
+		div = avr->frequency >> div;
+		if (p->first)
+			printf("ADC starting at %uKHz\n", div / 13 / 100);
+		div /= p->first ? 25 : 13;	// first cycle is longer
+
+		avr_cycle_timer_register(avr,
+				avr_hz_to_cycles(avr, div),
+				avr_adc_int_raise, p);
+	}
+	avr_core_watch_write(avr, addr, v);
+}
+
+static void avr_adc_irq_notify(struct avr_irq_t * irq, uint32_t value, void * param)
+{
+	avr_adc_t * p = (avr_adc_t *)param;
+	avr_t * avr = p->io.avr;
+
+	switch (irq->irq) {
+		case ADC_IRQ_ADC0 ... ADC_IRQ_ADC7: {
+			p->adc_values[irq->irq] = value;
+		} 	break;
+		case ADC_IRQ_TEMP: {
+			p->temp = value;
+		}	break;
+		case ADC_IRQ_IN_TRIGGER: {
+			if (avr_regbit_get(avr, p->adate)) {
+				// start a conversion
+			}
+		}	break;
+	}
+}
+
+static void avr_adc_reset(avr_io_t * port)
+{
+	avr_adc_t * p = (avr_adc_t *)port;
+
+	// stop ADC
+	avr_cycle_timer_cancel(p->io.avr, avr_adc_int_raise, p);
+	avr_regbit_clear(p->io.avr, p->adsc);
+
+	for (int i = 0; i < ADC_IRQ_COUNT; i++)
+		avr_irq_register_notify(p->io.irq + i, avr_adc_irq_notify, p);
+}
 
 static	avr_io_t	_io = {
 	.kind = "adc",
+	.reset = avr_adc_reset,
 };
 
 void avr_adc_init(avr_t * avr, avr_adc_t * p)
 {
 	p->io = _io;
 
+	// allocate this module's IRQ
+	p->io.irq_count = ADC_IRQ_COUNT;
+	p->io.irq = avr_alloc_irq(0, p->io.irq_count);
+	p->io.irq_ioctl_get = AVR_IOCTL_ADC_GETIRQ;
+
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->adc);
 
-//	avr_register_io_write(avr, p->r_eecr, avr_eeprom_write, p);
+	avr_register_io_write(avr, p->r_adcsra, avr_adc_write, p);
+	avr_register_io_read(avr, p->r_adcl, avr_adc_read_l, p);
+	avr_register_io_read(avr, p->r_adch, avr_adc_read_h, p);
 }
-
