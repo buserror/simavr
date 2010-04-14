@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
 			perror(path);
 			exit(1);
 		}
-		ftruncate(fd, avr->flashend + 1);
+		(void)ftruncate(fd, avr->flashend + 1);
 		uint8_t * mm = (uint8_t*)mmap(NULL, avr->flashend + 1 /* 32k is multiple of 4096 */,
 				PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 		if (!mm) {
