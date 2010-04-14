@@ -110,7 +110,7 @@ static avr_cycle_count_t avr_timer_tov(struct avr_t * avr, avr_cycle_count_t whe
 		if (p->comp[compi].comp_cycles) {
 			if (p->comp[compi].comp_cycles < p->tov_cycles)
 				avr_cycle_timer_register(avr,
-					p->comp[compi].comp_cycles - (avr->cycle - p->tov_base),
+					p->comp[compi].comp_cycles,
 					dispatch[compi], p);
 			else if (p->tov_cycles == p->comp[compi].comp_cycles && !start)
 				dispatch[compi](avr, when, param);
@@ -187,7 +187,7 @@ static void avr_timer_configure(avr_timer_t * p, uint32_t clock, uint32_t top)
 
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
 		uint32_t ocr = _timer_get_ocr(p, compi);
-		float fc = clock / (float)(ocr);
+		float fc = clock / (float)(ocr+1);
 
 		p->comp[compi].comp_cycles = 0;
 //		printf("%s-%c clock %d top %d OCR%c %d\n", __FUNCTION__, p->name, clock, top, 'A'+compi, ocr);
