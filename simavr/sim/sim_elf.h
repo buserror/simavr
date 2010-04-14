@@ -39,6 +39,7 @@
 typedef struct elf_firmware_t {
 	char  mmcu[64];
 	uint32_t	frequency;
+	uint32_t	vcc,avcc,aref;
 
 	char		tracename[128];	// trace filename
 	uint32_t	traceperiod;

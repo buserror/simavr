@@ -39,6 +39,9 @@
 void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 {
 	avr->frequency = firmware->frequency;
+	avr->vcc = firmware->vcc;
+	avr->avcc = firmware->avcc;
+	avr->aref = firmware->aref;
 #if CONFIG_SIMAVR_TRACE
 	avr->codeline = firmware->codeline;
 #endif
@@ -48,6 +51,7 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 		avr_eeprom_desc_t d = { .ee = firmware->eeprom, .offset = 0, .size = firmware->eesize };
 		avr_ioctl(avr, AVR_IOCTL_EEPROM_SET, &d);
 	}
+
 	avr_set_command_register(avr, firmware->command_register_addr);
 	if (firmware->tracecount == 0)
 		return;
@@ -114,6 +118,18 @@ static void elf_parse_mmcu_section(elf_firmware_t * firmware, uint8_t * src, uin
 			case AVR_MMCU_TAG_NAME:
 				strcpy(firmware->mmcu, (char*)src);
 				break;		
+			case AVR_MMCU_TAG_VCC:
+				firmware->vcc =
+					src[0] | (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
+				break;
+			case AVR_MMCU_TAG_AVCC:
+				firmware->avcc =
+					src[0] | (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
+				break;
+			case AVR_MMCU_TAG_AREF:
+				firmware->aref =
+					src[0] | (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
+				break;
 			case AVR_MMCU_TAG_VCD_TRACE: {
 				uint8_t mask = src[0];
 				uint16_t addr = src[1] | (src[2] << 8);

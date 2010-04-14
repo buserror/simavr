@@ -86,6 +86,8 @@ typedef struct avr_t {
 
 	int					state;		// stopped, running, sleeping
 	uint32_t			frequency;	// frequency we are running at
+	// mostly used by the ADC for now
+	uint32_t			vcc,avcc,aref; // (optional) voltages
 
 	// cycles gets incremented when sleeping and when running; it corresponds
 	// not only to "cycles that runs" but also "cycles that might have run"

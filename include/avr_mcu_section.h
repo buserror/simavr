@@ -44,6 +44,9 @@ enum {
 	AVR_MMCU_TAG = 0,
 	AVR_MMCU_TAG_NAME,
 	AVR_MMCU_TAG_FREQUENCY,
+	AVR_MMCU_TAG_VCC,
+	AVR_MMCU_TAG_AVCC,
+	AVR_MMCU_TAG_AREF,
 	AVR_MMCU_TAG_LFUSE,
 	AVR_MMCU_TAG_HFUSE,
 	AVR_MMCU_TAG_EFUSE,
@@ -139,6 +142,11 @@ const uint8_t _##_tag _MMCU_ = { _tag, 1, _val }
 	const uint8_t _mmcu[2] _MMCU_ = { AVR_MMCU_TAG, 0 }; \
 	AVR_MCU_STRING(AVR_MMCU_TAG_NAME, _name);\
 	AVR_MCU_LONG(AVR_MMCU_TAG_FREQUENCY, _speed)
+
+#define AVR_MCU_VOLTAGES(_vcc, _avcc, _aref) \
+	AVR_MCU_LONG(AVR_MMCU_TAG_VCC, (_vcc));\
+	AVR_MCU_LONG(AVR_MMCU_TAG_AVCC, (_avcc));\
+	AVR_MCU_LONG(AVR_MMCU_TAG_AREF, (_aref));
 
 #endif /* __AVR__ */
 
