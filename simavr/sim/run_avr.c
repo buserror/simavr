@@ -56,6 +56,8 @@ int main(int argc, char *argv[])
 	int gdb = 0;
 	char name[16] = "";
 	uint32_t loadBase = AVR_SEGMENT_OFFSET_FLASH;
+	int trace_vectors[8] = {0};
+	int trace_vectors_count = 0;
 
 	if (argc == 1)
 		display_usage(basename(argv[0]));
@@ -75,6 +77,9 @@ int main(int argc, char *argv[])
 				display_usage(basename(argv[0]));
 		} else if (!strcmp(argv[pi], "-t") || !strcmp(argv[pi], "-trace")) {
 			trace++;
+		} else if (!strcmp(argv[pi], "-ti")) {
+			if (pi < argc-1)
+				trace_vectors[trace_vectors_count++] = atoi(argv[++pi]);
 		} else if (!strcmp(argv[pi], "-g") || !strcmp(argv[pi], "-gdb")) {
 			gdb++;
 		} else if (!strcmp(argv[pi], "-ee")) {
@@ -134,6 +139,9 @@ int main(int argc, char *argv[])
 		avr->pc = f.flashbase;
 	}
 	avr->trace = trace;
+	for (int ti = 0; ti < trace_vectors_count; ti++)
+		if (avr->vector[trace_vectors[ti]])
+			avr->vector[trace_vectors[ti]]->trace++;
 
 	// even if not setup at startup, activate gdb if crashing
 	avr->gdb_port = 1234;
