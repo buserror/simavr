@@ -167,6 +167,9 @@ static struct mcu_t {
 		.r_icrh = ICR1H,
 		.r_tcnth = TCNT1H,
 
+		.ices = AVR_IO_REGBIT(TCCR1B, ICES1),
+		.icp = AVR_IO_REGBIT(PORTD, 6),
+
 		.overflow = {
 			.enable = AVR_IO_REGBIT(TIMSK, TOIE1),
 			.raised = AVR_IO_REGBIT(TIFR, TOV1),

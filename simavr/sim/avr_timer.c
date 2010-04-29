@@ -120,22 +120,27 @@ static avr_cycle_count_t avr_timer_tov(struct avr_t * avr, avr_cycle_count_t whe
 	return when + p->tov_cycles;
 }
 
+static uint16_t _avr_timer_get_current_tcnt(avr_timer_t * p)
+{
+	avr_t * avr = p->io.avr;
+	if (p->tov_cycles) {
+		uint64_t when = avr->cycle - p->tov_base;
+
+		return (when * p->tov_top) / p->tov_cycles;
+	}
+	return 0;
+}
 
 static uint8_t avr_timer_tcnt_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
 {
 	avr_timer_t * p = (avr_timer_t *)param;
 	// made to trigger potential watchpoints
 
-	if (p->tov_cycles) {
-		uint64_t when = avr->cycle - p->tov_base;
+	uint16_t tcnt = _avr_timer_get_current_tcnt(p);
 
-		uint16_t tcnt = (when * p->tov_top) / p->tov_cycles;
-	//	printf("%s-%c when = %d tcnt = %d/%d\n", __FUNCTION__, p->name, (uint32_t)when, tcnt, p->tov_top);
-
-		avr->data[p->r_tcnt] = tcnt;
-		if (p->r_tcnth)
-			avr->data[p->r_tcnth] = tcnt >> 8;
-	}
+	avr->data[p->r_tcnt] = tcnt;
+	if (p->r_tcnth)
+		avr->data[p->r_tcnth] = tcnt >> 8;
 	
 	return avr_core_watch_read(avr, addr);
 }
@@ -291,6 +296,32 @@ static void avr_timer_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, v
 	avr_timer_reconfigure(p);
 }
 
+static void avr_timer_irq_icp(struct avr_irq_t * irq, uint32_t value, void * param)
+{
+	avr_timer_t * p = (avr_timer_t *)param;
+	avr_t * avr = p->io.avr;
+
+	// input capture disabled when ICR is used as top
+	if (p->mode.top == avr_timer_wgm_reg_icr)
+		return;
+	int bing = 0;
+	if (avr_regbit_get(avr, p->ices)) { // rising edge
+		if (!irq->value && value)
+			bing++;
+	} else {	// default, falling edge
+		if (irq->value && !value)
+			bing++;
+	}
+	if (!bing)
+		return;
+	// get current TCNT, copy it to ICR, and raise interrupt
+	uint16_t tcnt = _avr_timer_get_current_tcnt(p);
+	avr->data[p->r_icr] = tcnt;
+	if (p->r_icrh)
+		avr->data[p->r_icrh] = tcnt >> 8;
+	avr_raise_interrupt(avr, &p->icr);
+}
+
 static void avr_timer_reset(avr_io_t * port)
 {
 	avr_timer_t * p = (avr_timer_t *)port;
@@ -315,6 +346,15 @@ static void avr_timer_reset(avr_io_t * port)
 			avr_connect_irq(&port->irq[TIMER_IRQ_OUT_COMP + compi], req.irq[0]);
 		}
 	}
+	avr_ioport_getirq_t req = {
+		.bit = p->icp
+	};
+	if (avr_ioctl(port->avr, AVR_IOCTL_IOPORT_GETIRQ_REGBIT, &req) > 0) {
+		// cool, got an IRQ for the input capture pin
+//		printf("%s-%c ICP Connecting PIN IRQ %d\n", __FUNCTION__, p->name, req.irq[0]->irq);
+		avr_irq_register_notify(req.irq[0], avr_timer_irq_icp, p);
+	}
+
 }
 
 static	avr_io_t	_io = {
@@ -330,6 +370,10 @@ void avr_timer_init(avr_t * avr, avr_timer_t * p)
 	p->io.irq_count = TIMER_IRQ_COUNT;
 	p->io.irq = avr_alloc_irq(0, p->io.irq_count);
 	p->io.irq_ioctl_get = AVR_IOCTL_TIMER_GETIRQ(p->name);
+
+	// marking IRQs as "filtered" means they don't propagate if the
+	// new value raised is the same as the last one.. in the case of the
+	// pwm value it makes sense not to bother.
 	p->io.irq[TIMER_IRQ_OUT_PWM0].flags |= IRQ_FLAG_FILTERED;
 	p->io.irq[TIMER_IRQ_OUT_PWM1].flags |= IRQ_FLAG_FILTERED;
 

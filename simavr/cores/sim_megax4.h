@@ -284,9 +284,12 @@ struct mcu_t SIM_CORENAME = {
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */  /* External clock T1 is not handled */},
 
 		.r_tcnt = TCNT1L,
+		.r_tcnth = TCNT1H,
 		.r_icr = ICR1L,
 		.r_icrh = ICR1H,
-		.r_tcnth = TCNT1H,
+
+		.ices = AVR_IO_REGBIT(TCCR1B, ICES1),
+		.icp = AVR_IO_REGBIT(PORTD, 6),
 
 		.overflow = {
 			.enable = AVR_IO_REGBIT(TIMSK1, TOIE1),

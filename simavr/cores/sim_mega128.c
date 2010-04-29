@@ -271,6 +271,9 @@ struct mcu_t {
 		.r_icrh = ICR1H,
 		.r_tcnth = TCNT1H,
 
+		.ices = AVR_IO_REGBIT(TCCR1B, ICES1),
+		.icp = AVR_IO_REGBIT(PORTD, 4),
+
 		.overflow = {
 			.enable = AVR_IO_REGBIT(TIMSK, TOIE1),
 			.raised = AVR_IO_REGBIT(TIFR, TOV1),
@@ -378,6 +381,9 @@ struct mcu_t {
 		.r_icr = ICR3L,
 		.r_icrh = ICR3H,
 		.r_tcnth = TCNT3H,
+
+		.ices = AVR_IO_REGBIT(TCCR3B, ICES3),
+		.icp = AVR_IO_REGBIT(PORTE, 7),
 
 		.overflow = {
 			.enable = AVR_IO_REGBIT(ETIMSK, TOIE3),
