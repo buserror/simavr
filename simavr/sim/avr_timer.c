@@ -296,6 +296,32 @@ static void avr_timer_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, v
 	avr_timer_reconfigure(p);
 }
 
+/*
+ * write to the TIFR register. Watch for code that writes "1" to clear
+ * pending interrupts.
+ */
+static void avr_timer_write_pending(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+{
+	avr_timer_t * p = (avr_timer_t *)param;
+	// save old bits values
+	uint8_t ov = avr_regbit_get(avr, p->overflow.raised);
+	uint8_t ic = avr_regbit_get(avr, p->icr.raised);
+	uint8_t cp[AVR_TIMER_COMP_COUNT];
+
+	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++)
+		cp[compi] = avr_regbit_get(avr, p->comp[compi].interrupt.raised);
+
+	// write the value
+	avr_core_watch_write(avr, addr, v);
+
+	// clear any interrupts & flags
+	avr_clear_interupt_if(avr, &p->overflow, ov);
+	avr_clear_interupt_if(avr, &p->icr, ic);
+
+	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++)
+		avr_clear_interupt_if(avr, &p->comp[compi].interrupt, cp[compi]);
+}
+
 static void avr_timer_irq_icp(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	avr_timer_t * p = (avr_timer_t *)param;
@@ -382,6 +408,10 @@ void avr_timer_init(avr_t * avr, avr_timer_t * p)
 	avr_register_vector(avr, &p->icr);
 
 	avr_register_io_write(avr, p->cs[0].reg, avr_timer_write, p);
+
+	// this assumes all the "pending" interrupt bits are in the same
+	// register. Might not be true on all devices ?
+	avr_register_io_write(avr, p->overflow.raised.reg, avr_timer_write_pending, p);
 
 	/*
 	 * Even if the timer is 16 bits, we don't care to have watches on the
