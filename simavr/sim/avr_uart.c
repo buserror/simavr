@@ -147,11 +147,8 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 
 		avr_core_watch_write(avr, addr, v);
 
-		// if writing one to a one, clear bit
-		if (udre && avr_regbit_get(avr, p->udrc.raised))
-			avr_regbit_clear(avr, p->udrc.raised);
-		if (txc && avr_regbit_get(avr, p->txc.raised))
-			avr_regbit_clear(avr, p->txc.raised);
+		avr_clear_interupt_if(avr, &p->udrc, udre);
+		avr_clear_interupt_if(avr, &p->txc, txc);
 	}
 }
 
