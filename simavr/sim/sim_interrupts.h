@@ -53,6 +53,9 @@ void avr_clear_interrupt(avr_t * avr, int v);
 // called by the core at each cycle to check whether an interrupt is pending
 void avr_service_interrupts(avr_t * avr);
 
+// clear the interrupt (inc pending) if "raised" flag is 1
+int avr_clear_interupt_if(avr_t * avr, avr_int_vector_t * vector, uint8_t old);
+
 // return the IRQ that is raised when the vector is enabled and called/cleared
 // this allows tracing of pending interupts
 avr_irq_t * avr_get_interupt_irq(avr_t * avr, uint8_t v);

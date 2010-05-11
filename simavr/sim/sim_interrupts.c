@@ -31,6 +31,11 @@ void avr_register_vector(avr_t *avr, avr_int_vector_t * vector)
 	if (vector->vector) {
 		vector->irq.irq = vector->vector;
 		avr->vector[vector->vector] = vector;
+		if (vector->trace)
+			printf("%s register vector %d (enabled %04x:%d)\n", __FUNCTION__, vector->vector, vector->enable.reg, vector->enable.bit);
+
+		if (!vector->enable.reg)
+			printf("avr_register_vector: No 'enable' bit on vector %d !\n", vector->vector);
 	}
 }
 
@@ -44,27 +49,31 @@ int avr_is_interrupt_pending(avr_t * avr, avr_int_vector_t * vector)
 	return avr->pending[vector->vector >> 5] & (1 << (vector->vector & 0x1f));
 }
 
+int avr_is_interrupt_enabled(avr_t * avr, avr_int_vector_t * vector)
+{
+	return avr_regbit_get(avr, vector->enable);
+}
+
 int avr_raise_interrupt(avr_t * avr, avr_int_vector_t * vector)
 {
 	if (!vector || !vector->vector)
 		return 0;
 	if (vector->trace)
-		printf("%s raising %d\n", __FUNCTION__, vector->vector);
+		printf("%s raising %d (enabled %d)\n", __FUNCTION__, vector->vector, avr_regbit_get(avr, vector->enable));
 	// always mark the 'raised' flag to one, even if the interrupt is disabled
 	// this allow "pooling" for the "raised" flag, like for non-interrupt
 	// driven UART and so so. These flags are often "write one to clear"
 	if (vector->raised.reg)
 		avr_regbit_set(avr, vector->raised);
-	if (vector->enable.reg) {
-		if (!avr_regbit_get(avr, vector->enable))
-			return 0;
-	}
-	if (!avr_is_interrupt_pending(avr, vector)) {
-		if (!avr->pending_wait)
-			avr->pending_wait = 2;		// latency on interrupts ??
-		avr->pending[vector->vector >> 5] |= (1 << (vector->vector & 0x1f));
-		avr_raise_irq(&vector->irq, 1);
 
+	// Mark the interrupt as pending
+	avr->pending[vector->vector >> 5] |= (1 << (vector->vector & 0x1f));
+	avr_raise_irq(&vector->irq, 1);
+
+	// If the interrupt is enabled, attempt to wake the core
+	if (avr_regbit_get(avr, vector->enable)) {
+		if (!avr->pending_wait)
+			avr->pending_wait = 1;		// latency on interrupts ??
 		if (avr->state != cpu_Running) {
 			if (vector->trace)
 				printf("Waking CPU due to interrupt\n");
@@ -86,6 +95,17 @@ void avr_clear_interrupt(avr_t * avr, int v)
 	avr_raise_irq(&vector->irq, 0);
 	if (vector->raised.reg)
 		avr_regbit_clear(avr, vector->raised);
+}
+
+int avr_clear_interupt_if(avr_t * avr, avr_int_vector_t * vector, uint8_t old)
+{
+	if (avr_regbit_get(avr, vector->raised)) {
+		avr_clear_interrupt(avr, vector->vector);
+		avr_regbit_clear(avr, vector->raised);
+		return 1;
+	}
+	avr_regbit_setto(avr, vector->raised, old);
+	return 0;
 }
 
 avr_irq_t * avr_get_interupt_irq(avr_t * avr, uint8_t v)
@@ -113,8 +133,11 @@ void avr_service_interrupts(avr_t * avr)
 						if (avr->pending[bi] & (1 << ii)) {
 
 							int v = (bi * 32) + ii;	// vector
-
-							if (avr->vector[v] && avr->vector[v]->trace)
+							avr_int_vector_t * vector = avr->vector[v];
+							// if that single interupt is masked, ignore it and continue
+							if (vector && !avr_regbit_get(avr, vector->enable))
+								continue;
+							if (vector && vector->trace)
 								printf("%s calling %d\n", __FUNCTION__, v);
 							_avr_push16(avr, avr->pc >> 1);
 							avr->sreg[S_I] = 0;
