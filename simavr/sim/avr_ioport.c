@@ -25,16 +25,13 @@
 static uint8_t avr_ioport_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
 {
 	avr_ioport_t * p = (avr_ioport_t *)param;
-	uint8_t v = avr->data[addr];
-
-	if (addr == p->r_pin) {
-		uint8_t ddr = avr->data[p->r_ddr];
-		uint8_t v = (avr->data[p->r_pin] & ~ddr) | (avr->data[p->r_port] & ddr);
-		avr->data[addr] = v;
-		// made to trigger potential watchpoints
-		v = avr_core_watch_read(avr, addr);
+	uint8_t ddr = avr->data[p->r_ddr];
+	uint8_t v = (avr->data[p->r_pin] & ~ddr) | (avr->data[p->r_port] & ddr);
+	avr->data[addr] = v;
+	// made to trigger potential watchpoints
+	v = avr_core_watch_read(avr, addr);
 //		printf("** PIN%c(%02x) = %02x\n", p->name, addr, v);
-	}
+
 	return v;
 }
 
@@ -43,20 +40,28 @@ static void avr_ioport_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, 
 	avr_ioport_t * p = (avr_ioport_t *)param;
 	uint8_t oldv = avr->data[addr];
 
-	if (addr == p->r_port) {
+	avr_core_watch_write(avr, addr, v);
+	if (v != oldv) {
+		//	printf("PORT%c(%02x) = %02x (was %02x)\n", p->name, addr, v, oldv);
+		int mask = v ^ oldv;
 
-		avr_core_watch_write(avr, addr, v);
-		if (v != oldv) {
-			//	printf("PORT%c(%02x) = %02x (was %02x)\n", p->name, addr, v, oldv);
-			int mask = v ^ oldv;
-
-			// raise the internal IRQ callbacks
-			for (int i = 0; i < 8; i++)
-				if (mask & (1 << i))
-					avr_raise_irq(p->io.irq + i, (v >> i) & 1);
-			avr_raise_irq(p->io.irq + IOPORT_IRQ_PIN_ALL, v);
-		}
+		// raise the internal IRQ callbacks
+		for (int i = 0; i < 8; i++)
+			if (mask & (1 << i))
+				avr_raise_irq(p->io.irq + i, (v >> i) & 1);
+		avr_raise_irq(p->io.irq + IOPORT_IRQ_PIN_ALL, v);
 	}
+}
+
+/*
+ * This is a reasonably new behaviour for the io-ports. Writing 1's to the PIN register
+ * toggles the PORT equivalent bit (regardless of direction
+ */
+static void avr_ioport_pin_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+{
+	avr_ioport_t * p = (avr_ioport_t *)param;
+
+	avr_ioport_write(avr, p->r_port, avr->data[p->r_port] ^ v, param);
 }
 
 /*
@@ -149,5 +154,6 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 
 	avr_register_io_write(avr, p->r_port, avr_ioport_write, p);
 	avr_register_io_read(avr, p->r_pin, avr_ioport_read, p);
+	avr_register_io_write(avr, p->r_pin, avr_ioport_pin_write, p);
 }
 
