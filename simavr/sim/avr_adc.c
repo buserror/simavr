@@ -1,7 +1,7 @@
 /*
 	avr_adc.c
 
-	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Copyright 2008, 2010 Michel Pollet <buserror@gmail.com>
 
  	This file is part of simavr.
 
@@ -49,7 +49,7 @@ static uint8_t avr_adc_read_l(struct avr_t * avr, avr_io_addr_t addr, void * par
 	uint8_t muxi = avr_regbit_get_array(avr, p->mux, ARRAY_SIZE(p->mux));
 	avr_adc_mux_t mux = p->muxmode[muxi];
 	// optional shift left/right
-	uint8_t shift = avr_regbit_get(avr, p->adlar) ? 0 : 6;
+	uint8_t shift = avr_regbit_get(avr, p->adlar) ? 6 : 0; // shift LEFT
 
 	uint32_t reg = 0;
 	switch (mux.kind) {
