@@ -1322,8 +1322,13 @@ uint16_t avr_run_one(avr_t * avr)
 					int set = (opcode & 0x0200) != 0;
 					int branch = ((avr->data[r] & (1 << s)) && set) || (!(avr->data[r] & (1 << s)) && !set);
 					STATE("%s %s[%02x], 0x%02x\t; Will%s branch\n", set ? "sbrs" : "sbrc", avr_regname(r), avr->data[r], 1 << s, branch ? "":" not");
-					if (branch)
-						new_pc = new_pc + 2;
+					if (branch) {
+						if (_avr_is_instruction_32_bits(avr, new_pc)) {
+							new_pc += 4; cycle += 2;
+						} else {
+							new_pc += 2; cycle++;
+						}
+					}
 				}	break;
 				default: _avr_invalid_opcode(avr);
 			}
