@@ -517,8 +517,8 @@ uint16_t avr_run_one(avr_t * avr)
 									_avr_set_r(avr, d+1, avr->data[r+1]);
 								}	break;
 								case 0x0200: {	// MULS – Multiply Signed 0000 0010 dddd rrrr
-									int8_t r = opcode & 0xf;
-									int8_t d = (opcode >> 4) & 0xf;
+									int8_t r = 16 + (opcode & 0xf);
+									int8_t d = 16 + ((opcode >> 4) & 0xf);
 									int16_t res = ((int8_t)avr->data[r]) * ((int8_t)avr->data[d]);
 									STATE("muls %s[%d], %s[%02x] = %d\n", avr_regname(d), ((int8_t)avr->data[d]), avr_regname(r), ((int8_t)avr->data[r]), res);
 									_avr_set_r(avr, 0, res);
