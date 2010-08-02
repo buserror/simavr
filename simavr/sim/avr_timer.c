@@ -407,7 +407,8 @@ void avr_timer_init(avr_t * avr, avr_timer_t * p)
 	avr_register_vector(avr, &p->overflow);
 	avr_register_vector(avr, &p->icr);
 
-	avr_register_io_write(avr, p->wgm[0].reg, avr_timer_write, p);
+	if (p->wgm[0].reg) // these are not present on older AVRs
+		avr_register_io_write(avr, p->wgm[0].reg, avr_timer_write, p);
 	avr_register_io_write(avr, p->cs[0].reg, avr_timer_write, p);
 
 	// this assumes all the "pending" interrupt bits are in the same
