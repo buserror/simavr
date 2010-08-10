@@ -43,7 +43,7 @@ static struct mcu_t {
 	avr_eeprom_t 	eeprom;
 	avr_watchdog_t	watchdog;
 	avr_extint_t	extint;
-	avr_ioport_t	portb, portd;
+	avr_ioport_t	porta, portb, portd;
 	avr_uart_t		uart;
 	avr_timer_t		timer0,timer1;
 } mcu = {
@@ -59,6 +59,9 @@ static struct mcu_t {
 	.extint = {
 		AVR_EXTINT_TINY_DECLARE(0, 'D', 2, EIFR),
 		AVR_EXTINT_TINY_DECLARE(1, 'D', 3, EIFR),
+	},
+	.porta = {	// port A has no PCInts..
+		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
 	},
 	.portb = {
 		.name = 'B',  .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
@@ -226,6 +229,7 @@ static void init(struct avr_t * avr)
 	avr_eeprom_init(avr, &mcu->eeprom);
 	avr_watchdog_init(avr, &mcu->watchdog);
 	avr_extint_init(avr, &mcu->extint);
+	avr_ioport_init(avr, &mcu->porta);
 	avr_ioport_init(avr, &mcu->portb);
 	avr_ioport_init(avr, &mcu->portd);
 	avr_uart_init(avr, &mcu->uart);
