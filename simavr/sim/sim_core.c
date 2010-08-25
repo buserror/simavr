@@ -230,14 +230,14 @@ static inline uint8_t _avr_pop8(avr_t * avr)
 
 inline void _avr_push16(avr_t * avr, uint16_t v)
 {
-	_avr_push8(avr, v >> 8);
 	_avr_push8(avr, v);
+	_avr_push8(avr, v >> 8);
 }
 
 static inline uint16_t _avr_pop16(avr_t * avr)
 {
-	uint16_t res = _avr_pop8(avr);
-	res |= _avr_pop8(avr) << 8;
+	uint16_t res = _avr_pop8(avr) << 8;
+	res |= _avr_pop8(avr);
 	return res;
 }
 
