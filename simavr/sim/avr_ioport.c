@@ -65,6 +65,18 @@ static void avr_ioport_pin_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t
 }
 
 /*
+ * This is a the callback for the DDR register. There is nothing much to do here, apart
+ * from triggering an IRQ in case any 'client' code is interested in the information.
+ */
+static void avr_ioport_ddr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+{
+	avr_ioport_t * p = (avr_ioport_t *)param;
+
+	avr_raise_irq(p->io.irq + IOPORT_IRQ_DIRECTION_ALL, v);
+	avr_core_watch_write(avr, addr, v);
+}
+
+/*
  * this is our "main" pin change callback, it can be triggered by either the
  * AVR code, or any external piece of code that see fit to do it.
  * Either way, this will raise pin change interrupts, if needed
@@ -172,5 +184,6 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 	avr_register_io_write(avr, p->r_port, avr_ioport_write, p);
 	avr_register_io_read(avr, p->r_pin, avr_ioport_read, p);
 	avr_register_io_write(avr, p->r_pin, avr_ioport_pin_write, p);
+	avr_register_io_write(avr, p->r_ddr, avr_ioport_ddr_write, p);
 }
 
