@@ -41,7 +41,7 @@ typedef struct avr_regbit_t {
 /*
  * These accessors are inlined and are used to perform the operations on
  * avr_regbit_t definitions. This is the "official" way to access bits into registers
- * The small footorint costs brings much better versatility for functions/bits that are
+ * The small footprint costs brings much better versatility for functions/bits that are
  * not always defined in the same place on real AVR cores
  */
 /*

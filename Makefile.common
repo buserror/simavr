@@ -71,7 +71,7 @@ endif
 OBJ = obj
 
 ${OBJ}/%.o: %.c
-	@gcc $(CFLAGS) -MD \
+	@$(CC) $(CFLAGS) -MD \
 		$<  -c -o $@
 	@echo CC $<
 
