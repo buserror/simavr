@@ -93,6 +93,9 @@ static void * uart_udp_thread(void * param)
 		struct timeval timo = { 0, 500 };	// short, but not too short interval
 		int ret = select(max, &read_set, &write_set, NULL, &timo);
 
+		if (!ret)
+			continue;
+
 		if (FD_ISSET(p->s, &read_set)) {
 			uint8_t buffer[512];
 

@@ -144,7 +144,7 @@ void avr_service_interrupts(avr_t * avr)
 							avr->pc = v * avr->vector_size;
 
 							avr_clear_interrupt(avr, v);
-							done++;
+							done = 1;
 							break;
 						}
 					break;

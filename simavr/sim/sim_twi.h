@@ -39,7 +39,7 @@
  * example.
  * 
  * IRQ Timeline goes as follow  with an example transaction that
- * does write addres, write registrer, read a byte after a i2c restart
+ * does write address, write register, read a byte after a i2c restart
  * then stops the transaction.
  * 
  * Master:	START	MOSI	START	MISO	ACK	STOP

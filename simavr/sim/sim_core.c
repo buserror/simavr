@@ -37,6 +37,9 @@ const char * _sreg_bit_name = "cznvshti";
  * print the effects of each instructions on registers
  */
 #if CONFIG_SIMAVR_TRACE
+
+#define T(w) w
+
 #define REG_TOUCH(a, r) (a)->touched[(r) >> 5] |= (1 << ((r) & 0x1f))
 #define REG_ISTOUCHED(a, r) ((a)->touched[(r) >> 5] & (1 << ((r) & 0x1f)))
 
@@ -80,6 +83,7 @@ int donttrace = 0;
 	printf("\n");\
 }
 #else
+#define T(w)
 #define REG_TOUCH(a, r)
 #define STATE(_f, args...)
 #define SREG()
@@ -532,30 +536,30 @@ uint16_t avr_run_one(avr_t * avr)
 									int8_t d = 16 + ((opcode >> 4) & 0x7);
 									int16_t res = 0;
 									uint8_t c = 0;
-									const char * name = "";
+									T(const char * name = "";)
 									switch (opcode & 0x88) {
 										case 0x00: 	// MULSU – Multiply Signed Unsigned 0000 0011 0ddd 0rrr
 											res = ((uint8_t)avr->data[r]) * ((int8_t)avr->data[d]);
 											c = (res >> 15) & 1;
-											name = "mulsu";
+											T(name = "mulsu";)
 											break;
 										case 0x08: 	// FMUL Fractional Multiply Unsigned 0000 0011 0ddd 1rrr
 											res = ((uint8_t)avr->data[r]) * ((uint8_t)avr->data[d]);
 											c = (res >> 15) & 1;
 											res <<= 1;
-											name = "fmul";
+											T(name = "fmul";)
 											break;
 										case 0x80: 	// FMULS – Multiply Signed  0000 0011 1ddd 0rrr
 											res = ((int8_t)avr->data[r]) * ((int8_t)avr->data[d]);
 											c = (res >> 15) & 1;
 											res <<= 1;
-											name = "fmuls";
+											T(name = "fmuls";)
 											break;
 										case 0x88: 	// FMULSU – Multiply Signed Unsigned 0000 0011 1ddd 0rrr
 											res = ((uint8_t)avr->data[r]) * ((int8_t)avr->data[d]);
 											c = (res >> 15) & 1;
 											res <<= 1;
-											name = "fmulsu";
+											T(name = "fmulsu";)
 											break;
 									}
 									cycle++;
@@ -1000,14 +1004,14 @@ uint16_t avr_run_one(avr_t * avr)
 						case 0x900f: {	// POP 1001 000d dddd 1111
 							uint8_t r = (opcode >> 4) & 0x1f;
 							_avr_set_r(avr, r, _avr_pop8(avr));
-							uint16_t sp = _avr_sp_get(avr);
+							T(uint16_t sp = _avr_sp_get(avr);)
 							STATE("pop %s (@%04x)[%02x]\n", avr_regname(r), sp, avr->data[sp]);
 							cycle++;
 						}	break;
 						case 0x920f: {	// PUSH 1001 001d dddd 1111
 							uint8_t r = (opcode >> 4) & 0x1f;
 							_avr_push8(avr, avr->data[r]);
-							uint16_t sp = _avr_sp_get(avr);
+							T(uint16_t sp = _avr_sp_get(avr);)
 							STATE("push %s[%02x] (@%04x)\n", avr_regname(r), avr->data[r], sp);
 							cycle++;
 						}	break;

@@ -74,7 +74,7 @@ static int avr_flash_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param
 	} else {
 		z &= ~1;
 		avr->flash[z++] = r01;
-		avr->flash[z++] = r01 >> 8;
+		avr->flash[z] = r01 >> 8;
 	}
 	return 0;
 }

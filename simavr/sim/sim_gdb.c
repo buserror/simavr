@@ -118,11 +118,11 @@ static int gdb_write_register(avr_gdb_t * g, int regi, uint8_t * src)
 			g->avr->data[regi] = *src;
 			return 1;
 		case 32:
-			g->avr->data[R_SREG] = * src;
+			g->avr->data[R_SREG] = *src;
 			return 1;
 		case 33:
-			g->avr->data[R_SPL] = *src++;
-			g->avr->data[R_SPH] = *src++;
+			g->avr->data[R_SPL] = src[0];
+			g->avr->data[R_SPH] = src[1];
 			return 2;
 		case 34:
 			g->avr->pc = src[0] | (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
@@ -204,8 +204,10 @@ static void gdb_handle_command(avr_gdb_t * g, char * cmd)
 				avr_ioctl(avr, AVR_IOCTL_EEPROM_GET, &ee);
 				if (ee.ee)
 					src = ee.ee;
-				else
+				else {
 					gdb_send_reply(g, "E01");
+					break;
+				}
 			} else {
 				printf("read memory error %08x, %08x (ramend %04x)\n", addr, len, avr->ramend+1);
 				gdb_send_reply(g, "E01");
@@ -311,7 +313,7 @@ static int gdb_network_handler(avr_gdb_t * g, uint32_t dosleep)
 		printf("%s connection opened\n", __FUNCTION__);		
 	}
 		
-	if (FD_ISSET(g->s, &read_set)) {
+	if (g->s != -1 && FD_ISSET(g->s, &read_set)) {
 		uint8_t buffer[1024];
 		
 		ssize_t r = recv(g->s, buffer, sizeof(buffer)-1, 0);
