@@ -103,6 +103,7 @@ static void avr_ioport_reset(avr_io_t * port)
 static int avr_ioport_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
 {
 	avr_ioport_t * p = (avr_ioport_t *)port;
+	avr_t * avr = p->io.avr;
 	int res = -1;
 
 	switch(ctl) {
@@ -125,6 +126,22 @@ static int avr_ioport_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_para
 				return o;
 			}
 		}	break;
+		default: {
+			/*
+			 * Return the port state if the IOCTL matches us.
+			 */
+			if (ctl == AVR_IOCTL_IOPORT_GETSTATE(p->name)) {
+				avr_ioport_state_t state = {
+					.name = p->name,
+					.port = avr->data[p->r_port],
+					.ddr = avr->data[p->r_ddr],
+					.pin = avr->data[p->r_pin],
+				};
+				if (io_param)
+					*((avr_ioport_state_t*)io_param) = state;
+				res = 0;
+			}
+		}
 	}
 
 	return res;

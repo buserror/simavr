@@ -45,6 +45,27 @@ typedef struct avr_ioport_getirq_t {
 
 #define AVR_IOCTL_IOPORT_GETIRQ_REGBIT AVR_IOCTL_DEF('i','o','g','r')
 
+/*
+ * ioctl used to get a port state.
+ *
+ * for (int i = 'A'; i <= 'F'; i++) {
+ * 	avr_ioport_state_t state;
+ * 	if (avr_ioctl(AVR_IOCTL_IOPORT_GETSTATE(i), &state) == 0)
+ * 		printf("PORT%c %02x DDR %02x PIN %02x\n",
+ * 			state.name, state.port, state.ddr, state.pin);
+ * }
+ */
+typedef struct avr_ioport_state_t {
+	unsigned long name : 7,
+		port : 8, ddr : 8, pin : 8;
+} avr_ioport_state_t;
+
+// add port name (uppercase) to get the port state
+#define AVR_IOCTL_IOPORT_GETSTATE(_name) AVR_IOCTL_DEF('i','o','s',(_name))
+
+/*
+ * Definition for an IO port
+ */
 typedef struct avr_ioport_t {
 	avr_io_t	io;
 	char name;
