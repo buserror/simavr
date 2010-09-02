@@ -90,15 +90,11 @@ static	avr_io_t	_io = {
 void avr_spi_init(avr_t * avr, avr_spi_t * p)
 {
 	p->io = _io;
+
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->spi);
-
-	//printf("%s SPI%c init\n", __FUNCTION__, p->name);
-
 	// allocate this module's IRQ
-	p->io.irq_count = SPI_IRQ_COUNT;
-	p->io.irq = avr_alloc_irq(0, p->io.irq_count);
-	p->io.irq_ioctl_get = AVR_IOCTL_SPI_GETIRQ(p->name);
+	avr_io_setirqs(&p->io, AVR_IOCTL_SPI_GETIRQ(p->name), SPI_IRQ_COUNT, NULL);
 
 	avr_register_io_write(avr, p->r_spdr, avr_spi_write, p);
 	avr_register_io_read(avr, p->r_spdr, avr_spi_read, p);

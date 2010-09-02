@@ -172,14 +172,11 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 //		p->name, p->r_pin,
 //		p->name, p->r_ddr,
 //		p->name, p->r_port);
-
-	// allocate this module's IRQ
-	p->io.irq_count = IOPORT_IRQ_COUNT;
-	p->io.irq = avr_alloc_irq(0, p->io.irq_count);
-	p->io.irq_ioctl_get = AVR_IOCTL_IOPORT_GETIRQ(p->name);
 	
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->pcint);
+	// allocate this module's IRQ
+	avr_io_setirqs(&p->io, AVR_IOCTL_IOPORT_GETIRQ(p->name), IOPORT_IRQ_COUNT, NULL);
 
 	avr_register_io_write(avr, p->r_port, avr_ioport_write, p);
 	avr_register_io_read(avr, p->r_pin, avr_ioport_read, p);

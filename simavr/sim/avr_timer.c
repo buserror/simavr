@@ -392,20 +392,18 @@ void avr_timer_init(avr_t * avr, avr_timer_t * p)
 {
 	p->io = _io;
 
+	avr_register_io(avr, &p->io);
+	avr_register_vector(avr, &p->overflow);
+	avr_register_vector(avr, &p->icr);
+
 	// allocate this module's IRQ
-	p->io.irq_count = TIMER_IRQ_COUNT;
-	p->io.irq = avr_alloc_irq(0, p->io.irq_count);
-	p->io.irq_ioctl_get = AVR_IOCTL_TIMER_GETIRQ(p->name);
+	avr_io_setirqs(&p->io, AVR_IOCTL_TIMER_GETIRQ(p->name), TIMER_IRQ_COUNT, NULL);
 
 	// marking IRQs as "filtered" means they don't propagate if the
 	// new value raised is the same as the last one.. in the case of the
 	// pwm value it makes sense not to bother.
 	p->io.irq[TIMER_IRQ_OUT_PWM0].flags |= IRQ_FLAG_FILTERED;
 	p->io.irq[TIMER_IRQ_OUT_PWM1].flags |= IRQ_FLAG_FILTERED;
-
-	avr_register_io(avr, &p->io);
-	avr_register_vector(avr, &p->overflow);
-	avr_register_vector(avr, &p->icr);
 
 	if (p->wgm[0].reg) // these are not present on older AVRs
 		avr_register_io_write(avr, p->wgm[0].reg, avr_timer_write, p);

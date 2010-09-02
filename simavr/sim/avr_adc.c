@@ -221,13 +221,10 @@ void avr_adc_init(avr_t * avr, avr_adc_t * p)
 {
 	p->io = _io;
 
-	// allocate this module's IRQ
-	p->io.irq_count = ADC_IRQ_COUNT;
-	p->io.irq = avr_alloc_irq(0, p->io.irq_count);
-	p->io.irq_ioctl_get = AVR_IOCTL_ADC_GETIRQ;
-
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->adc);
+	// allocate this module's IRQ
+	avr_io_setirqs(&p->io, AVR_IOCTL_ADC_GETIRQ, ADC_IRQ_COUNT, NULL);
 
 	avr_register_io_write(avr, p->r_adcsra, avr_adc_write, p);
 	avr_register_io_read(avr, p->r_adcl, avr_adc_read_l, p);

@@ -78,13 +78,11 @@ void avr_extint_init(avr_t * avr, avr_extint_t * p)
 {
 	p->io = _io;
 
-	// allocate this module's IRQ
-	p->io.irq_count = EXTINT_COUNT;
-	p->io.irq = avr_alloc_irq(0, p->io.irq_count);
-	p->io.irq_ioctl_get = AVR_IOCTL_EXTINT_GETIRQ();
-
 	avr_register_io(avr, &p->io);
 	for (int i = 0; i < EXTINT_COUNT; i++)
 		avr_register_vector(avr, &p->eint[i].vector);
+
+	// allocate this module's IRQ
+	avr_io_setirqs(&p->io, AVR_IOCTL_EXTINT_GETIRQ(), EXTINT_COUNT, NULL);
 }
 
