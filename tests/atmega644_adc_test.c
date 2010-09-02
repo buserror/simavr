@@ -89,7 +89,7 @@ int main(void)
 	ADCSRA &= ~(1 << ADIE);	// remove interrupt
 
 	// 1.1 reference voltage, left aligned
-	ADMUX = (ADMUX & ~0x1f)| (1 << ADLAR) | 0x1e;
+	ADMUX = (ADMUX & ~0x1f)| (0 << ADLAR) | 0x1e;
 	ADCSRA |= (1 << ADSC) ;	// start conversion
 	while (ADCSRA & (1 << ADSC))
 		;
