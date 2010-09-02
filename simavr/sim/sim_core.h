@@ -22,6 +22,10 @@
 #ifndef SIM_CORE_H_
 #define SIM_CORE_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Instruction decoder, run ONE instruction
  */
@@ -90,5 +94,9 @@ void avr_dump_state(avr_t * avr);
 #define DUMP_REG();
 
 #endif 
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* SIM_CORE_H_ */

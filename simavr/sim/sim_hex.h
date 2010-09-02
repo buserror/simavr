@@ -25,6 +25,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // parses a hex text string 'src' of at max 'maxlen' characters, decodes it into 'buffer'
 int read_hex_string(const char * src, uint8_t * buffer, int maxlen);
 
@@ -48,5 +52,9 @@ uint8_t * read_ihex_file(const char * fname, uint32_t * dsize, uint32_t * start)
 
 // hex dump from pointer 'b' for 'l' bytes with string prefix 'w'
 void hdump(const char *w, uint8_t *b, size_t l);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __SIM_HEX_H___ */

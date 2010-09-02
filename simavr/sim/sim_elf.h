@@ -24,6 +24,10 @@
 
 #include "avr_mcu_section.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef ELF_SYMBOLS
 #define ELF_SYMBOLS 1
 #endif
@@ -71,5 +75,9 @@ typedef struct elf_firmware_t {
 int elf_read_firmware(const char * file, elf_firmware_t * firmware);
 
 void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* ELF_H_ */

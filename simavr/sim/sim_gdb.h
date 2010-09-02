@@ -22,9 +22,17 @@
 #ifndef __SIM_GDB_H__
 #define __SIM_GDB_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int avr_gdb_init(avr_t * avr);
 
 // call from the main AVR decoder thread
 int avr_gdb_processor(avr_t * avr, uint32_t sleep);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif

@@ -28,6 +28,10 @@
 #include <stdio.h>
 #include "sim_irq.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Value Change dump module for simavr.
  * 
@@ -84,5 +88,9 @@ int avr_vcd_add_signal(avr_vcd_t * vcd,
 int avr_vcd_start(avr_vcd_t * vcd);
 // stops recording signal values into the file
 int avr_vcd_stop(avr_vcd_t * vcd);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __SIM_VCD_FILE_H__ */

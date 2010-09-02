@@ -25,6 +25,10 @@
 
 #include "sim_avr.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // converts a number of usec to a number of machine cycles, at current speed
 static inline avr_cycle_count_t avr_usec_to_cycles(avr_t * avr, uint32_t usec)
 {
@@ -55,5 +59,9 @@ void avr_cycle_timer_cancel(avr_t * avr, avr_cycle_timer_t timer, void * param);
 // Private, called from the core
 //
 avr_cycle_count_t avr_cycle_timer_process(avr_t * avr);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __SIM_CYCLE_TIMERS_H___ */

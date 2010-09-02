@@ -40,6 +40,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum {
 	AVR_MMCU_TAG = 0,
 	AVR_MMCU_TAG_NAME,
@@ -150,5 +154,8 @@ const uint8_t _##_tag _MMCU_ = { _tag, 1, _val }
 
 #endif /* __AVR__ */
 
+#ifdef __cplusplus
+};
+#endif
 
 #endif

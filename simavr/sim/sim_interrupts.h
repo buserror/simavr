@@ -25,6 +25,10 @@
 #include "sim_avr.h"
 #include "sim_irq.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // interrupt vector for the IO modules
 typedef struct avr_int_vector_t {
 	uint8_t vector;			// vector number, zero (reset) is reserved
@@ -59,5 +63,9 @@ int avr_clear_interupt_if(avr_t * avr, avr_int_vector_t * vector, uint8_t old);
 // return the IRQ that is raised when the vector is enabled and called/cleared
 // this allows tracing of pending interupts
 avr_irq_t * avr_get_interupt_irq(avr_t * avr, uint8_t v);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __SIM_INTERUPTS_H__ */

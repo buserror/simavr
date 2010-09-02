@@ -24,6 +24,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Internal IRQ system
  * 
@@ -72,5 +76,9 @@ void avr_raise_irq(avr_irq_t * irq, uint32_t value);
 void avr_connect_irq(avr_irq_t * src, avr_irq_t * dst);
 // register a notification 'hook' for 'irq' -- 'param' is anything that your want passed back as argument
 void avr_irq_register_notify(avr_irq_t * irq, avr_irq_notify_t notify, void * param);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __SIM_IRQ_H__ */

@@ -24,6 +24,10 @@
 
 #include "sim_avr.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define ARRAY_SIZE(_aa) (sizeof(_aa) / sizeof((_aa)[0]))
 
 /*
@@ -104,5 +108,8 @@ static inline uint8_t avr_regbit_get_array(avr_t * avr, avr_regbit_t *rb, int co
 #define AVR_IO_REGBIT(_io, _bit) { . reg = (_io), .bit = (_bit), .mask = 1 }
 #define AVR_IO_REGBITS(_io, _bit, _mask) { . reg = (_io), .bit = (_bit), .mask = (_mask) }
 
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __SIM_REGBIT_H__ */

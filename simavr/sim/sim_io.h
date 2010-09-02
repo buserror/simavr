@@ -24,6 +24,10 @@
 
 #include "sim_avr.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * used by the ioports to implement their own features
  * see avr_eeprom.* for an example, and avr_ioctl().
@@ -77,5 +81,9 @@ struct avr_irq_t * avr_io_getirq(avr_t * avr, uint32_t ctl, int index);
 // the "index" is a bit number, or ALL bits if index == 8
 #define AVR_IOMEM_IRQ_ALL 8
 struct avr_irq_t * avr_iomem_getirq(avr_t * avr, avr_io_addr_t addr, int index);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __SIM_IO_H__ */

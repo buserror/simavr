@@ -24,6 +24,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef uint64_t avr_cycle_count_t;
 typedef uint16_t	avr_io_addr_t;
 
@@ -252,6 +256,10 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr);
 // called when the core has detected a crash somehow.
 // this might activate gdb server
 void avr_sadly_crashed(avr_t *avr, uint8_t signal);
+
+#ifdef __cplusplus
+};
+#endif
 
 #include "sim_io.h"
 #include "sim_regbit.h"

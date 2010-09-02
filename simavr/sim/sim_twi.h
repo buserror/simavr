@@ -29,6 +29,10 @@
 #include <stdint.h>
 #include "sim_irq.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * The TWI system is designed to be representing the same state as 
  * a TWI/i2c bus itself. So each "state" of the bus is an IRQ sent
@@ -92,5 +96,9 @@ void twi_bus_stop(twi_bus_t * bus);
 
 void twi_slave_init(twi_slave_t * slave, uint8_t address, void * param);
 void twi_slave_detach(twi_slave_t * slave);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /*  SIM_TWI_H_ */
