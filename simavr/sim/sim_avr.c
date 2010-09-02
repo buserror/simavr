@@ -53,6 +53,11 @@ void avr_terminate(avr_t * avr)
 	if (avr->vcd)
 		avr_vcd_close(avr->vcd);
 	avr->vcd = NULL;
+	avr_deallocate_ios(avr);
+
+	free(avr->flash);
+	free(avr->data);
+	avr->flash = avr->data = NULL;
 }
 
 void avr_reset(avr_t * avr)
