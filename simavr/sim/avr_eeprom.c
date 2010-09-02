@@ -113,9 +113,18 @@ static int avr_eeprom_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_para
 	return res;
 }
 
+static void avr_eeprom_dealloc(struct avr_io_t * port)
+{
+	avr_eeprom_t * p = (avr_eeprom_t *)port;
+	if (p->eeprom)
+		free(p->eeprom);
+	p->eeprom = NULL;
+}
+
 static	avr_io_t	_io = {
 	.kind = "eeprom",
 	.ioctl = avr_eeprom_ioctl,
+	.dealloc = avr_eeprom_dealloc,
 };
 
 void avr_eeprom_init(avr_t * avr, avr_eeprom_t * p)
