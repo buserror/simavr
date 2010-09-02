@@ -53,6 +53,9 @@ typedef struct avr_io_t {
 	void (*reset)(struct avr_io_t *io);
 	// called externally. allow access to io modules and so on
 	int (*ioctl)(struct avr_io_t *io, uint32_t ctl, void *io_param);
+
+	// optional, a function to free up allocated system resources
+	void (*dealloc)(struct avr_io_t *io);
 } avr_io_t;
 
 /*
@@ -63,6 +66,10 @@ typedef struct avr_io_t {
 // this is called by the AVR core init functions, you /could/ register an external
 // one after instanciation, for whatever purpose...
 void avr_register_io(avr_t *avr, avr_io_t * io);
+// Sets an IO module "official" IRQs and the ioctl used to get to them. if 'irqs' is NULL,
+// 'count' will be allocated
+struct avr_irq_t * avr_io_setirqs(avr_io_t * io, uint32_t ctl, int count, struct avr_irq_t * irqs);
+
 // register a callback for when IO register "addr" is read
 void avr_register_io_read(avr_t *avr, avr_io_addr_t addr, avr_io_read_t read, void * param);
 // register a callback for when the IO register is written. callback has to set the memory itself
@@ -81,6 +88,9 @@ struct avr_irq_t * avr_io_getirq(avr_t * avr, uint32_t ctl, int index);
 // the "index" is a bit number, or ALL bits if index == 8
 #define AVR_IOMEM_IRQ_ALL 8
 struct avr_irq_t * avr_iomem_getirq(avr_t * avr, avr_io_addr_t addr, int index);
+
+// Terminates all IOs and remove from them from the io chain
+void avr_deallocate_ios(avr_t *avr);
 
 #ifdef __cplusplus
 };

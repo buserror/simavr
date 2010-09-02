@@ -70,7 +70,6 @@ struct avr_irq_t * avr_io_getirq(avr_t * avr, uint32_t ctl, int index)
 	
 }
 
-
 avr_irq_t * avr_iomem_getirq(avr_t * avr, avr_io_addr_t addr, int index)
 {
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
@@ -83,3 +82,33 @@ avr_irq_t * avr_iomem_getirq(avr_t * avr, avr_io_addr_t addr, int index)
 	return index < 9 ? avr->io[a].irq + index : NULL;
 }
 
+struct avr_irq_t * avr_io_setirqs(avr_io_t * io, uint32_t ctl, int count, struct avr_irq_t * irqs)
+{
+	// allocate this module's IRQ
+	io->irq_count = count;
+	io->irq = irqs ? irqs : avr_alloc_irq(0, count);
+	io->irq_ioctl_get = ctl;
+	return io->irq;
+}
+
+static void avr_deallocate_io(avr_io_t * io)
+{
+	if (io->dealloc)
+		io->dealloc(io);
+	avr_free_irq(io->irq, io->irq_count);
+	io->irq_count = 0;
+	io->irq_ioctl_get = 0;
+	io->avr = NULL;
+	io->next = NULL;
+}
+
+void avr_deallocate_ios(avr_t * avr)
+{
+	avr_io_t * port = avr->io_port;
+	while (port) {
+		avr_io_t * next = port->next;
+		avr_deallocate_io(port);
+		port = next;
+	}
+	avr->io_port = NULL;
+}
