@@ -62,6 +62,8 @@ static avr_irq_hook_t * _avr_alloc_irq_hook(avr_irq_t * irq)
 
 void avr_free_irq(avr_irq_t * irq, uint32_t count)
 {
+	if (!irq || !count)
+		return;
 	for (int i = 0; i < count; i++) {
 		// purge hooks
 		avr_irq_hook_t *hook = irq->hook;
