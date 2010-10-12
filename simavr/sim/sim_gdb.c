@@ -251,6 +251,10 @@ static void gdb_handle_command(avr_gdb_t * g, char * cmd)
 		case 's': {	// step
 			avr->state = cpu_Step;
 		}	break;
+		case 'r': {	// deprecated, suggested for AVRStudio compatibility
+			avr->state = cpu_StepDone;
+			avr_reset(avr);
+		}	break;
 		case 'Z': 	// set clear break/watchpoint
 		case 'z': {
 			uint32_t kind, addr, len;
