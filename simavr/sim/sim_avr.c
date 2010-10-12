@@ -121,6 +121,28 @@ void avr_set_command_register(avr_t * avr, avr_io_addr_t addr)
 		avr_register_io_write(avr, addr, _avr_io_command_write, NULL);
 }
 
+static void _avr_io_console_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+{
+	static char * buf = NULL;
+	static int size = 0, len = 0;
+
+	if (v == '\r') {
+		printf("O:" "%s" "" "\n", buf);
+		fflush(stdout);
+	}
+	if (len + 1 >= size) {
+		size += 128;
+		buf = (char*)realloc(buf, size);
+	}
+	buf[len++] = v;
+}
+
+void avr_set_console_register(avr_t * avr, avr_io_addr_t addr)
+{
+	if (addr)
+		avr_register_io_write(avr, addr, _avr_io_console_write, NULL);
+}
+
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address)
 {
 	memcpy(avr->flash + address, code, size);

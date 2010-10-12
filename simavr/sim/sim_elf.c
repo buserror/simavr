@@ -45,6 +45,7 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 #if CONFIG_SIMAVR_TRACE
 	avr->codeline = firmware->codeline;
 #endif
+
 	avr_loadcode(avr, firmware->flash, firmware->flashsize, firmware->flashbase);
 	avr->codeend = firmware->flashsize + firmware->flashbase - firmware->datasize;
 	if (firmware->eeprom && firmware->eesize) {
@@ -53,6 +54,10 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 	}
 
 	avr_set_command_register(avr, firmware->command_register_addr);
+	avr_set_console_register(avr, firmware->console_register_addr);
+
+	// rest is initialization of the VCD file
+
 	if (firmware->tracecount == 0)
 		return;
 	avr->vcd = malloc(sizeof(*avr->vcd));
@@ -150,6 +155,9 @@ static void elf_parse_mmcu_section(elf_firmware_t * firmware, uint8_t * src, uin
 			}	break;
 			case AVR_MMCU_TAG_SIMAVR_COMMAND: {
 				firmware->command_register_addr = src[0] | (src[1] << 8);
+			}	break;
+			case AVR_MMCU_TAG_SIMAVR_CONSOLE: {
+				firmware->console_register_addr = src[0] | (src[1] << 8);
 			}	break;
 		}
 		size -= next;

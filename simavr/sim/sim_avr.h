@@ -241,6 +241,11 @@ void avr_terminate(avr_t * avr);
 // set an IO register to receive commands from the AVR firmware
 // it's optional, and uses the ELF tags
 void avr_set_command_register(avr_t * avr, avr_io_addr_t addr);
+
+// specify the "console register" -- output sent to this register
+// is printed on the simulator console, without using a UART
+void avr_set_console_register(avr_t * avr, avr_io_addr_t addr);
+
 // load code in the "flash"
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address);
 

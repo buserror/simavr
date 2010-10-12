@@ -56,6 +56,7 @@ typedef struct elf_firmware_t {
 	
 	// register to listen to for commands from the firmware
 	uint16_t	command_register_addr;
+	uint16_t	console_register_addr;
 
 	uint32_t	flashbase;	// base address
 	uint8_t * 	flash;
