@@ -439,7 +439,8 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, uint32_t pc)
  * + It also doesn't check whether the core it's
  *   emulating is supposed to have the fancy instructions, like multiply and such.
  * 
- * for now all instructions take "one" cycle, the cycle+=<extra> needs to be added.
+ * The nunber of cycles taken by instruction has been added, but might not be
+ * entirely accurate.
  */
 uint16_t avr_run_one(avr_t * avr)
 {
@@ -531,7 +532,7 @@ uint16_t avr_run_one(avr_t * avr)
 									avr->sreg[S_Z] = res == 0;
 									SREG();
 								}	break;
-								case 0x0300: {	// multiplications
+								case 0x0300: {	// MUL Multiply 0000 0011 fddd frrr
 									int8_t r = 16 + (opcode & 0x7);
 									int8_t d = 16 + ((opcode >> 4) & 0x7);
 									int16_t res = 0;
@@ -555,7 +556,7 @@ uint16_t avr_run_one(avr_t * avr)
 											res <<= 1;
 											T(name = "fmuls";)
 											break;
-										case 0x88: 	// FMULSU – Multiply Signed Unsigned 0000 0011 1ddd 0rrr
+										case 0x88: 	// FMULSU – Multiply Signed Unsigned 0000 0011 1ddd 1rrr
 											res = ((uint8_t)avr->data[r]) * ((int8_t)avr->data[d]);
 											c = (res >> 15) & 1;
 											res <<= 1;
@@ -592,7 +593,7 @@ uint16_t avr_run_one(avr_t * avr)
 					avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 					SREG();
 				}	break;
-				case 0x1000: {	// CPSE Compare, skip if equal 0000 10 rd dddd rrrr
+				case 0x1000: {	// CPSE Compare, skip if equal 0000 00 rd dddd rrrr
 					get_r_d_10(opcode);
 					uint16_t res = vd == vr;
 					STATE("cpse %s[%02x], %s[%02x]\t; Will%s skip\n", avr_regname(d), avr->data[d], avr_regname(r), avr->data[r], res ? "":"not ");
@@ -604,7 +605,7 @@ uint16_t avr_run_one(avr_t * avr)
 						}
 					}
 				}	break;
-				case 0x1400: {	// CP Compare 0000 10 rd dddd rrrr
+				case 0x1400: {	// CP Compare 0000 01 rd dddd rrrr
 					get_r_d_10(opcode);
 					uint8_t res = vd - vr;
 					STATE("cp %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
@@ -868,8 +869,8 @@ uint16_t avr_run_one(avr_t * avr)
 					SREG();
 				}	break;
 				case 0x9488:case 0x9498:case 0x94a8:case 0x94b8:case 0x94c8:case 0x94d8:case 0x94e8:
-				case 0x94f8:
-				{	// BSET 1001 0100 0ddd 1000
+				case 0x94f8:	// bit 7 is 'clear vs set'
+				{	// BCLR 1001 0100 1ddd 1000
 					uint8_t b = (opcode >> 4) & 7;
 					avr->sreg[b] = 0;
 					STATE("bclr %c\n", _sreg_bit_name[b]);
@@ -916,6 +917,14 @@ uint16_t avr_run_one(avr_t * avr)
 							}
 							cycle += 2;
 						}	break;
+						/*
+						 * Load store instructions
+						 *
+						 * 1001 00sr rrrr iioo
+						 * s = 0 = load, 1 = store
+						 * ii = 16 bits register index, 11 = Z, 10 = Y, 00 = X
+						 * oo = 1) post increment, 2) pre-decrement
+						 */
 						case 0x900c:
 						case 0x900d:
 						case 0x900e: {	// LD Load Indirect from Data using X 1001 000r rrrr 11oo
