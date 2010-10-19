@@ -100,6 +100,10 @@ typedef struct avr_t {
 	
 	// called at init time
 	void (*init)(struct avr_t * avr);
+	// called at init time (for special purposes like using a memory mapped file as flash see: simduino)
+	void (*special_init)(struct avr_t * avr);
+	// called at termination time ( to clean special initalizations)
+	void (*special_deinit)(struct avr_t * avr);
 	// called at reset time
 	void (*reset)(struct avr_t * avr);
 

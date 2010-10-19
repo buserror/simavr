@@ -41,6 +41,8 @@ int avr_init(avr_t * avr)
 	// cpu is in limbo before init is finished.
 	avr->state = cpu_Limbo;
 	avr->frequency = 1000000;	// can be overriden via avr_mcu_section
+	if (avr->special_init)
+		avr->special_init(avr);
 	if (avr->init)
 		avr->init(avr);
 	avr->state = cpu_Running;
@@ -50,13 +52,16 @@ int avr_init(avr_t * avr)
 
 void avr_terminate(avr_t * avr)
 {
-	if (avr->vcd)
+	if (avr->special_deinit)
+		avr->special_deinit(avr);
+	if (avr->vcd) {
 		avr_vcd_close(avr->vcd);
-	avr->vcd = NULL;
+		avr->vcd = NULL;
+	}
 	avr_deallocate_ios(avr);
 
-	free(avr->flash);
-	free(avr->data);
+	if (avr->flash) free(avr->flash);
+	if (avr->data) free(avr->data);
 	avr->flash = avr->data = NULL;
 }
 
