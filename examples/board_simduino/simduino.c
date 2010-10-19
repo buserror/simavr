@@ -151,6 +151,45 @@ static void * avr_run_thread(void * oaram)
 }
 
 
+char avr_flash_path[1024];
+int avr_flash_fd = 0;
+
+// avr special flash initalization
+// here: open and map a file to enable a persistent storage for the flash memory
+void avr_special_init( avr_t* avr)
+{
+	//puts(" --=== INIT CALLED ===--");
+	// release flash memory if allocated
+	if(avr->flash) free(avr->flash);
+	// open the file
+	avr_flash_fd = open(avr_flash_path, O_RDWR|O_CREAT, 0644);
+	if (avr_flash_fd < 0) {
+		perror(avr_flash_path);
+		exit(1);
+	}
+	// resize and map the file the file
+	(void)ftruncate(avr_flash_fd, avr->flashend + 1);
+	avr->flash = (uint8_t*)mmap(NULL, avr->flashend + 1, // 32k is multiple of 4096
+	                            PROT_READ|PROT_WRITE, MAP_SHARED, avr_flash_fd, 0);
+	if (!avr->flash) {
+		fprintf(stderr, "unable to map memory\n");
+		perror(avr_flash_path);
+		exit(1);
+	}
+}
+
+// avr special flash deinitalization
+// here: cleanup the persistent storage
+void avr_special_deinit( avr_t* avr)
+{
+	//puts(" --=== DEINIT CALLED ===--");
+	// unmap and close the file
+	munmap( avr->flash, avr->flashend + 1);
+	close( avr_flash_fd);
+	// signal that cleanup is done
+	avr->flash = NULL;
+}
+
 int main(int argc, char *argv[])
 {
 	elf_firmware_t f;
@@ -161,6 +200,11 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%s: Error creating the AVR core\n", argv[0]);
 		exit(1);
 	}
+	snprintf(avr_flash_path, sizeof(avr_flash_path), "%s/%s", pwd, "simduino_flash.bin");
+	// register our own functions
+	avr->special_init = avr_special_init;
+	avr->special_deinit = avr_special_deinit;
+	//avr->reset = NULL;
 	avr_init(avr);
 	avr->frequency = 16000000;
 
@@ -169,35 +213,16 @@ int main(int argc, char *argv[])
 	// app to be kept, and re-run if the bootloader doesn't get a
 	// new one
 	{
-		char path[256];
-		sprintf(path, "%s/%s", pwd, "simduino_flash.bin");
-
-		int fd = open(path, O_RDWR|O_CREAT, 0644);
-		if (fd < 0) {
-			perror(path);
-			exit(1);
-		}
-		(void)ftruncate(fd, avr->flashend + 1);
-		uint8_t * mm = (uint8_t*)mmap(NULL, avr->flashend + 1 /* 32k is multiple of 4096 */,
-				PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-		if (!mm) {
-			perror(path);
-			exit(1);
-		}
-
-		// reload bootloader anyway
-		free(avr->flash);
-		avr->flash = mm;
-
+		char path[1024];
 		uint32_t base, size;
-		sprintf(path, "%s/%s", pwd, "ATmegaBOOT_168_atmega328.ihex");
+		snprintf(path, sizeof(path), "%s/%s", pwd, "ATmegaBOOT_168_atmega328.ihex");
 		uint8_t * boot = read_ihex_file(path, &size, &base);
 		if (!boot) {
 			fprintf(stderr, "%s: Unable to load %s\n", argv[0], path);
 			exit(1);
 		}
 		printf("Booloader %04x: %d\n", base, size);
-		memcpy(mm + base, boot, size);
+		memcpy(avr->flash + base, boot, size);
 		free(boot);
 		avr->pc = base;
 		avr->codeend = avr->flashend;
