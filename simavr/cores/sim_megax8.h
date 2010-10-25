@@ -39,7 +39,7 @@ void mx8_init(struct avr_t * avr);
 void mx8_reset(struct avr_t * avr);
 
 /*
- * This is a template for all of the x8 devices, hopefuly
+ * This is a template for all of the x8 devices, hopefully
  */
 struct mcu_t {
 	avr_t core;

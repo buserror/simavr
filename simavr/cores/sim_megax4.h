@@ -39,7 +39,7 @@ void mx4_init(struct avr_t * avr);
 void mx4_reset(struct avr_t * avr);
 
 /*
- * This is a template for all of the x4 devices, hopefuly
+ * This is a template for all of the x4 devices, hopefully
  */
 struct mcu_t {
 	avr_t core;

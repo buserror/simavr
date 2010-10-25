@@ -4,8 +4,8 @@ timer_64led
 
 This is a real life project, see enclosed JPEG.
 
-At atmega168 drives 4 74HC595 shift registers to drive 6 LEDs. 3 Buttons
-provite an interface for "start", "stop" and "reset" of the timer.
+At atmega168 drives 4 74HC595 shift registers to drive 64 LEDs. 3 Buttons
+provide an interface for "start", "stop" and "reset" of the timer.
 
 The timer handles multiple days by switching to display "hours + minutes"
 instead of "minutes + seconds" after an hour.
