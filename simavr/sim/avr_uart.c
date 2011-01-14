@@ -140,12 +140,27 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 		// tell other modules we are "outputing" a byte
 		if (avr_regbit_get(avr, p->txen))
 			avr_raise_irq(p->io.irq + UART_IRQ_OUTPUT, v);
-	} else {
+	}
+	if (addr == p->udrc.enable.reg) {
+		/*
+		 * If enabling the UDRC interupt, raise it immediately if FIFO is empty
+		 */
+		uint8_t udrce = avr_regbit_get(avr, p->udrc.enable);
+		avr_core_watch_write(avr, addr, v);
+		uint8_t nudrce = avr_regbit_get(avr, p->udrc.enable);
+		if (!udrce && nudrce) {
+			// if the FIDO is not empty (clear timer is flying) we dont
+			// need to raise the interupt, it will happend when the timer
+			// is fired.
+			if (avr_cycle_timer_status(avr, avr_uart_txc_raise, p) == 0)
+				avr_raise_interrupt(avr, &p->udrc);
+		}
+	}
+	if (addr == p->udrc.raised.reg) {
 		// get the bits before the write
 		uint8_t udre = avr_regbit_get(avr, p->udrc.raised);
 		uint8_t txc = avr_regbit_get(avr, p->txc.raised);
 
-		avr_core_watch_write(avr, addr, v);
 
 		avr_clear_interupt_if(avr, &p->udrc, udre);
 		avr_clear_interupt_if(avr, &p->txc, txc);
@@ -230,6 +245,7 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 	avr_io_setirqs(&p->io, AVR_IOCTL_UART_GETIRQ(p->name), UART_IRQ_COUNT, NULL);
 
 	avr_register_io_write(avr, p->r_udr, avr_uart_write, p);
+	avr_register_io_write(avr, p->udrc.enable.reg, avr_uart_write, p);
 	avr_register_io_read(avr, p->r_udr, avr_uart_read, p);
 	// monitor code that reads the rxc flag, and delay it a bit
 	avr_register_io_read(avr, p->rxc.raised.reg, avr_uart_rxc_read, p);
