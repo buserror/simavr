@@ -64,6 +64,26 @@ void avr_cycle_timer_cancel(avr_t * avr, avr_cycle_timer_t timer, void * param)
 }
 
 /*
+ * Check to see if a timer is present, if so, return the number (+1) of
+ * cycles left for it to fire, and if not present, return zero
+ */
+avr_cycle_count_t
+avr_cycle_timer_status(avr_t * avr, avr_cycle_timer_t timer, void * param)
+{
+	if (!avr->cycle_timer_map)
+		return 0;
+
+	for (int i = 0; i < 32; i++)
+		if ((avr->cycle_timer_map & (1 << i)) &&
+				avr->cycle_timer[i].timer == timer &&
+				avr->cycle_timer[i].param == param) {
+			return 1 + (avr->cycle_timer[i].when - avr->cycle);
+		}
+
+	return 0;
+}
+
+/*
  * run thru all the timers, call the ones that needs it,
  * clear the ones that wants it, and calculate the next
  * potential cycle we could sleep for...

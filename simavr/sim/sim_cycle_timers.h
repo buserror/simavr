@@ -53,6 +53,12 @@ void avr_cycle_timer_register(avr_t * avr, avr_cycle_count_t when, avr_cycle_tim
 void avr_cycle_timer_register_usec(avr_t * avr, uint32_t when, avr_cycle_timer_t timer, void * param);
 // cancel a previously set timer
 void avr_cycle_timer_cancel(avr_t * avr, avr_cycle_timer_t timer, void * param);
+/*
+ * Check to see if a timer is present, if so, return the number (+1) of
+ * cycles left for it to fire, and if not present, return zero
+ */
+avr_cycle_count_t
+avr_cycle_timer_status(avr_t * avr, avr_cycle_timer_t timer, void * param);
 
 
 //
