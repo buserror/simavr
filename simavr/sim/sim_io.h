@@ -64,7 +64,7 @@ typedef struct avr_io_t {
 
 // registers an IO module, so it's run(), reset() etc are called
 // this is called by the AVR core init functions, you /could/ register an external
-// one after instanciation, for whatever purpose...
+// one after instantiation, for whatever purpose...
 void
 avr_register_io(
 		avr_t *avr,

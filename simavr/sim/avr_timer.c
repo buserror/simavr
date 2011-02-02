@@ -94,6 +94,7 @@ static avr_cycle_count_t avr_timer_compc(struct avr_t * avr, avr_cycle_count_t w
 	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPC);
 }
 
+// timer overflow
 static avr_cycle_count_t avr_timer_tov(struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
 	avr_timer_t * p = (avr_timer_t *)param;

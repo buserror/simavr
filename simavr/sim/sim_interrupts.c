@@ -116,7 +116,7 @@ avr_irq_t * avr_get_interupt_irq(avr_t * avr, uint8_t v)
 }
 
 /*
- * check wether interrupts are pending. I so, check if the interrupt "latency" is reached,
+ * check whether interrupts are pending. If so, check if the interrupt "latency" is reached,
  * and if so triggers the handlers and jump to the vector.
  */
 void avr_service_interrupts(avr_t * avr)

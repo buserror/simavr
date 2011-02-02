@@ -112,7 +112,7 @@ typedef struct avr_timer_t {
 
 	avr_timer_wgm_t	mode;
 	uint64_t		tov_cycles;
-	uint64_t		tov_base;	// we we last were called
+	uint64_t		tov_base;	// when we last were called
 	uint16_t		tov_top;	// current top value to calculate tnct
 } avr_timer_t;
 
