@@ -208,6 +208,12 @@ static void gdb_handle_command(avr_gdb_t * g, char * cmd)
 					gdb_send_reply(g, "E01");
 					break;
 				}
+			} else if (addr >= 0x800000 && (addr - 0x800000) == avr->ramend+1 && len == 2) {
+				// Allow GDB to read a value just after end of stack.
+				// This is necessary to make instruction stepping work when stack is empty
+				printf("GDB read just past end of stack %08x, %08x; returning zero\n", addr, len);
+				gdb_send_reply(g, "0000");
+				break;
 			} else {
 				printf("read memory error %08x, %08x (ramend %04x)\n", addr, len, avr->ramend+1);
 				gdb_send_reply(g, "E01");
