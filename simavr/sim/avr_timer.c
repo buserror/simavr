@@ -259,7 +259,7 @@ static void avr_timer_reconfigure(avr_timer_t * p)
 			avr_timer_configure(p, f, top);
 		}	break;
 		case avr_timer_wgm_fast_pwm:
-		//	avr_timer_configure(p, f, (1 << p->mode.size) - 1);
+			avr_timer_configure(p, f, (1 << p->mode.size) - 1);
 			break;
 		default:
 			printf("%s-%c unsupported timer mode wgm=%d (%d)\n", __FUNCTION__, p->name, mode, p->mode.kind);
