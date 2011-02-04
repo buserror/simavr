@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include "sim_interrupts.h"
 #include "sim_core.h"
 
@@ -128,15 +129,18 @@ void avr_service_interrupts(avr_t * avr)
 			avr->pending_wait--;
 			if (avr->pending_wait == 0) {
 				int done = 0;
-				for (int bi = 0; bi < 2 && !done; bi++) if (avr->pending[bi]) {
-					for (int ii = 0; ii < 32 && !done; ii++)
-						if (avr->pending[bi] & (1 << ii)) {
-
-							int v = (bi * 32) + ii;	// vector
+				for (int bi = 0; bi < 2 && !done; bi++)
+					if (avr->pending[bi]) {
+						uint32_t map = avr->pending[bi];
+						while (map) {
+							int bit = ffs(map)-1;
+							int v = (bi * 32) + bit;	// vector
 							avr_int_vector_t * vector = avr->vector[v];
 							// if that single interupt is masked, ignore it and continue
-							if (vector && !avr_regbit_get(avr, vector->enable))
+							if (vector && !avr_regbit_get(avr, vector->enable)) {
+								map &= ~(1 << bit);
 								continue;
+							}
 							if (vector && vector->trace)
 								printf("%s calling %d\n", __FUNCTION__, v);
 							_avr_push16(avr, avr->pc >> 1);
@@ -147,8 +151,8 @@ void avr_service_interrupts(avr_t * avr)
 							done = 1;
 							break;
 						}
-					break;
-				}
+						break;
+					}
 			}
 		} else
 			avr->pending_wait = 2;	// for next one...
