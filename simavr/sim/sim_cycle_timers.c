@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <strings.h>
 #include "sim_cycle_timers.h"
 
 void avr_cycle_timer_register(avr_t * avr, avr_cycle_count_t when, avr_cycle_timer_t timer, void * param)
@@ -70,15 +71,16 @@ void avr_cycle_timer_cancel(avr_t * avr, avr_cycle_timer_t timer, void * param)
 avr_cycle_count_t
 avr_cycle_timer_status(avr_t * avr, avr_cycle_timer_t timer, void * param)
 {
-	if (!avr->cycle_timer_map)
-		return 0;
+	uint32_t map = avr->cycle_timer_map;
 
-	for (int i = 0; i < 32; i++)
-		if ((avr->cycle_timer_map & (1 << i)) &&
-				avr->cycle_timer[i].timer == timer &&
-				avr->cycle_timer[i].param == param) {
-			return 1 + (avr->cycle_timer[i].when - avr->cycle);
+	while (map) {
+		int bit = ffs(map)-1;
+		if (avr->cycle_timer[bit].timer == timer &&
+		    avr->cycle_timer[bit].param == param) {
+			return 1 + (avr->cycle_timer[bit].when - avr->cycle);
 		}
+		map &= ~(1 << bit);
+	}
 
 	return 0;
 }
@@ -94,28 +96,29 @@ avr_cycle_count_t avr_cycle_timer_process(avr_t * avr)
 		return (avr_cycle_count_t)-1;
 
 	avr_cycle_count_t min = (avr_cycle_count_t)-1;
+	uint32_t map = avr->cycle_timer_map;
 
-	for (int i = 0; i < 32; i++) {
-		if (!(avr->cycle_timer_map & (1 << i)))
-			continue;
+	while (map) {
+		int bit = ffs(map)-1;
 		// do it several times, in case we're late
-		while (avr->cycle_timer[i].when && avr->cycle_timer[i].when <= avr->cycle) {
+		while (avr->cycle_timer[bit].when && avr->cycle_timer[bit].when <= avr->cycle) {
 			// call it
-			avr->cycle_timer[i].when =
-					avr->cycle_timer[i].timer(avr,
-							avr->cycle_timer[i].when,
-							avr->cycle_timer[i].param);
-			if (avr->cycle_timer[i].when == 0) {
+			avr->cycle_timer[bit].when =
+					avr->cycle_timer[bit].timer(avr,
+							avr->cycle_timer[bit].when,
+							avr->cycle_timer[bit].param);
+			if (avr->cycle_timer[bit].when == 0) {
 				// clear it
-				avr->cycle_timer[i].timer = NULL;
-				avr->cycle_timer[i].param = NULL;
-				avr->cycle_timer[i].when = 0;
-				avr->cycle_timer_map &= ~(1 << i);
+				avr->cycle_timer[bit].timer = NULL;
+				avr->cycle_timer[bit].param = NULL;
+				avr->cycle_timer[bit].when = 0;
+				avr->cycle_timer_map &= ~(1 << bit);
 				break;
 			}
 		}
-		if (avr->cycle_timer[i].when && avr->cycle_timer[i].when < min)
-			min = avr->cycle_timer[i].when;
+		if (avr->cycle_timer[bit].when && avr->cycle_timer[bit].when < min)
+			min = avr->cycle_timer[bit].when;
+		map &= ~(1 << bit);		
 	}
 	return min - avr->cycle;
 }
