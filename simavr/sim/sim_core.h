@@ -75,7 +75,7 @@ void avr_dump_state(avr_t * avr);
 
 #define CRASH()  {\
 		DUMP_REG();\
-		printf("*** CYCLE %lld PC %04x\n", avr->cycle, avr->pc);\
+		printf("*** CYCLE %" PRI_avr_cycle_count "PC %04x\n", avr->cycle, avr->pc);\
 		for (int i = OLD_PC_SIZE-1; i > 0; i--) {\
 			int pci = (avr->old_pci + i) & 0xf;\
 			printf("\e[31m*** %04x: %-25s RESET -%d; sp %04x\e[0m\n",\

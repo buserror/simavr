@@ -23,6 +23,7 @@
 #define __SIM_AVR_H__
 
 #include <stdint.h>
+#include <inttypes.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,6 +33,9 @@ extern "C" {
 
 typedef uint64_t avr_cycle_count_t;
 typedef uint16_t	avr_io_addr_t;
+
+// printf() conversion specifier for avr_cycle_count_t
+#define PRI_avr_cycle_count PRIu64
 
 struct avr_t;
 typedef uint8_t (*avr_io_read_t)(struct avr_t * avr, avr_io_addr_t addr, void * param);
