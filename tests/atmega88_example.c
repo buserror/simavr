@@ -36,11 +36,11 @@ const struct avr_mmcu_vcd_trace_t _mytrace[]  _MMCU_ = {
 uint32_t value EEMEM = 0xdeadbeef;
 
 static int uart_putchar(char c, FILE *stream) {
-  if (c == '\n')
-    uart_putchar('\r', stream);
-  loop_until_bit_is_set(UCSR0A, UDRE0);
-  UDR0 = c;
-  return 0;
+	if (c == '\n')
+		uart_putchar('\r', stream);
+	loop_until_bit_is_set(UCSR0A, UDRE0);
+	UDR0 = c;
+	return 0;
 }
 
 static FILE mystdout = FDEV_SETUP_STREAM(uart_putchar, NULL,

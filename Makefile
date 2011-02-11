@@ -1,6 +1,6 @@
+all:	make-simavr make-tests
 
-
-all:	make-tests
+make-simavr:
 	make -C simavr && make -C examples
 
 make-tests:

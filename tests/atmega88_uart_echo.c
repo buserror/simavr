@@ -25,11 +25,11 @@ AVR_MCU(F_CPU, "atmega88");
 AVR_MCU_SIMAVR_COMMAND(&GPIOR0);
 
 static int uart_putchar(char c, FILE *stream) {
-  if (c == '\r')
-    uart_putchar('\r', stream);
-  loop_until_bit_is_set(UCSR0A, UDRE0);
-  UDR0 = c;
-  return 0;
+	if (c == '\r')
+		uart_putchar('\r', stream);
+	loop_until_bit_is_set(UCSR0A, UDRE0);
+	UDR0 = c;
+	return 0;
 }
 
 static FILE mystdout = FDEV_SETUP_STREAM(uart_putchar, NULL,
