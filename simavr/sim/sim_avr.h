@@ -156,6 +156,7 @@ typedef struct avr_t {
 	// these timers are one shots, then get cleared if the timer function returns zero,
 	// they get reset if the callback function returns a new cycle number
 	uint32_t	cycle_timer_map;
+	avr_cycle_count_t next_cycle_timer;
 	struct {
 		avr_cycle_count_t	when;
 		avr_cycle_timer_t	timer;

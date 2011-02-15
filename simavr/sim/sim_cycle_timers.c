@@ -33,6 +33,8 @@ void avr_cycle_timer_register(avr_t * avr, avr_cycle_count_t when, avr_cycle_tim
 		return;
 	}
 	when += avr->cycle;
+	if (when < avr->next_cycle_timer)
+		avr->next_cycle_timer = when;
 	for (int i = 0; i < 32; i++)
 		if (!(avr->cycle_timer_map & (1 << i))) {
 			avr->cycle_timer[i].timer = timer;
@@ -60,6 +62,9 @@ void avr_cycle_timer_cancel(avr_t * avr, avr_cycle_timer_t timer, void * param)
 			avr->cycle_timer[i].param = NULL;
 			avr->cycle_timer[i].when = 0;
 			avr->cycle_timer_map &= ~(1 << i);
+			// no need to reset next_cycle_timer; having too small
+			// a value there only causes some harmless extra
+			// computation.
 			return;
 		}
 }
@@ -92,8 +97,15 @@ avr_cycle_timer_status(avr_t * avr, avr_cycle_timer_t timer, void * param)
  */
 avr_cycle_count_t avr_cycle_timer_process(avr_t * avr)
 {
-	if (!avr->cycle_timer_map)
+	// If we have previously determined that we don't need to fire
+	// cycle timers yet, we can do an early exit
+	if (avr->next_cycle_timer > avr->cycle)
+		return avr->next_cycle_timer - avr->cycle;
+
+	if (!avr->cycle_timer_map) {
+		avr->next_cycle_timer = (avr_cycle_count_t)-1;
 		return (avr_cycle_count_t)-1;
+	}
 
 	avr_cycle_count_t min = (avr_cycle_count_t)-1;
 	uint32_t map = avr->cycle_timer_map;
@@ -120,5 +132,6 @@ avr_cycle_count_t avr_cycle_timer_process(avr_t * avr)
 			min = avr->cycle_timer[bit].when;
 		map &= ~(1 << bit);		
 	}
+	avr->next_cycle_timer = min;
 	return min - avr->cycle;
 }
