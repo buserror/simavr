@@ -295,8 +295,21 @@ static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 static void avr_timer_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_timer_t * p = (avr_timer_t *)param;
+
+	uint8_t as2 = avr_regbit_get(avr, p->as2);
+	uint8_t cs = avr_regbit_get_array(avr, p->cs, ARRAY_SIZE(p->cs));
+	uint8_t mode = avr_regbit_get_array(avr, p->wgm, ARRAY_SIZE(p->wgm));
+
 	avr_core_watch_write(avr, addr, v);
-	avr_timer_reconfigure(p);
+
+	// only reconfigure the timer if "relevant" bits have changed
+	// this prevent the timer reset when changing the edge detector
+	// or other minor bits
+	if (avr_regbit_get_array(avr, p->cs, ARRAY_SIZE(p->cs)) != cs ||
+			avr_regbit_get_array(avr, p->wgm, ARRAY_SIZE(p->wgm)) != mode ||
+					avr_regbit_get(avr, p->as2) != as2) {
+		avr_timer_reconfigure(p);
+	}
 }
 
 /*
