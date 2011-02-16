@@ -272,6 +272,9 @@ static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 	avr_core_watch_write(avr, addr, v);
 
 	switch (p->mode.kind) {
+		case avr_timer_wgm_normal:
+			avr_timer_reconfigure(p);
+			break;
 		case avr_timer_wgm_pwm:
 			if (p->mode.top != avr_timer_wgm_reg_ocra) {
 				avr_raise_irq(p->io.irq + TIMER_IRQ_OUT_PWM0, _timer_get_ocr(p, AVR_TIMER_COMPA));
@@ -283,7 +286,7 @@ static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 			avr_raise_irq(p->io.irq + TIMER_IRQ_OUT_PWM1, _timer_get_ocr(p, AVR_TIMER_COMPB));
 			break;
 		default:
-			printf("%s-%c mode %d\n", __FUNCTION__, p->name, p->mode.kind);
+			printf("%s-%c mode %d UNSUPORTED\n", __FUNCTION__, p->name, p->mode.kind);
 			avr_timer_reconfigure(p);
 			break;
 	}
