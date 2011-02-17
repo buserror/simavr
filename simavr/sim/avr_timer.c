@@ -126,7 +126,7 @@ static uint16_t _avr_timer_get_current_tcnt(avr_timer_t * p)
 	if (p->tov_cycles) {
 		uint64_t when = avr->cycle - p->tov_base;
 
-		return (when * p->tov_top) / p->tov_cycles;
+		return (when * (((uint32_t)p->tov_top)+1)) / p->tov_cycles;
 	}
 	return 0;
 }
