@@ -47,6 +47,10 @@ void avr_register_io(avr_t *avr, avr_io_t * io)
 void avr_register_io_read(avr_t *avr, avr_io_addr_t addr, avr_io_read_t readp, void * param)
 {
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
+	if (avr->io[a].r.param || avr->io[a].r.c) {
+		fputs("Error: avr_register_io_read(): Already registered, refusing to override.\n", stderr);
+		exit(1);
+	}
 	avr->io[a].r.param = param;
 	avr->io[a].r.c = readp;
 }
@@ -54,6 +58,10 @@ void avr_register_io_read(avr_t *avr, avr_io_addr_t addr, avr_io_read_t readp, v
 void avr_register_io_write(avr_t *avr, avr_io_addr_t addr, avr_io_write_t writep, void * param)
 {
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
+	if (avr->io[a].w.param || avr->io[a].w.c) {
+		fputs("Error: avr_register_io_write(): Already registered, refusing to override.\n", stderr);
+		exit(1);
+	}
 	avr->io[a].w.param = param;
 	avr->io[a].w.c = writep;
 }
