@@ -33,7 +33,7 @@ VPATH += ../parts
 
 LDFLAGS += -lpthread
 ifneq (${shell uname}, Darwin)
-LDFLAGS += -lglut
+LDFLAGS += -lGL -lglut
 else
 LDFLAGS += -framework GLUT -framework OpenGL 
 endif
