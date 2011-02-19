@@ -502,7 +502,7 @@ uint16_t avr_run_one(avr_t * avr)
 							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 							SREG();
 						}	break;
-						case 0x0800: {	// SBC substract with carry 0000 10rd dddd rrrr
+						case 0x0800: {	// SBC subtract with carry 0000 10rd dddd rrrr
 							get_r_d_10(opcode);
 							uint8_t res = vd - vr - avr->sreg[S_C];
 							STATE("sbc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), avr->data[d], avr_regname(r), avr->data[r], res);
@@ -777,7 +777,7 @@ uint16_t avr_run_one(avr_t * avr)
 						STATE("ld %s, (Z+%d[%04x])=[%02x]\n", avr_regname(r), q, v+q, avr->data[v+q]);
 						_avr_set_r(avr, r, _avr_get_ram(avr, v+q));
 					}
-					cycle += 2;
+					cycle += 1; // 2 cycles, 3 for tinyavr
 				}	break;
 				case 0xa008:
 				case 0x8008: {	// LD (LDD) – Load Indirect using Y 10q0 qq0r rrrr 1qqq
@@ -792,7 +792,7 @@ uint16_t avr_run_one(avr_t * avr)
 						STATE("ld %s, (Y+%d[%04x])=[%02x]\n", avr_regname(r), q, v+q, avr->data[v+q]);
 						_avr_set_r(avr, r, _avr_get_ram(avr, v+q));
 					}
-					cycle += 2;
+					cycle += 1; // 2 cycles, 3 for tinyavr
 				}	break;
 				default: _avr_invalid_opcode(avr);
 			}
@@ -862,6 +862,7 @@ uint16_t avr_run_one(avr_t * avr)
 				case 0x95c8: {	// LPM Load Program Memory R0 <- (Z)
 					uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
 					STATE("lpm %s, (Z[%04x])\n", avr_regname(0), z);
+					cycle += 2; // 3 cycles
 					_avr_set_r(avr, 0, avr->flash[z]);
 				}	break;
 				case 0x9408:case 0x9418:case 0x9428:case 0x9438:case 0x9448:case 0x9458:case 0x9468:
@@ -888,7 +889,7 @@ uint16_t avr_run_one(avr_t * avr)
 							new_pc += 2;
 							STATE("lds %s[%02x], 0x%04x\n", avr_regname(r), avr->data[r], x);
 							_avr_set_r(avr, r, _avr_get_ram(avr, x));
-							cycle++;
+							cycle++; // 2 cycles
 						}	break;
 						case 0x9005:
 						case 0x9004: {	// LPM Load Program Memory 1001 000d dddd 01oo
@@ -902,7 +903,7 @@ uint16_t avr_run_one(avr_t * avr)
 								_avr_set_r(avr, R_ZH, z >> 8);
 								_avr_set_r(avr, R_ZL, z);
 							}
-							cycle += 2;
+							cycle += 2; // 3 cycles
 						}	break;
 						case 0x9006:
 						case 0x9007: {	// ELPM Extended Load Program Memory 1001 000d dddd 01oo
@@ -919,7 +920,7 @@ uint16_t avr_run_one(avr_t * avr)
 								_avr_set_r(avr, R_ZH, z >> 8);
 								_avr_set_r(avr, R_ZL, z);
 							}
-							cycle += 2;
+							cycle += 2; // 3 cycles
 						}	break;
 						/*
 						 * Load store instructions
@@ -936,7 +937,7 @@ uint16_t avr_run_one(avr_t * avr)
 							uint8_t r = (opcode >> 4) & 0x1f;
 							uint16_t x = (avr->data[R_XH] << 8) | avr->data[R_XL];
 							STATE("ld %s, %sX[%04x]%s\n", avr_regname(r), op == 2 ? "--" : "", x, op == 1 ? "++" : "");
-
+							cycle++; // 2 cycles (1 for tinyavr, except with inc/dec 2)
 							if (op == 2) x--;
 							_avr_set_r(avr, r, _avr_get_ram(avr, x));
 							if (op == 1) x++;
@@ -950,7 +951,7 @@ uint16_t avr_run_one(avr_t * avr)
 							uint8_t r = (opcode >> 4) & 0x1f;
 							uint16_t x = (avr->data[R_XH] << 8) | avr->data[R_XL];
 							STATE("st %sX[%04x]%s, %s[%02x] \n", op == 2 ? "--" : "", x, op == 1 ? "++" : "", avr_regname(r), avr->data[r]);
-							cycle++;
+							cycle++; // 2 cycles, except tinyavr
 							if (op == 2) x--;
 							_avr_set_ram(avr, x, avr->data[r]);
 							if (op == 1) x++;
@@ -963,7 +964,7 @@ uint16_t avr_run_one(avr_t * avr)
 							uint8_t r = (opcode >> 4) & 0x1f;
 							uint16_t y = (avr->data[R_YH] << 8) | avr->data[R_YL];
 							STATE("ld %s, %sY[%04x]%s\n", avr_regname(r), op == 2 ? "--" : "", y, op == 1 ? "++" : "");
-							cycle++;
+							cycle++; // 2 cycles, except tinyavr
 							if (op == 2) y--;
 							_avr_set_r(avr, r, _avr_get_ram(avr, y));
 							if (op == 1) y++;
@@ -975,7 +976,7 @@ uint16_t avr_run_one(avr_t * avr)
 							int op = opcode & 3;
 							uint8_t r = (opcode >> 4) & 0x1f;
 							uint16_t y = (avr->data[R_YH] << 8) | avr->data[R_YL];
-							STATE("st %sY[%04x]%s, %s[%02x] \n", op == 2 ? "--" : "", y, op == 1 ? "++" : "", avr_regname(r), avr->data[r]);
+							STATE("st %sY[%04x]%s, %s[%02x]\n", op == 2 ? "--" : "", y, op == 1 ? "++" : "", avr_regname(r), avr->data[r]);
 							cycle++;
 							if (op == 2) y--;
 							_avr_set_ram(avr, y, avr->data[r]);
@@ -988,6 +989,7 @@ uint16_t avr_run_one(avr_t * avr)
 							uint16_t x = (avr->flash[new_pc+1] << 8) | avr->flash[new_pc];
 							new_pc += 2;
 							STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(r), avr->data[r]);
+							cycle++;
 							_avr_set_ram(avr, x, avr->data[r]);
 						}	break;
 						case 0x9001:
@@ -996,6 +998,7 @@ uint16_t avr_run_one(avr_t * avr)
 							uint8_t r = (opcode >> 4) & 0x1f;
 							uint16_t z = (avr->data[R_ZH] << 8) | avr->data[R_ZL];
 							STATE("ld %s, %sZ[%04x]%s\n", avr_regname(r), op == 2 ? "--" : "", z, op == 1 ? "++" : "");
+							cycle++;; // 2 cycles, except tinyavr
 							if (op == 2) z--;
 							_avr_set_r(avr, r, _avr_get_ram(avr, z));
 							if (op == 1) z++;
@@ -1008,6 +1011,7 @@ uint16_t avr_run_one(avr_t * avr)
 							uint8_t r = (opcode >> 4) & 0x1f;
 							uint16_t z = (avr->data[R_ZH] << 8) | avr->data[R_ZL];
 							STATE("st %sZ[%04x]%s, %s[%02x] \n", op == 2 ? "--" : "", z, op == 1 ? "++" : "", avr_regname(r), avr->data[r]);
+							cycle++; // 2 cycles, except tinyavr
 							if (op == 2) z--;
 							_avr_set_ram(avr, z, avr->data[r]);
 							if (op == 1) z++;
@@ -1040,7 +1044,7 @@ uint16_t avr_run_one(avr_t * avr)
 							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 							SREG();
 						}	break;
-						case 0x9401: {	// NEG – One’s Complement
+						case 0x9401: {	// NEG – Two’s Complement
 							uint8_t r = (opcode >> 4) & 0x1f;
 							uint8_t rd = avr->data[r];
 							uint8_t res = 0x00 - rd;
@@ -1140,7 +1144,7 @@ uint16_t avr_run_one(avr_t * avr)
 							new_pc += 2;
 							_avr_push16(avr, new_pc >> 1);
 							new_pc = a << 1;
-							cycle += 3;	// 4 cycles
+							cycle += 3;	// 4 cycles; FIXME 5 on devices with 22 bit PC
 							TRACE_JUMP();
 							STACK_FRAME_PUSH();
 						}	break;
@@ -1229,6 +1233,7 @@ uint16_t avr_run_one(avr_t * avr)
 											get_r_d_10(opcode);
 											uint16_t res = vd * vr;
 											STATE("mul %s[%02x], %s[%02x] = %04x\n", avr_regname(d), vd, avr_regname(r), vr, res);
+											cycle++;
 											_avr_set_r(avr, 0, res);
 											_avr_set_r(avr, 1, res >> 8);
 											avr->sreg[S_Z] = res == 0;
@@ -1312,7 +1317,7 @@ uint16_t avr_run_one(avr_t * avr)
 						STATE("%s%c .%d [%04x]\t; Will%s branch\n", set ? "brbs" : "brbc", _sreg_bit_name[s], o, new_pc + (o << 1), branch ? "":" not");
 					}
 					if (branch) {
-						cycle++;
+						cycle++; // 2 cycles if taken, 1 otherwise
 						new_pc = new_pc + (o << 1);
 					}
 				}	break;
