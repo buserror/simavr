@@ -37,7 +37,12 @@ IPATH	+= ../include
 IPATH	+= /opt/local/include
 LFLAGS	= -L/opt/local/lib/
 
-all:	obj libsimavr.a ${target}
+all:	obj libsimavr.a
+# shared library won't work that easily on non-linux
+ifeq (${shell uname}, Linux)
+all:	libsimavr.so
+endif
+all: 	${target}
 
 obj/sim_%.o : cores/sim_%.c
 	@gcc $(CFLAGS) -MD \
@@ -52,6 +57,11 @@ libsimavr.a	:	${sim_o}
 	@echo AR $@
 	@ar cru $@ $^
 	@ranlib $@
+
+libsimavr.so    :       ${cores_o}
+libsimavr.so    :       ${sim_o}
+	@echo gcc -shared $@
+	gcc -shared -o $@ $(LFLAGS) $^ $(LDFLAGS)
 
 ${target}	:	libsimavr.a
 ${target}	:	obj/${target}.o
