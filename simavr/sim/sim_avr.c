@@ -180,15 +180,7 @@ int avr_run(avr_t * avr)
 	if (avr->sreg[S_I] && !avr->i_shadow)
 		avr->pending_wait++;
 	avr->i_shadow = avr->sreg[S_I];
-	
-	// run IO modules that wants it
-	avr_io_t * port = avr->io_port;
-	while (port) {
-		if (port->run)
-			port->run(port);
-		port = port->next;
-	}
-	
+
 	// run the cycle timers, get the suggested sleeo time
 	// until the next timer is due
 	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);

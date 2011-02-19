@@ -47,8 +47,6 @@ typedef struct avr_io_t {
 	uint32_t			irq_ioctl_get;	// used to get irqs from this module
 	int					irq_count;	// number of (optional) irqs
 	struct avr_irq_t *	irq;		// optional external IRQs
-	// called at every instruction
-	void (*run)(struct avr_io_t *io);
 	// called at reset time
 	void (*reset)(struct avr_io_t *io);
 	// called externally. allow access to io modules and so on
