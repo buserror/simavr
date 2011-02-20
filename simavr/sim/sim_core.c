@@ -596,7 +596,7 @@ uint16_t avr_run_one(avr_t * avr)
 				case 0x1000: {	// CPSE Compare, skip if equal 0000 00 rd dddd rrrr
 					get_r_d_10(opcode);
 					uint16_t res = vd == vr;
-					STATE("cpse %s[%02x], %s[%02x]\t; Will%s skip\n", avr_regname(d), avr->data[d], avr_regname(r), avr->data[r], res ? "":"not ");
+					STATE("cpse %s[%02x], %s[%02x]\t; Will%s skip\n", avr_regname(d), avr->data[d], avr_regname(r), avr->data[r], res ? "":" not");
 					if (res) {
 						if (_avr_is_instruction_32_bits(avr, new_pc)) {
 							new_pc += 4; cycle += 2;
@@ -1177,7 +1177,7 @@ uint16_t avr_run_one(avr_t * avr)
 									SREG();
 									cycle++;
 								}	break;
-								case 0x9800: {	// CBI - Clear Bit in I/O Registe 1001 1000 AAAA Abbb
+								case 0x9800: {	// CBI - Clear Bit in I/O Register 1001 1000 AAAA Abbb
 									uint8_t io = ((opcode >> 3) & 0x1f) + 32;
 									uint8_t b = opcode & 0x7;
 									uint8_t res = _avr_get_ram(avr, io) & ~(1 << b);
@@ -1189,7 +1189,7 @@ uint16_t avr_run_one(avr_t * avr)
 									uint8_t io = ((opcode >> 3) & 0x1f) + 32;
 									uint8_t b = opcode & 0x7;
 									uint8_t res = _avr_get_ram(avr, io) & (1 << b);
-									STATE("sbic %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), avr->data[io], 1<<b, !res?"":"not ");
+									STATE("sbic %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), avr->data[io], 1<<b, !res?"":" not");
 									if (!res) {
 										if (_avr_is_instruction_32_bits(avr, new_pc)) {
 											new_pc += 4; cycle += 2;
@@ -1206,11 +1206,11 @@ uint16_t avr_run_one(avr_t * avr)
 									_avr_set_ram(avr, io, res);
 									cycle++;
 								}	break;
-								case 0x9b00: {	// SBIS - Skip if Bit in I/O Register is Cleared 1001 0111 AAAA Abbb
-									uint8_t io = (opcode >> 3) & 0x1f;
+								case 0x9b00: {	// SBIS - Skip if Bit in I/O Register is Set 1001 1011 AAAA Abbb
+									uint8_t io = ((opcode >> 3) & 0x1f) + 32;
 									uint8_t b = opcode & 0x7;
-									uint8_t res = _avr_get_ram(avr, io + 32) & (1 << b);
-									STATE("sbis %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), avr->data[io], 1<<b, res?"":"not ");
+									uint8_t res = _avr_get_ram(avr, io) & (1 << b);
+									STATE("sbis %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), avr->data[io], 1<<b, res?"":" not");
 									if (res) {
 										if (_avr_is_instruction_32_bits(avr, new_pc)) {
 											new_pc += 4; cycle += 2;
