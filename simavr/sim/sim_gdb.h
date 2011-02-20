@@ -29,7 +29,7 @@ extern "C" {
 int avr_gdb_init(avr_t * avr);
 
 // call from the main AVR decoder thread
-int avr_gdb_processor(avr_t * avr, uint32_t sleep);
+int avr_gdb_processor(avr_t * avr, int sleep);
 
 #ifdef __cplusplus
 };

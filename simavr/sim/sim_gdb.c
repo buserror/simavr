@@ -34,6 +34,7 @@
 #include "sim_avr.h"
 #include "sim_hex.h"
 #include "avr_eeprom.h"
+#include "sim_gdb.h"
 
 #define DBG(w)
 
