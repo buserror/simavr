@@ -40,7 +40,7 @@ extern "C" {
  */
 
 #define AVR_VCD_MAX_SIGNALS 32
-#define AVR_VCD_LOG_SIZE	128
+#define AVR_VCD_LOG_SIZE	256
 
 typedef struct avr_vcd_signal_t {
 	avr_irq_t 	irq;		// receiving IRQ
