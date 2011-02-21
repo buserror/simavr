@@ -1,5 +1,5 @@
 # 
-# 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+# 	Copyright 2008-2011 Michel Pollet <buserror@gmail.com>
 #
 #	This file is part of simavr.
 #
@@ -32,30 +32,15 @@ VPATH = .
 VPATH += ../parts
 
 LDFLAGS += -lpthread
-LDFLAGS += -lGLU
-LDFLAGS += -lGL
-LDFLAGS += `sdl-config --libs`
-LDFLAGS += -lSDL_image
+ifneq (${shell uname}, Darwin)
+LDFLAGS += -lGL -lglut
+else
+LDFLAGS += -framework GLUT -framework OpenGL 
+endif
 
-CFLAGS = `sdl-config --cflags`
-#ifneq (${shell uname}, Darwin)
-#else
-#LDFLAGS += -framework GLUT -framework OpenGL 
-#endif
 all: obj atmega48_charlcd.axf ${board} 
 
-atmega48_charlcd.axf: atmega48_charlcd.c atmega48_lcd.c atmega48_lcd.h
-	@echo AVR-CC ${<}
-	${AVR}gcc -Wall -gdwarf-2 -Os -std=gnu99 \
-			-mmcu=atmega48 \
-			-DF_CPU=8000000 \
-			-fno-inline-small-functions \
-			-ffunction-sections -fdata-sections \
-			-Wl,--relax,--gc-sections \
-			-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000 \
-			-I../include -I../../include \
-			atmega48_charlcd.c atmega48_lcd.c -o atmega48_charlcd.axf
-	@${AVR}size ${@}|sed '1d'
+atmega48_charlcd.axf: atmega48_charlcd.c
 
 include ${simavr}/Makefile.common
 
