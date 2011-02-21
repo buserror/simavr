@@ -58,10 +58,10 @@ libsimavr.a	:	${sim_o}
 	@ar cru $@ $^
 	@ranlib $@
 
-libsimavr.so    :       ${cores_o}
-libsimavr.so    :       ${sim_o}
-	@echo gcc -shared $@
-	gcc -shared -o $@ $(LFLAGS) $^ $(LDFLAGS)
+libsimavr.so	:	${cores_o}
+libsimavr.so	:	${sim_o}
+	@echo LD $@
+	@gcc -shared -fPIC -o $@ $(LFLAGS) $^ $(LDFLAGS)
 
 ${target}	:	libsimavr.a
 ${target}	:	obj/${target}.o
@@ -71,4 +71,4 @@ ${target}	:	obj/${target}.o
 	@echo LD $@
 
 clean:
-	rm -rf ${target} obj *.a
+	rm -rf ${target} obj *.a *.so

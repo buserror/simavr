@@ -65,7 +65,7 @@ endif
 			-Wl,--relax,--gc-sections \
 			-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000 \
 			-I../include -I../../include \
-			${<} -o ${@}
+			${^} -o ${@}
 	@${AVR}size ${@}|sed '1d'
 
 OBJ = obj
