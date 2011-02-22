@@ -159,6 +159,24 @@ typedef struct avr_t {
 		} w;
 	} io[MAX_IOs];
 
+	/*
+	 * This block allows sharing of the IO write/read on addresses between
+	 * multiple callbacks. In 99% of case it's not needed, however on the tiny*
+	 * (tiny85 at last) some registers have bits that are used by different
+	 * IO modules.
+	 * If this case is detected, a special "dispatch" callback is installed that
+	 * will handle this particular case, without impacting the performance of the
+	 * other, normal cases...
+	 */
+	int	io_shared_io_count;
+	struct {
+		int used;
+		struct {
+			void * param;
+			void * c;
+		} io[4];
+	} io_shared_io[4];
+
 	// flash memory (initialized to 0xff, and code loaded into it)
 	uint8_t *	flash;
 	// this is the general purpose registers, IO registers, and SRAM

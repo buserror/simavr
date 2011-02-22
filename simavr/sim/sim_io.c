@@ -48,20 +48,69 @@ void avr_register_io_read(avr_t *avr, avr_io_addr_t addr, avr_io_read_t readp, v
 {
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
 	if (avr->io[a].r.param || avr->io[a].r.c) {
-		fputs("Error: avr_register_io_read(): Already registered, refusing to override.\n", stderr);
-		exit(1);
+		if (avr->io[a].r.param != param || avr->io[a].r.c != readp) {
+			fprintf(stderr,
+					"Error: avr_register_io_read(): Already registered, refusing to override.\n");
+			fprintf(stderr,
+					"Error: avr_register_io_read(%04x : %p/%p): %p/%p\n", a,
+					avr->io[a].r.c, avr->io[a].r.param, readp, param);
+			abort();
+		}
 	}
 	avr->io[a].r.param = param;
 	avr->io[a].r.c = readp;
 }
 
+static void
+_avr_io_mux_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+{
+	int io = (int)param;
+	for (int i = 0; i < avr->io_shared_io[io].used; i++) {
+		avr_io_write_t c = avr->io_shared_io[io].io[i].c;
+		if (c)
+			c(avr, addr, v, avr->io_shared_io[io].io[i].param);
+	}
+}
+
 void avr_register_io_write(avr_t *avr, avr_io_addr_t addr, avr_io_write_t writep, void * param)
 {
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
+
+	/*
+	 * Verifying that some other piece of code is not installed to watch write
+	 * on this address. If there is, this code installs a "dispatcher" callback
+	 * instead to handle multiple clients, otherwise, it continues as usual
+	 */
 	if (avr->io[a].w.param || avr->io[a].w.c) {
-		fputs("Error: avr_register_io_write(): Already registered, refusing to override.\n", stderr);
-		exit(1);
+		if (avr->io[a].w.param != param || avr->io[a].w.c != writep) {
+			// if the muxer not already installed, allocate a new slot
+			if (avr->io[a].w.c != _avr_io_mux_write) {
+				int no = avr->io_shared_io_count++;
+				if (avr->io_shared_io_count > 4) {
+					fprintf(stderr,
+							"Error: avr_register_io_write(): Too many shared IO registers.\n");
+					abort();
+				}
+				fprintf(stderr,
+						"Note: avr_register_io_write(%04x): Installing muxer on register.\n", addr);
+				avr->io_shared_io[no].used = 1;
+				avr->io_shared_io[no].io[0].param = avr->io[a].w.param;
+				avr->io_shared_io[no].io[0].c = avr->io[a].w.c;
+				avr->io[a].w.param = (void*)no;
+				avr->io[a].w.c = _avr_io_mux_write;
+			}
+			int no = (int)avr->io[a].w.param;
+			int d = avr->io_shared_io[no].used++;
+			if (avr->io_shared_io[no].used > 4) {
+				fprintf(stderr,
+						"Error: avr_register_io_write(): Too many callbacks on %04x.\n", addr);
+				abort();
+			}
+			avr->io_shared_io[no].io[d].param = param;
+			avr->io_shared_io[no].io[d].c = writep;
+		}
 	}
+
 	avr->io[a].w.param = param;
 	avr->io[a].w.c = writep;
 }
