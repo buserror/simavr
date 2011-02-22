@@ -44,6 +44,8 @@ typedef struct avr_io_t {
 	avr_t *				avr;		// avr we are attached to
 	const char * 		kind;		// pretty name, for debug
 
+	const char ** irq_names;		// IRQ names
+
 	uint32_t			irq_ioctl_get;	// used to get irqs from this module
 	int					irq_count;	// number of (optional) irqs
 	struct avr_irq_t *	irq;		// optional external IRQs
@@ -74,7 +76,7 @@ avr_io_setirqs(
 		avr_io_t * io,
 		uint32_t ctl,
 		int count,
-		avr_irq_t * irqs);
+		avr_irq_t * irqs );
 
 // register a callback for when IO register "addr" is read
 void

@@ -212,9 +212,24 @@ static void avr_adc_reset(avr_io_t * port)
 		avr_irq_register_notify(p->io.irq + i, avr_adc_irq_notify, p);
 }
 
+static const char * irq_names[ADC_IRQ_COUNT] = {
+	[ADC_IRQ_ADC0] = "16<adc0",
+	[ADC_IRQ_ADC1] = "16<adc1",
+	[ADC_IRQ_ADC2] = "16<adc2",
+	[ADC_IRQ_ADC3] = "16<adc3",
+	[ADC_IRQ_ADC4] = "16<adc4",
+	[ADC_IRQ_ADC5] = "16<adc5",
+	[ADC_IRQ_ADC6] = "16<adc6",
+	[ADC_IRQ_ADC7] = "16<adc7",
+	[ADC_IRQ_TEMP] = "16<temp",
+	[ADC_IRQ_IN_TRIGGER] = "<trigger_in",
+	[ADC_IRQ_OUT_TRIGGER] = ">trigger_out",
+};
+
 static	avr_io_t	_io = {
 	.kind = "adc",
 	.reset = avr_adc_reset,
+	.irq_names = irq_names,
 };
 
 void avr_adc_init(avr_t * avr, avr_adc_t * p)

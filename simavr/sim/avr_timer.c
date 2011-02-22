@@ -399,9 +399,18 @@ static void avr_timer_reset(avr_io_t * port)
 
 }
 
+static const char * irq_names[TIMER_IRQ_COUNT] = {
+	[TIMER_IRQ_OUT_PWM0] = "8>pwm0",
+	[TIMER_IRQ_OUT_PWM1] = "8>pwm1",
+	[TIMER_IRQ_OUT_COMP + 0] = ">compa",
+	[TIMER_IRQ_OUT_COMP + 1] = ">compb",
+	[TIMER_IRQ_OUT_COMP + 2] = ">compc",
+};
+
 static	avr_io_t	_io = {
 	.kind = "timer",
 	.reset = avr_timer_reset,
+	.irq_names = irq_names,
 };
 
 void avr_timer_init(avr_t * avr, avr_timer_t * p)

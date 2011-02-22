@@ -222,10 +222,18 @@ static int avr_uart_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
 	return res;
 }
 
+static const char * irq_names[UART_IRQ_COUNT] = {
+	[UART_IRQ_INPUT] = "8<in",
+	[UART_IRQ_OUTPUT] = "8>out",
+	[UART_IRQ_OUT_XON] = ">xon",
+	[UART_IRQ_OUT_XOFF] = ">xoff",
+};
+
 static	avr_io_t	_io = {
 	.kind = "uart",
 	.reset = avr_uart_reset,
 	.ioctl = avr_uart_ioctl,
+	.irq_names = irq_names,
 };
 
 void avr_uart_init(avr_t * avr, avr_uart_t * p)

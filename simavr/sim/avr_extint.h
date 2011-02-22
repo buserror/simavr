@@ -36,7 +36,7 @@ enum {
 };
 
 // Get the internal IRQ corresponding to the INT
-#define AVR_IOCTL_EXTINT_GETIRQ() AVR_IOCTL_DEF('e','x','t','i')
+#define AVR_IOCTL_EXTINT_GETIRQ() AVR_IOCTL_DEF('i','n','t',' ')
 
 /*
  * This module is just a "relay" for the pin change IRQ in the IO port

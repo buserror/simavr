@@ -48,7 +48,7 @@ enum {
 };
 
 // Get the internal IRQ corresponding to the INT
-#define AVR_IOCTL_ADC_GETIRQ AVR_IOCTL_DEF('a','d','c','i')
+#define AVR_IOCTL_ADC_GETIRQ AVR_IOCTL_DEF('a','d','c',' ')
 
 /*
  * Definition of a ADC mux mode.

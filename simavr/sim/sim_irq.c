@@ -34,6 +34,31 @@ typedef struct avr_irq_hook_t {
 	void * param;				// "notify" parameter
 } avr_irq_hook_t;
 
+static void
+_avr_irq_pool_add(
+		avr_irq_pool_t * pool,
+		avr_irq_t * irq)
+{
+	if ((pool->count & 0xf) == 0) {
+		pool->irq = (avr_irq_t**)realloc(pool->irq,
+				(pool->count + 16) * sizeof(avr_irq_t *));
+	}
+	pool->irq[pool->count++] = irq;
+	irq->pool = pool;
+}
+
+static void
+_avr_irq_pool_remove(
+		avr_irq_pool_t * pool,
+		avr_irq_t * irq)
+{
+	for (int i = 0; i < pool->count; i++)
+		if (pool->irq[i] == irq) {
+			pool->irq[i] = 0;
+			return;
+		}
+}
+
 void
 avr_init_irq(
 		avr_irq_pool_t * pool,
@@ -46,6 +71,10 @@ avr_init_irq(
 
 	for (int i = 0; i < count; i++) {
 		irq[i].irq = base + i;
+		if (pool)
+			_avr_irq_pool_add(pool, &irq[i]);
+		if (names && names[i])
+			irq[i].name = strdup(names[i]);
 	}
 }
 
@@ -82,14 +111,20 @@ avr_free_irq(
 	if (!irq || !count)
 		return;
 	for (int i = 0; i < count; i++) {
+		avr_irq_t * iq = irq + i;
+		if (iq->pool)
+			_avr_irq_pool_remove(iq->pool, iq);
+		if (iq->name)
+			free((char*)iq->name);
+		iq->name = NULL;
 		// purge hooks
-		avr_irq_hook_t *hook = irq->hook;
+		avr_irq_hook_t *hook = iq->hook;
 		while (hook) {
 			avr_irq_hook_t * next = hook->next;
 			free(hook);
 			hook = next;
 		}
-		irq->hook = NULL;
+		iq->hook = NULL;
 	}
 	// if that irq list was allocated by us, free it
 	if (irq->flags & IRQ_FLAG_ALLOC)

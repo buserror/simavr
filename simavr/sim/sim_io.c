@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "sim_io.h"
 
 int
@@ -160,7 +161,7 @@ avr_iomem_getirq(
 {
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
 	if (avr->io[a].irq == NULL) {
-		avr->io[a].irq = avr_alloc_irq(&avr->irq_pool, 0, 9, NULL /* TODO: names*/);
+		avr->io[a].irq = avr_alloc_irq(&avr->irq_pool, 0, 9, NULL);
 		// mark the pin ones as filtered, so they only are raised when changing
 		for (int i = 0; i < 8; i++)
 			avr->io[a].irq[i].flags |= IRQ_FLAG_FILTERED;
@@ -173,13 +174,60 @@ avr_io_setirqs(
 		avr_io_t * io,
 		uint32_t ctl,
 		int count,
-		avr_irq_t * irqs)
+		avr_irq_t * irqs )
 {
 	// allocate this module's IRQ
 	io->irq_count = count;
-	io->irq = irqs ? irqs :
-		avr_alloc_irq(&io->avr->irq_pool, 0,
-				count, NULL /* TODO: names*/);
+
+	if (!irqs) {
+		const char ** irq_names = NULL;
+
+		if (io->irq_names) {
+			irq_names = malloc(count * sizeof(char*));
+			memset(irq_names, 0, count * sizeof(char*));
+			char buf[64];
+			for (int i = 0; i < count; i++) {
+				/*
+				 * this bit takes the io module 'kind' ("port")
+				 * the IRQ name ("=0") and the last character of the ioctl ('p','o','r','A')
+				 * to create a full name "=porta.0"
+				 */
+				char * dst = buf;
+				// copy the 'flags' of the name out
+				const char * kind = io->irq_names[i];
+				while (!isalpha(*kind))
+					*dst++ = *kind++;
+				// add avr name
+//				strcpy(dst, io->avr->mmcu);
+				strcpy(dst, "avr");
+				dst += strlen(dst);
+				*dst ++ = '.';
+				// add module 'kind'
+				strcpy(dst, io->kind);
+				dst += strlen(dst);
+				// add port name, if any
+				if ((ctl & 0xff) > ' ')
+					*dst ++ = tolower(ctl & 0xff);
+				*dst ++ = '.';
+				// add the rest of the irq name
+				strcpy(dst, kind);
+				dst += strlen(dst);
+				*dst = 0;
+
+//				printf("%s\n", buf);
+				irq_names[i] = strdup(buf);
+			}
+		}
+		irqs = avr_alloc_irq(&io->avr->irq_pool, 0,
+						count, irq_names);
+		if (irq_names) {
+			for (int i = 0; i < count; i++)
+				free((char*)irq_names[i]);
+			free((char*)irq_names);
+		}
+	}
+
+	io->irq = irqs;
 	io->irq_ioctl_get = ctl;
 	return io->irq;
 }

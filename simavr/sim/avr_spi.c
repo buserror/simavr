@@ -82,9 +82,15 @@ void avr_spi_reset(struct avr_io_t *io)
 	avr_irq_register_notify(p->io.irq + SPI_IRQ_INPUT, avr_spi_irq_input, p);
 }
 
+static const char * irq_names[SPI_IRQ_COUNT] = {
+	[SPI_IRQ_INPUT] = "8<in",
+	[SPI_IRQ_OUTPUT] = "8<out",
+};
+
 static	avr_io_t	_io = {
 	.kind = "spi",
 	.reset = avr_spi_reset,
+	.irq_names = irq_names,
 };
 
 void avr_spi_init(avr_t * avr, avr_spi_t * p)

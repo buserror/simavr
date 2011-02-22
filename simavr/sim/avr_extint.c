@@ -69,9 +69,21 @@ static void avr_extint_reset(avr_io_t * port)
 	}
 }
 
+static const char * irq_names[EXTINT_COUNT] = {
+	[EXTINT_IRQ_OUT_INT0] = "<int0",
+	[EXTINT_IRQ_OUT_INT1] = "<int1",
+	[EXTINT_IRQ_OUT_INT2] = "<int2",
+	[EXTINT_IRQ_OUT_INT3] = "<int3",
+	[EXTINT_IRQ_OUT_INT4] = "<int4",
+	[EXTINT_IRQ_OUT_INT5] = "<int5",
+	[EXTINT_IRQ_OUT_INT6] = "<int6",
+	[EXTINT_IRQ_OUT_INT7] = "<int7",
+};
+
 static	avr_io_t	_io = {
 	.kind = "extint",
 	.reset = avr_extint_reset,
+	.irq_names = irq_names,
 };
 
 void avr_extint_init(avr_t * avr, avr_extint_t * p)

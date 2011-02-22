@@ -159,10 +159,24 @@ static int avr_ioport_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_para
 	return res;
 }
 
+static const char * irq_names[IOPORT_IRQ_COUNT] = {
+	[IOPORT_IRQ_PIN0] = "=pin0",
+	[IOPORT_IRQ_PIN1] = "=pin1",
+	[IOPORT_IRQ_PIN2] = "=pin2",
+	[IOPORT_IRQ_PIN3] = "=pin3",
+	[IOPORT_IRQ_PIN4] = "=pin4",
+	[IOPORT_IRQ_PIN5] = "=pin5",
+	[IOPORT_IRQ_PIN6] = "=pin6",
+	[IOPORT_IRQ_PIN7] = "=pin7",
+	[IOPORT_IRQ_PIN_ALL] = "=all",
+	[IOPORT_IRQ_DIRECTION_ALL] = ">ddr",
+};
+
 static	avr_io_t	_io = {
-	.kind = "io",
+	.kind = "port",
 	.reset = avr_ioport_reset,
 	.ioctl = avr_ioport_ioctl,
+	.irq_names = irq_names,
 };
 
 void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
