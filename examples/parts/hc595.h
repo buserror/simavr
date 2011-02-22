@@ -52,6 +52,9 @@ typedef struct hc595_t {
 	uint32_t 	value;		// value shifted in
 } hc595_t;
 
-void hc595_init(hc595_t *p);
+void
+hc595_init(
+		struct avr_t * avr,
+		hc595_t *p);
 
 #endif

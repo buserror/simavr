@@ -34,9 +34,10 @@ switch_auto(struct avr_t * avr,
 	return when + avr_usec_to_cycles(avr, 100000 / 50);
 }
 
-void ac_input_init(struct avr_t *avr, ac_input_t *b)
+void ac_input_init(avr_t *avr, ac_input_t *b)
 {
-	b->irq = avr_alloc_irq(0, IRQ_AC_COUNT);
+	const char * name = ">ac_input";
+	b->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_AC_COUNT, &name);
 	b->avr = avr;
 	b->value = 0;
 	avr_cycle_timer_register_usec(avr, 100000 / 50, switch_auto, b);

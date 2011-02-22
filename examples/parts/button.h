@@ -41,7 +41,15 @@ typedef struct button_t {
 	uint8_t value;
 } button_t;
 
-void button_init(struct avr_t * avr, button_t * b);
+void
+button_init(
+		struct avr_t * avr,
+		button_t * b,
+		const char * name);
 
-void button_press(button_t * b, uint32_t duration_usec);
+void
+button_press(
+		button_t * b,
+		uint32_t duration_usec);
+
 #endif /* __BUTTON_H__*/

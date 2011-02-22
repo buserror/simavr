@@ -27,6 +27,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include "sim_avr.h"
 #include "hc595.h"
 
 /*
@@ -62,9 +63,20 @@ static void hc595_reset_hook(struct avr_irq_t * irq, uint32_t value, void * para
 		p->latch = p->value = 0;
 }
 
-void hc595_init(hc595_t *p)
+const char * irq_names[IRQ_HC595_COUNT] = {
+		[IRQ_HC595_SPI_BYTE_IN] = "8<hc595.in",
+		[IRQ_HC595_SPI_BYTE_OUT] = "8>hc595.chain",
+		[IRQ_HC595_IN_LATCH] = "<hc595.latch",
+		[IRQ_HC595_IN_RESET] = "<hc595.reset",
+		[IRQ_HC595_OUT] = "8>hc595.out",
+};
+
+void
+hc595_init(
+		struct avr_t * avr,
+		hc595_t *p)
 {
-	p->irq = avr_alloc_irq(0, IRQ_HC595_COUNT);
+	p->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_HC595_COUNT, irq_names);
 	avr_irq_register_notify(p->irq + IRQ_HC595_SPI_BYTE_IN, hc595_spi_in_hook, p);
 	avr_irq_register_notify(p->irq + IRQ_HC595_IN_LATCH, hc595_latch_hook, p);
 	avr_irq_register_notify(p->irq + IRQ_HC595_IN_RESET, hc595_reset_hook, p);

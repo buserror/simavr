@@ -345,6 +345,26 @@ hd44780_pin_changed_hook(
 		avr_cycle_timer_register(b->avr, 1, _hd44780_process_e_pinchange, b);
 }
 
+const char * irq_names[IRQ_HD44780_COUNT] = {
+	[IRQ_HD44780_ALL] = "7=hd44780.pins",
+	[IRQ_HD44780_RS] = "<hd44780.RS",
+	[IRQ_HD44780_RW] = "<hd44780.RW",
+	[IRQ_HD44780_E] = "<hd44780.E",
+	[IRQ_HD44780_D0] = "=hd44780.D0",
+	[IRQ_HD44780_D1] = "=hd44780.D1",
+	[IRQ_HD44780_D2] = "=hd44780.D2",
+	[IRQ_HD44780_D3] = "=hd44780.D3",
+	[IRQ_HD44780_D4] = "=hd44780.D4",
+	[IRQ_HD44780_D5] = "=hd44780.D5",
+	[IRQ_HD44780_D6] = "=hd44780.D6",
+	[IRQ_HD44780_D7] = "=hd44780.D7",
+
+	[IRQ_HD44780_BUSY] = ">hd44780.BUSY",
+	[IRQ_HD44780_ADDR] = "7>hd44780.ADDR",
+	[IRQ_HD44780_DATA_IN] = "8>hd44780.DATA_IN",
+	[IRQ_HD44780_DATA_OUT] = "8>hd44780.DATA_OUT",
+};
+
 void
 hd44780_init(
 		struct avr_t *avr,
@@ -359,7 +379,7 @@ hd44780_init(
 	/*
 	 * Register callbacks on all our IRQs
 	 */
-	b->irq = avr_alloc_irq(0, IRQ_HD44780_COUNT);
+	b->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_HD44780_COUNT, irq_names);
 	for (int i = 0; i < IRQ_HD44780_INPUT_COUNT; i++)
 		avr_irq_register_notify(b->irq + i, hd44780_pin_changed_hook, b);
 

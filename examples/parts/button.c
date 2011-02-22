@@ -30,7 +30,11 @@
 #include "sim_avr.h"
 #include "button.h"
 
-static avr_cycle_count_t button_auto_release(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t
+button_auto_release(
+		avr_t * avr,
+		avr_cycle_count_t when,
+		void * param)
 {
 	button_t * b = (button_t *)param;
 	avr_raise_irq(b->irq + IRQ_BUTTON_OUT, 1);
@@ -42,7 +46,10 @@ static avr_cycle_count_t button_auto_release(struct avr_t * avr, avr_cycle_count
  * button press. set the "pin" to zerok and register a timer
  * that will reset it in a few usecs
  */
-void button_press(button_t * b, uint32_t duration_usec)
+void
+button_press(
+		button_t * b,
+		uint32_t duration_usec)
 {
 	avr_cycle_timer_cancel(b->avr, button_auto_release, b);
 	avr_raise_irq(b->irq + IRQ_BUTTON_OUT, 0);// press
@@ -50,9 +57,13 @@ void button_press(button_t * b, uint32_t duration_usec)
 	avr_cycle_timer_register_usec(b->avr, duration_usec, button_auto_release, b);
 }
 
-void button_init(struct avr_t *avr, button_t * b)
+void
+button_init(
+		avr_t *avr,
+		button_t * b,
+		const char * name)
 {
-	b->irq = avr_alloc_irq(0, IRQ_BUTTON_COUNT);	
+	b->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_BUTTON_COUNT, &name);
 	b->avr = avr;
 }
 

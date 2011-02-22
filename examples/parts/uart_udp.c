@@ -124,11 +124,15 @@ static void * uart_udp_thread(void * param)
 	}
 }
 
+const char * irq_names[IRQ_UART_UDP_COUNT] = {
+	[IRQ_UART_UDP_BYTE_IN] = "8<uart_udp.in",
+	[IRQ_UART_UDP_BYTE_OUT] = "8>uart_udp.out",
+};
 
 void uart_udp_init(struct avr_t * avr, uart_udp_t * p)
 {
 	p->avr = avr;
-	p->irq = avr_alloc_irq(0, IRQ_UART_UDP_COUNT);
+	p->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_UART_UDP_COUNT, irq_names);
 	avr_irq_register_notify(p->irq + IRQ_UART_UDP_BYTE_IN, uart_udp_in_hook, p);
 
 	if ((p->s = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
