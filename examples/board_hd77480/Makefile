@@ -44,12 +44,13 @@ atmega48_charlcd.axf: atmega48_charlcd.c
 
 include ${simavr}/Makefile.common
 
+${board} : ${simavr}/simavr/libsimavr.a
 ${board} : ${OBJ}/ac_input.o
 ${board} : ${OBJ}/hd44780.o
 ${board} : ${OBJ}/hd44780_glut.o
 ${board} : ${OBJ}/${board}.o
 	@echo LD $@
-	@gcc -MD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS) ${simavr}/simavr/libsimavr.a
+	@gcc -MD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
 
 clean:
 	rm -rf obj *.hex *.a *.axf ${board} *.vcd .*.swo .*.swp .*.swm .*.swn

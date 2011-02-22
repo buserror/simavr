@@ -42,10 +42,11 @@ all: obj ${firmware} ${board}
 
 include ${simavr}/Makefile.common
 
+${board} : ${simavr}/simavr/libsimavr.a
 ${board} : ${OBJ}/button.o
 ${board} : ${OBJ}/${board}.o
 	@echo LD $@
-	@gcc -MD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS) ${simavr}/simavr/libsimavr.a
+	@gcc -MD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
 
 clean:
 	rm -rf obj *.hex *.a *.axf ${board} *.vcd

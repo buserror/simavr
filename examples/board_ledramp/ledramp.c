@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 	avr_load_firmware(avr, &f);
 
 	// initialize our 'peripheral'
-	button_init(avr, &button);
+	button_init(avr, &button, "button");
 	// "connect" the output irw of the button to the port pin of the AVR
 	avr_connect_irq(
 		button.irq + IRQ_BUTTON_OUT,

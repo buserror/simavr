@@ -229,17 +229,17 @@ int main(int argc, char *argv[])
 	//
 	// initialize our 'peripherals'
 	//
-	hc595_init(&shifter);
+	hc595_init(avr, &shifter);
 	
-	button_init(avr, &button[B_START]);
+	button_init(avr, &button[B_START], "button.start");
 	avr_connect_irq(
 		button[B_START].irq + IRQ_BUTTON_OUT,
 		avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('C'), 0));
-	button_init(avr, &button[B_STOP]);
+	button_init(avr, &button[B_STOP], "button.stop");
 	avr_connect_irq(
 		button[B_STOP].irq + IRQ_BUTTON_OUT,
 		avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 1));
-	button_init(avr, &button[B_RESET]);
+	button_init(avr, &button[B_RESET], "button.reset");
 	avr_connect_irq(
 		button[B_RESET].irq + IRQ_BUTTON_OUT,
 		avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 0));
