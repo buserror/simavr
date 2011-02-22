@@ -45,6 +45,9 @@ int avr_init(avr_t * avr)
 		avr->special_init(avr);
 	if (avr->init)
 		avr->init(avr);
+	// set default (non gdb) fast callbacks
+	avr->run = avr_callback_run_raw;
+	avr->sleep = avr_callback_sleep_raw;
 	avr->state = cpu_Running;
 	avr_reset(avr);	
 	return 0;
@@ -158,13 +161,19 @@ void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address)
 	memcpy(avr->flash + address, code, size);
 }
 
+void avr_callback_sleep_gdb(avr_t * avr, avr_cycle_count_t howLong)
+{
+	uint32_t usec = avr_cycles_to_usec(avr, howLong);
+	while (avr_gdb_processor(avr, usec))
+		;
+}
 
-int avr_run(avr_t * avr)
+void avr_callback_run_gdb(avr_t * avr)
 {
 	avr_gdb_processor(avr, avr->state == cpu_Stopped);
 
 	if (avr->state == cpu_Stopped)
-		return avr->state;
+		return ;
 
 	// if we are stepping one instruction, we "run" for one..
 	int step = avr->state == cpu_Step;
@@ -201,13 +210,7 @@ int avr_run(avr_t * avr)
 		/*
 		 * try to sleep for as long as we can (?)
 		 */
-		uint32_t usec = avr_cycles_to_usec(avr, sleep);
-	//	printf("sleep usec %d cycles %d\n", usec, sleep);
-		if (avr->gdb) {
-			while (avr_gdb_processor(avr, usec))
-				;
-		} else
-			usleep(usec);
+		avr->sleep(avr, sleep);
 		avr->cycle += 1 + sleep;
 	}
 	// Interrupt servicing might change the PC too, during 'sleep'
@@ -218,6 +221,59 @@ int avr_run(avr_t * avr)
 	if (step)
 		avr->state = cpu_StepDone;
 
+}
+
+void avr_callback_sleep_raw(avr_t * avr, avr_cycle_count_t howLong)
+{
+	uint32_t usec = avr_cycles_to_usec(avr, howLong);
+	usleep(usec);
+}
+
+void avr_callback_run_raw(avr_t * avr)
+{
+
+	uint16_t new_pc = avr->pc;
+
+	if (avr->state == cpu_Running) {
+		new_pc = avr_run_one(avr);
+#if CONFIG_SIMAVR_TRACE
+		avr_dump_state(avr);
+#endif
+	}
+
+	// if we just re-enabled the interrupts...
+	// double buffer the I flag, to detect that edge
+	if (avr->sreg[S_I] && !avr->i_shadow)
+		avr->pending_wait++;
+	avr->i_shadow = avr->sreg[S_I];
+
+	// run the cycle timers, get the suggested sleeo time
+	// until the next timer is due
+	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
+
+	avr->pc = new_pc;
+
+	if (avr->state == cpu_Sleeping) {
+		if (!avr->sreg[S_I]) {
+			printf("simavr: sleeping with interrupts off, quitting gracefully\n");
+			avr_terminate(avr);
+			exit(0);
+		}
+		/*
+		 * try to sleep for as long as we can (?)
+		 */
+		avr->sleep(avr, sleep);
+		avr->cycle += 1 + sleep;
+	}
+	// Interrupt servicing might change the PC too, during 'sleep'
+	if (avr->state == cpu_Running || avr->state == cpu_Sleeping)
+		avr_service_interrupts(avr);
+}
+
+
+int avr_run(avr_t * avr)
+{
+	avr->run(avr);
 	return avr->state;
 }
 

@@ -425,6 +425,9 @@ int avr_gdb_init(avr_t * avr)
 	g->avr = avr;
 	g->s = -1;
 	avr->gdb = g;
+	// change default run behaviour to use the slightly slower versions
+	avr->run = avr_callback_run_gdb;
+	avr->sleep = avr_callback_sleep_gdb;
 	
 	return 0;
 }

@@ -107,6 +107,22 @@ typedef struct avr_t {
 	// called at reset time
 	void (*reset)(struct avr_t * avr);
 
+	/*
+	 * Default AVR core run function.
+	 * Two modes are available, a "raw" run that goes as fast as
+	 * it can, and a "gdb" mode that also watchouts for gdb events
+	 * and is a little bit slower.
+	 */
+	void (*run)(struct avr_t * avr);
+
+	/*
+	 * Sleep default behaviour.
+	 * In "raw" mode, it calls usleep, in gdb mode, it waits
+	 * for howLong for gdb command on it's sockets.
+	 */
+	void (*sleep)(struct avr_t * avr, avr_cycle_count_t howLong);
+
+
 	// Mirror of the SREG register, to facilitate the access to bits
 	// in the opcode decoder.
 	// This array is re-synthetized back/forth when SREG changes
@@ -266,6 +282,15 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr);
 // called when the core has detected a crash somehow.
 // this might activate gdb server
 void avr_sadly_crashed(avr_t *avr, uint8_t signal);
+
+
+/*
+ * These are callbacks for the two 'main' bahaviour in simavr
+ */
+void avr_callback_sleep_gdb(avr_t * avr, avr_cycle_count_t howLong);
+void avr_callback_run_gdb(avr_t * avr);
+void avr_callback_sleep_raw(avr_t * avr, avr_cycle_count_t howLong);
+void avr_callback_run_raw(avr_t * avr);
 
 #ifdef __cplusplus
 };
