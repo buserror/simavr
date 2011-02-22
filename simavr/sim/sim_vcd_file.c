@@ -37,7 +37,7 @@ int avr_vcd_init(struct avr_t * avr, const char * filename, avr_vcd_t * vcd, uin
 	vcd->period = avr_usec_to_cycles(vcd->avr, period);
 	
 	for (int i = 0; i < AVR_VCD_MAX_SIGNALS; i++) {
-		avr_init_irq(&vcd->signal[i].irq, i, 1);
+		avr_init_irq(&avr->irq_pool, &vcd->signal[i].irq, i, 1, NULL /* TODO IRQ name */);
 		avr_irq_register_notify(&vcd->signal[i].irq, _avr_vcd_notify, vcd);
 	}
 	

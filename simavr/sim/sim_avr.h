@@ -28,6 +28,8 @@
 extern "C" {
 #endif
 
+#include "sim_irq.h"
+
 typedef uint64_t avr_cycle_count_t;
 typedef uint16_t	avr_io_addr_t;
 
@@ -107,7 +109,7 @@ typedef struct avr_t {
 	// called at reset time
 	void (*reset)(struct avr_t * avr);
 
-	/*
+	/*!
 	 * Default AVR core run function.
 	 * Two modes are available, a "raw" run that goes as fast as
 	 * it can, and a "gdb" mode that also watchouts for gdb events
@@ -115,13 +117,18 @@ typedef struct avr_t {
 	 */
 	void (*run)(struct avr_t * avr);
 
-	/*
+	/*!
 	 * Sleep default behaviour.
 	 * In "raw" mode, it calls usleep, in gdb mode, it waits
 	 * for howLong for gdb command on it's sockets.
 	 */
 	void (*sleep)(struct avr_t * avr, avr_cycle_count_t howLong);
 
+	/*!
+	 * Every IRQs will be stored in this pool. It is not
+	 * mandatory (yet) but will allow listing IRQs and their connections
+	 */
+	avr_irq_pool_t	irq_pool;
 
 	// Mirror of the SREG register, to facilitate the access to bits
 	// in the opcode decoder.
@@ -317,7 +324,6 @@ void avr_callback_run_raw(avr_t * avr);
 #include "sim_io.h"
 #include "sim_regbit.h"
 #include "sim_interrupts.h"
-#include "sim_irq.h"
 #include "sim_cycle_timers.h"
 
 #endif /*__SIM_AVR_H__*/

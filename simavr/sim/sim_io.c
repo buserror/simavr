@@ -25,7 +25,11 @@
 #include <string.h>
 #include "sim_io.h"
 
-int avr_ioctl(avr_t *avr, uint32_t ctl, void * io_param)
+int
+avr_ioctl(
+		avr_t *avr,
+		uint32_t ctl,
+		void * io_param)
 {
 	avr_io_t * port = avr->io_port;
 	int res = -1;
@@ -37,14 +41,22 @@ int avr_ioctl(avr_t *avr, uint32_t ctl, void * io_param)
 	return res;
 }
 
-void avr_register_io(avr_t *avr, avr_io_t * io)
+void
+avr_register_io(
+		avr_t *avr,
+		avr_io_t * io)
 {
 	io->next = avr->io_port;
 	io->avr = avr;
 	avr->io_port = io;
 }
 
-void avr_register_io_read(avr_t *avr, avr_io_addr_t addr, avr_io_read_t readp, void * param)
+void
+avr_register_io_read(
+		avr_t *avr,
+		avr_io_addr_t addr,
+		avr_io_read_t readp,
+		void * param)
 {
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
 	if (avr->io[a].r.param || avr->io[a].r.c) {
@@ -62,7 +74,11 @@ void avr_register_io_read(avr_t *avr, avr_io_addr_t addr, avr_io_read_t readp, v
 }
 
 static void
-_avr_io_mux_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+_avr_io_mux_write(
+		avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	int io = (int)param;
 	for (int i = 0; i < avr->io_shared_io[io].used; i++) {
@@ -72,7 +88,12 @@ _avr_io_mux_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 	}
 }
 
-void avr_register_io_write(avr_t *avr, avr_io_addr_t addr, avr_io_write_t writep, void * param)
+void
+avr_register_io_write(
+		avr_t *avr,
+		avr_io_addr_t addr,
+		avr_io_write_t writep,
+		void * param)
 {
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
 
@@ -115,7 +136,11 @@ void avr_register_io_write(avr_t *avr, avr_io_addr_t addr, avr_io_write_t writep
 	avr->io[a].w.c = writep;
 }
 
-struct avr_irq_t * avr_io_getirq(avr_t * avr, uint32_t ctl, int index)
+avr_irq_t *
+avr_io_getirq(
+		avr_t * avr,
+		uint32_t ctl,
+		int index)
 {
 	avr_io_t * port = avr->io_port;
 	while (port) {
@@ -127,11 +152,15 @@ struct avr_irq_t * avr_io_getirq(avr_t * avr, uint32_t ctl, int index)
 	
 }
 
-avr_irq_t * avr_iomem_getirq(avr_t * avr, avr_io_addr_t addr, int index)
+avr_irq_t *
+avr_iomem_getirq(
+		avr_t * avr,
+		avr_io_addr_t addr,
+		int index)
 {
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
 	if (avr->io[a].irq == NULL) {
-		avr->io[a].irq = avr_alloc_irq(0, 9);
+		avr->io[a].irq = avr_alloc_irq(&avr->irq_pool, 0, 9, NULL /* TODO: names*/);
 		// mark the pin ones as filtered, so they only are raised when changing
 		for (int i = 0; i < 8; i++)
 			avr->io[a].irq[i].flags |= IRQ_FLAG_FILTERED;
@@ -139,16 +168,25 @@ avr_irq_t * avr_iomem_getirq(avr_t * avr, avr_io_addr_t addr, int index)
 	return index < 9 ? avr->io[a].irq + index : NULL;
 }
 
-struct avr_irq_t * avr_io_setirqs(avr_io_t * io, uint32_t ctl, int count, struct avr_irq_t * irqs)
+avr_irq_t *
+avr_io_setirqs(
+		avr_io_t * io,
+		uint32_t ctl,
+		int count,
+		avr_irq_t * irqs)
 {
 	// allocate this module's IRQ
 	io->irq_count = count;
-	io->irq = irqs ? irqs : avr_alloc_irq(0, count);
+	io->irq = irqs ? irqs :
+		avr_alloc_irq(&io->avr->irq_pool, 0,
+				count, NULL /* TODO: names*/);
 	io->irq_ioctl_get = ctl;
 	return io->irq;
 }
 
-static void avr_deallocate_io(avr_io_t * io)
+static void
+avr_deallocate_io(
+		avr_io_t * io)
 {
 	if (io->dealloc)
 		io->dealloc(io);
@@ -159,7 +197,9 @@ static void avr_deallocate_io(avr_io_t * io)
 	io->next = NULL;
 }
 
-void avr_deallocate_ios(avr_t * avr)
+void
+avr_deallocate_ios(
+		avr_t * avr)
 {
 	avr_io_t * port = avr->io_port;
 	while (port) {

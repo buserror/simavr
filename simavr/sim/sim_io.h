@@ -63,17 +63,39 @@ typedef struct avr_io_t {
 // registers an IO module, so it's run(), reset() etc are called
 // this is called by the AVR core init functions, you /could/ register an external
 // one after instanciation, for whatever purpose...
-void avr_register_io(avr_t *avr, avr_io_t * io);
+void
+avr_register_io(
+		avr_t *avr,
+		avr_io_t * io);
 // Sets an IO module "official" IRQs and the ioctl used to get to them. if 'irqs' is NULL,
 // 'count' will be allocated
-struct avr_irq_t * avr_io_setirqs(avr_io_t * io, uint32_t ctl, int count, struct avr_irq_t * irqs);
+avr_irq_t *
+avr_io_setirqs(
+		avr_io_t * io,
+		uint32_t ctl,
+		int count,
+		avr_irq_t * irqs);
 
 // register a callback for when IO register "addr" is read
-void avr_register_io_read(avr_t *avr, avr_io_addr_t addr, avr_io_read_t read, void * param);
+void
+avr_register_io_read(
+		avr_t *avr,
+		avr_io_addr_t addr,
+		avr_io_read_t read,
+		void * param);
 // register a callback for when the IO register is written. callback has to set the memory itself
-void avr_register_io_write(avr_t *avr, avr_io_addr_t addr, avr_io_write_t write, void * param);
+void
+avr_register_io_write(
+		avr_t *avr,
+		avr_io_addr_t addr,
+		avr_io_write_t write,
+		void * param);
 // call every IO modules until one responds to this
-int avr_ioctl(avr_t *avr, uint32_t ctl, void * io_param);
+int
+avr_ioctl(
+		avr_t *avr,
+		uint32_t ctl,
+		void * io_param);
 // get the specific irq for a module, check AVR_IOCTL_IOPORT_GETIRQ for example
 struct avr_irq_t * avr_io_getirq(avr_t * avr, uint32_t ctl, int index);
 
@@ -85,10 +107,16 @@ struct avr_irq_t * avr_io_getirq(avr_t * avr, uint32_t ctl, int index);
 // 
 // the "index" is a bit number, or ALL bits if index == 8
 #define AVR_IOMEM_IRQ_ALL 8
-struct avr_irq_t * avr_iomem_getirq(avr_t * avr, avr_io_addr_t addr, int index);
+avr_irq_t *
+avr_iomem_getirq(
+		avr_t * avr,
+		avr_io_addr_t addr,
+		int index);
 
 // Terminates all IOs and remove from them from the io chain
-void avr_deallocate_ios(avr_t *avr);
+void
+avr_deallocate_ios(
+		avr_t *avr);
 
 #ifdef __cplusplus
 };
