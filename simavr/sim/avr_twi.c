@@ -24,7 +24,7 @@
 
 static uint8_t avr_twi_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
 {
-	avr_twi_t * p = (avr_twi_t *)param;
+//	avr_twi_t * p = (avr_twi_t *)param;
 //	uint8_t v = p->input_data_register;
 //	p->input_data_register = 0;
 //	printf("avr_twi_read = %02x\n", v);
@@ -33,8 +33,8 @@ static uint8_t avr_twi_read(struct avr_t * avr, avr_io_addr_t addr, void * param
 
 static void avr_twi_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
-	avr_twi_t * p = (avr_twi_t *)param;
 #if 0
+	avr_twi_t * p = (avr_twi_t *)param;
 	if (addr == p->r_spdr) {
 //		printf("avr_twi_write = %02x\n", v);
 		avr_core_watch_write(avr, addr, v);
@@ -49,6 +49,7 @@ static void avr_twi_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, voi
 #endif
 }
 
+#if 0
 static void avr_twi_irq_input(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	avr_twi_t * p = (avr_twi_t *)param;
@@ -70,7 +71,6 @@ static void avr_twi_irq_input(struct avr_irq_t * irq, uint32_t value, void * par
 #endif
 }
 
-
 	// handle a data write, after a (re)start
 static int twi_slave_write(struct twi_slave_t* p, uint8_t v)
 {
@@ -82,7 +82,7 @@ static uint8_t twi_slave_read(struct twi_slave_t* p)
 {
 	return 0;
 }
-
+#endif
 
 static int avr_twi_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
 {
@@ -100,7 +100,7 @@ static int avr_twi_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
 
 void avr_twi_reset(struct avr_io_t *io)
 {
-	avr_twi_t * p = (avr_twi_t *)io;
+//	avr_twi_t * p = (avr_twi_t *)io;
 	//avr_irq_register_notify(p->io.irq + TWI_IRQ_INPUT, avr_twi_irq_input, p);
 }
 

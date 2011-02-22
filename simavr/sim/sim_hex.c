@@ -213,8 +213,8 @@ int read_ihex_chunks(const char * fname, struct ihex_chunk_t * chunks, int max_c
 
 
 #ifdef IHEX_TEST
-// gcc -std=gnu99 -Isimavr/sim simavr/sim/sim_hex.c -o sim_hex -DIHEX_TEST
-int main(int argc, char * argv[])
+// gcc -std=gnu99 -Isimavr/sim simavr/sim/sim_hex.c -o sim_hex -DIHEX_TEST -Dtest_main=main
+int test_main(int argc, char * argv[])
 {
 	struct ihex_chunk_t chunk[4];
 	

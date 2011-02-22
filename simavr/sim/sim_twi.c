@@ -99,7 +99,7 @@ static void twi_slave_irq_notify(struct avr_irq_t * irq, uint32_t value, void * 
 void twi_bus_init(twi_bus_t * bus)
 {
 	memset(bus, 0, sizeof(twi_bus_t));
-	avr_init_irq(bus->irq, 0, TWI_MASTER_STATE_COUNT);
+	//avr_init_irq(bus->irq, 0, TWI_MASTER_STATE_COUNT);
 	for (int i = 0; i < TWI_MASTER_STATE_COUNT; i++)
 		avr_irq_register_notify(bus->irq + i, twi_bus_master_irq_notify, bus);
 }

@@ -320,6 +320,10 @@ void avr_dump_state(avr_t * avr)
 		const uint8_t r = ((o >> 5) & 0x10) | (o & 0xf); \
 		const uint8_t d = (o >> 4) & 0x1f;\
 		const uint8_t vd = avr->data[d], vr = avr->data[r];
+#define get_r_dd_10(o) \
+		const uint8_t r = ((o >> 5) & 0x10) | (o & 0xf); \
+		const uint8_t d = (o >> 4) & 0x1f;\
+		const uint8_t vr = avr->data[r];
 #define get_k_r16(o) \
 		const uint8_t r = 16 + ((o >> 4) & 0xf); \
 		const uint8_t k = ((o & 0x0f00) >> 4) | (o & 0xf);
@@ -682,7 +686,7 @@ uint16_t avr_run_one(avr_t * avr)
 					SREG();
 				}	break;
 				case 0x2c00: {	// MOV	0010 11rd dddd rrrr
-					get_r_d_10(opcode);
+					get_r_dd_10(opcode);
 					uint8_t res = vr;
 					STATE("mov %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 					_avr_set_r(avr, d, res);
