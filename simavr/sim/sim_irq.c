@@ -34,24 +34,38 @@ typedef struct avr_irq_hook_t {
 	void * param;				// "notify" parameter
 } avr_irq_hook_t;
 
-void avr_init_irq(avr_irq_t * irq, uint32_t base, uint32_t count)
+void
+avr_init_irq(
+		avr_irq_pool_t * pool,
+		avr_irq_t * irq,
+		uint32_t base,
+		uint32_t count,
+		const char ** names /* optional */)
 {
 	memset(irq, 0, sizeof(avr_irq_t) * count);
 
-	for (int i = 0; i < count; i++)
+	for (int i = 0; i < count; i++) {
 		irq[i].irq = base + i;
+	}
 }
 
-avr_irq_t * avr_alloc_irq(uint32_t base, uint32_t count)
+avr_irq_t *
+avr_alloc_irq(
+		avr_irq_pool_t * pool,
+		uint32_t base,
+		uint32_t count,
+		const char ** names /* optional */)
 {
 	avr_irq_t * irq = (avr_irq_t*)malloc(sizeof(avr_irq_t) * count);
-	avr_init_irq(irq, base, count);
+	avr_init_irq(pool, irq, base, count, names);
 	for (int i = 0; i < count; i++)
 		irq[i].flags |= IRQ_FLAG_ALLOC;	
 	return irq;
 }
 
-static avr_irq_hook_t * _avr_alloc_irq_hook(avr_irq_t * irq)
+static avr_irq_hook_t *
+_avr_alloc_irq_hook(
+		avr_irq_t * irq)
 {
 	avr_irq_hook_t *hook = malloc(sizeof(avr_irq_hook_t));
 	memset(hook, 0, sizeof(avr_irq_hook_t));
@@ -60,7 +74,10 @@ static avr_irq_hook_t * _avr_alloc_irq_hook(avr_irq_t * irq)
 	return hook;
 }
 
-void avr_free_irq(avr_irq_t * irq, uint32_t count)
+void
+avr_free_irq(
+		avr_irq_t * irq,
+		uint32_t count)
 {
 	if (!irq || !count)
 		return;
@@ -79,7 +96,11 @@ void avr_free_irq(avr_irq_t * irq, uint32_t count)
 		free(irq);
 }
 
-void avr_irq_register_notify(avr_irq_t * irq, avr_irq_notify_t notify, void * param)
+void
+avr_irq_register_notify(
+		avr_irq_t * irq,
+		avr_irq_notify_t notify,
+		void * param)
 {
 	if (!irq || !notify)
 		return;
@@ -95,7 +116,10 @@ void avr_irq_register_notify(avr_irq_t * irq, avr_irq_notify_t notify, void * pa
 	hook->param = param;
 }
 
-void avr_raise_irq(avr_irq_t * irq, uint32_t value)
+void
+avr_raise_irq(
+		avr_irq_t * irq,
+		uint32_t value)
 {
 	if (!irq)
 		return ;
@@ -122,7 +146,10 @@ void avr_raise_irq(avr_irq_t * irq, uint32_t value)
 	irq->value = output;
 }
 
-void avr_connect_irq(avr_irq_t * src, avr_irq_t * dst)
+void
+avr_connect_irq(
+		avr_irq_t * src,
+		avr_irq_t * dst)
 {
 	if (!src || !dst || src == dst) {
 		printf("avr_connect_irq invalid irq %p/%p", src, dst);
