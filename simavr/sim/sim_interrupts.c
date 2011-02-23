@@ -128,8 +128,7 @@ void avr_service_interrupts(avr_t * avr)
 		if (avr->pending_wait) {
 			avr->pending_wait--;
 			if (avr->pending_wait == 0) {
-				int done = 0;
-				for (int bi = 0; bi < 2 && !done; bi++)
+				for (int bi = 0; bi < 2; bi++)
 					if (avr->pending[bi]) {
 						uint32_t map = avr->pending[bi];
 						while (map) {
@@ -148,7 +147,6 @@ void avr_service_interrupts(avr_t * avr)
 							avr->pc = v * avr->vector_size;
 
 							avr_clear_interrupt(avr, v);
-							done = 1;
 							break;
 						}
 						break;
