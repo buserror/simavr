@@ -688,7 +688,7 @@ uint16_t avr_run_one(avr_t * avr)
 				case 0x2c00: {	// MOV	0010 11rd dddd rrrr
 					get_r_dd_10(opcode);
 					uint8_t res = vr;
-					STATE("mov %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
+					STATE("mov %s, %s[%02x] = %02x\n", avr_regname(d), avr_regname(r), vr, res);
 					_avr_set_r(avr, d, res);
 				}	break;
 				default: _avr_invalid_opcode(avr);
