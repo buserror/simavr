@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdint.h>
 #include "sim_io.h"
 
 int
@@ -81,7 +82,7 @@ _avr_io_mux_write(
 		uint8_t v,
 		void * param)
 {
-	int io = (int)param;
+	int io = (intptr_t)param;
 	for (int i = 0; i < avr->io_shared_io[io].used; i++) {
 		avr_io_write_t c = avr->io_shared_io[io].io[i].c;
 		if (c)
@@ -118,10 +119,10 @@ avr_register_io_write(
 				avr->io_shared_io[no].used = 1;
 				avr->io_shared_io[no].io[0].param = avr->io[a].w.param;
 				avr->io_shared_io[no].io[0].c = avr->io[a].w.c;
-				avr->io[a].w.param = (void*)no;
+				avr->io[a].w.param = (void*)(intptr_t)no;
 				avr->io[a].w.c = _avr_io_mux_write;
 			}
-			int no = (int)avr->io[a].w.param;
+			int no = (intptr_t)avr->io[a].w.param;
 			int d = avr->io_shared_io[no].used++;
 			if (avr->io_shared_io[no].used > 4) {
 				fprintf(stderr,
