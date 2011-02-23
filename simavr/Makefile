@@ -18,13 +18,20 @@
 
 target	= run_avr
 
-CFLAGS	+= -O3  -mfpmath=sse -msse2 -Wall -Werror
+CFLAGS	+= -O3 -Wall -Werror
+
+# tracing id useful especialy if you develop simavr core.
+# it otherwise eat quite a bit of few cycles, even disabled
 #CFLAGS	+= -DCONFIG_SIMAVR_TRACE=1
 
+all:	obj libsimavr ${target}
+
+include ../Makefile.common
+
 cores	= ${wildcard cores/*.c}
-cores_o = ${patsubst cores/%.c, obj/%.o, ${cores}}
+cores_o = ${patsubst cores/%.c, ${OBJ}/%.o, ${cores}}
 sim		= ${wildcard sim/sim_*.c} ${wildcard sim/avr_*.c}
-sim_o 	= ${patsubst sim/%.c, obj/%.o, ${sim}}
+sim_o 	= ${patsubst sim/%.c, ${OBJ}/%.o, ${sim}}
 
 VPATH	= cores
 VPATH	+= sim
@@ -37,38 +44,29 @@ IPATH	+= ../include
 IPATH	+= /opt/local/include
 LFLAGS	= -L/opt/local/lib/
 
-all:	obj libsimavr.a
 # shared library won't work that easily on non-linux
 ifeq (${shell uname}, Linux)
-all:	libsimavr.so
+all:	${OBJ}/libsimavr.so
 endif
-all: 	${target}
 
-obj/sim_%.o : cores/sim_%.c
-	@gcc $(CFLAGS) -MD \
-		-I${AVR_INC}/include/ \
-		$<  -c -o $@
-	@echo CORE $<
 
-include ../Makefile.common
-
-libsimavr.a	:	${cores_o}
-libsimavr.a	:	${sim_o}
+${OBJ}/libsimavr.a	:	${cores_o}
+${OBJ}/libsimavr.a	:	${sim_o}
 	@echo AR $@
-	@ar cru $@ $^
-	@ranlib $@
+	@$(AR) cru $@ $^ && $(RANLIB) $@
 
-libsimavr.so	:	${cores_o}
-libsimavr.so	:	${sim_o}
+libsimavr: ${OBJ}/libsimavr.a
+ 
+${OBJ}/libsimavr.so	:	${cores_o}
+${OBJ}/libsimavr.so	:	${sim_o}
 	@echo LD $@
-	@gcc -shared -fPIC -o $@ $(LFLAGS) $^ $(LDFLAGS)
+	@$(CC) -shared -fPIC -o $@ $(LFLAGS) $^ $(LDFLAGS)
 
-${target}	:	libsimavr.a
-${target}	:	obj/${target}.o
-	@gcc $(CFLAGS) $(LFLAGS) \
-		${^} -o $@ \
-		 $(LDFLAGS)
-	@echo LD $@
+${OBJ}/${target}.elf	:	${OBJ}/${target}.o
+${OBJ}/${target}.elf	:	${OBJ}/libsimavr.a
 
-clean:
-	rm -rf ${target} obj *.a *.so
+${target}	: ${OBJ}/${target}.elf
+	ln -sf $< $@
+ 
+clean: clean-${OBJ}
+	rm -rf ${target} *.a *.so

@@ -16,7 +16,7 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
-board=	charlcd
+target=	charlcd
 firm_src = ${wildcard at*${board}.c}
 firmware = ${firm_src:.c=.axf}
 simavr = ../../
@@ -38,19 +38,22 @@ else
 LDFLAGS += -framework GLUT -framework OpenGL 
 endif
 
-all: obj atmega48_charlcd.axf ${board} 
+all: obj atmega48_charlcd.axf ${target} 
 
 atmega48_charlcd.axf: atmega48_charlcd.c
 
 include ${simavr}/Makefile.common
 
-${board} : ${simavr}/simavr/libsimavr.a
+board = ${OBJ}/${target}.elf
+
 ${board} : ${OBJ}/ac_input.o
 ${board} : ${OBJ}/hd44780.o
 ${board} : ${OBJ}/hd44780_glut.o
-${board} : ${OBJ}/${board}.o
-	@echo LD $@
-	@gcc -MD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
+${board} : ${OBJ}/${target}.o
+${board} : ${simavr}/simavr/${OBJ}/libsimavr.a
 
-clean:
-	rm -rf obj *.hex *.a *.axf ${board} *.vcd .*.swo .*.swp .*.swm .*.swn
+${target}: ${board}
+	@echo $@ done
+
+clean: clean-${OBJ}
+	rm -rf *.hex *.a *.axf ${target} *.vcd .*.swo .*.swp .*.swm .*.swn

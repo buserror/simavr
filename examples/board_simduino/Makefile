@@ -16,7 +16,7 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
-board=	simduino
+target=	simduino
 firm_src = ${wildcard atmega*.c}
 firmware = ${firm_src:.c=.hex}
 simavr = ../../
@@ -38,16 +38,19 @@ else
 LDFLAGS += -framework GLUT -framework OpenGL 
 endif
 
-all: obj ${firmware} ${board}
+all: obj ${firmware} ${target}
 
 include ${simavr}/Makefile.common
 
-${board} : ${simavr}/simavr/libsimavr.a
+board = ${OBJ}/${target}.elf
+
 ${board} : ${OBJ}/button.o
 ${board} : ${OBJ}/uart_udp.o
-${board} : ${OBJ}/${board}.o
-	@echo LD $@
-	@gcc -MD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
+${board} : ${OBJ}/${target}.o
+${board} : ${simavr}/simavr/${OBJ}/libsimavr.a
 
-clean:
-	rm -rf obj *.a *.axf ${board} *.vcd
+${target}: ${board}
+	@echo $@ done
+
+clean: clean-${OBJ}
+	rm -rf *.a *.axf ${target} *.vcd

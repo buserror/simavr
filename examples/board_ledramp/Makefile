@@ -16,7 +16,7 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
-board=	ledramp
+target=	ledramp
 firm_src = ${wildcard at*${board}.c}
 firmware = ${firm_src:.c=.axf}
 simavr = ../../
@@ -38,15 +38,18 @@ else
 LDFLAGS += -framework GLUT -framework OpenGL 
 endif
 
-all: obj ${firmware} ${board}
+all: obj ${firmware} ${target}
 
 include ${simavr}/Makefile.common
 
-${board} : ${simavr}/simavr/libsimavr.a
-${board} : ${OBJ}/button.o
-${board} : ${OBJ}/${board}.o
-	@echo LD $@
-	@gcc -MD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
+board = ${OBJ}/${target}.elf
 
-clean:
-	rm -rf obj *.hex *.a *.axf ${board} *.vcd
+${board} : ${OBJ}/button.o
+${board} : ${OBJ}/${target}.o
+${board} : ${simavr}/simavr/${OBJ}/libsimavr.a
+
+${target}: ${board}
+	@echo $@ done
+
+clean: clean-${OBJ}
+	rm -rf *.a *.axf ${target} *.vcd
