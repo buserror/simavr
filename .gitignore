@@ -1,4 +1,4 @@
-obj
+obj-*
 *.axf
 *.hex
 *.s
@@ -7,3 +7,4 @@ simavr/run_avr
 *.a
 .tags*
 ._*
+*.vcd
