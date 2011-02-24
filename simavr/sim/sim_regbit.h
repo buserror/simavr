@@ -71,6 +71,19 @@ static inline uint8_t avr_regbit_setto(avr_t * avr, avr_regbit_t rb, uint8_t v)
 	return (avr->data[a] >> rb.bit) & rb.mask;
 }
 
+/*
+ * Set the 'raw' bits, if 'v' is the unshifted value of the bits
+ */
+static inline uint8_t avr_regbit_setto_raw(avr_t * avr, avr_regbit_t rb, uint8_t v)
+{
+	uint8_t a = rb.reg;
+	if (!a)
+		return 0;
+	uint8_t m = rb.mask << rb.bit;
+	avr_core_watch_write(avr, a, (avr->data[a] & ~(m)) | ((v) & m));
+	return (avr->data[a]) & (rb.mask << rb.bit);
+}
+
 static inline uint8_t avr_regbit_get(avr_t * avr, avr_regbit_t rb)
 {
 	uint8_t a = rb.reg;
@@ -78,6 +91,18 @@ static inline uint8_t avr_regbit_get(avr_t * avr, avr_regbit_t rb)
 		return 0;
 	//uint8_t m = rb.mask << rb.bit;
 	return (avr->data[a] >> rb.bit) & rb.mask;
+}
+
+/*
+ * Return the bit(s) 'in position' instead of zero based
+ */
+static inline uint8_t avr_regbit_get_raw(avr_t * avr, avr_regbit_t rb)
+{
+	uint8_t a = rb.reg;
+	if (!a)
+		return 0;
+	//uint8_t m = rb.mask << rb.bit;
+	return (avr->data[a]) & (rb.mask << rb.bit);
 }
 
 static inline uint8_t avr_regbit_clear(avr_t * avr, avr_regbit_t rb)
