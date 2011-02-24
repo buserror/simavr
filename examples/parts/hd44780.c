@@ -345,7 +345,7 @@ hd44780_pin_changed_hook(
 		avr_cycle_timer_register(b->avr, 1, _hd44780_process_e_pinchange, b);
 }
 
-const char * irq_names[IRQ_HD44780_COUNT] = {
+static const char * irq_names[IRQ_HD44780_COUNT] = {
 	[IRQ_HD44780_ALL] = "7=hd44780.pins",
 	[IRQ_HD44780_RS] = "<hd44780.RS",
 	[IRQ_HD44780_RW] = "<hd44780.RW",

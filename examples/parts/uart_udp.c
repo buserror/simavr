@@ -124,7 +124,7 @@ static void * uart_udp_thread(void * param)
 	}
 }
 
-const char * irq_names[IRQ_UART_UDP_COUNT] = {
+static const char * irq_names[IRQ_UART_UDP_COUNT] = {
 	[IRQ_UART_UDP_BYTE_IN] = "8<uart_udp.in",
 	[IRQ_UART_UDP_BYTE_OUT] = "8>uart_udp.out",
 };

@@ -63,7 +63,7 @@ static void hc595_reset_hook(struct avr_irq_t * irq, uint32_t value, void * para
 		p->latch = p->value = 0;
 }
 
-const char * irq_names[IRQ_HC595_COUNT] = {
+static const char * irq_names[IRQ_HC595_COUNT] = {
 		[IRQ_HC595_SPI_BYTE_IN] = "8<hc595.in",
 		[IRQ_HC595_SPI_BYTE_OUT] = "8>hc595.chain",
 		[IRQ_HC595_IN_LATCH] = "<hc595.latch",
