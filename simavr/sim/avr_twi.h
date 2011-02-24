@@ -24,29 +24,45 @@
 
 #include "sim_avr.h"
 
-#include "sim_twi.h"
+//#include "sim_twi.h"
 
 enum {
-	TWI_IRQ_INPUT = 0,
-	TWI_IRQ_OUTPUT,
+	TWI_IRQ_MISO = 0,
+	TWI_IRQ_MOSI,
+	TWI_IRQ_STATUS,
 	TWI_IRQ_COUNT
 };
 
+enum {
+	TWI_COND_START = (1 << 0),
+	TWI_COND_STOP = (1 << 1),
+	TWI_COND_ADDR = (1 << 2),
+	TWI_COND_ACK = (1 << 3),
+	TWI_COND_WRITE = (1 << 4),
+	TWI_COND_READ = (1 << 5),
+};
+
+typedef struct avr_twi_msg_t {
+	uint32_t unused : 8,
+		msg : 8,
+		addr : 8,
+		data : 8;
+} avr_twi_msg_t;
+
+typedef struct avr_twi_msg_irq_t {
+	union {
+		uint32_t v;
+		avr_twi_msg_t twi;
+	} u;
+} avr_twi_msg_irq_t;
 
 // add port number to get the real IRQ
 #define AVR_IOCTL_TWI_GETIRQ(_name) AVR_IOCTL_DEF('t','w','i',(_name))
-// return a pointer to the slave structure related to this TWI port
-#define AVR_IOCTL_TWI_GETSLAVE(_name) AVR_IOCTL_DEF('t','w','s',(_name))
-// retutn this twi interface "master" bus
-#define AVR_IOCTL_TWI_GETBUS(_name) AVR_IOCTL_DEF('t','w','b',(_name))
 
 typedef struct avr_twi_t {
 	avr_io_t	io;
 	char name;
-	
-	twi_slave_t 	slave;		// when we are a slave, to be attached to some bus
-	twi_bus_t 		bus;		// when we are a master, to attach slaves to
-	
+
 	avr_regbit_t	disabled;	// bit in the PRR
 
 	avr_io_addr_t	r_twbr;			// bit rate register
@@ -65,9 +81,16 @@ typedef struct avr_twi_t {
 	avr_regbit_t twsr;		// status registers, (5 bits)
 	avr_regbit_t twps;		// prescaler bits (2 bits)
 	
-	avr_int_vector_t twi;	// spi interrupt
+	avr_int_vector_t twi;	// twi interrupt
+
+	uint8_t state;
+	uint8_t peer_addr;
+	uint8_t next_twstate;
 } avr_twi_t;
 
-void avr_twi_init(avr_t * avr, avr_twi_t * port);
+void
+avr_twi_init(
+		avr_t * avr,
+		avr_twi_t * port);
 
 #endif /* AVR_TWI_H_ */
