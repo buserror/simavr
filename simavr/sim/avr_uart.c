@@ -71,8 +71,8 @@ static uint8_t avr_uart_rxc_read(struct avr_t * avr, avr_io_addr_t addr, void * 
 			usleep(1);
 	}
 	// if reception is idle and the fifo is empty, tell whomever there is room
-	if (avr_regbit_get(avr, p->rxen) && uart_fifo_isempty(&p->input))
-		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XON, 1);
+	if (avr_regbit_get(avr, p->rxen))
+		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XON, uart_fifo_isempty(&p->input) != 0);
 
 	return v;
 }
@@ -185,8 +185,7 @@ static void avr_uart_irq_input(struct avr_irq_t * irq, uint32_t value, void * pa
 
 //	printf("UART IRQ in %02x (%d/%d) %s\n", value, p->input.read, p->input.write, uart_fifo_isfull(&p->input) ? "FULL!!" : "");
 
-	if (uart_fifo_isfull(&p->input))
-		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, 1);
+	avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, uart_fifo_isfull(&p->input) != 0);
 }
 
 
@@ -254,6 +253,9 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 
 	// allocate this module's IRQ
 	avr_io_setirqs(&p->io, AVR_IOCTL_UART_GETIRQ(p->name), UART_IRQ_COUNT, NULL);
+	// Only call callbacks when the value change...
+	p->io.irq[UART_IRQ_OUT_XOFF].flags |= IRQ_FLAG_FILTERED;
+	p->io.irq[UART_IRQ_OUT_XON].flags |= IRQ_FLAG_FILTERED;
 
 	avr_register_io_write(avr, p->r_udr, avr_uart_write, p);
 	avr_register_io_write(avr, p->udrc.enable.reg, avr_uart_write, p);
