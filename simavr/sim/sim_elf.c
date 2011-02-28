@@ -43,7 +43,7 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 	avr->avcc = firmware->avcc;
 	avr->aref = firmware->aref;
 #if CONFIG_SIMAVR_TRACE
-	avr->codeline = firmware->codeline;
+	avr->trace_data->codeline = firmware->codeline;
 #endif
 
 	avr_loadcode(avr, firmware->flash, firmware->flashsize, firmware->flashbase);

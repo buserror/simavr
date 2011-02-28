@@ -75,6 +75,39 @@ enum {
 	cpu_StepDone,	// tell gdb it's all OK, and give it registers
 };
 
+// this is only ever used if CONFIG_SIMAVR_TRACE is defined
+struct avr_trace_data_t {
+	struct avr_symbol_t ** codeline;
+
+	/* DEBUG ONLY
+	 * this keeps track of "jumps" ie, call,jmp,ret,reti and so on
+	 * allows dumping of a meaningful data even if the stack is
+	 * munched and so on
+	 */
+	#define OLD_PC_SIZE	32
+	struct {
+		uint32_t pc;
+		uint16_t sp;
+	} old[OLD_PC_SIZE]; // catches reset..
+	int			old_pci;
+
+#if AVR_STACK_WATCH
+	#define STACK_FRAME_SIZE	32
+	// this records the call/ret pairs, to try to catch
+	// code that munches the stack -under- their own frame
+	struct {
+		uint32_t	pc;
+		uint16_t 	sp;		
+	} stack_frame[STACK_FRAME_SIZE];
+	int			stack_frame_index;
+#endif
+
+	// DEBUG ONLY
+	// keeps track of which registers gets touched by instructions
+	// reset before each new instructions. Allows meaningful traces
+	uint32_t	touched[256 / 32];	// debug
+};
+
 /*
  * Main AVR instance. Some of these fields are set by the AVR "Core" definition files
  * the rest is runtime data (as little as possible)
@@ -216,37 +249,8 @@ typedef struct avr_t {
 	// DEBUG ONLY -- value ignored if CONFIG_SIMAVR_TRACE = 0
 	int		trace;
 
-#if CONFIG_SIMAVR_TRACE
-	struct avr_symbol_t ** codeline;
-
-	/* DEBUG ONLY
-	 * this keeps track of "jumps" ie, call,jmp,ret,reti and so on
-	 * allows dumping of a meaningful data even if the stack is
-	 * munched and so on
-	 */
-	#define OLD_PC_SIZE	32
-	struct {
-		uint32_t pc;
-		uint16_t sp;
-	} old[OLD_PC_SIZE]; // catches reset..
-	int			old_pci;
-
-#if AVR_STACK_WATCH
-	#define STACK_FRAME_SIZE	32
-	// this records the call/ret pairs, to try to catch
-	// code that munches the stack -under- their own frame
-	struct {
-		uint32_t	pc;
-		uint16_t 	sp;		
-	} stack_frame[STACK_FRAME_SIZE];
-	int			stack_frame_index;
-#endif
-
-	// DEBUG ONLY
-	// keeps track of which registers gets touched by instructions
-	// reset before each new instructions. Allows meaningful traces
-	uint32_t	touched[256 / 32];	// debug
-#endif
+	// Only used if CONFIG_SIMAVR_TRACE is defined
+	struct avr_trace_data_t *trace_data;
 
 	// VALUE CHANGE DUMP file (waveforms)
 	// this is the VCD file that gets allocated if the 
