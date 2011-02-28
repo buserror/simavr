@@ -145,7 +145,7 @@ avr_twi_write(
 	if (!twen)
 		return;
 
-	int cleared = avr_clear_interupt_if(avr, &p->twi, twint);
+	int cleared = avr_clear_interrupt_if(avr, &p->twi, twint);
 
 	// clear the interrupt if this bit is now written to 1
 	if (cleared) {

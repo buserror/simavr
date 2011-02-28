@@ -34,7 +34,7 @@ static avr_cycle_count_t avr_uart_txc_raise(struct avr_t * avr, avr_cycle_count_
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 	if (avr_regbit_get(avr, p->txen)) {
-		// if the interrupts are not used, still raised the UDRE and TXC flag
+		// if the interrupts are not used, still raise the UDRE and TXC flag
 		avr_raise_interrupt(avr, &p->udrc);
 		avr_raise_interrupt(avr, &p->txc);
 	}
@@ -143,14 +143,14 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 	}
 	if (addr == p->udrc.enable.reg) {
 		/*
-		 * If enabling the UDRC interupt, raise it immediately if FIFO is empty
+		 * If enabling the UDRC interrupt, raise it immediately if FIFO is empty
 		 */
 		uint8_t udrce = avr_regbit_get(avr, p->udrc.enable);
 		avr_core_watch_write(avr, addr, v);
 		uint8_t nudrce = avr_regbit_get(avr, p->udrc.enable);
 		if (!udrce && nudrce) {
-			// if the FIDO is not empty (clear timer is flying) we dont
-			// need to raise the interupt, it will happend when the timer
+			// if the FIDO is not empty (clear timer is flying) we don't
+			// need to raise the interrupt, it will happen when the timer
 			// is fired.
 			if (avr_cycle_timer_status(avr, avr_uart_txc_raise, p) == 0)
 				avr_raise_interrupt(avr, &p->udrc);
@@ -162,11 +162,11 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 		uint8_t txc = avr_regbit_get(avr, p->txc.raised);
 
 		// no need to write this value in here, only the
-		// interupt flags needs clearing!
+		// interrupt flags need clearing!
 		// avr_core_watch_write(avr, addr, v);
 
-		//avr_clear_interupt_if(avr, &p->udrc, udre);
-		avr_clear_interupt_if(avr, &p->txc, txc);
+		//avr_clear_interrupt_if(avr, &p->udrc, udre);
+		avr_clear_interrupt_if(avr, &p->txc, txc);
 	}
 }
 

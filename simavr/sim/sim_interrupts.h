@@ -19,8 +19,8 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __SIM_INTERUPTS_H__
-#define __SIM_INTERUPTS_H__
+#ifndef __SIM_INTERRUPTS_H__
+#define __SIM_INTERRUPTS_H__
 
 #include "sim_avr.h"
 #include "sim_irq.h"
@@ -58,14 +58,14 @@ void avr_clear_interrupt(avr_t * avr, int v);
 void avr_service_interrupts(avr_t * avr);
 
 // clear the interrupt (inc pending) if "raised" flag is 1
-int avr_clear_interupt_if(avr_t * avr, avr_int_vector_t * vector, uint8_t old);
+int avr_clear_interrupt_if(avr_t * avr, avr_int_vector_t * vector, uint8_t old);
 
 // return the IRQ that is raised when the vector is enabled and called/cleared
-// this allows tracing of pending interupts
-avr_irq_t * avr_get_interupt_irq(avr_t * avr, uint8_t v);
+// this allows tracing of pending interrupts
+avr_irq_t * avr_get_interrupt_irq(avr_t * avr, uint8_t v);
 
 #ifdef __cplusplus
 };
 #endif
 
-#endif /* __SIM_INTERUPTS_H__ */
+#endif /* __SIM_INTERRUPTS_H__ */

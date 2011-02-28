@@ -98,7 +98,7 @@ void avr_clear_interrupt(avr_t * avr, int v)
 		avr_regbit_clear(avr, vector->raised);
 }
 
-int avr_clear_interupt_if(avr_t * avr, avr_int_vector_t * vector, uint8_t old)
+int avr_clear_interrupt_if(avr_t * avr, avr_int_vector_t * vector, uint8_t old)
 {
 	if (avr_regbit_get(avr, vector->raised)) {
 		avr_clear_interrupt(avr, vector->vector);
@@ -109,7 +109,7 @@ int avr_clear_interupt_if(avr_t * avr, avr_int_vector_t * vector, uint8_t old)
 	return 0;
 }
 
-avr_irq_t * avr_get_interupt_irq(avr_t * avr, uint8_t v)
+avr_irq_t * avr_get_interrupt_irq(avr_t * avr, uint8_t v)
 {
 	avr_int_vector_t * vector = avr->vector[v];
 	return vector ? &vector->irq : NULL;
@@ -135,7 +135,7 @@ void avr_service_interrupts(avr_t * avr)
 							int bit = ffs(map)-1;
 							int v = (bi * 32) + bit;	// vector
 							avr_int_vector_t * vector = avr->vector[v];
-							// if that single interupt is masked, ignore it and continue
+							// if that single interrupt is masked, ignore it and continue
 							if (vector && !avr_regbit_get(avr, vector->enable)) {
 								map &= ~(1 << bit);
 								continue;

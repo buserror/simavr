@@ -1,7 +1,7 @@
 /*
 	avr_extint.h
 
-	External Interupt Handling (for INT0-3)
+	External Interrupt Handling (for INT0-3)
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 

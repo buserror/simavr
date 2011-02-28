@@ -332,11 +332,11 @@ static void avr_timer_write_pending(struct avr_t * avr, avr_io_addr_t addr, uint
 	avr_core_watch_write(avr, addr, v);
 
 	// clear any interrupts & flags
-	avr_clear_interupt_if(avr, &p->overflow, ov);
-	avr_clear_interupt_if(avr, &p->icr, ic);
+	avr_clear_interrupt_if(avr, &p->overflow, ov);
+	avr_clear_interrupt_if(avr, &p->icr, ic);
 
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++)
-		avr_clear_interupt_if(avr, &p->comp[compi].interrupt, cp[compi]);
+		avr_clear_interrupt_if(avr, &p->comp[compi].interrupt, cp[compi]);
 }
 
 static void avr_timer_irq_icp(struct avr_irq_t * irq, uint32_t value, void * param)
