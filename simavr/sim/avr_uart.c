@@ -158,14 +158,14 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 	}
 	if (addr == p->udrc.raised.reg) {
 		// get the bits before the write
-		uint8_t udre = avr_regbit_get(avr, p->udrc.raised);
+		//uint8_t udre = avr_regbit_get(avr, p->udrc.raised);
 		uint8_t txc = avr_regbit_get(avr, p->txc.raised);
 
 		// no need to write this value in here, only the
 		// interupt flags needs clearing!
 		// avr_core_watch_write(avr, addr, v);
 
-		avr_clear_interupt_if(avr, &p->udrc, udre);
+		//avr_clear_interupt_if(avr, &p->udrc, udre);
 		avr_clear_interupt_if(avr, &p->txc, txc);
 	}
 }
