@@ -35,9 +35,9 @@ DECLARE_FIFO(uint8_t, uart_fifo, 64);
  *
  * The slightly more tricky one is the INPUT part. Since the AVR is quite a bit
  * slower than your code most likely, there is a way for the AVR UART to tell
- * you to "pause" sending it bytes when it's own input buffer is full.
- * So, the UART will send XON to you when it's fifo is empty, XON means you can
- * send as many bytes as you have until XOFF is send. Note that these are two
+ * you to "pause" sending it bytes when its own input buffer is full.
+ * So, the UART will send XON to you when its fifo is empty, XON means you can
+ * send as many bytes as you have until XOFF is sent. Note that these are two
  * IRQs because you /will/ be called with XOFF when sending a byte in INPUT...
  * So it's a reentrant process.
  *
@@ -50,13 +50,13 @@ DECLARE_FIFO(uint8_t, uart_fifo, 64);
  * volatile int off = 0;
  * void irq_xon()
  * {
- * 	off = 0;
- * 	while (!off && bytes_lefts)
+ *     off = 0;
+ *     while (!off && bytes_left)
  *     avr_raise_irq(UART_IRQ_INPUT, a_byte);
  * }
  * void irq_xoff()
  * {
- *  off = 1;
+ *     off = 1;
  * }
  *
  */

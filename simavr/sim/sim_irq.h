@@ -31,7 +31,7 @@ extern "C" {
 /*
  * Internal IRQ system
  * 
- * This subsystem allow any piece of code to "register" a hook to be called when an IRQ is
+ * This subsystem allows any piece of code to "register" a hook to be called when an IRQ is
  * raised. The IRQ definition is up to the module defining it, for example a IOPORT pin change
  * might be an IRQ in which case any piece of code can be notified when a pin has changed state
  * 

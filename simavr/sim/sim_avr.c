@@ -198,7 +198,7 @@ void avr_callback_run_gdb(avr_t * avr)
 		avr->pending_wait++;
 	avr->i_shadow = avr->sreg[S_I];
 
-	// run the cycle timers, get the suggested sleeo time
+	// run the cycle timers, get the suggested sleep time
 	// until the next timer is due
 	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
 
