@@ -40,8 +40,8 @@ const char * _sreg_bit_name = "cznvshti";
 
 #define T(w) w
 
-#define REG_TOUCH(a, r) (a)->touched[(r) >> 5] |= (1 << ((r) & 0x1f))
-#define REG_ISTOUCHED(a, r) ((a)->touched[(r) >> 5] & (1 << ((r) & 0x1f)))
+#define REG_TOUCH(a, r) (a)->trace_data->touched[(r) >> 5] |= (1 << ((r) & 0x1f))
+#define REG_ISTOUCHED(a, r) ((a)->trace_data->touched[(r) >> 5] & (1 << ((r) & 0x1f)))
 
 /*
  * This allows a "special case" to skip indtruction tracing when in these
@@ -63,8 +63,8 @@ int donttrace = 0;
 
 #define STATE(_f, args...) { \
 	if (avr->trace) {\
-		if (avr->codeline && avr->codeline[avr->pc>>1]) {\
-			const char * symn = avr->codeline[avr->pc>>1]->symbol; \
+		if (avr->trace_data->codeline && avr->trace_data->codeline[avr->pc>>1]) {\
+			const char * symn = avr->trace_data->codeline[avr->pc>>1]->symbol; \
 			int dont = 0 && dont_trace(symn);\
 			if (dont!=donttrace) { \
 				donttrace = dont;\
@@ -107,7 +107,7 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 	 * higher on the stack than it should be. It's a sign of code that has overrun it's stack
 	 * frame and is munching on it's own return address.
 	 */
-	if (avr->stack_frame_index > 1 && addr > avr->stack_frame[avr->stack_frame_index-2].sp) {
+	if (avr->trace_data->stack_frame_index > 1 && addr > avr->trace_data->stack_frame[avr->trace_data->stack_frame_index-2].sp) {
 		printf("\e[31m%04x : munching stack SP %04x, A=%04x <= %02x\e[0m\n", avr->pc, _avr_sp_get(avr), addr, v);
 	}
 #endif
@@ -277,7 +277,7 @@ static void _avr_invalid_opcode(avr_t * avr)
 {
 #if CONFIG_SIMAVR_TRACE
 	printf("\e[31m*** %04x: %-25s Invalid Opcode SP=%04x O=%04x \e[0m\n",
-			avr->pc, avr->codeline[avr->pc>>1]->symbol, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
+			avr->pc, avr->trace_data->codeline[avr->pc>>1]->symbol, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
 #else
 	printf("\e[31m*** %04x: Invalid Opcode SP=%04x O=%04x \e[0m\n",
 			avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
@@ -296,7 +296,7 @@ void avr_dump_state(avr_t * avr)
 	int doit = 0;
 
 	for (int r = 0; r < 3 && !doit; r++)
-		if (avr->touched[r])
+		if (avr->trace_data->touched[r])
 			doit = 1;
 	if (!doit)
 		return;
@@ -333,18 +333,18 @@ void avr_dump_state(avr_t * avr)
  */
 #if CONFIG_SIMAVR_TRACE
 #define TRACE_JUMP()\
-	avr->old[avr->old_pci].pc = avr->pc;\
-	avr->old[avr->old_pci].sp = _avr_sp_get(avr);\
-	avr->old_pci = (avr->old_pci + 1) & (OLD_PC_SIZE-1);\
+	avr->trace_data->old[avr->trace_data->old_pci].pc = avr->pc;\
+	avr->trace_data->old[avr->trace_data->old_pci].sp = _avr_sp_get(avr);\
+	avr->trace_data->old_pci = (avr->trace_data->old_pci + 1) & (OLD_PC_SIZE-1);\
 
 #if AVR_STACK_WATCH
 #define STACK_FRAME_PUSH()\
-	avr->stack_frame[avr->stack_frame_index].pc = avr->pc;\
-	avr->stack_frame[avr->stack_frame_index].sp = _avr_sp_get(avr);\
-	avr->stack_frame_index++; 
+	avr->trace_data->stack_frame[avr->trace_data->stack_frame_index].pc = avr->pc;\
+	avr->trace_data->stack_frame[avr->trace_data->stack_frame_index].sp = _avr_sp_get(avr);\
+	avr->trace_data->stack_frame_index++; 
 #define STACK_FRAME_POP()\
-	if (avr->stack_frame_index > 0) \
-		avr->stack_frame_index--;
+	if (avr->trace_data->stack_frame_index > 0) \
+		avr->trace_data->stack_frame_index--;
 #else
 #define STACK_FRAME_PUSH()
 #define STACK_FRAME_POP()
@@ -457,7 +457,7 @@ uint16_t avr_run_one(avr_t * avr)
 		STATE("RESET\n");
 		CRASH();
 	}
-	avr->touched[0] = avr->touched[1] = avr->touched[2] = 0;
+	avr->trace_data->touched[0] = avr->trace_data->touched[1] = avr->trace_data->touched[2] = 0;
 #endif
 
 	uint32_t	opcode = (avr->flash[avr->pc + 1] << 8) | avr->flash[avr->pc];

@@ -62,12 +62,12 @@ void avr_dump_state(avr_t * avr);
 
 #if AVR_STACK_WATCH
 #define DUMP_STACK() \
-		for (int i = avr->stack_frame_index; i; i--) {\
+		for (int i = avr->trace_data->stack_frame_index; i; i--) {\
 			int pci = i-1;\
 			printf("\e[31m*** %04x: %-25s sp %04x\e[0m\n",\
-					avr->stack_frame[pci].pc, \
-					avr->codeline ? avr->codeline[avr->stack_frame[pci].pc>>1]->symbol : "unknown", \
-							avr->stack_frame[pci].sp);\
+					avr->trace_data->stack_frame[pci].pc, \
+					avr->trace_data->codeline ? avr->trace_data->codeline[avr->trace_data->stack_frame[pci].pc>>1]->symbol : "unknown", \
+							avr->trace_data->stack_frame[pci].sp);\
 		}
 #else
 #define DUMP_STACK()
@@ -77,9 +77,9 @@ void avr_dump_state(avr_t * avr);
 		DUMP_REG();\
 		printf("*** CYCLE %" PRI_avr_cycle_count "PC %04x\n", avr->cycle, avr->pc);\
 		for (int i = OLD_PC_SIZE-1; i > 0; i--) {\
-			int pci = (avr->old_pci + i) & 0xf;\
+			int pci = (avr->trace_data->old_pci + i) & 0xf;\
 			printf("\e[31m*** %04x: %-25s RESET -%d; sp %04x\e[0m\n",\
-					avr->old[pci].pc, avr->codeline ? avr->codeline[avr->old[pci].pc>>1]->symbol : "unknown", OLD_PC_SIZE-i, avr->old[pci].sp);\
+					avr->trace_data->old[pci].pc, avr->trace_data->codeline ? avr->trace_data->codeline[avr->trace_data->old[pci].pc>>1]->symbol : "unknown", OLD_PC_SIZE-i, avr->trace_data->old[pci].sp);\
 		}\
 		printf("Stack Ptr %04x/%04x = %d \n", _avr_sp_get(avr), avr->ramend, avr->ramend - _avr_sp_get(avr));\
 		DUMP_STACK();\

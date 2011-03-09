@@ -1,7 +1,7 @@
 #
-# This makefile take each "at*" file, extracts it's part name
-# And compile it into an ELF binary.
-# It also disassemble it for debugging purposes.
+# This makefile takes each "at*" file, extracts it's part name
+# And compiles it into an ELF binary.
+# It also disassembles it for debugging purposes.
 # 
 # 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 #
@@ -24,8 +24,16 @@
 SHELL	 = /bin/bash
 
 sources		:= $(wildcard at*.c)
+test_sources    := $(wildcard test_*.c)
+simavr = ..
 
-all :  ${sources:.c=.axf}
+IPATH += ${simavr}/include
+IPATH += ${simavr}/simavr/sim
+CFLAGS += -Wall
+TEST_SRC=${wildcard test_*.c}
+TESTS=${TEST_SRC:.c=}
+
+all: obj ${sources:.c=.axf} ${TESTS}
 # if you want hex files
 #all : ${sources:.c=.hex}
 # if you need assembler output
@@ -33,5 +41,14 @@ all :  ${sources:.c=.axf}
 
 include ../Makefile.common
 
-clean:
-	rm -f *.hex *.o *.axf *.s
+# do not delete intermediate .o files after running `make run_tests'
+.SECONDARY:
+
+test_%: ${OBJ}/test_%.o ${OBJ}/tests.o ${simavr}/simavr/${OBJ}/libsimavr.so
+	gcc ${LFLAGS} -o $@ $^ ${LDFLAGS}
+
+run_tests: obj ${sources:.c=.axf} ${TESTS}
+	./run_tests
+
+clean: clean-${OBJ}
+	rm -f ${TESTS} *.axf

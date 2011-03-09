@@ -25,9 +25,9 @@
 #include <avr/sleep.h>
 
 /*
- * This demonstrate how to use the avr_mcu_section.h file
+ * This demonstrates how to use the avr_mcu_section.h file.
  * The macro adds a section to the ELF file with useful
- * information for the simulator
+ * information for the simulator.
  */
 #include "avr_mcu_section.h"
 AVR_MCU(F_CPU, "atmega88");
@@ -79,20 +79,20 @@ int main()
 	// use CLK/8 prescale value, clear timer/counter on compareA match
 	// toggle OC2A pin too
 	TCCR2A = (1 << WGM21) | (1 << COM2A0);
-    TCCR2B = (2 << CS20); // prescaler
-    OCR2A = 63;	// 64 hz
-    TIMSK2  |= (1 << OCIE2A);
+	TCCR2B = (2 << CS20); // prescaler
+	OCR2A = 63;	// 64 hz
+	TIMSK2  |= (1 << OCIE2A);
 
 	sei();
 	
 	int count = 0;
-    while (count++ < 100) {
-    	// we read TCNT1, which should contain some sort of incrementing value
-    	tcnt = TCNT1;		// read it
-    	if (tcnt > 10000) {
-    		TCNT1 = 500;	// reset it arbitrarily
-    		PORTB ^= 2;		// mark it in the waveform file
-    	}
+	while (count++ < 100) {
+		// we read TCNT1, which should contain some sort of incrementing value
+		tcnt = TCNT1;		// read it
+		if (tcnt > 10000) {
+			TCNT1 = 500;	// reset it arbitrarily
+			PORTB ^= 2;		// mark it in the waveform file
+		}
 		sleep_cpu();    	// this will sleep until a new timer2 tick interrupt occurs
 	}
 	// sleeping with interrupt off is interpreted by simavr as "exit please"

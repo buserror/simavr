@@ -1,8 +1,10 @@
 /*
  * avrtest.c
  *
- *  Created on: 1 Dec 2009
- *      Author: jone
+ * Created on: 4 Feb 2011
+ * Author: sliedes
+ * This is a very slightly modified version of atmega48_disabled_timer.c
+ * by jone.
  */
 
 #include <avr/io.h>
@@ -23,7 +25,7 @@ int main(void)
 	TIMSK0 |= (1 << OCIE0A);                    // Enable CTC interrupt
 	OCR0A   = 0xAA;                             // CTC compare value
 
-	//TCCR0B |= (1 << CS00) | (1 << CS01);        // Start timer: clk/64
+	TCCR0B |= (1 << CS00) | (1 << CS01);        // Start timer: clk/64
 
 	sei();                                      // Enable global interrupts
 

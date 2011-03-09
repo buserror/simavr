@@ -37,6 +37,9 @@ int avr_init(avr_t * avr)
 	memset(avr->flash, 0xff, avr->flashend + 1);
 	avr->data = malloc(avr->ramend + 1);
 	memset(avr->data, 0, avr->ramend + 1);
+#ifdef CONFIG_SIMAVR_TRACE
+	avr->trace_data = calloc(1, sizeof(struct avr_trace_data_t));
+#endif
 
 	// cpu is in limbo before init is finished.
 	avr->state = cpu_Limbo;
