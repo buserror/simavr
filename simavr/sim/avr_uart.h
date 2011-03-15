@@ -92,6 +92,9 @@ typedef struct avr_uart_t {
 	avr_regbit_t	rxen;		// receive enabled
 	avr_regbit_t	txen;		// transmit enable
 	avr_regbit_t	u2x;		// double UART speed
+	avr_regbit_t	usbs;		// stop bits
+	avr_regbit_t	ucsz;		// data bits
+	avr_regbit_t	ucsz2;		// data bits, continued
 
 	avr_io_addr_t r_ubrrl,r_ubrrh;
 
@@ -102,6 +105,7 @@ typedef struct avr_uart_t {
 	uart_fifo_t	input;
 
 	uint32_t		flags;
+	avr_cycle_count_t usec_per_byte;
 } avr_uart_t;
 
 /* takes a uint32_t* as parameter */

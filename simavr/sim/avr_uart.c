@@ -97,8 +97,9 @@ static uint8_t avr_uart_read(struct avr_t * avr, avr_io_addr_t addr, void * para
 	// made to trigger potential watchpoints
 	v = avr_core_watch_read(avr, addr);
 
-	if (!uart_fifo_isempty(&p->input))
-		avr_cycle_timer_register_usec(avr, 100, avr_uart_rxc_raise, p); // should be uart speed dependent
+	// should always trigger that timer
+//	if (!uart_fifo_isempty(&p->input))
+	avr_cycle_timer_register_usec(avr, p->usec_per_byte, avr_uart_rxc_raise, p);
 
 	return v;
 }
@@ -113,7 +114,17 @@ static void avr_uart_baud_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 		baud /= 8;
 	else
 		baud /= 16;
-	printf("UART-%c configured to %04x = %d baud\n", p->name, val, baud);
+
+	const int databits[] = { 5,6,7,8,  /* 'reserved', assume 8 */8,8,8, 9 };
+	int db = databits[avr_regbit_get(avr, p->ucsz) | (avr_regbit_get(avr, p->ucsz2) << 2)];
+	int sb = 1 + avr_regbit_get(avr, p->usbs);
+	int word_size = 1 /* start */ + db /* data bits */ + 1 /* parity */ + sb /* stops */;
+
+	printf("UART-%c configured to %04x = %d bps, %d data %d stop\n",
+			p->name, val, baud, db, sb);
+	// TODO: Use the divider value and calculate the straight number of cycles
+	p->usec_per_byte = 1000000 / (baud / word_size);
+	printf("Roughtly %d usec per bytes\n", (int)p->usec_per_byte);
 }
 
 static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
@@ -124,7 +135,8 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 		avr_core_watch_write(avr, addr, v);
 
 		avr_regbit_clear(avr, p->udrc.raised);
-		avr_cycle_timer_register_usec(avr, 100, avr_uart_txc_raise, p); // should be uart speed dependent
+		avr_cycle_timer_register_usec(avr,
+				p->usec_per_byte, avr_uart_txc_raise, p); // should be uart speed dependent
 
 		if (p->flags & AVR_UART_FLAG_STDIO) {
 			static char buf[128];
@@ -180,7 +192,7 @@ static void avr_uart_irq_input(struct avr_irq_t * irq, uint32_t value, void * pa
 		return;
 
 	if (uart_fifo_isempty(&p->input))
-		avr_cycle_timer_register_usec(avr, 100, avr_uart_rxc_raise, p); // should be uart speed dependent
+		avr_cycle_timer_register_usec(avr, p->usec_per_byte, avr_uart_rxc_raise, p); // should be uart speed dependent
 	uart_fifo_write(&p->input, value); // add to fifo
 
 //	printf("UART IRQ in %02x (%d/%d) %s\n", value, p->input.read, p->input.write, uart_fifo_isfull(&p->input) ? "FULL!!" : "");
@@ -201,7 +213,7 @@ void avr_uart_reset(struct avr_io_t *io)
 
 	// DEBUG allow printf without fidding with enabling the uart
 	avr_regbit_set(avr, p->txen);
-
+	p->usec_per_byte = 100;
 }
 
 static int avr_uart_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
