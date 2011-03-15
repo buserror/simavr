@@ -101,6 +101,12 @@ avr_twi_set_state_timer(
 	return 0;
 }
 
+/*
+ * This is supposed to trigger a timer whose duration is a multiple
+ * of 'twi' clock cycles, which should be derived from the prescaler
+ * (100khz, 400khz etc).
+ * Right now it cheats and uses one twi cycle == one usec.
+ */
 static void
 _avr_twi_delay_state(
 		avr_twi_t * p,
@@ -129,6 +135,13 @@ avr_twi_write(
 
 	avr_core_watch_write(avr, addr, v);
 
+	printf("avr_twi_write %02x START:%d STOP:%d ACK:%d INT:%d TWSR:%02x\n", v,
+			avr_regbit_get(avr, p->twsta),
+			avr_regbit_get(avr, p->twsto),
+			avr_regbit_get(avr, p->twea),
+			avr_regbit_get(avr, p->twi.raised),
+			avr_regbit_get_raw(p->io.avr, p->twsr));
+
 	if (twen != avr_regbit_get(avr, p->twen)) {
 		twen = !twen;
 		if (!twen) { // if we were running, now now are not
@@ -141,42 +154,37 @@ avr_twi_write(
 			p->state = 0;
 			p->peer_addr = 0;
 		}
+		printf("TWEN: %d\n", twen);
 	}
 	if (!twen)
 		return;
 
-	int cleared = avr_clear_interrupt_if(avr, &p->twi, twint);
+	uint8_t cleared = avr_regbit_get(avr, p->twi.raised);
 
-	// clear the interrupt if this bit is now written to 1
-	if (cleared) {
-		// interrupt was raised before. The AVR code is acknowledging
-		// something we did, so we go to the next state
-	} else {
-		// interrupt was not raised, were we busy ? we can ignore that
-		// for now...
-	}
+	/*int cleared = */avr_clear_interrupt_if(avr, &p->twi, twint);
+//	printf("cleared %d\n", cleared);
 
 	if (!twsto && avr_regbit_get(avr, p->twsto)) {
 		// generate a stop condition
+		printf("<<<<< I2C stop\n");
 
 		if (p->state) { // doing stuff
 			if (p->state & TWI_COND_START) {
-				avr_twi_msg_irq_t msg = {
-						.u.twi.msg = TWI_COND_STOP,
-						.u.twi.addr = p->peer_addr,
-				};
-				avr_raise_irq(p->io.irq + TWI_IRQ_MOSI, msg.u.v);
+				avr_raise_irq(p->io.irq + TWI_IRQ_MOSI,
+						avr_twi_irq_msg(TWI_COND_STOP, p->peer_addr, 1));
 			}
 		}
 		p->state = 0;
 	}
 	if (!twsta && avr_regbit_get(avr, p->twsta)) {
+		printf(">>>>> I2C %sstart\n", p->state & TWI_COND_START ? "RE" : "");
 		// generate a start condition
 		if (p->state & TWI_COND_START)
 			_avr_twi_delay_state(p, 3, TWI_REP_START);
 		else
 			_avr_twi_delay_state(p, 3, TWI_START);
-		p->state |= TWI_COND_START;
+		p->peer_addr = 0;
+		p->state = TWI_COND_START;
 	}
 
 	if (cleared &&
@@ -184,23 +192,26 @@ avr_twi_write(
 			!avr_regbit_get(avr, p->twsto)) {
 		// writing or reading a byte
 		if (p->state & TWI_COND_ADDR) {
+			if (p->peer_addr & 1)
+				printf("I2C READ byte from %02x\n", p->peer_addr);
+			else
+				printf("I2C WRITE byte %02x to %02x\n", avr->data[p->r_twdr], p->peer_addr);
 			// a normal data byte
 			uint8_t msgv = p->peer_addr & 1 ? TWI_COND_READ : TWI_COND_WRITE;
 			if (avr_regbit_get(avr, p->twea))
 				msgv |= TWI_COND_ACK;
-			avr_twi_msg_irq_t msg = {
-					.u.twi.msg = msgv,
-					.u.twi.addr = p->peer_addr,
-					.u.twi.data = avr->data[p->r_twdr],
-			};
+
+			p->state &= ~TWI_COND_ACK;	// clear ACK bit
+
 			// we send an IRQ and we /expect/ a slave to reply
 			// immediately via an IRQ to set the COND_ACK bit
 			// otherwise it's assumed it's been nacked...
-			avr_raise_irq(p->io.irq + TWI_IRQ_MOSI, msg.u.v);
+			avr_raise_irq(p->io.irq + TWI_IRQ_MOSI,
+					avr_twi_irq_msg(msgv, p->peer_addr, avr->data[p->r_twdr]));
 
 			if (p->peer_addr & 1) { // read ?
 				_avr_twi_delay_state(p, 9,
-						p->state & TWI_COND_ACK ?
+						msgv & TWI_COND_ACK ?
 								TWI_MTX_DATA_ACK : TWI_MTX_DATA_NACK);
 			} else {
 				_avr_twi_delay_state(p, 9,
@@ -209,17 +220,17 @@ avr_twi_write(
 			}
 
 		} else {
+			printf("I2C Master address %02x\n", avr->data[p->r_twdr]);
 			// send the address
 			p->state |= TWI_COND_ADDR;
 			p->peer_addr = avr->data[p->r_twdr];
-			avr_twi_msg_irq_t msg = {
-					.u.twi.msg = TWI_COND_START,
-					.u.twi.addr = p->peer_addr,
-			};
+			p->state &= ~TWI_COND_ACK;	// clear ACK bit
+
 			// we send an IRQ and we /expect/ a slave to reply
 			// immediately via an IRQ tp set the COND_ACK bit
 			// otherwise it's assumed it's been nacked...
-			avr_raise_irq(p->io.irq + TWI_IRQ_MOSI, msg.u.v);
+			avr_raise_irq(p->io.irq + TWI_IRQ_MOSI,
+					avr_twi_irq_msg(TWI_COND_START, p->peer_addr, 0));
 
 			if (p->peer_addr & 1) { // read ?
 				_avr_twi_delay_state(p, 9,
@@ -268,11 +279,21 @@ avr_twi_irq_input(
 	// check to see if we are enabled
 	if (!avr_regbit_get(avr, p->twen))
 		return;
-	switch (irq->irq) {
-		case TWI_IRQ_MISO:
-			break;
-		case TWI_IRQ_MOSI:
-			break;
+	avr_twi_msg_irq_t msg;
+	msg.u.v = value;
+
+	// receiving an acknowledge bit
+	if (msg.u.twi.msg & TWI_COND_ACK) {
+		printf("I2C received ACK:%d\n", msg.u.twi.data & 1);
+		if (msg.u.twi.data & 1)
+			p->state |= TWI_COND_ACK;
+		else
+			p->state &= ~TWI_COND_ACK;
+	}
+	// receive a data byte from a slave
+	if (msg.u.twi.msg & TWI_COND_READ) {
+		printf("I2C received %02x\n", msg.u.twi.data);
+		avr->data[p->r_twdr] = msg.u.twi.data;
 	}
 }
 
@@ -282,9 +303,16 @@ void avr_twi_reset(struct avr_io_t *io)
 	avr_irq_register_notify(p->io.irq + TWI_IRQ_MISO, avr_twi_irq_input, p);
 }
 
+static const char * irq_names[TWI_IRQ_COUNT] = {
+	[TWI_IRQ_MISO] = "8<mosi",
+	[TWI_IRQ_MOSI] = "32>miso",
+	[TWI_IRQ_STATUS] = "8>status",
+};
+
 static	avr_io_t	_io = {
 	.kind = "twi",
 	.reset = avr_twi_reset,
+	.irq_names = irq_names,
 };
 
 void avr_twi_init(avr_t * avr, avr_twi_t * p)
