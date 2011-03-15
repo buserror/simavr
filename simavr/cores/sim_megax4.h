@@ -121,6 +121,8 @@ struct mcu_t SIM_CORENAME = {
 
 		.txen = AVR_IO_REGBIT(UCSR0B, TXEN0),
 		.rxen = AVR_IO_REGBIT(UCSR0B, RXEN0),
+		.ucsz = AVR_IO_REGBITS(UCSR0C, UCSZ00, 0x3), // 2 bits
+		.ucsz2 = AVR_IO_REGBIT(UCSR0B, UCSZ02), 	// 1 bits
 
 		.r_ucsra = UCSR0A,
 		.r_ucsrb = UCSR0B,
@@ -150,6 +152,8 @@ struct mcu_t SIM_CORENAME = {
 
 		.txen = AVR_IO_REGBIT(UCSR1B, TXEN1),
 		.rxen = AVR_IO_REGBIT(UCSR1B, RXEN1),
+		.ucsz = AVR_IO_REGBITS(UCSR1C, UCSZ10, 0x3), // 2 bits
+		.ucsz2 = AVR_IO_REGBIT(UCSR1B, UCSZ12), 	// 1 bits
 
 		.r_ucsra = UCSR1A,
 		.r_ucsrb = UCSR1B,

@@ -83,6 +83,8 @@ static struct mcu_t {
 
 		.txen = AVR_IO_REGBIT(UCSRB, TXEN),
 		.rxen = AVR_IO_REGBIT(UCSRB, RXEN),
+		.ucsz = AVR_IO_REGBITS(UCSRC, UCSZ0, 0x3), // 2 bits
+		.ucsz2 = AVR_IO_REGBIT(UCSRB, UCSZ2), 	// 1 bits
 
 		.r_ucsra = UCSRA,
 		.r_ucsrb = UCSRB,
