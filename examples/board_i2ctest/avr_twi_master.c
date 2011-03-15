@@ -23,12 +23,12 @@
 *
 ****************************************************************************/
 
-#include "ioavr.h"              
-#include "inavr.h"
-#include "TWI_Master.h"
+#include "avr_twi_master.h"
 
-static unsigned char TWI_buf[ TWI_BUFFER_SIZE ];    // Transceiver buffer
+//static unsigned char TWI_buf[ TWI_BUFFER_SIZE ];    // Transceiver buffer
+static unsigned char *TWI_buf;
 static unsigned char TWI_msgSize;                   // Number of bytes to be transmitted.
+static unsigned char TWI_sendStop;
 static unsigned char TWI_state = TWI_NO_STATE;      // State byte. Default set to TWI_NO_STATE.
 
 union TWI_statusReg TWI_statusReg = {0};            // TWI_statusReg is defined in TWI_Master.h
@@ -74,19 +74,16 @@ from the slave. Also include how many bytes that should be sent/read including t
 The function will hold execution (loop) until the TWI_ISR has completed with the previous operation,
 then initialize the next operation and return.
 ****************************************************************************/
-void TWI_Start_Transceiver_With_Data( unsigned char *msg, unsigned char msgSize )
+void TWI_Start_Transceiver_With_Data(
+		unsigned char *msg, unsigned char msgSize, unsigned char sendStop )
 {
-  unsigned char temp;
+//  unsigned char temp;
 
   while ( TWI_Transceiver_Busy() );             // Wait until TWI is ready for next transmission.
 
   TWI_msgSize = msgSize;                        // Number of data to transmit.
-  TWI_buf[0]  = msg[0];                         // Store slave address with R/W setting.
-  if (!( msg[0] & (TRUE<<TWI_READ_BIT) ))       // If it is a write operation, then also copy data.
-  {
-    for ( temp = 1; temp < msgSize; temp++ )
-      TWI_buf[ temp ] = msg[ temp ];
-  }
+  TWI_sendStop = sendStop;
+  TWI_buf = msg; // store our current message
   TWI_statusReg.all = 0;      
   TWI_state         = TWI_NO_STATE ;
   TWCR = (1<<TWEN)|                             // TWI Interface enabled.
@@ -141,8 +138,7 @@ This function is the Interrupt Service Routine (ISR), and called when the TWI in
 that is whenever a TWI event has occurred. This function should not be called directly from the main
 application.
 ****************************************************************************/
-#pragma vector=TWI_vect
-__interrupt void TWI_ISR(void)
+ISR( TWI_vect )
 {
   static unsigned char TWI_bufPtr;
   
@@ -162,10 +158,11 @@ __interrupt void TWI_ISR(void)
                (0<<TWWC);                                 //  
       }else                    // Send STOP after last byte
       {
-        TWI_statusReg.lastTransOK = TRUE;                 // Set status bits to completed successfully. 
-        TWCR = (1<<TWEN)|                                 // TWI Interface enabled
+        TWI_statusReg.lastTransOK = TRUE;                 // Set status bits to completed successfully.
+        if (TWI_sendStop)
+        	TWCR = (1<<TWEN)|                                 // TWI Interface enabled
                (0<<TWIE)|(1<<TWINT)|                      // Disable TWI Interrupt and clear the flag
-               (0<<TWEA)|(0<<TWSTA)|(1<<TWSTO)|           // Initiate a STOP condition.
+               (0<<TWEA)|(0<<TWSTA)|(1<<TWSTO)|           // Initiate a STOP condition?
                (0<<TWWC);                                 //
       }
       break;
@@ -203,7 +200,7 @@ __interrupt void TWI_ISR(void)
     case TWI_MTX_ADR_NACK:      // SLA+W has been tramsmitted and NACK received
     case TWI_MRX_ADR_NACK:      // SLA+R has been tramsmitted and NACK received    
     case TWI_MTX_DATA_NACK:     // Data byte has been tramsmitted and NACK received
-//    case TWI_NO_STATE              // No relevant state information available; TWINT = “0”
+//    case TWI_NO_STATE              // No relevant state information available; TWINT = ï¿½0ï¿½
     case TWI_BUS_ERROR:         // Bus error due to an illegal START or STOP condition
     default:     
       TWI_state = TWSR;                                 // Store TWSR and automatically sets clears noErrors bit.
