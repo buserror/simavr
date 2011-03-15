@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <libgen.h>
 #include <string.h>
+#include <signal.h>
 #include "sim_avr.h"
 #include "sim_elf.h"
 #include "sim_core.h"
@@ -46,6 +47,18 @@ void display_usage(char * app)
 		printf("\n");
 	}
 	exit(1);
+}
+
+avr_t * avr = NULL;
+
+void
+sig_int(
+		int sign)
+{
+	printf("signal caught, simavr terminating\n");
+	if (avr)
+		avr_terminate(avr);
+	exit(0);
 }
 
 int main(int argc, char *argv[])
@@ -127,7 +140,7 @@ int main(int argc, char *argv[])
 	if (f_cpu)
 		f.frequency = f_cpu;
 
-	avr_t * avr = avr_make_mcu_by_name(f.mmcu);
+	avr = avr_make_mcu_by_name(f.mmcu);
 	if (!avr) {
 		fprintf(stderr, "%s: AVR '%s' now known\n", argv[0], f.mmcu);
 		exit(1);
@@ -149,6 +162,9 @@ int main(int argc, char *argv[])
 		avr->state = cpu_Stopped;
 		avr_gdb_init(avr);
 	}
+
+	signal(SIGINT, sig_int);
+	signal(SIGTERM, sig_int);
 
 	for (;;)
 		avr_run(avr);
