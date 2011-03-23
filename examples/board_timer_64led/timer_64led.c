@@ -212,9 +212,9 @@ int main(int argc, char *argv[])
 	const char * fname =  "atmega168_timer_64led.axf";
 	char path[256];
 
-	sprintf(path, "%s/%s", dirname(argv[0]), fname);
-	printf("Firmware pathname is %s\n", path);
-	elf_read_firmware(path, &f);
+//	sprintf(path, "%s/%s", dirname(argv[0]), fname);
+	//printf("Firmware pathname is %s\n", path);
+	elf_read_firmware(fname, &f);
 
 	printf("firmware %s f=%d mmcu=%s\n", fname, (int)f.frequency, f.mmcu);
 

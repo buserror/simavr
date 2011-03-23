@@ -200,7 +200,8 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%s: Error creating the AVR core\n", argv[0]);
 		exit(1);
 	}
-	snprintf(avr_flash_path, sizeof(avr_flash_path), "%s/%s", pwd, "simduino_flash.bin");
+//	snprintf(avr_flash_path, sizeof(avr_flash_path), "%s/%s", pwd, "simduino_flash.bin");
+	strcpy(avr_flash_path,  "simduino_flash.bin");
 	// register our own functions
 	avr->special_init = avr_special_init;
 	avr->special_deinit = avr_special_deinit;
@@ -215,7 +216,8 @@ int main(int argc, char *argv[])
 	{
 		char path[1024];
 		uint32_t base, size;
-		snprintf(path, sizeof(path), "%s/%s", pwd, "ATmegaBOOT_168_atmega328.ihex");
+//		snprintf(path, sizeof(path), "%s/%s", pwd, "ATmegaBOOT_168_atmega328.ihex");
+		strcpy(path, "ATmegaBOOT_168_atmega328.ihex");
 		uint8_t * boot = read_ihex_file(path, &size, &base);
 		if (!boot) {
 			fprintf(stderr, "%s: Unable to load %s\n", argv[0], path);

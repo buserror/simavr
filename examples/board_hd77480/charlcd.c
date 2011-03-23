@@ -146,10 +146,10 @@ main(
 {
 	elf_firmware_t f;
 	const char * fname = "atmega48_charlcd.axf";
-	char path[256];
-	sprintf(path, "%s/%s", dirname(argv[0]), fname);
-	printf("Firmware pathname is %s\n", path);
-	elf_read_firmware(path, &f);
+//	char path[256];
+//	sprintf(path, "%s/%s", dirname(argv[0]), fname);
+//	printf("Firmware pathname is %s\n", path);
+	elf_read_firmware(fname, &f);
 
 	printf("firmware %s f=%d mmcu=%s\n", fname, (int) f.frequency, f.mmcu);
 
