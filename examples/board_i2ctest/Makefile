@@ -37,10 +37,12 @@ all: obj atmega48_${target}.axf ${target}
 include ${simavr}/Makefile.common
 
 atmega48_${target}.axf: atmega48_${target}.c
+atmega48_${target}.axf: avr_twi_master.c avr_twi_master.h
 
 board = ${OBJ}/${target}.elf
 
 ${board} : ${OBJ}/${target}.o
+${board} : ${OBJ}/i2c_eeprom.o
 ${board} : ${simavr}/simavr/${OBJ}/libsimavr.a
 
 ${target}: ${board}

@@ -23,6 +23,8 @@
 *
 ****************************************************************************/
 
+#include <avr/io.h>
+#include <avr/interrupt.h>
 #include "avr_twi_master.h"
 
 //static unsigned char TWI_buf[ TWI_BUFFER_SIZE ];    // Transceiver buffer
@@ -162,7 +164,12 @@ ISR( TWI_vect )
         if (TWI_sendStop)
         	TWCR = (1<<TWEN)|                                 // TWI Interface enabled
                (0<<TWIE)|(1<<TWINT)|                      // Disable TWI Interrupt and clear the flag
-               (0<<TWEA)|(0<<TWSTA)|(1<<TWSTO)|           // Initiate a STOP condition?
+               (0<<TWEA)|(0<<TWSTA)|(1<<TWSTO)|           // Initiate a STOP condition
+               (0<<TWWC);                                 //
+        else
+        	TWCR = (1<<TWEN)|                                 // TWI Interface enabled
+               (0<<TWIE)|(1<<TWINT)|                      // Disable TWI Interrupt and clear the flag
+               (0<<TWEA)|(0<<TWSTA)|(0<<TWSTO)|           // DO NOT Initiate a STOP condition
                (0<<TWWC);                                 //
       }
       break;
