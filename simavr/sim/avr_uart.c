@@ -23,8 +23,17 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifdef NO_COLOR
+	#define FONT_GREEN		
+	#define FONT_DEFAULT	
+#else
+	#define FONT_GREEN		"\e[32m"
+	#define FONT_DEFAULT	"\e[0m"
+#endif
+
 #include <stdio.h>
 #include <unistd.h>
+#include <stdint.h>
 #include "avr_uart.h"
 #include "sim_hex.h"
 
@@ -145,7 +154,7 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 			buf[l] = 0;
 			if (v == '\n' || l == 127) {
 				l = 0;
-				printf("\e[32m%s\e[0m\n", buf);
+				printf( FONT_GREEN "%s\n" FONT_DEFAULT, buf);
 			}
 		}
 	//	printf("UDR%c(%02x) = %02x\n", p->name, addr, v);

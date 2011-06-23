@@ -31,6 +31,14 @@
 // SREG bit names
 const char * _sreg_bit_name = "cznvshti";
 
+#ifdef NO_COLOR
+	#define FONT_RED		
+	#define FONT_DEFAULT	
+#else
+	#define FONT_RED		"\e[31m"
+	#define FONT_DEFAULT	"\e[0m"
+#endif
+
 /*
  * Handle "touching" registers, marking them changed.
  * This is used only for debugging purposes to be able to
@@ -108,7 +116,7 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 	 * frame and is munching on it's own return address.
 	 */
 	if (avr->trace_data->stack_frame_index > 1 && addr > avr->trace_data->stack_frame[avr->trace_data->stack_frame_index-2].sp) {
-		printf("\e[31m%04x : munching stack SP %04x, A=%04x <= %02x\e[0m\n", avr->pc, _avr_sp_get(avr), addr, v);
+		printf( FONT_RED "%04x : munching stack SP %04x, A=%04x <= %02x\n" FONT_DEFAULT, avr->pc, _avr_sp_get(avr), addr, v);
 	}
 #endif
 	avr->data[addr] = v;
@@ -117,7 +125,7 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 {
 	if (addr > avr->ramend) {
-		printf("*** Invalid read address PC=%04x SP=%04x O=%04x Address %04x out of ram (%04x)\n",
+		printf( FONT_RED "*** Invalid read address PC=%04x SP=%04x O=%04x Address %04x out of ram (%04x)\n" FONT_DEFAULT,
 				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc]<<8), addr, avr->ramend);
 		CRASH();
 	}
@@ -276,10 +284,10 @@ const char * avr_regname(uint8_t reg)
 static void _avr_invalid_opcode(avr_t * avr)
 {
 #if CONFIG_SIMAVR_TRACE
-	printf("\e[31m*** %04x: %-25s Invalid Opcode SP=%04x O=%04x \e[0m\n",
+	printf( FONT_RED "*** %04x: %-25s Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
 			avr->pc, avr->trace_data->codeline[avr->pc>>1]->symbol, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
 #else
-	printf("\e[31m*** %04x: Invalid Opcode SP=%04x O=%04x \e[0m\n",
+	printf( FONT_RED "*** %04x: Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
 			avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
 #endif
 }
