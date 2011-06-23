@@ -86,7 +86,7 @@ void avr_ioport_irq_notify(struct avr_irq_t * irq, uint32_t value, void * param)
 	avr_ioport_t * p = (avr_ioport_t *)param;
 	avr_t * avr = p->io.avr;
 
-	int output = value & 0x100;
+	int output = value & AVR_IOPORT_OUTPUT;
 	value &= 0xff;
 	uint8_t mask = 1 << irq->irq;
 		// set the real PIN bit. ddr doesn't matter here as it's masked when read.
