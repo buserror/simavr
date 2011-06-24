@@ -176,11 +176,10 @@ static void init_output_buffer(struct output_buffer *buf) {
 	buf->maxlen = 4096;
 }
 
-void tests_assert_uart_receive(const char *elfname,
+void tests_assert_uart_receive_avr(avr_t *avr,
 			       unsigned long run_usec,
 			       const char *expected,
 			       char uart) {
-	avr_t *avr = tests_init_avr(elfname);
 	struct output_buffer buf;
 	init_output_buffer(&buf);
 
@@ -197,6 +196,18 @@ void tests_assert_uart_receive(const char *elfname,
 	}
 	if (strcmp(buf.str, expected) != 0)
 		_fail(NULL, 0, "UART outputs differ: expected \"%s\", got \"%s\"", expected, buf.str);
+}
+
+void tests_assert_uart_receive(const char *elfname,
+			       unsigned long run_usec,
+			       const char *expected,
+			       char uart) {
+	avr_t *avr = tests_init_avr(elfname);
+
+	tests_assert_uart_receive_avr(avr,
+			       run_usec,
+			       expected,
+			       uart);
 }
 
 void tests_assert_cycles_at_least(unsigned long n) {

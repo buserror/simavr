@@ -55,7 +55,8 @@ ISR(WDT_vect)
 int main()
 {
 	stdout = &mystdout;
-
+	DDRD = (1<<PD1); // configure TxD as output
+	
 	wdt_enable(WDTO_120MS);
 
 	// enable watchdog interupt

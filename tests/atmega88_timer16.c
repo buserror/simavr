@@ -69,7 +69,7 @@ int main()
 	// timer prescaler to 64
 	TCCR1B |= (0<<CS12 | 1<<CS11 | 1<<CS10);
 
-	DDRB = 5;
+	DDRB = 0x0B;
 	
 	//
 	// now enable a tick counter
