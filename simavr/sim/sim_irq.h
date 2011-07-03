@@ -107,9 +107,20 @@ void
 avr_connect_irq(
 		avr_irq_t * src,
 		avr_irq_t * dst);
+void
+avr_unconnect_irq(
+		avr_irq_t * src,
+		avr_irq_t * dst);
+
 //! register a notification 'hook' for 'irq' -- 'param' is anything that your want passed back as argument
 void
 avr_irq_register_notify(
+		avr_irq_t * irq,
+		avr_irq_notify_t notify,
+		void * param);
+
+void
+avr_irq_unregister_notify(
 		avr_irq_t * irq,
 		avr_irq_notify_t notify,
 		void * param);

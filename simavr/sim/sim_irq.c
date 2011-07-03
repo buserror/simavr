@@ -152,6 +152,33 @@ avr_irq_register_notify(
 }
 
 void
+avr_irq_unregister_notify(
+		avr_irq_t * irq,
+		avr_irq_notify_t notify,
+		void * param)
+{
+	avr_irq_hook_t *hook, *prev;
+	if (!irq || !notify)
+		return;
+
+	hook = irq->hook;
+	prev = NULL;
+	while (hook) {
+		if (hook->notify == notify && hook->param == param)
+		{
+			if ( prev )
+				prev->next = hook->next;
+			else
+				irq->hook = hook->next;
+			free(hook);
+			return;
+		}
+		prev = hook;
+		hook = hook->next;
+	}
+}
+
+void
 avr_raise_irq(
 		avr_irq_t * irq,
 		uint32_t value)
@@ -198,4 +225,32 @@ avr_connect_irq(
 	}
 	hook = _avr_alloc_irq_hook(src);
 	hook->chain = dst;
+}
+
+void
+avr_unconnect_irq(
+		avr_irq_t * src,
+		avr_irq_t * dst)
+{
+	avr_irq_hook_t *hook, *prev;
+
+	if (!src || !dst || src == dst) {
+		printf("error: avr_connect_irq invalid irq %p/%p", src, dst); fflush(stdout);
+		return;
+	}
+	hook = src->hook;
+	prev = NULL;
+	while (hook) {
+		if (hook->chain == dst)
+		{
+			if ( prev )
+				prev->next = hook->next;
+			else
+				src->hook = hook->next;
+			free(hook);
+			return;
+		}
+		prev = hook;
+		hook = hook->next;
+	}
 }
