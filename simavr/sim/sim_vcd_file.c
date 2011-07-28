@@ -110,7 +110,7 @@ static void avr_vcd_flush_log(avr_vcd_t * vcd)
 			
 		if (base > oldbase || li == 0) {
 			seen = 0;
-			fprintf(vcd->output, "#%llu\n", base);
+			fprintf(vcd->output, "#%llu\n", (long long unsigned int)base);
 			oldbase = base;
 		}
 		seen |= (1 << l->signal->irq.irq);	// mark this trace as seen for this timestamp
