@@ -83,20 +83,22 @@ static char * _avr_vcd_get_signal_text(avr_vcd_signal_t * s, char * out, uint32_
 
 static void avr_vcd_flush_log(avr_vcd_t * vcd)
 {
-	if (!vcd->logindex)
-		return;
-//	printf("avr_vcd_flush_log %d\n", vcd->logindex);
-	uint32_t oldbase = 0;	// make sure it's different
-	char out[48];
-
 #if AVR_VCD_MAX_SIGNALS > 32
 	uint64_t seen = 0;
 #else
 	uint32_t seen = 0;
 #endif
-	for (int li = 0; li < vcd->logindex; li++) {
+	uint64_t oldbase = 0;	// make sure it's different
+	char out[48];
+
+	if (!vcd->logindex)
+		return;
+//	printf("avr_vcd_flush_log %d\n", vcd->logindex);
+
+
+	for (uint32_t li = 0; li < vcd->logindex; li++) {
 		avr_vcd_log_t *l = &vcd->log[li];
-		uint32_t base = avr_cycles_to_usec(vcd->avr, l->when - vcd->start);
+		uint64_t base = avr_cycles_to_nsec(vcd->avr, l->when - vcd->start);	// 1ns base
 
 		// if that trace was seen in this usec already, we fudge the base time
 		// to make sure the new value is offset by one usec, to make sure we get
@@ -108,7 +110,7 @@ static void avr_vcd_flush_log(avr_vcd_t * vcd)
 			
 		if (base > oldbase || li == 0) {
 			seen = 0;
-			fprintf(vcd->output, "#%uld\n", base);
+			fprintf(vcd->output, "#%llu\n", base);
 			oldbase = base;
 		}
 		seen |= (1 << l->signal->irq.irq);	// mark this trace as seen for this timestamp
@@ -150,7 +152,7 @@ int avr_vcd_start(avr_vcd_t * vcd)
 		return -1;
 	}
 		
-	fprintf(vcd->output, "$timescale 1us $end\n");
+	fprintf(vcd->output, "$timescale 1ns $end\n");	// 1ns base
 	fprintf(vcd->output, "$scope module logic $end\n");
 
 	for (int i = 0; i < vcd->signal_count; i++) {

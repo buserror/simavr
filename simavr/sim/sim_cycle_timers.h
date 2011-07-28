@@ -38,7 +38,13 @@ static inline avr_cycle_count_t avr_usec_to_cycles(avr_t * avr, uint32_t usec)
 // converts back a number of cycles to usecs (for usleep)
 static inline uint32_t avr_cycles_to_usec(avr_t * avr, avr_cycle_count_t cycles)
 {
-	return 1000000 * cycles / avr->frequency;
+	return 1000000L * cycles / avr->frequency;
+}
+
+// converts back a number of cycles to nsecs
+static inline uint64_t avr_cycles_to_nsec(avr_t * avr, avr_cycle_count_t cycles)
+{
+	return (uint64_t)1E6 * (uint64_t)cycles / (avr->frequency/1000);
 }
 
 // converts a number of hz (to megahertz etc) to a number of cycle
