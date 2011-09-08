@@ -293,6 +293,7 @@ extern avr_kind_t mega8;
 extern avr_kind_t mega48,mega88,mega168,mega328;
 extern avr_kind_t mega164,mega324,mega644;
 extern avr_kind_t mega128;
+extern avr_kind_t mega1281;
 
 avr_kind_t * avr_kind[] = {
 	&tiny13,
@@ -303,6 +304,7 @@ avr_kind_t * avr_kind[] = {
 	&mega48, &mega88, &mega168, &mega328,
 	&mega164, &mega324, &mega644,
 	&mega128,
+	&mega1281,
 	NULL
 };
 
