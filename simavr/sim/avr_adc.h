@@ -60,6 +60,7 @@ enum {
 	ADC_MUX_DIFF,			// differencial channels (src-diff)
 	ADC_MUX_TEMP,			// internal temp sensor
 	ADC_MUX_REF,			// reference voltage (in src * 100)
+	ADC_MUX_VCC4,			// VCC/4
 };
 typedef struct avr_adc_mux_t {
 	unsigned long kind : 3, gain : 8, diff : 8, src : 13;
@@ -133,6 +134,10 @@ void avr_adc_init(avr_t * avr, avr_adc_t * port);
 	}
 #define AVR_ADC_TEMP() { \
 		.kind = ADC_MUX_TEMP, \
+	}
+
+#define AVR_ADC_VCC4() { \
+		.kind = ADC_MUX_VCC4, \
 	}
 
 #endif /* __AVR_ADC_H___ */

@@ -68,6 +68,12 @@ static uint8_t avr_adc_read_l(struct avr_t * avr, avr_io_addr_t addr, void * par
 		case ADC_MUX_REF:
 			reg = mux.src; // reference voltage
 			break;
+		case ADC_MUX_VCC4:
+			if ( !avr->vcc) {
+				printf("ADC Warning : missing VCC analog voltage\n");
+			} else
+				reg = avr->vcc / 4;
+			break;
 	}
 	uint32_t vref = 3300;
 	switch (ref) {
