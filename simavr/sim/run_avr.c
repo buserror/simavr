@@ -38,7 +38,7 @@ void display_usage(char * app)
 	printf("       -t: run full scale decoder trace\n"
 		   "       -g: listen for gdb connection on port 1234\n"
 		   "       -ff: Loads next .hex file as flash\n"
-		   "       -ee: Loads next .hec file as eeprom\n"
+		   "       -ee: Loads next .hex file as eeprom\n"
 		   "   Supported AVR cores:\n");
 	for (int i = 0; avr_kind[i]; i++) {
 		printf("       ");

@@ -67,7 +67,7 @@ static uint8_t avr_uart_rxc_read(struct avr_t * avr, avr_io_addr_t addr, void * 
 	//
 	// if RX is enabled, and there is nothing to read, and
 	// the AVR core is reading this register, it's probably
-	// to pool the RXC TXC flag and spinloop
+	// to poll the RXC TXC flag and spinloop
 	// so here we introduce a usleep to make it a bit lighter
 	// on CPU and let data arrive
 	//
@@ -90,7 +90,7 @@ static uint8_t avr_uart_read(struct avr_t * avr, avr_io_addr_t addr, void * para
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 
-	// clear the rxc bit in case the code is using pooling
+	// clear the rxc bit in case the code is using polling
 	avr_regbit_clear(avr, p->rxc.raised);
 
 	if (!avr_regbit_get(avr, p->rxen)) {

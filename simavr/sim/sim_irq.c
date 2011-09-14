@@ -164,8 +164,7 @@ avr_irq_unregister_notify(
 	hook = irq->hook;
 	prev = NULL;
 	while (hook) {
-		if (hook->notify == notify && hook->param == param)
-		{
+		if (hook->notify == notify && hook->param == param) {
 			if ( prev )
 				prev->next = hook->next;
 			else
@@ -241,8 +240,7 @@ avr_unconnect_irq(
 	hook = src->hook;
 	prev = NULL;
 	while (hook) {
-		if (hook->chain == dst)
-		{
+		if (hook->chain == dst) {
 			if ( prev )
 				prev->next = hook->next;
 			else
