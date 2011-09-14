@@ -99,7 +99,7 @@ void avr_sadly_crashed(avr_t *avr, uint8_t signal)
 			avr_gdb_init(avr);
 	} 
 	if (!avr->gdb)
-		exit(1); // no gdb ?
+		avr->state = cpu_Crashed;
 }
 
 static void _avr_io_command_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
@@ -210,9 +210,10 @@ void avr_callback_run_gdb(avr_t * avr)
 
 	if (avr->state == cpu_Sleeping) {
 		if (!avr->sreg[S_I]) {
-			printf("simavr: sleeping with interrupts off, quitting gracefully\n");
+			if ( avr->log_level) printf("simavr: sleeping with interrupts off, quitting gracefully\n");
 			avr_terminate(avr);
-			exit(0);
+			avr->state = cpu_Done;
+			return;
 		}
 		/*
 		 * try to sleep for as long as we can (?)
@@ -262,9 +263,10 @@ void avr_callback_run_raw(avr_t * avr)
 
 	if (avr->state == cpu_Sleeping) {
 		if (!avr->sreg[S_I]) {
-			printf("simavr: sleeping with interrupts off, quitting gracefully\n");
+			if ( avr->log_level) printf("simavr: sleeping with interrupts off, quitting gracefully\n");
 			avr_terminate(avr);
-			exit(0);
+			avr->state = cpu_Done;
+			return;
 		}
 		/*
 		 * try to sleep for as long as we can (?)

@@ -73,6 +73,8 @@ enum {
 
 	cpu_Step,		// run ONE instruction, then...
 	cpu_StepDone,	// tell gdb it's all OK, and give it registers
+	cpu_Done,       // avr software stopped gracefully
+	cpu_Crashed,    // avr software crashed (watchdog fired)
 };
 
 // this is only ever used if CONFIG_SIMAVR_TRACE is defined

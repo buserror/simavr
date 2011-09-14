@@ -166,8 +166,11 @@ int main(int argc, char *argv[])
 	signal(SIGINT, sig_int);
 	signal(SIGTERM, sig_int);
 
-	for (;;)
-		avr_run(avr);
+	for (;;) {
+		int state = avr_run(avr);
+		if ( state == cpu_Done || state == cpu_Crashed)
+			break;
+	}
 	
 	avr_terminate(avr);
 }
