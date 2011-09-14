@@ -101,12 +101,12 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 {
 	if (addr > avr->ramend) {
 		printf("*** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x out of ram\n",
-				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc]<<8), addr, v);
+				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, v);
 		CRASH();
 	}
 	if (addr < 32) {
 		printf("*** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x low registers\n",
-				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc]<<8), addr, v);
+				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, v);
 		CRASH();
 	}
 #if AVR_STACK_WATCH
@@ -126,7 +126,7 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 {
 	if (addr > avr->ramend) {
 		printf( FONT_RED "*** Invalid read address PC=%04x SP=%04x O=%04x Address %04x out of ram (%04x)\n" FONT_DEFAULT,
-				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc]<<8), addr, avr->ramend);
+				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, avr->ramend);
 		CRASH();
 	}
 	return avr->data[addr];
