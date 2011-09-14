@@ -52,6 +52,7 @@ int avr_init(avr_t * avr)
 	avr->run = avr_callback_run_raw;
 	avr->sleep = avr_callback_sleep_raw;
 	avr->state = cpu_Running;
+	avr->log = 1;
 	avr_reset(avr);	
 	return 0;
 }
@@ -210,7 +211,8 @@ void avr_callback_run_gdb(avr_t * avr)
 
 	if (avr->state == cpu_Sleeping) {
 		if (!avr->sreg[S_I]) {
-			if ( avr->log_level) printf("simavr: sleeping with interrupts off, quitting gracefully\n");
+			if (avr->log)
+				printf("simavr: sleeping with interrupts off, quitting gracefully\n");
 			avr_terminate(avr);
 			avr->state = cpu_Done;
 			return;
@@ -263,7 +265,8 @@ void avr_callback_run_raw(avr_t * avr)
 
 	if (avr->state == cpu_Sleeping) {
 		if (!avr->sreg[S_I]) {
-			if ( avr->log_level) printf("simavr: sleeping with interrupts off, quitting gracefully\n");
+			if (avr->log)
+				printf("simavr: sleeping with interrupts off, quitting gracefully\n");
 			avr_terminate(avr);
 			avr->state = cpu_Done;
 			return;
