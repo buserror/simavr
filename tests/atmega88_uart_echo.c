@@ -37,8 +37,10 @@ const struct avr_mmcu_vcd_trace_t _mytrace[]  _MMCU_ = {
 };
 
 static int uart_putchar(char c, FILE *stream) {
-	if (c == '\r')
+#if 0 // don't want character translation for this test
+	if (c == '\n')
 		uart_putchar('\r', stream);
+#endif
 	loop_until_bit_is_set(UCSR0A, UDRE0);
 	UDR0 = c;
 	return 0;
