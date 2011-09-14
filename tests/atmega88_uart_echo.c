@@ -36,11 +36,10 @@ const struct avr_mmcu_vcd_trace_t _mytrace[]  _MMCU_ = {
 	{ AVR_MCU_VCD_SYMBOL("GPIOR1"), .what = (void*)&GPIOR1, },
 };
 
-static int uart_putchar(char c, FILE *stream) {
-#if 0 // don't want character translation for this test
+static int uart_putchar(char c, FILE *stream)
+{
 	if (c == '\n')
 		uart_putchar('\r', stream);
-#endif
 	loop_until_bit_is_set(UCSR0A, UDRE0);
 	UDR0 = c;
 	return 0;
