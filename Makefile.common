@@ -85,11 +85,11 @@ OBJ = obj-${shell $(CC) -dumpmachine}
 # this rule has precedence
 ${OBJ}/sim_%.o : cores/sim_%.c
 ifeq ($(V),1)
-	$(CC) $(CFLAGS) -MD \
+	$(CC) $(CFLAGS) -MMD \
 		-I${AVR_INC}/include/ \
 		$<  -c -o $@
 else
-	@$(CC) $(CFLAGS) -MD \
+	@$(CC) $(CFLAGS) -MMD \
 		-I${AVR_INC}/include/ \
 		$<  -c -o $@
 	@echo CORE $<
@@ -97,10 +97,10 @@ endif
 
 ${OBJ}/%.o: %.c
 ifeq ($(V),1)
-	$(CC) $(CFLAGS) -MD \
+	$(CC) $(CFLAGS) -MMD \
 		$<  -c -o $@
 else
-	@$(CC) $(CFLAGS) -MD \
+	@$(CC) $(CFLAGS) -MMD \
 		$<  -c -o $@
 	@echo CC $<
 endif
@@ -108,10 +108,10 @@ endif
 ${OBJ}/%.elf:
 ifeq ($(V),1)
 	echo $^ / $<
-	$(CC) -MD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
+	$(CC) -MMD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
 else
 	@echo LD $@
-	@$(CC) -MD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
+	@$(CC) -MMD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
 endif
 
 obj: ${OBJ}
