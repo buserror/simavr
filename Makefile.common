@@ -107,7 +107,6 @@ endif
 
 ${OBJ}/%.elf:
 ifeq ($(V),1)
-	echo $^ / $<
 	$(CC) -MMD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
 else
 	@echo LD $@

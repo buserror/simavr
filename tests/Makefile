@@ -3,7 +3,7 @@
 # And compiles it into an ELF binary.
 # It also disassembles it for debugging purposes.
 # 
-# 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+# 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 #
 #	This file is part of simavr.
 #
@@ -21,34 +21,48 @@
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
 
-SHELL	 = /bin/bash
+SHELL	 	= /bin/bash
 
 sources		:= $(wildcard at*.c)
-test_sources    := $(wildcard test_*.c)
-simavr = ..
+simavr 		= ..
 
-IPATH += ${simavr}/include
-IPATH += ${simavr}/simavr/sim
-CFLAGS += -Wall
-TEST_SRC=${wildcard test_*.c}
-TESTS=${TEST_SRC:.c=}
+IPATH 		+= ${simavr}/include
+IPATH 		+= ${simavr}/simavr/sim
+CFLAGS 		+= -Wall
+LDFLAGS		+= -L${simavr}/simavr/${OBJ} -lsimavr
 
-all: obj ${sources:.c=.axf} ${TESTS}
-# if you want hex files
-#all : ${sources:.c=.hex}
-# if you need assembler output
-#all :  ${sources:.c=.s}  
+tests_src	= ${wildcard test_*.c}
+tests		= ${patsubst %.c, ${OBJ}/%.tst, ${tests_src}}
+
+all: obj axf tests
 
 include ../Makefile.common
 
-# do not delete intermediate .o files after running `make run_tests'
-.SECONDARY:
+tests:	${tests}
+	
+axf: ${sources:.c=.axf}
+	
 
-test_%: ${OBJ}/test_%.o ${OBJ}/tests.o ${simavr}/simavr/${OBJ}/libsimavr.so
-	gcc ${LFLAGS} -o $@ $^ ${LDFLAGS}
+${OBJ}/%.tst: tests.c %.c
+ifeq ($(V),1)
+	$(CC) -MMD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
+else
+	@echo TST $@
+	@$(CC) -MMD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
+endif
 
-run_tests: obj ${sources:.c=.axf} ${TESTS}
-	./run_tests
+run_tests: all
+	@export LD_LIBRARY_PATH=${simavr}/simavr/${OBJ} ;\
+	num_failed=0 ;\
+	num_run=0 ;\
+	for test in ${OBJ}/test_*.tst; do \
+	    num_run=$$(($$num_run+1)) ;\
+	    if ! $$test; then \
+			echo "$$test returned with exit value $$?." ;\
+			num_failed=$$(($$num_failed+1)) ;\
+	    fi ;\
+	done ;\
+	echo "Tests run: $$num_run  Successes: $$(($$num_run-$num_failed)) Failures: $$num_failed"
 
 clean: clean-${OBJ}
-	rm -f ${TESTS} *.axf
+	rm -f *.axf
