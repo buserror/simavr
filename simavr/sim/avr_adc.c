@@ -160,6 +160,7 @@ static void avr_adc_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, voi
 		// stop ADC
 		avr_cycle_timer_cancel(avr, avr_adc_int_raise, p);
 		avr_regbit_clear(avr, p->adsc);
+		v = avr->data[p->adsc.reg];	// Peter Ross pross@xvid.org
 	}
 	if (!adsc && avr_regbit_get(avr, p->adsc)) {
 		// start one!
