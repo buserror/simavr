@@ -19,58 +19,58 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
+/*
+ * cycle timers are callbacks that will be called when "when" cycle is reached
+ * these timers are one shots, then get cleared if the timer function returns zero,
+ * they get reset if the callback function returns a new cycle number
+ *
+ * the implementation maintains a list of 'pending' timers, sorted by when they
+ * should run, it allows very quick comparison with the next timer to run, and
+ * quick removal of then from the pile once dispatched.
+ */
 #ifndef __SIM_CYCLE_TIMERS_H___
 #define __SIM_CYCLE_TIMERS_H___
 
-#include "sim_avr.h"
+#include "sim_avr_types.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// converts a number of usec to a number of machine cycles, at current speed
-static inline avr_cycle_count_t avr_usec_to_cycles(avr_t * avr, uint32_t usec)
-{
-	return avr->frequency * (avr_cycle_count_t)usec / 1000000;
-}
+#define MAX_CYCLE_TIMERS	32
 
-// converts back a number of cycles to usecs (for usleep)
-static inline uint32_t avr_cycles_to_usec(avr_t * avr, avr_cycle_count_t cycles)
-{
-	return 1000000L * cycles / avr->frequency;
-}
+typedef avr_cycle_count_t (*avr_cycle_timer_t)(struct avr_t * avr, avr_cycle_count_t when, void * param);
 
-// converts back a number of cycles to nsecs
-static inline uint64_t avr_cycles_to_nsec(avr_t * avr, avr_cycle_count_t cycles)
-{
-	return (uint64_t)1E6 * (uint64_t)cycles / (avr->frequency/1000);
-}
+typedef struct avr_cycle_timer_slot_t {
+	avr_cycle_count_t	when;
+	avr_cycle_timer_t	timer;
+	void * param;
+} avr_cycle_timer_slot_t;
 
-// converts a number of hz (to megahertz etc) to a number of cycle
-static inline avr_cycle_count_t avr_hz_to_cycles(avr_t * avr, uint32_t hz)
-{
-	return avr->frequency / hz;
-}
+typedef struct avr_cycle_timer_pool_t {
+	avr_cycle_timer_slot_t timer[MAX_CYCLE_TIMERS];
+	uint8_t	count;
+} avr_cycle_timer_pool_t, *avr_cycle_timer_pool_p;
+
 
 // register for calling 'timer' in 'when' cycles
-void avr_cycle_timer_register(avr_t * avr, avr_cycle_count_t when, avr_cycle_timer_t timer, void * param);
+void avr_cycle_timer_register(struct avr_t * avr, avr_cycle_count_t when, avr_cycle_timer_t timer, void * param);
 // register a timer to call in 'when' usec
-void avr_cycle_timer_register_usec(avr_t * avr, uint32_t when, avr_cycle_timer_t timer, void * param);
+void avr_cycle_timer_register_usec(struct avr_t * avr, uint32_t when, avr_cycle_timer_t timer, void * param);
 // cancel a previously set timer
-void avr_cycle_timer_cancel(avr_t * avr, avr_cycle_timer_t timer, void * param);
+void avr_cycle_timer_cancel(struct avr_t * avr, avr_cycle_timer_t timer, void * param);
 /*
  * Check to see if a timer is present, if so, return the number (+1) of
  * cycles left for it to fire, and if not present, return zero
  */
 avr_cycle_count_t
-avr_cycle_timer_status(avr_t * avr, avr_cycle_timer_t timer, void * param);
+avr_cycle_timer_status(struct avr_t * avr, avr_cycle_timer_t timer, void * param);
 
 
 //
 // Private, called from the core
 //
-avr_cycle_count_t avr_cycle_timer_process(avr_t * avr);
+avr_cycle_count_t avr_cycle_timer_process(struct avr_t * avr);
 
 #ifdef __cplusplus
 };

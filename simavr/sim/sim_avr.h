@@ -1,7 +1,7 @@
 /*
 	sim_avr.h
 
-	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
  	This file is part of simavr.
 
@@ -22,25 +22,16 @@
 #ifndef __SIM_AVR_H__
 #define __SIM_AVR_H__
 
-#include <stdint.h>
-#include <inttypes.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "sim_irq.h"
-
-typedef uint64_t avr_cycle_count_t;
-typedef uint16_t	avr_io_addr_t;
-
-// printf() conversion specifier for avr_cycle_count_t
-#define PRI_avr_cycle_count PRIu64
+#include "sim_cycle_timers.h"
 
 struct avr_t;
 typedef uint8_t (*avr_io_read_t)(struct avr_t * avr, avr_io_addr_t addr, void * param);
 typedef void (*avr_io_write_t)(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param);
-typedef avr_cycle_count_t (*avr_cycle_timer_t)(struct avr_t * avr, avr_cycle_count_t when, void * param);
 
 enum {
 	// SREG bit indexes
@@ -231,17 +222,7 @@ typedef struct avr_t {
 	// queue of io modules
 	struct avr_io_t *io_port;
 
-	// cycle timers are callbacks that will be called when "when" cycle is reached
-	// the bitmap allows quick knowledge of whether there is anything to call
-	// these timers are one shots, then get cleared if the timer function returns zero,
-	// they get reset if the callback function returns a new cycle number
-	uint32_t	cycle_timer_map;
-	avr_cycle_count_t next_cycle_timer;
-	struct {
-		avr_cycle_count_t	when;
-		avr_cycle_timer_t	timer;
-		void * param;
-	} cycle_timer[32];
+	avr_cycle_timer_pool_t	cycle_timers;
 
 	// interrupt vectors, and their enable/clear registers
 	struct avr_int_vector_t * vector[64];
