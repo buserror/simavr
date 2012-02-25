@@ -1,7 +1,7 @@
 /*
 	sim_interrupts.c
 
-	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
  	This file is part of simavr.
 
@@ -31,7 +31,10 @@
 #define INT_FIFO_SIZE (sizeof(avr->pending) / sizeof(avr_int_vector_t *))
 #define INT_FIFO_MOD(_v) ((_v) &  (INT_FIFO_SIZE - 1))
 
-void avr_register_vector(avr_t *avr, avr_int_vector_t * vector)
+void
+avr_register_vector(
+		avr_t *avr,
+		avr_int_vector_t * vector)
 {
 	if (vector->vector) {
 		vector->irq.irq = vector->vector;
@@ -44,22 +47,33 @@ void avr_register_vector(avr_t *avr, avr_int_vector_t * vector)
 	}
 }
 
-int avr_has_pending_interrupts(avr_t * avr)
+int
+avr_has_pending_interrupts(
+		avr_t * avr)
 {
 	return avr->pending_r != avr->pending_w;
 }
 
-int avr_is_interrupt_pending(avr_t * avr, avr_int_vector_t * vector)
+int
+avr_is_interrupt_pending(
+		avr_t * avr,
+		avr_int_vector_t * vector)
 {
 	return vector->pending;
 }
 
-int avr_is_interrupt_enabled(avr_t * avr, avr_int_vector_t * vector)
+int
+avr_is_interrupt_enabled(
+		avr_t * avr,
+		avr_int_vector_t * vector)
 {
 	return avr_regbit_get(avr, vector->enable);
 }
 
-int avr_raise_interrupt(avr_t * avr, avr_int_vector_t * vector)
+int
+avr_raise_interrupt(
+		avr_t * avr,
+		avr_int_vector_t * vector)
 {
 	if (!vector || !vector->vector)
 		return 0;
@@ -97,7 +111,10 @@ int avr_raise_interrupt(avr_t * avr, avr_int_vector_t * vector)
 	return 1;
 }
 
-void avr_clear_interrupt(avr_t * avr, avr_int_vector_t * vector)
+void
+avr_clear_interrupt(
+		avr_t * avr,
+		avr_int_vector_t * vector)
 {
 	if (!vector)
 		return;
@@ -109,7 +126,11 @@ void avr_clear_interrupt(avr_t * avr, avr_int_vector_t * vector)
 		avr_regbit_clear(avr, vector->raised);
 }
 
-int avr_clear_interrupt_if(avr_t * avr, avr_int_vector_t * vector, uint8_t old)
+int
+avr_clear_interrupt_if(
+		avr_t * avr,
+		avr_int_vector_t * vector,
+		uint8_t old)
 {
 	if (avr_regbit_get(avr, vector->raised)) {
 		avr_clear_interrupt(avr, vector);
@@ -120,7 +141,10 @@ int avr_clear_interrupt_if(avr_t * avr, avr_int_vector_t * vector, uint8_t old)
 	return 0;
 }
 
-avr_irq_t * avr_get_interrupt_irq(avr_t * avr, uint8_t v)
+avr_irq_t *
+avr_get_interrupt_irq(
+		avr_t * avr,
+		uint8_t v)
 {
 	for (int i = 0; i < avr->vector_count; i++)
 		if (avr->vector[i]->vector == v)
@@ -132,7 +156,9 @@ avr_irq_t * avr_get_interrupt_irq(avr_t * avr, uint8_t v)
  * check whether interrupts are pending. If so, check if the interrupt "latency" is reached,
  * and if so triggers the handlers and jump to the vector.
  */
-void avr_service_interrupts(avr_t * avr)
+void
+avr_service_interrupts(
+		avr_t * avr)
 {
 	if (!avr->sreg[S_I])
 		return;

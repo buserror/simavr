@@ -1,7 +1,7 @@
 /*
 	sim_cycle_timers.h
 
-	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
  	This file is part of simavr.
 
@@ -39,7 +39,10 @@ extern "C" {
 
 #define MAX_CYCLE_TIMERS	32
 
-typedef avr_cycle_count_t (*avr_cycle_timer_t)(struct avr_t * avr, avr_cycle_count_t when, void * param);
+typedef avr_cycle_count_t (*avr_cycle_timer_t)(
+		struct avr_t * avr,
+		avr_cycle_count_t when,
+		void * param);
 
 typedef struct avr_cycle_timer_slot_t {
 	avr_cycle_count_t	when;
@@ -54,23 +57,41 @@ typedef struct avr_cycle_timer_pool_t {
 
 
 // register for calling 'timer' in 'when' cycles
-void avr_cycle_timer_register(struct avr_t * avr, avr_cycle_count_t when, avr_cycle_timer_t timer, void * param);
+void
+avr_cycle_timer_register(
+		struct avr_t * avr,
+		avr_cycle_count_t when,
+		avr_cycle_timer_t timer,
+		void * param);
 // register a timer to call in 'when' usec
-void avr_cycle_timer_register_usec(struct avr_t * avr, uint32_t when, avr_cycle_timer_t timer, void * param);
+void
+avr_cycle_timer_register_usec(
+		struct avr_t * avr,
+		uint32_t when,
+		avr_cycle_timer_t timer,
+		void * param);
 // cancel a previously set timer
-void avr_cycle_timer_cancel(struct avr_t * avr, avr_cycle_timer_t timer, void * param);
+void
+avr_cycle_timer_cancel(
+		struct avr_t * avr,
+		avr_cycle_timer_t timer,
+		void * param);
 /*
  * Check to see if a timer is present, if so, return the number (+1) of
  * cycles left for it to fire, and if not present, return zero
  */
 avr_cycle_count_t
-avr_cycle_timer_status(struct avr_t * avr, avr_cycle_timer_t timer, void * param);
-
+avr_cycle_timer_status(
+		struct avr_t * avr,
+		avr_cycle_timer_t timer,
+		void * param);
 
 //
 // Private, called from the core
 //
-avr_cycle_count_t avr_cycle_timer_process(struct avr_t * avr);
+avr_cycle_count_t
+avr_cycle_timer_process(
+		struct avr_t * avr);
 
 #ifdef __cplusplus
 };

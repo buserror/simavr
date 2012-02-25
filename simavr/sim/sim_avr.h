@@ -30,8 +30,15 @@ extern "C" {
 #include "sim_cycle_timers.h"
 
 struct avr_t;
-typedef uint8_t (*avr_io_read_t)(struct avr_t * avr, avr_io_addr_t addr, void * param);
-typedef void (*avr_io_write_t)(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param);
+typedef uint8_t (*avr_io_read_t)(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		void * param);
+typedef void (*avr_io_write_t)(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param);
 
 enum {
 	// SREG bit indexes
@@ -268,39 +275,69 @@ typedef struct avr_symbol_t {
 } avr_symbol_t;
 
 // locate the maker for mcu "name" and allocates a new avr instance
-avr_t * avr_make_mcu_by_name(const char *name);
+avr_t *
+avr_make_mcu_by_name(
+		const char *name);
 // initializes a new AVR instance. Will call the IO registers init(), and then reset()
-int avr_init(avr_t * avr);
+int
+avr_init(
+		avr_t * avr);
 // resets the AVR, and the IO modules
-void avr_reset(avr_t * avr);
+void
+avr_reset(
+		avr_t * avr);
 // run one cycle of the AVR, sleep if necessary
-int avr_run(avr_t * avr);
+int
+avr_run(
+		avr_t * avr);
 // finish any pending operations 
-void avr_terminate(avr_t * avr);
+void
+avr_terminate(
+		avr_t * avr);
 
 // set an IO register to receive commands from the AVR firmware
 // it's optional, and uses the ELF tags
-void avr_set_command_register(avr_t * avr, avr_io_addr_t addr);
+void
+avr_set_command_register(
+		avr_t * avr,
+		avr_io_addr_t addr);
 
 // specify the "console register" -- output sent to this register
 // is printed on the simulator console, without using a UART
-void avr_set_console_register(avr_t * avr, avr_io_addr_t addr);
+void
+avr_set_console_register(
+		avr_t * avr,
+		avr_io_addr_t addr);
 
 // load code in the "flash"
-void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address);
-
+void
+avr_loadcode(
+		avr_t * avr,
+		uint8_t * code,
+		uint32_t size,
+		uint32_t address);
 
 /*
  * these are accessors for avr->data but allows watchpoints to be set for gdb
  * IO modules use that to set values to registers, and the AVR core decoder uses
  * that to register "public" read by instructions.
  */
-void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v);
-uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr);
+void
+avr_core_watch_write(
+		avr_t *avr,
+		uint16_t addr,
+		uint8_t v);
+uint8_t
+avr_core_watch_read(
+		avr_t *avr,
+		uint16_t addr);
 
 // called when the core has detected a crash somehow.
 // this might activate gdb server
-void avr_sadly_crashed(avr_t *avr, uint8_t signal);
+void
+avr_sadly_crashed(
+		avr_t *avr,
+		uint8_t signal);
 
 
 /*

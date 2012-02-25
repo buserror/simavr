@@ -26,10 +26,14 @@
 #include "sim_time.h"
 #include "sim_cycle_timers.h"
 
-#define TIMER_COUNT sizeof(cycle_timer)
 
 // no sanity checks checking here, on purpose
-static void avr_cycle_timer_insert(avr_t * avr, avr_cycle_count_t when, avr_cycle_timer_t timer, void * param)
+static void
+avr_cycle_timer_insert(
+		avr_t * avr,
+		avr_cycle_count_t when,
+		avr_cycle_timer_t timer,
+		void * param)
 {
 	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
 
@@ -51,7 +55,12 @@ static void avr_cycle_timer_insert(avr_t * avr, avr_cycle_count_t when, avr_cycl
 	pool->count++;
 }
 
-void avr_cycle_timer_register(avr_t * avr, avr_cycle_count_t when, avr_cycle_timer_t timer, void * param)
+void
+avr_cycle_timer_register(
+		avr_t * avr,
+		avr_cycle_count_t when,
+		avr_cycle_timer_t timer,
+		void * param)
 {
 	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
 
@@ -65,12 +74,21 @@ void avr_cycle_timer_register(avr_t * avr, avr_cycle_count_t when, avr_cycle_tim
 	avr_cycle_timer_insert(avr, when, timer, param);
 }
 
-void avr_cycle_timer_register_usec(avr_t * avr, uint32_t when, avr_cycle_timer_t timer, void * param)
+void
+avr_cycle_timer_register_usec(
+		avr_t * avr,
+		uint32_t when,
+		avr_cycle_timer_t timer,
+		void * param)
 {
 	avr_cycle_timer_register(avr, avr_usec_to_cycles(avr, when), timer, param);
 }
 
-void avr_cycle_timer_cancel(avr_t * avr, avr_cycle_timer_t timer, void * param)
+void
+avr_cycle_timer_cancel(
+		avr_t * avr,
+		avr_cycle_timer_t timer,
+		void * param)
 {
 	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
 
@@ -90,7 +108,10 @@ void avr_cycle_timer_cancel(avr_t * avr, avr_cycle_timer_t timer, void * param)
  * cycles left for it to fire, and if not present, return zero
  */
 avr_cycle_count_t
-avr_cycle_timer_status(avr_t * avr, avr_cycle_timer_t timer, void * param)
+avr_cycle_timer_status(
+		avr_t * avr,
+		avr_cycle_timer_t timer,
+		void * param)
 {
 	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
 
@@ -107,7 +128,9 @@ avr_cycle_timer_status(avr_t * avr, avr_cycle_timer_t timer, void * param)
  * clear the ones that wants it, and calculate the next
  * potential cycle we could sleep for...
  */
-avr_cycle_count_t avr_cycle_timer_process(avr_t * avr)
+avr_cycle_count_t
+avr_cycle_timer_process(
+		avr_t * avr)
 {
 	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
 

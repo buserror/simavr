@@ -1,7 +1,7 @@
 /*
 	sim_interrupts.h
 
-	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
  	This file is part of simavr.
 
@@ -43,25 +43,48 @@ typedef struct avr_int_vector_t {
  * Interrupt Helper Functions
  */
 // register an interrupt vector. It's only needed if you want to use the "r_raised" flags
-void avr_register_vector(avr_t *avr, avr_int_vector_t * vector);
+void
+avr_register_vector(
+		avr_t *avr,
+		avr_int_vector_t * vector);
 // raise an interrupt (if enabled). The interrupt is latched and will be called later
 // return non-zero if the interrupt was raised and is now pending
-int avr_raise_interrupt(avr_t * avr, avr_int_vector_t * vector);
+int
+avr_raise_interrupt(
+		avr_t * avr,
+		avr_int_vector_t * vector);
 // return non-zero if the AVR core has any pending interrupts
-int avr_has_pending_interrupts(avr_t * avr);
+int
+avr_has_pending_interrupts(
+		avr_t * avr);
 // return nonzero if a specific interrupt vector is pending
-int avr_is_interrupt_pending(avr_t * avr, avr_int_vector_t * vector);
+int
+avr_is_interrupt_pending(
+		avr_t * avr,
+		avr_int_vector_t * vector);
 // clear the "pending" status of an interrupt
-void avr_clear_interrupt(avr_t * avr, avr_int_vector_t * vector);
+void
+avr_clear_interrupt(
+		avr_t * avr,
+		avr_int_vector_t * vector);
 // called by the core at each cycle to check whether an interrupt is pending
-void avr_service_interrupts(avr_t * avr);
+void
+avr_service_interrupts(
+		avr_t * avr);
 
 // clear the interrupt (inc pending) if "raised" flag is 1
-int avr_clear_interrupt_if(avr_t * avr, avr_int_vector_t * vector, uint8_t old);
+int
+avr_clear_interrupt_if(
+		avr_t * avr,
+		avr_int_vector_t * vector,
+		uint8_t old);
 
 // return the IRQ that is raised when the vector is enabled and called/cleared
 // this allows tracing of pending interrupts
-avr_irq_t * avr_get_interrupt_irq(avr_t * avr, uint8_t v);
+avr_irq_t *
+avr_get_interrupt_irq(
+		avr_t * avr,
+		uint8_t v);
 
 #ifdef __cplusplus
 };
