@@ -26,6 +26,13 @@
 #include "sim_time.h"
 #include "sim_cycle_timers.h"
 
+void
+avr_cycle_timer_reset(
+		struct avr_t * avr)
+{
+	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
+	memset(pool, 0, sizeof(*pool));
+}
 
 // no sanity checks checking here, on purpose
 static void

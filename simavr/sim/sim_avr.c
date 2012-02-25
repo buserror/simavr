@@ -82,7 +82,8 @@ void avr_reset(avr_t * avr)
 		avr->sreg[i] = 0;
 	if (avr->reset)
 		avr->reset(avr);
-
+	avr_interrupt_reset(avr);
+	avr_cycle_timer_reset(avr);
 	avr_io_t * port = avr->io_port;
 	while (port) {
 		if (port->reset)
@@ -201,7 +202,7 @@ void avr_callback_run_gdb(avr_t * avr)
 	// if we just re-enabled the interrupts...
 	// double buffer the I flag, to detect that edge
 	if (avr->sreg[S_I] && !avr->i_shadow)
-		avr->pending_wait++;
+		avr->interrupts.pending_wait++;
 	avr->i_shadow = avr->sreg[S_I];
 
 	// run the cycle timers, get the suggested sleep time
@@ -255,7 +256,7 @@ void avr_callback_run_raw(avr_t * avr)
 	// if we just re-enabled the interrupts...
 	// double buffer the I flag, to detect that edge
 	if (avr->sreg[S_I] && !avr->i_shadow)
-		avr->pending_wait++;
+		avr->interrupts.pending_wait++;
 	avr->i_shadow = avr->sreg[S_I];
 
 	// run the cycle timers, get the suggested sleeo time

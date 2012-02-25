@@ -60,7 +60,7 @@ static int my_avr_run(avr_t * avr)
 	// if we just re-enabled the interrupts...
 	// double buffer the I flag, to detect that edge
 	if (avr->sreg[S_I] && !avr->i_shadow)
-		avr->pending_wait++;
+		avr->interrupts.pending_wait++;
 	avr->i_shadow = avr->sreg[S_I];
 
 	// run the cycle timers, get the suggested sleep time

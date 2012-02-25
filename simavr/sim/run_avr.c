@@ -153,8 +153,8 @@ int main(int argc, char *argv[])
 	}
 	avr->trace = trace;
 	for (int ti = 0; ti < trace_vectors_count; ti++)
-		if (avr->vector[trace_vectors[ti]])
-			avr->vector[trace_vectors[ti]]->trace++;
+		if (avr->interrupts.vector[trace_vectors[ti]])
+			avr->interrupts.vector[trace_vectors[ti]]->trace = 1;
 
 	// even if not setup at startup, activate gdb if crashing
 	avr->gdb_port = 1234;

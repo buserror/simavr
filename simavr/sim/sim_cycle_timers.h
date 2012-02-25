@@ -92,6 +92,9 @@ avr_cycle_timer_status(
 avr_cycle_count_t
 avr_cycle_timer_process(
 		struct avr_t * avr);
+void
+avr_cycle_timer_reset(
+		struct avr_t * avr);
 
 #ifdef __cplusplus
 };

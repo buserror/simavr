@@ -27,6 +27,7 @@ extern "C" {
 #endif
 
 #include "sim_irq.h"
+#include "sim_interrupts.h"
 #include "sim_cycle_timers.h"
 
 struct avr_t;
@@ -229,14 +230,10 @@ typedef struct avr_t {
 	// queue of io modules
 	struct avr_io_t *io_port;
 
+	// cycle timers tracking & delivery
 	avr_cycle_timer_pool_t	cycle_timers;
-
-	// interrupt vectors, and their enable/clear registers
-	struct avr_int_vector_t * vector[64];
-	uint8_t		vector_count;
-	uint8_t		pending_wait;	// number of cycles to wait for pending
-	struct avr_int_vector_t * pending[64]; // needs to be >= vectors and a power of two
-	uint8_t		pending_w, pending_r;	// fifo cursors
+	// interrupt vectors and delivery fifo
+	avr_int_table_t	interrupts;
 
 	// DEBUG ONLY -- value ignored if CONFIG_SIMAVR_TRACE = 0
 	int		trace : 1,
@@ -354,8 +351,6 @@ void avr_callback_run_raw(avr_t * avr);
 
 #include "sim_io.h"
 #include "sim_regbit.h"
-#include "sim_interrupts.h"
-#include "sim_cycle_timers.h"
 
 #endif /*__SIM_AVR_H__*/
 
