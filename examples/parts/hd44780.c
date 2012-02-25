@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "sim_cycle_timers.h"
+#include "sim_time.h"
 
 #include "hd44780.h"
 

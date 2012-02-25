@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "sim_time.h"
 #include "avr_adc.h"
 
 static avr_cycle_count_t avr_adc_int_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)

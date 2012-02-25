@@ -26,6 +26,7 @@
 #include <string.h>
 #include "sim_vcd_file.h"
 #include "sim_avr.h"
+#include "sim_time.h"
 
 void _avr_vcd_notify(struct avr_irq_t * irq, uint32_t value, void * param);
 

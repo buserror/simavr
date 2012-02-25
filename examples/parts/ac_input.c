@@ -20,9 +20,10 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
 #include "sim_avr.h"
+#include "sim_time.h"
 #include "ac_input.h"
-#include "stdio.h"
 
 static avr_cycle_count_t
 switch_auto(struct avr_t * avr,

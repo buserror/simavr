@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include "sim_avr.h"
 #include "sim_core.h"
+#include "sim_time.h"
 #include "sim_gdb.h"
 #include "avr_uart.h"
 #include "sim_vcd_file.h"
