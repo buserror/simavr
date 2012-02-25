@@ -6,7 +6,7 @@
 	+ CDC
 	+ Fast PWM
 
-	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
  	This file is part of simavr.
 
@@ -75,8 +75,9 @@ static avr_cycle_count_t avr_timer_comp(avr_timer_t *p, avr_cycle_count_t when, 
 			break;
 	}
 
-	return p->tov_cycles ? 0 : p->comp[comp].comp_cycles ? when
-	        + p->comp[comp].comp_cycles : 0;
+	return p->tov_cycles ? 0 :
+				p->comp[comp].comp_cycles ?
+						when + p->comp[comp].comp_cycles : 0;
 }
 
 static avr_cycle_count_t avr_timer_compa(struct avr_t * avr, avr_cycle_count_t when, void * param)
@@ -192,6 +193,8 @@ static void avr_timer_configure(avr_timer_t * p, uint32_t clock, uint32_t top)
 	printf("%s-%c TOP %.2fHz = %d cycles\n", __FUNCTION__, p->name, t, (int)p->tov_cycles);
 
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
+		if (!p->comp[compi].r_ocr)
+			continue;
 		uint32_t ocr = _timer_get_ocr(p, compi);
 		float fc = clock / (float)(ocr+1);
 
