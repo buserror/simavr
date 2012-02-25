@@ -1,0 +1,6 @@
+include
+lib
+linux
+*.bz2
+libusb_vhci-*
+vhci-hcd-*
