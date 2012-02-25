@@ -81,6 +81,9 @@ int main(int argc, char *argv[])
 
 	printf( "Demo launching:\n");
 
-	while (1)
-		avr_run(avr);
+	while (1) {
+		int state = avr_run(avr);
+		if ( state == cpu_Done || state == cpu_Crashed)
+			break;
+	}
 }
