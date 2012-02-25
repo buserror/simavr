@@ -1,0 +1,29 @@
+From 8450b39ce40b2cc2e9e7cf3cfceaafdae2605f17 Mon Sep 17 00:00:00 2001
+From: Torbjorn Tyridal <ttyridal@cisco.com>
+Date: Thu, 23 Feb 2012 13:37:19 +0100
+Subject: [PATCH] Comment out function that doesn't compile
+
+---
+ src/libusb_vhci.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/libusb_vhci.c b/src/libusb_vhci.c
+index 47fc381..002d7aa 100644
+--- a/src/libusb_vhci.c
++++ b/src/libusb_vhci.c
+@@ -389,8 +389,8 @@ int usb_vhci_to_iso_packets_errno(int32_t status)
+ 	return usb_vhci_to_errno(status, 0);
+ }
+ 
+-int32_t usb_vhci_from_iso_packets_errno(int errno)
+-{
+-	return usb_vhci_from_errno(errno, 0);
+-}
++// int32_t usb_vhci_from_iso_packets_errno(int errno)
++// {
++// 	return usb_vhci_from_errno(errno, 0);
++// }
+ 
+-- 
+1.7.5.4
+

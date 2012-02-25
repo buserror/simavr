@@ -1,0 +1,25 @@
+From 39a45915645cf308b8f446867399b33244f006b1 Mon Sep 17 00:00:00 2001
+From: root <root@ttyridal.(none)>
+Date: Sun, 19 Feb 2012 17:20:55 +0100
+Subject: [PATCH 1/2] SPIN_LOCK_UNLOCKED has been depreciated
+
+---
+ usb-vhci-hcd.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/usb-vhci-hcd.c b/usb-vhci-hcd.c
+index fed46aa..b107e1b 100644
+--- a/usb-vhci-hcd.c
++++ b/usb-vhci-hcd.c
+@@ -1040,7 +1040,7 @@ static int device_enum(struct device *dev, void *data)
+ 	return unlikely(*((const int *)data) == pdev->id) ? -EINVAL : 0;
+ }
+ 
+-static spinlock_t dev_enum_lock = SPIN_LOCK_UNLOCKED;
++static DEFINE_SPINLOCK(dev_enum_lock);
+ 
+ int usb_vhci_hcd_register(const struct usb_vhci_ifc *ifc, void *context, u8 port_count, struct usb_vhci_device **vdev_ret)
+ {
+-- 
+1.7.5.4
+

@@ -1,0 +1,25 @@
+From 11483dc8c623b93c1ab419a48387161abcf75a45 Mon Sep 17 00:00:00 2001
+From: root <root@ttyridal.(none)>
+Date: Sun, 19 Feb 2012 17:21:07 +0100
+Subject: [PATCH 2/2] need transaction translator
+
+---
+ usb-vhci-hcd.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/usb-vhci-hcd.c b/usb-vhci-hcd.c
+index b107e1b..fcb9755 100644
+--- a/usb-vhci-hcd.c
++++ b/usb-vhci-hcd.c
+@@ -921,6 +921,8 @@ static int vhci_hcd_probe(struct platform_device *pdev)
+ 	if(unlikely(!hcd)) return -ENOMEM;
+ 	vdev->vhc = usbhcd_to_vhcihcd(hcd);
+ 
++    hcd->has_tt=1;
++
+ 	retval = usb_add_hcd(hcd, 0, 0); // calls vhci_start
+ 	if(unlikely(retval)) usb_put_hcd(hcd);
+ 
+-- 
+1.7.5.4
+
