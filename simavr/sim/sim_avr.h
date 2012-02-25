@@ -245,8 +245,10 @@ typedef struct avr_t {
 
 	// interrupt vectors, and their enable/clear registers
 	struct avr_int_vector_t * vector[64];
+	uint8_t		vector_count;
 	uint8_t		pending_wait;	// number of cycles to wait for pending
-	uint32_t	pending[2];		// pending interrupts
+	struct avr_int_vector_t * pending[64]; // needs to be >= vectors and a power of two
+	uint8_t		pending_w, pending_r;	// fifo cursors
 
 	// DEBUG ONLY -- value ignored if CONFIG_SIMAVR_TRACE = 0
 	int		trace : 1,

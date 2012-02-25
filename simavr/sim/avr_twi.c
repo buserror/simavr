@@ -152,7 +152,7 @@ avr_twi_write(
 			avr_regbit_clear(avr, p->twea);
 			avr_regbit_clear(avr, p->twsta);
 			avr_regbit_clear(avr, p->twsto);
-			avr_clear_interrupt(avr, p->twi.vector);
+			avr_clear_interrupt(avr, &p->twi);
 			avr_core_watch_write(avr, p->r_twdr, 0xff);
 			_avr_twi_status_set(p, TWI_NO_STATE, 0);
 			p->state = 0;

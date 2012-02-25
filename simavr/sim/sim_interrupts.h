@@ -31,14 +31,13 @@ extern "C" {
 
 // interrupt vector for the IO modules
 typedef struct avr_int_vector_t {
-	uint8_t vector;			// vector number, zero (reset) is reserved
+	uint8_t pending : 1, vector;	// vector number, zero (reset) is reserved
 	avr_regbit_t enable;	// IO register index for the "interrupt enable" flag for this vector
 	avr_regbit_t raised;	// IO register index for the register where the "raised" flag is (optional)
 
 	avr_irq_t		irq;		// raised to 1 when queued, to zero when called
 	uint8_t			trace;		// only for debug of a vector
 } avr_int_vector_t;
-
 
 /*
  * Interrupt Helper Functions
@@ -53,7 +52,7 @@ int avr_has_pending_interrupts(avr_t * avr);
 // return nonzero if a specific interrupt vector is pending
 int avr_is_interrupt_pending(avr_t * avr, avr_int_vector_t * vector);
 // clear the "pending" status of an interrupt
-void avr_clear_interrupt(avr_t * avr, int v);
+void avr_clear_interrupt(avr_t * avr, avr_int_vector_t * vector);
 // called by the core at each cycle to check whether an interrupt is pending
 void avr_service_interrupts(avr_t * avr);
 
