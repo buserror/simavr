@@ -26,6 +26,19 @@
 #include "sim_time.h"
 #include "sim_cycle_timers.h"
 
+#if 0
+#define DEBUG(__w) __w
+#define DUMP(_pool,_w) { \
+	printf("%s:%d %s ",__func__,__LINE__, _w);\
+	for (int _i=0;_i<_pool->count;_i++) \
+		printf("[%2d:%7d] ",_i,(int)_pool->timer[_i].when);\
+	printf("\n");\
+}
+#else
+#define DEBUG(__w)
+#define DUMP(_pool,_w)
+#endif
+
 void
 avr_cycle_timer_reset(
 		struct avr_t * avr)
@@ -55,11 +68,13 @@ avr_cycle_timer_insert(
 	if (cnt)
 		memmove(&pool->timer[inserti + 1], &pool->timer[inserti],
 				cnt * sizeof(avr_cycle_timer_slot_t));
+	pool->count++;
 
 	pool->timer[inserti].timer = timer;
 	pool->timer[inserti].param = param;
 	pool->timer[inserti].when = when;
-	pool->count++;
+	DEBUG(printf("%s %2d/%2d when %7d %p/%p\n", __func__, inserti, pool->count, (int)(when - avr->cycle), timer, param);)
+	DUMP(pool, "after");
 }
 
 void
@@ -101,11 +116,13 @@ avr_cycle_timer_cancel(
 
 	for (int i = 0; i < pool->count; i++)
 		if (pool->timer[i].timer == timer && pool->timer[i].param == param) {
-			int cnt = pool->count - i;
+			int cnt = pool->count - i - 1;
+			DEBUG(printf("%s %2d when %7d %p/%p\n", __func__, i, (int)(pool->timer[i].when - avr->cycle), timer, param);)
 			if (cnt)
 				memmove(&pool->timer[i], &pool->timer[i+1],
 						cnt * sizeof(avr_cycle_timer_slot_t));
 			pool->count--;
+			DUMP(pool, "after");
 			return;
 		}
 }
@@ -145,17 +162,20 @@ avr_cycle_timer_process(
 		return (avr_cycle_count_t)1000;
 
 	do {
-		avr_cycle_timer_slot_t * timer = &pool->timer[pool->count-1];
-		avr_cycle_count_t when = timer->when;
+		// copy it, since the array is volatile
+		avr_cycle_timer_slot_t  timer = pool->timer[pool->count-1];
+		avr_cycle_count_t when = timer.when;
 		if (when > avr->cycle)
 			return when - avr->cycle;
+		pool->count--; // remove the top element now
 		do {
-			when = timer->timer(avr, when, timer->param);
+			DEBUG(printf("%s %2d when %7d %p/%p\n", __func__, pool->count, (int)(when), timer.timer, timer.param););
+			when = timer.timer(avr, when, timer.param);
 		} while (when && when <= avr->cycle);
-		if (when)
-			avr_cycle_timer_insert(avr, when - avr->cycle, timer->timer, timer->param);
-
-		pool->count--;
+		if (when) {
+			DEBUG(printf("%s %2d reschedule when %7d %p/%p\n", __func__, pool->count, (int)(when), timer.timer, timer.param);)
+			avr_cycle_timer_insert(avr, when - avr->cycle, timer.timer, timer.param);
+		}
 	} while (pool->count);
 
 	return (avr_cycle_count_t)1000;

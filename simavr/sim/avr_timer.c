@@ -279,6 +279,9 @@ static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 		case avr_timer_wgm_normal:
 			avr_timer_reconfigure(p);
 			break;
+		case avr_timer_wgm_ctc:
+			avr_timer_reconfigure(p);
+			break;
 		case avr_timer_wgm_pwm:
 			if (p->mode.top != avr_timer_wgm_reg_ocra) {
 				avr_raise_irq(p->io.irq + TIMER_IRQ_OUT_PWM0, _timer_get_ocr(p, AVR_TIMER_COMPA));
