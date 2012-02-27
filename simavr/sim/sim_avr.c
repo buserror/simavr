@@ -302,6 +302,7 @@ extern avr_kind_t mega164,mega324,mega644;
 extern avr_kind_t mega128;
 extern avr_kind_t mega1281;
 extern avr_kind_t mega16m1;
+extern avr_kind_t usb162;
 
 avr_kind_t * avr_kind[] = {
 	&tiny13,
@@ -314,6 +315,7 @@ avr_kind_t * avr_kind[] = {
 	&mega128,
 	&mega1281,
 	&mega16m1,
+	&usb162,
 	NULL
 };
 
