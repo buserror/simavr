@@ -1,5 +1,5 @@
 #
-# 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+# 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 #
 #	This file is part of simavr.
 #
@@ -16,6 +16,9 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
+SIMAVR_VERSION	= 1.0a10
+SIMAVR_REVISION	= 1
+
 target	= run_avr
 
 CFLAGS	+= -O3 -Wall -Werror
@@ -24,7 +27,7 @@ CFLAGS	+= -O3 -Wall -Werror
 # it otherwise eat quite a bit of few cycles, even disabled
 #CFLAGS	+= -DCONFIG_SIMAVR_TRACE=1
 
-all:	obj libsimavr ${target}
+all:	obj ${target}
 
 include ../Makefile.common
 
@@ -41,32 +44,59 @@ IPATH	+= ../../shared
 IPATH	+= ../include
 
 # Thats for MacPorts libelf
+ifeq (${shell test -d /opt/local && echo Exists}, Exists)
 IPATH	+= /opt/local/include
 LFLAGS	= -L/opt/local/lib/
-
-# shared library won't work that easily on non-linux
-ifeq (${shell uname}, Linux)
-all:	${OBJ}/libsimavr.so
 endif
 
-
+#
+# Static library
+#
 ${OBJ}/libsimavr.a	:	${cores_o}
 ${OBJ}/libsimavr.a	:	${sim_o}
 	@echo AR $@
 	@$(AR) cru $@ $^ && $(RANLIB) $@
 
-libsimavr: ${OBJ}/libsimavr.a
- 
-${OBJ}/libsimavr.so	:	${cores_o}
-${OBJ}/libsimavr.so	:	${sim_o}
-	@echo LD $@
-	@$(CC) -shared -fPIC -o $@ $(LFLAGS) $^ $(LDFLAGS)
+#
+# Shared library (Linux)
+#
+${OBJ}/libsimavr.so.1	:	${cores_o}
+${OBJ}/libsimavr.so.1	:	${sim_o}
+	@echo SHARED $@
+	@$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^
 
-${OBJ}/${target}.elf	:	${OBJ}/${target}.o
-${OBJ}/${target}.elf	:	${OBJ}/libsimavr.a
+${OBJ}/libsimavr.so		: ${OBJ}/libsimavr.so.1
+	ln -sf libsimavr.so.1 $@
+
+libsimavr	: ${OBJ}/libsimavr.a
+# shared library won't work that easily on non-linux
+ifeq (${shell uname}, Linux)
+libsimavr	:	${OBJ}/libsimavr.so
+endif
+
+${OBJ}/${target}.o		: libsimavr 
+${OBJ}/${target}.elf	: ${OBJ}/${target}.o
 
 ${target}	: ${OBJ}/${target}.elf
 	ln -sf $< $@
  
 clean: clean-${OBJ}
 	rm -rf ${target} *.a *.so
+
+DESTDIR = /usr/local
+
+install : all
+	$(MKDIR) $(DESTDIR)/include/simavr/avr
+	$(INSTALL) sim/*.h $(DESTDIR)/include/simavr/
+	$(INSTALL) ../include/*.h $(DESTDIR)/include/simavr/avr/
+	$(MKDIR) $(DESTDIR)/lib
+	$(INSTALL) ${OBJ}/libsimavr.a $(DESTDIR)/lib/
+	$(MKDIR) $(DESTDIR)/lib/pkgconfig/
+	sed -e "s|PREFIX|${DESTDIR}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
+		simavr.pc >$(DESTDIR)/lib/pkgconfig/simavr.pc
+ifeq (${shell uname}, Linux)
+	$(INSTALL) ${OBJ}/libsimavr.so.1 $(DESTDIR)/lib/
+	ln -sf libsimavr.so.1 $(DESTDIR)/lib/libsimavr.so
+endif
+	$(MKDIR) $(DESTDIR)/bin
+	$(INSTALL) ${OBJ}/${target}.elf $(DESTDIR)/bin/simavr

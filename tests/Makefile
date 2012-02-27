@@ -28,8 +28,6 @@ simavr 		= ..
 
 IPATH 		+= ${simavr}/include
 IPATH 		+= ${simavr}/simavr/sim
-CFLAGS 		+= -Wall
-LDFLAGS		+= -L${simavr}/simavr/${OBJ} -lsimavr
 
 tests_src	= ${wildcard test_*.c}
 tests		= ${patsubst %.c, ${OBJ}/%.tst, ${tests_src}}

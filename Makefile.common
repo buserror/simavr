@@ -27,10 +27,10 @@
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
 # get the first character of what the compiler says it is, unless it's 'x86_64' doh
-ARCH = ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
+ARCH 		= ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
 
 ifeq ($(ARCH), i)
-CFLAGS	+= -mfpmath=sse -msse2
+CFLAGS		+= -mfpmath=sse -msse2
 endif
 
 CFLAGS		+= -g --std=gnu99 -Wall
@@ -38,20 +38,34 @@ CFLAGS		+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
 LDFLAGS 	+= -lelf 
 
 ifeq (${shell uname}, Darwin)
-AVR_ROOT := "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/"
-AVR_INC := ${AVR_ROOT}/avr-4/
-AVR := ${AVR_ROOT}/bin/avr-
-LFLAGS += -L/opt/local/lib
+AVR_ROOT 	:= "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/"
+AVR_INC 	:= ${AVR_ROOT}/avr-4/
+AVR 		:= ${AVR_ROOT}/bin/avr-
+LFLAGS 		+= -L/opt/local/lib
 else
-AVR_ROOT := /usr/lib/avr
-AVR_INC := ${AVR_ROOT}
-AVR := avr-
-CFLAGS +=  -fPIC
+AVR_ROOT 	:= /usr/lib/avr
+AVR_INC 	:= ${AVR_ROOT}
+AVR 		:= avr-
+CFLAGS 		+= -fPIC
 endif
 
-CC ?= gcc
-AR ?= ar
-RANLIB ?= ranlib
+CC 			?= gcc
+AR 			?= ar
+RANLIB 		?= ranlib
+MKDIR		?= mkdir -p
+INSTALL		?= install
+
+# simavr directory
+SIMAVR		?= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && echo $$p/simavr; done}
+	
+OBJ 		= obj-${shell $(CC) -dumpmachine}
+LIBDIR		= ${shell pwd}/${SIMAVR}/${OBJ}
+LDFLAGS 	+= -L${LIBDIR} -lsimavr 
+
+ifeq (${shell uname}, Linux)
+# allow the shared library to be found in the build directory
+LFLAGS		+= -Wl,-rpath,${LIBDIR}
+endif
 
 # The code is compiled "optimized" to the max.
 # 
@@ -79,8 +93,6 @@ RANLIB ?= ranlib
 			-I../include -I../../include \
 			${^} -o ${@}
 	@${AVR}size ${@}|sed '1d'
-
-OBJ = obj-${shell $(CC) -dumpmachine}
 
 # this rule has precedence
 ${OBJ}/sim_%.o : cores/sim_%.c
