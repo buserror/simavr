@@ -47,7 +47,6 @@ board = ${OBJ}/${target}.elf
 ${board} : ${OBJ}/button.o
 ${board} : ${OBJ}/hc595.o
 ${board} : ${OBJ}/${target}.o
-${board} : ${simavr}/simavr/${OBJ}/libsimavr.a
 
 ${target}: ${board}
 	@echo $@ done

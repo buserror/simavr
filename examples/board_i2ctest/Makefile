@@ -43,7 +43,6 @@ board = ${OBJ}/${target}.elf
 
 ${board} : ${OBJ}/${target}.o
 ${board} : ${OBJ}/i2c_eeprom.o
-${board} : ${simavr}/simavr/${OBJ}/libsimavr.a
 
 ${target}: ${board}
 	@echo $@ done
