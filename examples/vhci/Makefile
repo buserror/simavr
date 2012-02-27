@@ -11,6 +11,7 @@
 HCD_V		= 1.14
 VHCI_V 		= 0.6
 BASE_URL	= http://downloads.sourceforge.net/project/usb-vhci
+PWD			= ${shell pwd}
 
 all: library
 
@@ -36,7 +37,7 @@ lib/libusb_vhci.a: module libusb_vhci-$(VHCI_V)
 	ln -snf vhci-hcd-$(HCD_V) linux && \
 		cd libusb_vhci-$(VHCI_V) && \
 		./configure --prefix=$(PWD) CPPFLAGS="-I$(PWD)" --enable-static --disable-shared && \
-			make && make install
+			make -j && make install
 
 libusb_vhci-$(VHCI_V).tar.bz2:
 	wget $(BASE_URL)/native%20libraries/libusb_vhci-$(VHCI_V).tar.bz2
