@@ -73,8 +73,8 @@ void displayCB(void)		/* function called whenever redisplay needed */
 	glMatrixMode(GL_MODELVIEW); // Select modelview matrix
 	glLoadIdentity(); // Start with an identity matrix
 
-	float grid = pixsize;
-	float size = grid * 0.8;
+	//float grid = pixsize;
+	//float size = grid * 0.8;
     glBegin(GL_QUADS);
 	glColor3f(1,0,0);
 
@@ -100,7 +100,7 @@ void keyCB(unsigned char key, int x, int y)	/* called on key press */
 {
 	if (key == 'q')
 		exit(0);
-	static uint8_t buf[64];
+	//static uint8_t buf[64];
 	switch (key) {
 		case 'q':
 		case 0x1f: // escape
@@ -123,7 +123,7 @@ void keyCB(unsigned char key, int x, int y)	/* called on key press */
 // gl timer. if the pin have changed states, refresh display
 void timerCB(int i)
 {
-	static uint8_t oldstate = 0xff;
+	//static uint8_t oldstate = 0xff;
 	// restart timer
 	glutTimerFunc(1000/64, timerCB, 0);
 #if 0
@@ -136,7 +136,7 @@ void timerCB(int i)
 
 static void * avr_run_thread(void * oaram)
 {
-	int b_press = do_button_press;
+//	int b_press = do_button_press;
 
 	while (1) {
 		avr_run(avr);
@@ -148,6 +148,7 @@ static void * avr_run_thread(void * oaram)
 		}
 #endif
 	}
+	return NULL;
 }
 
 
@@ -192,8 +193,8 @@ void avr_special_deinit( avr_t* avr)
 
 int main(int argc, char *argv[])
 {
-	elf_firmware_t f;
-	const char * pwd = dirname(argv[0]);
+	//elf_firmware_t f;
+	//const char * pwd = dirname(argv[0]);
 
 	avr = avr_make_mcu_by_name("atmega328p");
 	if (!avr) {

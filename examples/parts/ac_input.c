@@ -43,5 +43,5 @@ void ac_input_init(avr_t *avr, ac_input_t *b)
 	b->value = 0;
 	avr_cycle_timer_register_usec(avr, 100000 / 50, switch_auto, b);
 	printf("ac_input_init period %duS or %d cycles\n",
-			100000 / 50, avr_usec_to_cycles(avr, 100000 / 50));
+			100000 / 50, (int)avr_usec_to_cycles(avr, 100000 / 50));
 }

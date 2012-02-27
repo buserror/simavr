@@ -198,7 +198,7 @@ hd44780_process_write(
 		if (comp)
 			b->datapins = (b->datapins & 0xf0) | ((b->pinstate >>  IRQ_HD44780_D4) & 0xf);
 		else
-			b->datapins = (b->datapins & 0xf) | ((b->pinstate >>  IRQ_HD44780_D4-4) & 0xf0);
+			b->datapins = (b->datapins & 0xf) | ((b->pinstate >>  (IRQ_HD44780_D4-4)) & 0xf0);
 		write = comp;
 		b->flags ^= (1 << HD44780_FLAG_LOWNIBBLE);
 	} else {	// 8 bits

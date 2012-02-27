@@ -33,9 +33,9 @@ ifeq ($(ARCH), i)
 CFLAGS	+= -mfpmath=sse -msse2
 endif
 
-CFLAGS	+= -g --std=gnu99
-CFLAGS	+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
-LDFLAGS += -lelf 
+CFLAGS		+= -g --std=gnu99 -Wall
+CFLAGS		+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
+LDFLAGS 	+= -lelf 
 
 ifeq (${shell uname}, Darwin)
 AVR_ROOT := "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/"

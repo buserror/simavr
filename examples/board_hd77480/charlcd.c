@@ -62,6 +62,7 @@ avr_run_thread(
 	while (1) {
 		avr_run(avr);
 	}
+	return NULL;
 }
 
 void keyCB(
@@ -105,7 +106,7 @@ void displayCB(void)		/* function called whenever redisplay needed */
 // gl timer. if the lcd is dirty, refresh display
 void timerCB(int i)
 {
-	static int oldstate = -1;
+	//static int oldstate = -1;
 	// restart timer
 	glutTimerFunc(1000/64, timerCB, 0);
 	glutPostRedisplay();

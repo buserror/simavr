@@ -154,7 +154,7 @@ void keyCB(unsigned char key, int x, int y)	/* called on key press */
 {
 	if (key == 'q')
 		exit(0);
-	static uint8_t buf[64];
+	//static uint8_t buf[64];
 	switch (key) {
 		case 'q':
 		case 0x1f: // escape
@@ -203,6 +203,7 @@ static void * avr_run_thread(void * ignore)
 			}
 		}
 	}
+	return NULL;
 }
 
 
@@ -210,7 +211,7 @@ int main(int argc, char *argv[])
 {
 	elf_firmware_t f;
 	const char * fname =  "atmega168_timer_64led.axf";
-	char path[256];
+	//char path[256];
 
 //	sprintf(path, "%s/%s", dirname(argv[0]), fname);
 	//printf("Firmware pathname is %s\n", path);

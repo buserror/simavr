@@ -118,10 +118,11 @@ static void * uart_udp_thread(void * param)
 			while (!uart_udp_fifo_isempty(&p->in) && dst < (buffer+sizeof(buffer)))
 				*dst++ = uart_udp_fifo_read(&p->in);
 			socklen_t len = dst - buffer;
-			size_t r = sendto(p->s, buffer, len, 0, (struct sockaddr*)&p->peer, sizeof(p->peer));
+			/*size_t r = */sendto(p->s, buffer, len, 0, (struct sockaddr*)&p->peer, sizeof(p->peer));
 		//	hdump("udp send", buffer, r);
 		}
 	}
+	return NULL;
 }
 
 static const char * irq_names[IRQ_UART_UDP_COUNT] = {
