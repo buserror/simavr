@@ -31,6 +31,8 @@
 #include "sim_vcd_file.h"
 #include "avr_mcu_section.h"
 
+#define AVR_KIND_DECL
+#include "sim_core_decl.h"
 
 int avr_init(avr_t * avr)
 {
@@ -291,7 +293,7 @@ int avr_run(avr_t * avr)
 	return avr->state;
 }
 
-
+#if 0
 extern avr_kind_t tiny13;
 extern avr_kind_t tiny2313;
 extern avr_kind_t tiny25,tiny45,tiny85;
@@ -318,6 +320,7 @@ avr_kind_t * avr_kind[] = {
 	&usb162,
 	NULL
 };
+#endif
 
 avr_t * avr_make_mcu_by_name(const char *name)
 {

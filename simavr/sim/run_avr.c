@@ -30,7 +30,7 @@
 #include "sim_gdb.h"
 #include "sim_hex.h"
 
-extern avr_kind_t * avr_kind[];
+#include "sim_core_decl.h"
 
 void display_usage(char * app)
 {
