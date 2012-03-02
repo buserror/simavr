@@ -8,10 +8,6 @@ simavr/run_avr
 .tags*
 ._*
 *.vcd
-examples/board_ledramp/ledramp
-examples/board_simduino/simduino
-examples/board_simduino/simduino_flash.bin
-examples/board_timer_64led/timer_64led
 TAGS
 callgrind.out.*
 *~
@@ -19,3 +15,4 @@ callgrind.out.*
 *.elf
 *.objdump
 perf.data
+.DS_Store
