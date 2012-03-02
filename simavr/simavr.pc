@@ -8,7 +8,7 @@ Name: simavr
 Description: Atmel(tm) AVR 8 bits simulator
 Version: VERSION
 Cflags: -I${includedir}
-Libs: -L${libdir} -lsimavr
+Libs: -L${libdir} -lsimavr -lelf
 
 simavr-avr.pc:
 prefix=PREFIX
@@ -22,5 +22,5 @@ Version: VERSION
 Cflags: -I${includedir}/avr -ffunction-sections -fdata-sections \
 			-Wl,--relax,--gc-sections \
 			-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000
-Libs: -L${libdir} -lsimavr
+Libs: 
 

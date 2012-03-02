@@ -35,7 +35,6 @@ endif
 
 CFLAGS		+= -g --std=gnu99 -Wall
 CFLAGS		+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
-LDFLAGS 	+= -lelf 
 
 ifeq (${shell uname}, Darwin)
 AVR_ROOT 	:= "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/"
@@ -61,6 +60,8 @@ SIMAVR		?= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && ech
 OBJ 		= obj-${shell $(CC) -dumpmachine}
 LIBDIR		= ${shell pwd}/${SIMAVR}/${OBJ}
 LDFLAGS 	+= -L${LIBDIR} -lsimavr 
+
+LDFLAGS 	+= -lelf 
 
 ifeq (${shell uname}, Linux)
 # allow the shared library to be found in the build directory
