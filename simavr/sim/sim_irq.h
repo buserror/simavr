@@ -55,6 +55,7 @@ enum {
 	IRQ_FLAG_NOT		= (1 << 0),	//!< change polarity of the IRQ
 	IRQ_FLAG_FILTERED	= (1 << 1),	//!< do not "notify" if "value" is the same as previous raise
 	IRQ_FLAG_ALLOC		= (1 << 2), //!< this irq structure was malloced via avr_alloc_irq
+	IRQ_FLAG_INIT		= (1 << 3), //!< this irq hasn't been used yet
 };
 
 /*

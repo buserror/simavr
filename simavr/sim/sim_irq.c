@@ -71,6 +71,7 @@ avr_init_irq(
 
 	for (int i = 0; i < count; i++) {
 		irq[i].irq = base + i;
+		irq[i].flags = IRQ_FLAG_INIT;
 		if (pool)
 			_avr_irq_pool_add(pool, &irq[i]);
 		if (names && names[i])
@@ -185,8 +186,11 @@ avr_raise_irq(
 	if (!irq)
 		return ;
 	uint32_t output = (irq->flags & IRQ_FLAG_NOT) ? !value : value;
-	if (irq->value == output && (irq->flags & IRQ_FLAG_FILTERED))
+	// if value is the same but it's the first time, raise it anyway
+	if (irq->value == output &&
+			(irq->flags & IRQ_FLAG_FILTERED) && !(irq->flags & IRQ_FLAG_INIT))
 		return;
+	irq->flags &= ~IRQ_FLAG_INIT;
 	avr_irq_hook_t *hook = irq->hook;
 	while (hook) {
 		avr_irq_hook_t * next = hook->next;
