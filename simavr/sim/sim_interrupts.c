@@ -103,18 +103,18 @@ avr_raise_interrupt(
 	if (vector->raised.reg)
 		avr_regbit_set(avr, vector->raised);
 
-	// Mark the interrupt as pending
-	vector->pending = 1;
-
-	avr_int_table_p table = &avr->interrupts;
-
-	table->pending[table->pending_w++] = vector;
-	table->pending_w = INT_FIFO_MOD(table->pending_w);
-
 	avr_raise_irq(&vector->irq, 1);
 
 	// If the interrupt is enabled, attempt to wake the core
 	if (avr_regbit_get(avr, vector->enable)) {
+		// Mark the interrupt as pending
+		vector->pending = 1;
+
+		avr_int_table_p table = &avr->interrupts;
+
+		table->pending[table->pending_w++] = vector;
+		table->pending_w = INT_FIFO_MOD(table->pending_w);
+
 		if (!table->pending_wait)
 			table->pending_wait = 1;		// latency on interrupts ??
 		if (avr->state != cpu_Running) {
