@@ -37,7 +37,7 @@
 #include "avr_uart.h"
 #include "sim_hex.h"
 
-DEFINE_FIFO(uint8_t, uart_fifo, 64);
+DEFINE_FIFO(uint8_t, uart_fifo);
 
 static avr_cycle_count_t avr_uart_txc_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
@@ -80,8 +80,10 @@ static uint8_t avr_uart_rxc_read(struct avr_t * avr, avr_io_addr_t addr, void * 
 			usleep(1);
 	}
 	// if reception is idle and the fifo is empty, tell whomever there is room
-	if (avr_regbit_get(avr, p->rxen))
-		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XON, uart_fifo_isempty(&p->input) != 0);
+	if (avr_regbit_get(avr, p->rxen) && uart_fifo_isempty(&p->input)) {
+		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, 0);
+		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XON, 1);
+	}
 
 	return v;
 }
@@ -158,7 +160,7 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 				printf( FONT_GREEN "%s\n" FONT_DEFAULT, buf);
 			}
 		}
-	//	printf("UDR%c(%02x) = %02x\n", p->name, addr, v);
+		//printf("UDR%c(%02x) = %02x\n", p->name, addr, v);
 		// tell other modules we are "outputing" a byte
 		if (avr_regbit_get(avr, p->txen))
 			avr_raise_irq(p->io.irq + UART_IRQ_OUTPUT, v);
@@ -205,9 +207,10 @@ static void avr_uart_irq_input(struct avr_irq_t * irq, uint32_t value, void * pa
 		avr_cycle_timer_register_usec(avr, p->usec_per_byte, avr_uart_rxc_raise, p); // should be uart speed dependent
 	uart_fifo_write(&p->input, value); // add to fifo
 
-//	printf("UART IRQ in %02x (%d/%d) %s\n", value, p->input.read, p->input.write, uart_fifo_isfull(&p->input) ? "FULL!!" : "");
+	// printf("UART IRQ in %02x (%d/%d) %s\n", value, p->input.read, p->input.write, uart_fifo_isfull(&p->input) ? "FULL!!" : "");
 
-	avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, uart_fifo_isfull(&p->input) != 0);
+	if (uart_fifo_isfull(&p->input))
+		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, 1);
 }
 
 
@@ -278,7 +281,6 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 	avr_io_setirqs(&p->io, AVR_IOCTL_UART_GETIRQ(p->name), UART_IRQ_COUNT, NULL);
 	// Only call callbacks when the value change...
 	p->io.irq[UART_IRQ_OUT_XOFF].flags |= IRQ_FLAG_FILTERED;
-	p->io.irq[UART_IRQ_OUT_XON].flags |= IRQ_FLAG_FILTERED;
 
 	avr_register_io_write(avr, p->r_udr, avr_uart_write, p);
 	avr_register_io_read(avr, p->r_udr, avr_uart_read, p);
