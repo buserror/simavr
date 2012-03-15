@@ -31,7 +31,7 @@ IPATH += ${simavr}/simavr/sim
 VPATH = .
 VPATH += ../parts
 
-LDFLAGS += -lpthread
+LDFLAGS += -lpthread -lutil
 ifneq (${shell uname}, Darwin)
 LDFLAGS += -lGL -lglut
 else
@@ -45,7 +45,7 @@ include ${simavr}/Makefile.common
 board = ${OBJ}/${target}.elf
 
 ${board} : ${OBJ}/button.o
-${board} : ${OBJ}/uart_udp.o
+${board} : ${OBJ}/uart_pty.o
 ${board} : ${OBJ}/${target}.o
 
 ${target}: ${board}

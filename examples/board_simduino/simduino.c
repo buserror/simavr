@@ -19,7 +19,6 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <sys/mman.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -40,13 +39,13 @@
 #include "sim_elf.h"
 #include "sim_hex.h"
 #include "sim_gdb.h"
-#include "uart_udp.h"
+#include "uart_pty.h"
 #include "sim_vcd_file.h"
 
 #include "button.h"
 
 button_t button;
-uart_udp_t uart_udp;
+uart_pty_t uart_pty;
 int do_button_press = 0;
 avr_t * avr = NULL;
 avr_vcd_t vcd_file;
@@ -139,14 +138,9 @@ static void * avr_run_thread(void * oaram)
 //	int b_press = do_button_press;
 
 	while (1) {
-		avr_run(avr);
-#if 0
-		if (do_button_press != b_press) {
-			b_press = do_button_press;
-			printf("Button pressed\n");
-			button_press(&button, 1000000);
-		}
-#endif
+		int state = avr_run(avr);
+		if ( state == cpu_Done || state == cpu_Crashed)
+			break;
 	}
 	return NULL;
 }
@@ -157,11 +151,8 @@ int avr_flash_fd = 0;
 
 // avr special flash initalization
 // here: open and map a file to enable a persistent storage for the flash memory
-void avr_special_init( avr_t* avr)
+void avr_special_init( avr_t * avr)
 {
-	//puts(" --=== INIT CALLED ===--");
-	// release flash memory if allocated
-	if(avr->flash) free(avr->flash);
 	// open the file
 	avr_flash_fd = open(avr_flash_path, O_RDWR|O_CREAT, 0644);
 	if (avr_flash_fd < 0) {
@@ -170,10 +161,9 @@ void avr_special_init( avr_t* avr)
 	}
 	// resize and map the file the file
 	(void)ftruncate(avr_flash_fd, avr->flashend + 1);
-	avr->flash = (uint8_t*)mmap(NULL, avr->flashend + 1, // 32k is multiple of 4096
-	                            PROT_READ|PROT_WRITE, MAP_SHARED, avr_flash_fd, 0);
-	if (!avr->flash) {
-		fprintf(stderr, "unable to map memory\n");
+	ssize_t r = read(avr_flash_fd, avr->flash, avr->flashend + 1);
+	if (r != avr->flashend + 1) {
+		fprintf(stderr, "unable to load flash memory\n");
 		perror(avr_flash_path);
 		exit(1);
 	}
@@ -183,12 +173,15 @@ void avr_special_init( avr_t* avr)
 // here: cleanup the persistent storage
 void avr_special_deinit( avr_t* avr)
 {
-	//puts(" --=== DEINIT CALLED ===--");
-	// unmap and close the file
-	munmap( avr->flash, avr->flashend + 1);
-	close( avr_flash_fd);
-	// signal that cleanup is done
-	avr->flash = NULL;
+	puts(__func__);
+	lseek(avr_flash_fd, SEEK_SET, 0);
+	ssize_t r = write(avr_flash_fd, avr->flash, avr->flashend + 1);
+	if (r != avr->flashend + 1) {
+		fprintf(stderr, "unable to load flash memory\n");
+		perror(avr_flash_path);
+	}
+	close(avr_flash_fd);
+	uart_pty_stop(&uart_pty);
 }
 
 int main(int argc, char *argv[])
@@ -239,8 +232,8 @@ int main(int argc, char *argv[])
 		avr_gdb_init(avr);
 	}
 
-	uart_udp_init(avr, &uart_udp);
-	uart_udp_connect(&uart_udp, '0');
+	uart_pty_init(avr, &uart_pty);
+	uart_pty_connect(&uart_pty, '0');
 
 	/*
 	 * OpenGL init, can be ignored
