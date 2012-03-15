@@ -34,7 +34,7 @@
 #include "avr_uart.h"
 #include "sim_hex.h"
 
-DEFINE_FIFO(uint8_t,uart_udp_fifo, 512);
+DEFINE_FIFO(uint8_t,uart_udp_fifo);
 
 /*
  * called when a byte is send via the uart on the AVR
