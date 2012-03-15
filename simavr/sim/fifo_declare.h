@@ -1,7 +1,7 @@
 /*
 	fifo_declare.h
 
-	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Copyright 2008, 2012 Michel Pollet <buserror@gmail.com>
 
  	This file is part of simavr.
 
@@ -19,10 +19,13 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* Licensed to Vidiactive by Michel Pollet under the terms of the VECL */
+
 /*
  * FIFO helpers, aka circular buffers
  *
- * these macros define accessory for fifos of any name and any size (power of two)
+ * these macros define accessories for FIFOs of any name, type and
+ * any (power of two) size
  */
 
 #ifndef __FIFO_DECLARE__
@@ -30,7 +33,7 @@
 
 /*
 	doing a :
-	DEFINE_FIFO(uint8_t, myfifo, 128);
+	DECLARE_FIFO(uint8_t, myfifo, 128);
 
 	will declare :
 	enum : myfifo_overflow_f
@@ -49,6 +52,8 @@
 		// write b at offset o compared to current write cursor, no cursor advance
 		void myfifo_write_at(myfifo_t *c, uint16_t o, uint8_t b);
 
+	In your .c you need to 'implement' the fifo:
+	DEFINE_FIFO(uint8_t, myfifo)
 
 	To use the fifo, you must declare at least one :
 	myfifo_t fifo = FIFO_NULL;
@@ -77,22 +82,26 @@
 #define FIFO_INLINE	inline
 #endif
 
-#define FIFO_NULL { {0}, 0, 0, 0 }
+#ifndef FIFO_ZERO_INIT
+#define FIFO_ZERO_INIT {0}
+#endif
+#define FIFO_NULL { FIFO_ZERO_INIT, 0, 0, 0 }
 
 #define DECLARE_FIFO(__type, __name, __size) \
 enum { __name##_overflow_f = (1 << 0) }; \
+enum { __name##_fifo_size = (__size) }; \
 typedef struct __name##_t {			\
-	__type		buffer[__size];		\
+	__type		buffer[__name##_fifo_size];		\
 	volatile FIFO_CURSOR_TYPE	read;		\
 	volatile FIFO_CURSOR_TYPE	write;		\
 	volatile uint8_t	flags;		\
 } __name##_t
 
-#define DEFINE_FIFO(__type, __name, __size) \
+#define DEFINE_FIFO(__type, __name) \
 static FIFO_INLINE FIFO_BOOL_TYPE __name##_write(__name##_t * c, __type b)\
 {\
 	FIFO_CURSOR_TYPE now = c->write;\
-	FIFO_CURSOR_TYPE next = (now + 1) & (__size-1);\
+	FIFO_CURSOR_TYPE next = (now + 1) & (__name##_fifo_size-1);\
 	if (c->read != next) {	\
 		c->buffer[now] = b;\
 		c->write = next;\
@@ -100,45 +109,46 @@ static FIFO_INLINE FIFO_BOOL_TYPE __name##_write(__name##_t * c, __type b)\
 	}\
 	return 0;\
 }\
-static inline FIFO_BOOL_TYPE __name##_isfull(__name##_t *c)\
+static FIFO_INLINE FIFO_BOOL_TYPE __name##_isfull(__name##_t *c)\
 {\
-	FIFO_CURSOR_TYPE next = (c->write + 1) & (__size-1);\
+	FIFO_CURSOR_TYPE next = (c->write + 1) & (__name##_fifo_size-1);\
 	return c->read == next;\
 }\
-static inline FIFO_BOOL_TYPE __name##_isempty(__name##_t * c)\
+static FIFO_INLINE FIFO_BOOL_TYPE __name##_isempty(__name##_t * c)\
 {\
 	return c->read == c->write;\
 }\
 static FIFO_INLINE __type __name##_read(__name##_t * c)\
 {\
+	__type res = FIFO_ZERO_INIT; \
 	if (c->read == c->write)\
-		return 0;\
+		return res;\
 	FIFO_CURSOR_TYPE read = c->read;\
-	__type res = c->buffer[read];\
-	c->read = (read + 1) & (__size-1);\
+	res = c->buffer[read];\
+	c->read = (read + 1) & (__name##_fifo_size-1);\
 	return res;\
 }\
-static inline FIFO_CURSOR_TYPE __name##_get_read_size(__name##_t *c)\
+static FIFO_INLINE FIFO_CURSOR_TYPE __name##_get_read_size(__name##_t *c)\
 {\
-	return c->write > c->read ? c->write - c->read : __size - 1 - c->read + c->write;\
+	return c->write > c->read ? c->write - c->read : __name##_fifo_size - 1 - c->read + c->write;\
 }\
-static inline void __name##_read_offset(__name##_t *c, FIFO_CURSOR_TYPE o)\
+static FIFO_INLINE void __name##_read_offset(__name##_t *c, FIFO_CURSOR_TYPE o)\
 {\
-	c->read = (c->read + o) & (__size-1);\
+	c->read = (c->read + o) & (__name##_fifo_size-1);\
 }\
-static inline __type __name##_read_at(__name##_t *c, FIFO_CURSOR_TYPE o)\
+static FIFO_INLINE __type __name##_read_at(__name##_t *c, FIFO_CURSOR_TYPE o)\
 {\
-	return c->buffer[(c->read + o) & (__size-1)];\
+	return c->buffer[(c->read + o) & (__name##_fifo_size-1)];\
 }\
-static inline void __name##_write_at(__name##_t *c, FIFO_CURSOR_TYPE o, __type b)\
+static FIFO_INLINE void __name##_write_at(__name##_t *c, FIFO_CURSOR_TYPE o, __type b)\
 {\
-	c->buffer[(c->write + o) & (__size-1)] = b;\
+	c->buffer[(c->write + o) & (__name##_fifo_size-1)] = b;\
 }\
-static inline void __name##_write_offset(__name##_t *c, FIFO_CURSOR_TYPE o)\
+static FIFO_INLINE void __name##_write_offset(__name##_t *c, FIFO_CURSOR_TYPE o)\
 {\
-	c->write = (c->write + o) & (__size-1);\
+	c->write = (c->write + o) & (__name##_fifo_size-1);\
 }\
-static inline void __name##_reset(__name##_t *c)\
+static FIFO_INLINE void __name##_reset(__name##_t *c)\
 {\
 	c->read = c->write = c->flags = 0;\
 }\
