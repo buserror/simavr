@@ -38,10 +38,14 @@
 
 void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 {
-	avr->frequency = firmware->frequency;
-	avr->vcc = firmware->vcc;
-	avr->avcc = firmware->avcc;
-	avr->aref = firmware->aref;
+	if (firmware->frequency)
+		avr->frequency = firmware->frequency;
+	if (firmware->vcc)
+		avr->vcc = firmware->vcc;
+	if (firmware->avcc)
+		avr->avcc = firmware->avcc;
+	if (firmware->aref)
+		avr->aref = firmware->aref;
 #if CONFIG_SIMAVR_TRACE
 	avr->trace_data->codeline = firmware->codeline;
 #endif
