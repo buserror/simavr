@@ -37,6 +37,11 @@
 #include "avr_uart.h"
 #include "sim_hex.h"
 
+//#define TRACE(_w) _w
+#ifndef TRACE
+#define TRACE(_w)
+#endif
+
 DEFINE_FIFO(uint8_t, uart_fifo);
 
 static avr_cycle_count_t avr_uart_txc_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
@@ -103,7 +108,7 @@ static uint8_t avr_uart_read(struct avr_t * avr, avr_io_addr_t addr, void * para
 	}
 	uint8_t v = uart_fifo_read(&p->input);
 
-	//printf("UART read %02x %s\n", v, uart_fifo_isempty(&p->input) ? "EMPTY!" : "");
+//	TRACE(printf("UART read %02x %s\n", v, uart_fifo_isempty(&p->input) ? "EMPTY!" : "");)
 	avr->data[addr] = v;
 	// made to trigger potential watchpoints
 	v = avr_core_watch_read(avr, addr);
@@ -160,7 +165,7 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 				printf( FONT_GREEN "%s\n" FONT_DEFAULT, buf);
 			}
 		}
-		//printf("UDR%c(%02x) = %02x\n", p->name, addr, v);
+		TRACE(printf("UDR%c(%02x) = %02x\n", p->name, addr, v);)
 		// tell other modules we are "outputing" a byte
 		if (avr_regbit_get(avr, p->txen))
 			avr_raise_irq(p->io.irq + UART_IRQ_OUTPUT, v);
@@ -207,7 +212,7 @@ static void avr_uart_irq_input(struct avr_irq_t * irq, uint32_t value, void * pa
 		avr_cycle_timer_register_usec(avr, p->usec_per_byte, avr_uart_rxc_raise, p); // should be uart speed dependent
 	uart_fifo_write(&p->input, value); // add to fifo
 
-	// printf("UART IRQ in %02x (%d/%d) %s\n", value, p->input.read, p->input.write, uart_fifo_isfull(&p->input) ? "FULL!!" : "");
+	TRACE(printf("UART IRQ in %02x (%d/%d) %s\n", value, p->input.read, p->input.write, uart_fifo_isfull(&p->input) ? "FULL!!" : "");)
 
 	if (uart_fifo_isfull(&p->input))
 		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, 1);

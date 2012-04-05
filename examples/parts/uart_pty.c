@@ -35,13 +35,18 @@
 
 DEFINE_FIFO(uint8_t,uart_pty_fifo);
 
+//#define TRACE(_w) _w
+#ifndef TRACE
+#define TRACE(_w)
+#endif
+
 /*
  * called when a byte is send via the uart on the AVR
  */
 static void uart_pty_in_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	uart_pty_t * p = (uart_pty_t*)param;
-	//printf("uart_pty_in_hook %02x\n", value);
+	TRACE(printf("uart_pty_in_hook %02x\n", value);)
 	uart_pty_fifo_write(&p->in, value);
 }
 
@@ -51,7 +56,7 @@ static void  uart_pty_flush_incoming(uart_pty_t * p)
 {
 	while (p->xon && !uart_pty_fifo_isempty(&p->out)) {
 		uint8_t byte = uart_pty_fifo_read(&p->out);
-	//	printf("uart_pty_flush_incoming send %02x\n", byte);
+		TRACE(printf("uart_pty_flush_incoming send %02x\n", byte);)
 		avr_raise_irq(p->irq + IRQ_UART_PTY_BYTE_OUT, byte);
 	}
 }
@@ -63,8 +68,7 @@ static void  uart_pty_flush_incoming(uart_pty_t * p)
 static void uart_pty_xon_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	uart_pty_t * p = (uart_pty_t*)param;
-	if (!p->xon)
-		printf("uart_pty_xon_hook\n");
+	TRACE(if (!p->xon) printf("uart_pty_xon_hook\n");)
 	p->xon = 1;
 	uart_pty_flush_incoming(p);
 }
@@ -75,8 +79,7 @@ static void uart_pty_xon_hook(struct avr_irq_t * irq, uint32_t value, void * par
 static void uart_pty_xoff_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	uart_pty_t * p = (uart_pty_t*)param;
-	if (p->xon)
-		printf("uart_pty_xoff_hook\n");
+	TRACE(if (p->xon) printf("uart_pty_xoff_hook\n");)
 	p->xon = 0;
 }
 
@@ -108,7 +111,7 @@ static void * uart_pty_thread(void * param)
 			ssize_t r = read(p->s, p->buffer, sizeof(p->buffer)-1);
 			p->buffer_len = r;
 			p->buffer_done = 0;
-		//	hdump("pty recv", p->buffer, r);
+			TRACE(hdump("pty recv", p->buffer, r);)
 		}
 		if (p->buffer_done < p->buffer_len) {
 			// write them in fifo
@@ -122,10 +125,10 @@ static void * uart_pty_thread(void * param)
 			while (!uart_pty_fifo_isempty(&p->in) && dst < (buffer+sizeof(buffer)))
 				*dst++ = uart_pty_fifo_read(&p->in);
 			size_t len = dst - buffer;
-			size_t r = write(p->s, buffer, len);
-		//	hdump("pty send", buffer, r);
+			TRACE(size_t r =) write(p->s, buffer, len);
+			TRACE(hdump("pty send", buffer, r);)
 		}
-	//	uart_pty_flush_incoming(p);
+		uart_pty_flush_incoming(p);
 	}
 	return NULL;
 }
