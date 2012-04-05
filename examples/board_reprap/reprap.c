@@ -54,6 +54,7 @@
 
 thermistor_t	therm_hotend;
 thermistor_t	therm_hotbed;
+thermistor_t	therm_spare;
 button_t button;
 uart_pty_t uart_pty;
 int do_button_press = 0;
@@ -253,10 +254,12 @@ int main(int argc, char *argv[])
 	uart_pty_init(avr, &uart_pty);
 	uart_pty_connect(&uart_pty, '0');
 
-	thermistor_init(avr, &therm_hotend, TEMP_0_PIN,
-			(short*)temptable_5, sizeof(temptable_5) / sizeof(short) / 2, OVERSAMPLENR, 22.5f);
-	thermistor_init(avr, &therm_hotbed, TEMP_BED_PIN,
-			(short*)temptable_5, sizeof(temptable_5) / sizeof(short) / 2, OVERSAMPLENR, 22.0f);
+	thermistor_init(avr, &therm_hotend, 0,
+			(short*)temptable_5, sizeof(temptable_5) / sizeof(short) / 2, OVERSAMPLENR, 25.0f);
+	thermistor_init(avr, &therm_hotbed, 2,
+			(short*)temptable_5, sizeof(temptable_5) / sizeof(short) / 2, OVERSAMPLENR, 30.0f);
+	thermistor_init(avr, &therm_spare, 1,
+			(short*)temptable_5, sizeof(temptable_5) / sizeof(short) / 2, OVERSAMPLENR, 10.0f);
 
 	/*
 	 * OpenGL init, can be ignored
