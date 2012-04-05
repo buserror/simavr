@@ -20,6 +20,7 @@
  */
 
 #include <sys/select.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
 #include <stdio.h>
@@ -183,5 +184,19 @@ void uart_pty_connect(uart_pty_t * p, char uart)
 		avr_irq_register_notify(xon, uart_pty_xon_hook, p);
 	if (xoff)
 		avr_irq_register_notify(xoff, uart_pty_xoff_hook, p);
+
+	char link[128];
+	sprintf(link, "/tmp/simavr-uart%c", uart);
+	unlink(link);
+	if (symlink(p->slavename, link) != 0) {
+		fprintf(stderr, "WARN %s: Can't create %s: %s", __func__, link, strerror(errno));
+	} else {
+		printf("%s: %s now points to %s\n", __func__, link, p->slavename);
+	}
+	if (getenv("SIMAVR_UART_XTERM")) {
+		char cmd[256];
+		sprintf(cmd, "nohup xterm -e picocom -b 115200 %s >/dev/null 2>&1 &", p->slavename);
+		system(cmd);
+	}
 }
 
