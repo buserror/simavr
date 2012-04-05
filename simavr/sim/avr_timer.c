@@ -205,7 +205,7 @@ static void avr_timer_configure(avr_timer_t * p, uint32_t clock, uint32_t top)
 
 		if (ocr && ocr <= top) {
 			p->comp[compi].comp_cycles = frequency / fc; // avr_hz_to_cycles(p->io.avr, fa);
-			if (p->trace_flags & (1 << compi))
+			if (p->trace_flags /*& (1 << compi)*/)
 				printf("%s-%c %c %.2fHz = %d cycles\n", __FUNCTION__, p->name,
 					'A'+compi, fc, (int)p->comp[compi].comp_cycles);
 		}
@@ -293,6 +293,7 @@ static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 			break;
 		}
 	uint16_t otrace = p->trace_flags;
+
 	if (target != -1) {
 		p->trace_flags = 1 << target;
 	} else {
@@ -303,6 +304,7 @@ static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 			avr_timer_reconfigure(p);
 			break;
 		case avr_timer_wgm_fc_pwm:	// OCR is not used here
+			avr_timer_reconfigure(p);
 			break;
 		case avr_timer_wgm_ctc:
 			avr_timer_reconfigure(p);
@@ -314,6 +316,8 @@ static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 			}
 			break;
 		case avr_timer_wgm_fast_pwm:
+			if (target != -1)
+				avr_timer_reconfigure(p);
 			avr_raise_irq(p->io.irq + TIMER_IRQ_OUT_PWM0, _timer_get_ocr(p, AVR_TIMER_COMPA));
 			avr_raise_irq(p->io.irq + TIMER_IRQ_OUT_PWM1, _timer_get_ocr(p, AVR_TIMER_COMPB));
 			break;
