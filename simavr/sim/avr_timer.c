@@ -190,7 +190,9 @@ static void avr_timer_configure(avr_timer_t * p, uint32_t clock, uint32_t top)
 	p->tov_top = top;
 
 	p->tov_cycles = frequency / t; // avr_hz_to_cycles(frequency, t);
-	printf("%s-%c TOP %.2fHz = %d cycles\n", __FUNCTION__, p->name, t, (int)p->tov_cycles);
+
+	if (p->trace_flags)
+		printf("%s-%c TOP %.2fHz = %d cycles\n", __FUNCTION__, p->name, t, (int)p->tov_cycles);
 
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
 		if (!p->comp[compi].r_ocr)
@@ -199,11 +201,12 @@ static void avr_timer_configure(avr_timer_t * p, uint32_t clock, uint32_t top)
 		float fc = clock / (float)(ocr+1);
 
 		p->comp[compi].comp_cycles = 0;
-//		printf("%s-%c clock %d top %d OCR%c %d\n", __FUNCTION__, p->name, clock, top, 'A'+compi, ocr);
+	//	printf("%s-%c clock %d top %d OCR%c %d\n", __FUNCTION__, p->name, clock, top, 'A'+compi, ocr);
 
 		if (ocr && ocr <= top) {
 			p->comp[compi].comp_cycles = frequency / fc; // avr_hz_to_cycles(p->io.avr, fa);
-			printf("%s-%c %c %.2fHz = %d cycles\n", __FUNCTION__, p->name,
+			if (p->trace_flags & (1 << compi))
+				printf("%s-%c %c %.2fHz = %d cycles\n", __FUNCTION__, p->name,
 					'A'+compi, fc, (int)p->comp[compi].comp_cycles);
 		}
 	}
@@ -255,6 +258,9 @@ static void avr_timer_reconfigure(avr_timer_t * p)
 		case avr_timer_wgm_normal:
 			avr_timer_configure(p, f, (1 << p->mode.size) - 1);
 			break;
+		case avr_timer_wgm_fc_pwm:
+			avr_timer_configure(p, f, (1 << p->mode.size) - 1);
+			break;
 		case avr_timer_wgm_ctc: {
 			avr_timer_configure(p, f, _timer_get_ocr(p, AVR_TIMER_COMPA));
 		}	break;
@@ -266,18 +272,37 @@ static void avr_timer_reconfigure(avr_timer_t * p)
 			avr_timer_configure(p, f, (1 << p->mode.size) - 1);
 			break;
 		default:
-			printf("%s-%c unsupported timer mode wgm=%d (%d)\n", __FUNCTION__, p->name, mode, p->mode.kind);
+			printf("%s-%c unsupported timer mode wgm=%d (%d)\n", __FUNCTION__, p->name,
+					mode, p->mode.kind);
 	}	
 }
 
 static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_timer_t * p = (avr_timer_t *)param;
-	avr_core_watch_write(avr, addr, v);
+	uint16_t oldv[AVR_TIMER_COMP_COUNT];
+	int target = -1;
 
+	/* vheck to see if the OCR values actualy changed */
+	for (int oi = 0; oi < AVR_TIMER_COMP_COUNT; oi++)
+		oldv[oi] = _timer_get_ocr(p, oi);
+	avr_core_watch_write(avr, addr, v);
+	for (int oi = 0; oi < AVR_TIMER_COMP_COUNT; oi++)
+		if (oldv[oi] != _timer_get_ocr(p, oi)) {
+			target = oi;
+			break;
+		}
+	uint16_t otrace = p->trace_flags;
+	if (target != -1) {
+		p->trace_flags = 1 << target;
+	} else {
+		p->trace_flags = 0;
+	}
 	switch (p->mode.kind) {
 		case avr_timer_wgm_normal:
 			avr_timer_reconfigure(p);
+			break;
+		case avr_timer_wgm_fc_pwm:	// OCR is not used here
 			break;
 		case avr_timer_wgm_ctc:
 			avr_timer_reconfigure(p);
@@ -297,6 +322,7 @@ static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 			avr_timer_reconfigure(p);
 			break;
 	}
+	p->trace_flags = otrace;
 }
 
 static void avr_timer_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
@@ -458,4 +484,5 @@ void avr_timer_init(avr_t * avr, avr_timer_t * p)
 	}
 	avr_register_io_write(avr, p->r_tcnt, avr_timer_tcnt_write, p);
 	avr_register_io_read(avr, p->r_tcnt, avr_timer_tcnt_read, p);
+	p->trace_flags = 0xf;
 }

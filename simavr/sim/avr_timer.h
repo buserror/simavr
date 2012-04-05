@@ -50,6 +50,7 @@ enum {
 	avr_timer_wgm_ctc,
 	avr_timer_wgm_pwm,
 	avr_timer_wgm_fast_pwm,
+	avr_timer_wgm_fc_pwm,
 };
 
 // Compare output modes
@@ -77,6 +78,9 @@ typedef struct avr_timer_wgm_t {
 #define AVR_TIMER_WGM_FASTPWM8() { .kind = avr_timer_wgm_fast_pwm, .size=8 }
 #define AVR_TIMER_WGM_FASTPWM9() { .kind = avr_timer_wgm_fast_pwm, .size=9 }
 #define AVR_TIMER_WGM_FASTPWM10() { .kind = avr_timer_wgm_fast_pwm, .size=10 }
+#define AVR_TIMER_WGM_FCPWM8() { .kind = avr_timer_wgm_fc_pwm, .size=8 }
+#define AVR_TIMER_WGM_FCPWM9() { .kind = avr_timer_wgm_fc_pwm, .size=9 }
+#define AVR_TIMER_WGM_FCPWM10() { .kind = avr_timer_wgm_fc_pwm, .size=10 }
 #define AVR_TIMER_WGM_OCPWM() { .kind = avr_timer_wgm_pwm, .top = avr_timer_wgm_reg_ocra }
 #define AVR_TIMER_WGM_ICPWM() { .kind = avr_timer_wgm_pwm, .top = avr_timer_wgm_reg_icr }
 
@@ -84,6 +88,8 @@ typedef struct avr_timer_wgm_t {
 typedef struct avr_timer_t {
 	avr_io_t	io;
 	char name;
+	uint16_t		trace_flags;
+
 	avr_regbit_t	disabled;	// bit in the PRR
 
 	avr_io_addr_t	r_tcnt, r_icr;
