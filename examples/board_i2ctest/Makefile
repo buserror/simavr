@@ -1,5 +1,5 @@
 # 
-# 	Copyright 2008-2011 Michel Pollet <buserror@gmail.com>
+# 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 #
 #	This file is part of simavr.
 #
@@ -30,6 +30,7 @@ IPATH += ${simavr}/simavr/sim
 
 VPATH = .
 VPATH += ../parts
+VPATH += ../shared
 
 
 all: obj atmega48_${target}.axf ${target} 
