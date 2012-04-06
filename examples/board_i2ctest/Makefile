@@ -19,26 +19,28 @@
 target=	i2ctest
 firm_src = ${wildcard at*${board}.c}
 firmware = ${firm_src:.c=.axf}
-simavr = ../../
+simavr = ../..
 
 SHELL	 = /bin/bash
 
 IPATH = .
-IPATH += ../parts
+IPATH += ${simavr}/examples/shared
+IPATH += ${simavr}/examples/parts
 IPATH += ${simavr}/include
 IPATH += ${simavr}/simavr/sim
 
 VPATH = .
-VPATH += ../parts
-VPATH += ../shared
+VPATH += ${simavr}/examples/shared
+VPATH += ${simavr}/examples/parts
 
 
-all: obj atmega48_${target}.axf ${target} 
+all: obj ${firmware} ${target} 
 
 include ${simavr}/Makefile.common
 
-atmega48_${target}.axf: atmega48_${target}.c
-atmega48_${target}.axf: avr_twi_master.c avr_twi_master.h
+atmega1280_${target}.axf: atmega1280_${target}.c
+atmega1280_${target}.axf: ${simavr}/examples/shared/avr_twi_master.c
+atmega1280_${target}.axf: ${simavr}/examples/shared/avr_twi_master.h
 
 board = ${OBJ}/${target}.elf
 

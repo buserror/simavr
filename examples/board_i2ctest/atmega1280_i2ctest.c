@@ -27,7 +27,7 @@
 #include "avr_mcu_section.h"
 AVR_MCU(F_CPU, "atmega1280");
 
-#include "avr_twi_master.h"
+#include "../shared/avr_twi_master.h"
 
 #include <stdio.h>
 

@@ -39,7 +39,7 @@ i2c_eeprom_t ee;
 int main(int argc, char *argv[])
 {
 	elf_firmware_t f;
-	const char * fname =  "atmega48_i2ctest.axf";
+	const char * fname =  "atmega1280_i2ctest.axf";
 
 	printf("Firmware pathname is %s\n", fname);
 	elf_read_firmware(fname, &f);
@@ -74,16 +74,17 @@ int main(int argc, char *argv[])
 	 *	Pressing "r" and "s" during the demo will start and stop recording
 	 *	the pin changes
 	 */
-	avr_vcd_init(avr, "gtkwave_output.vcd", &vcd_file, 100000 /* usec */);
-	avr_vcd_add_signal(&vcd_file,
-		avr_io_getirq(avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_STATUS), 8 /* bits */ ,
-		"TWSR" );
+//	avr_vcd_init(avr, "gtkwave_output.vcd", &vcd_file, 100000 /* usec */);
+//	avr_vcd_add_signal(&vcd_file,
+//		avr_io_getirq(avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_STATUS), 8 /* bits */ ,
+//		"TWSR" );
 
-	printf( "Demo launching:\n");
+	printf( "\nDemo launching:\n");
 
-	while (1) {
-		int state = avr_run(avr);
-		if ( state == cpu_Done || state == cpu_Crashed)
-			break;
-	}
+	int state = cpu_Running;
+	while((state!= cpu_Done)&&(state != cpu_Crashed ))
+		state = avr_run(avr);
+
+	printf("\n\nPress enter to terminate the program.");
+	getchar();
 }
