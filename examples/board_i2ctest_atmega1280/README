@@ -1,0 +1,15 @@
+
+This contains a sample program to demonstrate the use of simavr
+using 'custom' code, and own "peripherals". It shows how it is
+possible to "hook" code to the AVR pins, and also how to make
+"peripherals" and also hook them up to AVR pins.
+
+This demo demonstrate how to write a i2c/twi "peripheral" and hook it to
+an AVR, and then run a firmware that behaves as a TWI "master" to talk to it.
+
+The code uses a generic i2c "eeprom" were the AVR writes some bytes,
+then read them again. The AVR code is based on the Atmel reference
+implementation, with quite a few changes to make it more functional.
+
+Thid "board" doesn't use opengl, the eeprom will display what the
+transactions are.
