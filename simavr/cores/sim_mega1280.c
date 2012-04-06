@@ -623,7 +623,7 @@ void m1280_init(struct avr_t * avr)
 	avr_ioport_init(avr, &mcu->portg);
 	avr_ioport_init(avr, &mcu->porth);
 	avr_ioport_init(avr, &mcu->portj);
-//	avr_ioport_init(avr, &mcu->portk);
+	avr_ioport_init(avr, &mcu->portk);
 	avr_ioport_init(avr, &mcu->portl);
 
 	avr_uart_init(avr, &mcu->uart0);

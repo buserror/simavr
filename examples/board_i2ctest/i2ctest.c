@@ -82,9 +82,6 @@ int main(int argc, char *argv[])
 	printf( "\nDemo launching:\n");
 
 	int state = cpu_Running;
-	while((state!= cpu_Done)&&(state != cpu_Crashed ))
+	while ((state != cpu_Done) && (state != cpu_Crashed))
 		state = avr_run(avr);
-
-	printf("\n\nPress enter to terminate the program.");
-	getchar();
 }
