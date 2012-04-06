@@ -53,7 +53,7 @@ enum {
 	R_SREG	= 32+0x3f,
 
 	// maximum number of IO registers, on normal AVRs
-	MAX_IOs	= 256 - 32,	// minus 32 GP registers
+	MAX_IOs	= 256,	// Bigger AVRs need more than 256-32 (mega1280)
 };
 
 #define AVR_DATA_TO_IO(v) ((v) - 32)

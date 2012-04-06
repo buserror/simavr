@@ -99,6 +99,12 @@ avr_register_io_write(
 {
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
 
+	if (a >= MAX_IOs) {
+		fprintf(stderr,
+				"Error: avr_register_io_write(): IO address 0x%04x out of range (max 0x%04x).\n",
+					a, MAX_IOs);
+		abort();
+	}
 	/*
 	 * Verifying that some other piece of code is not installed to watch write
 	 * on this address. If there is, this code installs a "dispatcher" callback
