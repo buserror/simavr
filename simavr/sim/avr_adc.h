@@ -41,6 +41,8 @@ enum {
 	// input IRQ values. Values are /always/ volts * 1000 (millivolts)
 	ADC_IRQ_ADC0 = 0, ADC_IRQ_ADC1, ADC_IRQ_ADC2, ADC_IRQ_ADC3,
 	ADC_IRQ_ADC4, ADC_IRQ_ADC5, ADC_IRQ_ADC6, ADC_IRQ_ADC7,
+	ADC_IRQ_ADC8, ADC_IRQ_ADC9, ADC_IRQ_ADC10, ADC_IRQ_ADC11,
+	ADC_IRQ_ADC12, ADC_IRQ_ADC13, ADC_IRQ_ADC14, ADC_IRQ_ADC15,
 	ADC_IRQ_TEMP,			// see the datasheet
 	ADC_IRQ_IN_TRIGGER,
 	ADC_IRQ_OUT_TRIGGER,	// sends a avr_adc_mux_t
@@ -79,7 +81,7 @@ typedef struct avr_adc_t {
 
 	uint8_t 		r_admux;
 	// if the last bit exists in the mux, we are an extended ADC
-	avr_regbit_t	mux[5];
+	avr_regbit_t	mux[6];
 	avr_regbit_t	ref[3];		// reference voltages bits
 	uint16_t		ref_values[7]; // ADC_VREF_*
 
@@ -105,7 +107,7 @@ typedef struct avr_adc_t {
 	/*
 	 * runtime bits
 	 */
-	avr_adc_mux_t	muxmode[32];// maximum 5 bits of mux modes
+	avr_adc_mux_t	muxmode[64];// maximum 6 bits of mux modes
 	uint16_t		adc_values[8];	// current values on the ADCs
 	uint16_t		temp;		// temp sensor reading
 	uint8_t			first;
