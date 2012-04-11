@@ -70,7 +70,7 @@ static int avr_flash_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param
 		z &= ~1;
 		printf("Writing page %04x (%d)\n", (z / p->spm_pagesize), p->spm_pagesize);
 	} else if (avr_regbit_get(avr, p->blbset)) {
-		printf("Settting lock bits (ignored)\n");
+		printf("Setting lock bits (ignored)\n");
 	} else {
 		z &= ~1;
 		avr->flash[z++] = r01;
@@ -93,6 +93,5 @@ void avr_flash_init(avr_t * avr, avr_flash_t * p)
 	avr_register_vector(avr, &p->flash);
 
 	avr_register_io_write(avr, p->r_spm, avr_flash_write, p);
-//	avr_register_io_read(avr, p->r_spm, avr_flash_read, p);
 }
 

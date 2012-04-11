@@ -26,8 +26,10 @@
 #include "ac_input.h"
 
 static avr_cycle_count_t
-switch_auto(struct avr_t * avr,
-        avr_cycle_count_t when, void * param)
+switch_auto(
+		struct avr_t * avr,
+        avr_cycle_count_t when,
+        void * param)
 {
 	ac_input_t * b = (ac_input_t *) param;
 	b->value = !b->value;
@@ -35,9 +37,10 @@ switch_auto(struct avr_t * avr,
 	return when + avr_usec_to_cycles(avr, 100000 / 50);
 }
 
+static const char * name = ">ac_input";
+
 void ac_input_init(avr_t *avr, ac_input_t *b)
 {
-	const char * name = ">ac_input";
 	b->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_AC_COUNT, &name);
 	b->avr = avr;
 	b->value = 0;
