@@ -163,7 +163,7 @@ void avr_set_console_register(avr_t * avr, avr_io_addr_t addr)
 		avr_register_io_write(avr, addr, _avr_io_console_write, NULL);
 }
 
-void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, uint32_t address)
+void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, avr_flashaddr_t address)
 {
 	if (size > avr->flashend+1) {
 		fprintf(stderr, "avr_loadcode(): Attempted to load code of size %d but flash size is only %d.\n",
@@ -192,7 +192,7 @@ void avr_callback_run_gdb(avr_t * avr)
 	if (step)
 		avr->state = cpu_Running;
 	
-	uint16_t new_pc = avr->pc;
+	avr_flashaddr_t new_pc = avr->pc;
 
 	if (avr->state == cpu_Running) {
 		new_pc = avr_run_one(avr);
@@ -245,8 +245,7 @@ void avr_callback_sleep_raw(avr_t * avr, avr_cycle_count_t howLong)
 
 void avr_callback_run_raw(avr_t * avr)
 {
-
-	uint16_t new_pc = avr->pc;
+	avr_flashaddr_t new_pc = avr->pc;
 
 	if (avr->state == cpu_Running) {
 		new_pc = avr_run_one(avr);

@@ -426,7 +426,7 @@ get_compare_overflow (uint8_t res, uint8_t rd, uint8_t rr)
     return (rd & ~rr & ~res) | (~rd & rr & res);
 }
 
-static inline int _avr_is_instruction_32_bits(avr_t * avr, uint32_t pc)
+static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
 {
 	uint16_t o = (avr->flash[pc] | (avr->flash[pc+1] << 8)) & 0xfc0f;
 	return	o == 0x9200 || // STS ! Store Direct to Data Space
@@ -454,7 +454,7 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, uint32_t pc)
  * The nunber of cycles taken by instruction has been added, but might not be
  * entirely accurate.
  */
-uint16_t avr_run_one(avr_t * avr)
+avr_flashaddr_t avr_run_one(avr_t * avr)
 {
 #if CONFIG_SIMAVR_TRACE
 	/*
@@ -468,9 +468,9 @@ uint16_t avr_run_one(avr_t * avr)
 	avr->trace_data->touched[0] = avr->trace_data->touched[1] = avr->trace_data->touched[2] = 0;
 #endif
 
-	uint32_t	opcode = (avr->flash[avr->pc + 1] << 8) | avr->flash[avr->pc];
-	uint32_t	new_pc = avr->pc + 2;	// future "default" pc
-	int 		cycle = 1;
+	uint32_t		opcode = (avr->flash[avr->pc + 1] << 8) | avr->flash[avr->pc];
+	avr_flashaddr_t	new_pc = avr->pc + 2;	// future "default" pc
+	int 			cycle = 1;
 
 	switch (opcode & 0xf000) {
 		case 0x0000: {
@@ -1135,7 +1135,7 @@ uint16_t avr_run_one(avr_t * avr)
 						}	break;
 						case 0x940c:
 						case 0x940d: {	// JMP Long Call to sub, 32 bits
-							uint32_t a = ((opcode & 0x01f0) >> 3) | (opcode & 1);
+							avr_flashaddr_t a = ((opcode & 0x01f0) >> 3) | (opcode & 1);
 							uint16_t x = (avr->flash[new_pc+1] << 8) | avr->flash[new_pc];
 							a = (a << 16) | x;
 							STATE("jmp 0x%06x\n", a);
@@ -1145,7 +1145,7 @@ uint16_t avr_run_one(avr_t * avr)
 						}	break;
 						case 0x940e:
 						case 0x940f: {	// CALL Long Call to sub, 32 bits
-							uint32_t a = ((opcode & 0x01f0) >> 3) | (opcode & 1);
+							avr_flashaddr_t a = ((opcode & 0x01f0) >> 3) | (opcode & 1);
 							uint16_t x = (avr->flash[new_pc+1] << 8) | avr->flash[new_pc];
 							a = (a << 16) | x;
 							STATE("call 0x%06x\n", a);

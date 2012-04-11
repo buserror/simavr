@@ -30,6 +30,8 @@ extern "C" {
 #include "sim_interrupts.h"
 #include "sim_cycle_timers.h"
 
+typedef uint32_t avr_flashaddr_t;
+
 struct avr_t;
 typedef uint8_t (*avr_io_read_t)(
 		struct avr_t * avr,
@@ -181,7 +183,7 @@ typedef struct avr_t {
 	 * this is why you will see >>1 and <<1 in the decoder to handle jumps.
 	 * It CAN be a little confusing, so concentrate, young grasshopper.
 	 */
-	uint32_t	pc;
+	avr_flashaddr_t	pc;
 
 	/*
 	 * callback when specific IO registers are read/written.
@@ -312,7 +314,7 @@ avr_loadcode(
 		avr_t * avr,
 		uint8_t * code,
 		uint32_t size,
-		uint32_t address);
+		avr_flashaddr_t address);
 
 /*
  * these are accessors for avr->data but allows watchpoints to be set for gdb

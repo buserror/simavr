@@ -29,7 +29,7 @@ extern "C" {
 /*
  * Instruction decoder, run ONE instruction
  */
-uint16_t avr_run_one(avr_t * avr);
+avr_flashaddr_t avr_run_one(avr_t * avr);
 
 /*
  * These are for internal access to the stack (for interrupts)

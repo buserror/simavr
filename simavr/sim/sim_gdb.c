@@ -45,7 +45,7 @@ typedef struct avr_gdb_t {
 
 	uint32_t	watchmap;
 	struct {
-		uint32_t	pc;
+		avr_flashaddr_t	pc;
 		uint32_t	len;
 		int kind;
 	} watch[32];
@@ -78,7 +78,7 @@ static void gdb_send_quick_status(avr_gdb_t * g, uint8_t signal)
 	gdb_send_reply(g, cmd);
 }
 
-static int gdb_change_breakpoint(avr_gdb_t * g, int set, int kind, uint32_t addr, uint32_t len)
+static int gdb_change_breakpoint(avr_gdb_t * g, int set, int kind, avr_flashaddr_t addr, uint32_t len)
 {
 	DBG(printf("set %d kind %d addr %08x len %d (map %08x)\n", set, kind, addr, len, g->watchmap);)
 	if (set) {
@@ -193,10 +193,11 @@ static void gdb_handle_command(avr_gdb_t * g, char * cmd)
 			gdb_send_reply(g, "OK");										
 		}	break;
 		case 'm': {	// read memory
-			uint32_t addr, len;
+			avr_flashaddr_t addr;
+			uint32_t len;
 			sscanf(cmd, "%x,%x", &addr, &len);
 			uint8_t * src = NULL;
-			if (addr < 0xffff) {
+			if (addr < avr->flashend) {
 				src = avr->flash + addr;
 			} else if (addr >= 0x800000 && (addr - 0x800000) <= avr->ramend) {
 				src = avr->data + addr - 0x800000;
