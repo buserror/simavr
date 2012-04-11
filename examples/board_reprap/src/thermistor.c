@@ -58,9 +58,19 @@ static void thermistor_in_hook(struct avr_irq_t * irq, uint32_t value, void * pa
 			__func__, p->adc_mux_number, p->current);
 }
 
+static void thermistor_value_in_hook(struct avr_irq_t * irq, uint32_t value, void * param)
+{
+	thermistor_p p = (thermistor_p)param;
+	float fv = ((float)value) / 256;
+	p->current = fv;
+
+	avr_raise_irq(p->irq + IRQ_TERM_TEMP_VALUE_OUT, value);
+}
+
 static const char * irq_names[IRQ_TERM_COUNT] = {
 	[IRQ_TERM_ADC_TRIGGER_IN] = "8<thermistor.trigger",
 	[IRQ_TERM_TEMP_VALUE_OUT] = "16>thermistor.out",
+	[IRQ_TERM_TEMP_VALUE_IN] = "16<thermistor.in",
 };
 
 void
@@ -76,12 +86,13 @@ thermistor_init(
 	p->avr = avr;
 	p->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_TERM_COUNT, irq_names);
 	avr_irq_register_notify(p->irq + IRQ_TERM_ADC_TRIGGER_IN, thermistor_in_hook, p);
+	avr_irq_register_notify(p->irq + IRQ_TERM_TEMP_VALUE_IN, thermistor_value_in_hook, p);
 
 	p->oversampling = oversampling;
 	p->table = table;
 	p->table_entries = table_entries;
 	p->adc_mux_number = adc_mux_number;
-	p->current = p->target = start_temp;
+	p->current = start_temp;
 
 	avr_irq_t * src = avr_io_getirq(p->avr, AVR_IOCTL_ADC_GETIRQ, ADC_IRQ_OUT_TRIGGER);
 	avr_irq_t * dst = avr_io_getirq(p->avr, AVR_IOCTL_ADC_GETIRQ, adc_mux_number);
@@ -94,8 +105,11 @@ thermistor_init(
 
 void
 thermistor_set_temp(
-		thermistor_p t,
+		thermistor_p p,
 		float temp )
 {
+	uint32_t value = temp * 256;
+	p->current = temp;
 
+	avr_raise_irq(p->irq + IRQ_TERM_TEMP_VALUE_OUT, value);
 }

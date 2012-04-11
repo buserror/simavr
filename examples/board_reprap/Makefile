@@ -24,22 +24,20 @@ simavr = ../../
 SHELL	 = /bin/bash
 
 IPATH = .
+IPATH += src
 IPATH += ../parts
+IPATH += ../shared
 IPATH += ${simavr}/include
 IPATH += ${simavr}/simavr/sim
 
-VPATH = .
+VPATH = src
 VPATH += ../parts
+VPATH += ../shared
 
 # for the Open Motion Controller board
 CFLAGS += -DMOTHERBOARD=91
 
-LDFLAGS += -lpthread -lutil
-ifneq (${shell uname}, Darwin)
-LDFLAGS += -lGL -lglut
-else
-LDFLAGS += -framework GLUT -framework OpenGL 
-endif
+LDFLAGS += -lpthread -lutil -ldl
 
 all: obj ${firmware} ${target}
 
@@ -47,9 +45,12 @@ include ${simavr}/Makefile.common
 
 board = ${OBJ}/${target}.elf
 
+${board} : ${OBJ}/mongoose.o
 ${board} : ${OBJ}/button.o
 ${board} : ${OBJ}/uart_pty.o
 ${board} : ${OBJ}/thermistor.o
+${board} : ${OBJ}/heatpot.o
+${board} : ${OBJ}/stepper.o
 ${board} : ${OBJ}/${target}.o
 
 ${target}: ${board}

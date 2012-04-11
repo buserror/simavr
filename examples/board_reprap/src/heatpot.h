@@ -1,5 +1,5 @@
 /*
-	thermistor.h
+	heatpot.h
 
 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
@@ -20,46 +20,46 @@
  */
 
 
-#ifndef __THERMISTOR_H___
-#define __THERMISTOR_H___
+#ifndef __HEATPOT_H___
+#define __HEATPOT_H___
 
 #include "sim_irq.h"
 
 enum {
-	IRQ_TERM_ADC_TRIGGER_IN = 0,
-	IRQ_TERM_ADC_VALUE_OUT,
-	IRQ_TERM_TEMP_VALUE_OUT,
-	IRQ_TERM_COUNT
+	IRQ_HEATPOT_TALLY = 0,		// heatpot_data_t
+	IRQ_HEATPOT_TEMP_OUT,		// Celcius * 256
+	IRQ_HEATPOT_COUNT
 };
 
-typedef struct thermistor_t {
+typedef union {
+	int32_t sid : 8, cost;
+	uint32_t v;
+} heatpot_data_t;
+
+typedef struct heatpot_t {
 	avr_irq_t *	irq;		// irq list
-	struct avr_t *avr;		// keep it around so we can pause it
-	uint8_t		adc_mux_number;
+	struct avr_t * avr;
+	char name[32];
 
-	short * 	table;
-	int			table_entries;
-	int 		oversampling;
+	struct { int sid; float cost; } tally[32];
 
-	float	current;
-	float	target;
+	float ambiant;
+	float current;
 
-} thermistor_t, *thermistor_p;
+	avr_cycle_count_t	cycle;
+} heatpot_t, *heatpot_p;
 
 void
-thermistor_init(
+heatpot_init(
 		struct avr_t * avr,
-		thermistor_p t,
-		int adc_mux_number,
-		short * table,
-		int	table_entries,
-		int oversampling,
-		float start_temp );
+		heatpot_p p,
+		const char * name,
+		float ambiant );
 
 void
-thermistor_set_temp(
-		thermistor_p t,
-		float temp );
+heatpot_tally(
+		heatpot_p p,
+		int sid,
+		float cost );
 
-
-#endif /* __THERMISTOR_H___ */
+#endif /* __HEATPOT_H___ */
