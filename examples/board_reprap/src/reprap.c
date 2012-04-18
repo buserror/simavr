@@ -200,6 +200,20 @@ mongoose_callback(
 	}
 }
 
+#define MEGA644_GPIOR0 0x3e
+
+static void
+reprap_relief_callback(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
+{
+//	printf("%s write %x\n", __func__, addr);
+	usleep(1000);
+}
+
+
 int main(int argc, char *argv[])
 {
 	int debug = 0;
@@ -233,13 +247,13 @@ int main(int argc, char *argv[])
 		uint32_t base, size;
 //		snprintf(path, sizeof(path), "%s/%s", pwd, "ATmegaBOOT_168_atmega328.ihex");
 		strcpy(path, "marlin/Marlin.hex");
-		//strcpy(path, "marlin/bootloader-644-20MHz.hex");
+		strcpy(path, "marlin/bootloader-644-20MHz.hex");
 		uint8_t * boot = read_ihex_file(path, &size, &base);
 		if (!boot) {
 			fprintf(stderr, "%s: Unable to load %s\n", argv[0], path);
 			exit(1);
 		}
-		printf("Firmware %04x: %d\n", base, size);
+		printf("Firmware %04x(%04x in AVR talk): %d bytes (%d words)\n", base, base/2, size, size/2);
 		memcpy(avr->flash + base, boot, size);
 		free(boot);
 		avr->pc = base;
@@ -255,6 +269,10 @@ int main(int argc, char *argv[])
 		avr->state = cpu_Stopped;
 		avr_gdb_init(avr);
 	}
+
+	// Marlin doesn't loop, sleep, so we don't know when it's idle
+	// I changed Marlin to do a spurious write to the GPIOR0 register so we can trap it
+	avr_register_io_write(avr, MEGA644_GPIOR0, reprap_relief_callback, NULL);
 
 	uart_pty_init(avr, &uart_pty);
 	uart_pty_connect(&uart_pty, '0');
