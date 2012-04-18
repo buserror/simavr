@@ -107,8 +107,8 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "%s: -mcu and -freq are mandatory to load .hex files\n", argv[0]);
 					exit(1);
 				}
-				struct ihex_chunk_t chunk[4];
-				int cnt = read_ihex_chunks(filename, chunk, 4);
+				ihex_chunk_p chunk = NULL;
+				int cnt = read_ihex_chunks(filename, &chunk);
 				if (cnt <= 0) {
 					fprintf(stderr, "%s: Unable to load IHEX file %s\n", 
 						argv[0], argv[pi]);
