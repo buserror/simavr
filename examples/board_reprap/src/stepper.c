@@ -24,7 +24,25 @@
 #include <stdio.h>
 
 #include "sim_avr.h"
+#include "sim_time.h"
 #include "stepper.h"
+
+static avr_cycle_count_t
+stepper_update_timer(
+		struct avr_t * avr,
+        avr_cycle_count_t when,
+        void * param)
+{
+	stepper_p p = (stepper_p)param;
+	union {
+		float f;
+		uint32_t i;
+	} m = { .f = p->position / p->steps_per_mm };
+	printf("%s (%s) %3.4f\n", __func__, p->name, m.f);
+	avr_raise_irq(p->irq + IRQ_STEPPER_POSITION_OUT, m.i);
+	avr_raise_irq(p->irq + IRQ_STEPPER_ENDSTOP_OUT, p->position == p->endstop);
+	return when + p->timer_period;
+}
 
 static void
 stepper_dir_hook(
@@ -45,7 +63,8 @@ stepper_enable_hook(
 {
 	stepper_p p = (stepper_p)param;
 	p->enable = !!value;
-	printf("%s (%s) %d pos %.4f\n", __func__, p->name, p->enable != 0, p->position);
+	printf("%s (%s) %d pos %.4f\n", __func__, p->name,
+			p->enable != 0, p->position / p->steps_per_mm);
 	avr_raise_irq(p->irq + IRQ_STEPPER_ENDSTOP_OUT, p->position == p->endstop);
 }
 
@@ -60,18 +79,13 @@ stepper_step_hook(
 		return;
 	if (value)
 		return;
-	p->position += (p->dir ? -1.0 : 1.0) / p->steps_per_mm;
+	p->position += p->dir ? -1 : 1;
 	if (p->position < 0)
 		p->position = 0;
+	if (p->endstop && p->position < p->endstop)
+		p->position = p->endstop;
 	if (p->max_position > 0 && p->position > p->max_position)
 		p->position = p->max_position;
-	printf("%s (%s) %.4f\n", __func__, p->name, p->position);
-	union {
-		float f;
-		uint32_t i;
-	} m = { .f = p->position };
-	avr_raise_irq(p->irq + IRQ_STEPPER_POSITION_OUT, m.i);
-	avr_raise_irq(p->irq + IRQ_STEPPER_ENDSTOP_OUT, p->position == p->endstop);
 }
 
 static const char * irq_names[IRQ_STEPPER_COUNT] = {
@@ -100,9 +114,9 @@ stepper_init(
 	avr_irq_register_notify(p->irq + IRQ_STEPPER_ENABLE_IN, stepper_enable_hook, p);
 
 	p->steps_per_mm = steps_per_mm;
-	p->position = start_position;
-	p->max_position = max_position;
-	p->endstop = endstop_position;
+	p->position = start_position * p->steps_per_mm;
+	p->max_position = max_position * p->steps_per_mm;
+	p->endstop = endstop_position >= 0 ? endstop_position * p->steps_per_mm : 0;
 }
 
 void
@@ -117,10 +131,13 @@ stepper_connect(
 	avr_connect_irq(step, p->irq + IRQ_STEPPER_STEP_IN);
 	avr_connect_irq(dir, p->irq + IRQ_STEPPER_DIR_IN);
 	avr_connect_irq(enable, p->irq + IRQ_STEPPER_ENABLE_IN);
+	p->irq[IRQ_STEPPER_ENDSTOP_OUT].flags |= IRQ_STEPPER_POSITION_OUT;
 	p->irq[IRQ_STEPPER_ENDSTOP_OUT].flags |= IRQ_FLAG_FILTERED;
 	if (endstop) {
 		avr_connect_irq(p->irq + IRQ_STEPPER_ENDSTOP_OUT, endstop);
 		if (flags & stepper_endstop_inverted)
 			p->irq[IRQ_STEPPER_ENDSTOP_OUT].flags |= IRQ_FLAG_NOT;
 	}
+	p->timer_period = avr_usec_to_cycles(p->avr, 100000 / 1000); // 1ms
+	avr_cycle_timer_register(p->avr, p->timer_period, stepper_update_timer, p);
 }

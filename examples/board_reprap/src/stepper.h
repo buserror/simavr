@@ -40,9 +40,10 @@ typedef struct stepper_t {
 	char name[32];
 	int enable : 1, dir : 1, trace : 1;
 	double steps_per_mm;
-	double position;
-	double max_position;
-	double endstop;
+	uint64_t	position;	// in steps
+	uint64_t max_position;
+	uint64_t endstop;
+	avr_cycle_count_t timer_period;
 } stepper_t, *stepper_p;
 
 void
@@ -51,9 +52,9 @@ stepper_init(
 		stepper_p p,
 		char * name,
 		float steps_per_mm,
-		float start_position,
-		float max_position,
-		float endstop_position);
+		float start_position,		// mm
+		float max_position,			// mm
+		float endstop_position);	// mm
 
 enum {
 	stepper_endstop_inverted = (1 << 0),
