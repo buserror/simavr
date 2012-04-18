@@ -49,9 +49,16 @@ typedef struct uart_pty_t {
 	size_t		buffer_len, buffer_done;
 } uart_pty_t;
 
-void uart_pty_init(struct avr_t * avr, uart_pty_t * b);
-void uart_pty_stop(uart_pty_t * p);
+void
+uart_pty_init(
+		struct avr_t * avr,
+		uart_pty_t * b);
+void
+uart_pty_stop(uart_pty_t * p);
 
-void uart_pty_connect(uart_pty_t * p, char uart);
+void
+uart_pty_connect(
+		uart_pty_t * p,
+		char uart);
 
 #endif /* __UART_PTY_H___ */

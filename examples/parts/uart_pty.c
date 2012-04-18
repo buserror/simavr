@@ -43,7 +43,11 @@ DEFINE_FIFO(uint8_t,uart_pty_fifo);
 /*
  * called when a byte is send via the uart on the AVR
  */
-static void uart_pty_in_hook(struct avr_irq_t * irq, uint32_t value, void * param)
+static void
+uart_pty_in_hook(
+		struct avr_irq_t * irq,
+		uint32_t value,
+		void * param)
 {
 	uart_pty_t * p = (uart_pty_t*)param;
 	TRACE(printf("uart_pty_in_hook %02x\n", value);)
@@ -52,7 +56,9 @@ static void uart_pty_in_hook(struct avr_irq_t * irq, uint32_t value, void * para
 
 // try to empty our fifo, the uart_pty_xoff_hook() will be called when
 // other side is full
-static void  uart_pty_flush_incoming(uart_pty_t * p)
+static void
+uart_pty_flush_incoming(
+		uart_pty_t * p)
 {
 	while (p->xon && !uart_pty_fifo_isempty(&p->out)) {
 		uint8_t byte = uart_pty_fifo_read(&p->out);
@@ -65,7 +71,11 @@ static void  uart_pty_flush_incoming(uart_pty_t * p)
  * Called when the uart has room in it's input buffer. This is called repeateadly
  * if necessary, while the xoff is called only when the uart fifo is FULL
  */
-static void uart_pty_xon_hook(struct avr_irq_t * irq, uint32_t value, void * param)
+static void
+uart_pty_xon_hook(
+		struct avr_irq_t * irq,
+		uint32_t value,
+		void * param)
 {
 	uart_pty_t * p = (uart_pty_t*)param;
 	TRACE(if (!p->xon) printf("uart_pty_xon_hook\n");)
@@ -76,14 +86,20 @@ static void uart_pty_xon_hook(struct avr_irq_t * irq, uint32_t value, void * par
 /*
  * Called when the uart ran out of room in it's input buffer
  */
-static void uart_pty_xoff_hook(struct avr_irq_t * irq, uint32_t value, void * param)
+static void
+uart_pty_xoff_hook(
+		struct avr_irq_t * irq,
+		uint32_t value,
+		void * param)
 {
 	uart_pty_t * p = (uart_pty_t*)param;
 	TRACE(if (p->xon) printf("uart_pty_xoff_hook\n");)
 	p->xon = 0;
 }
 
-static void * uart_pty_thread(void * param)
+static void *
+uart_pty_thread(
+		void * param)
 {
 	uart_pty_t * p = (uart_pty_t*)param;
 
@@ -138,7 +154,10 @@ static const char * irq_names[IRQ_UART_PTY_COUNT] = {
 	[IRQ_UART_PTY_BYTE_OUT] = "8>uart_pty.out",
 };
 
-void uart_pty_init(struct avr_t * avr, uart_pty_t * p)
+void
+uart_pty_init(
+		struct avr_t * avr,
+		uart_pty_t * p)
 {
 	p->avr = avr;
 	p->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_UART_PTY_COUNT, irq_names);
@@ -158,7 +177,9 @@ void uart_pty_init(struct avr_t * avr, uart_pty_t * p)
 
 }
 
-void uart_pty_stop(uart_pty_t * p)
+void
+uart_pty_stop(
+		uart_pty_t * p)
 {
 	puts(__func__);
 	pthread_kill(p->thread, SIGINT);
@@ -167,7 +188,10 @@ void uart_pty_stop(uart_pty_t * p)
 	pthread_join(p->thread, &ret);
 }
 
-void uart_pty_connect(uart_pty_t * p, char uart)
+void
+uart_pty_connect(
+		uart_pty_t * p,
+		char uart)
 {
 	// disable the stdio dump, as we are sending binary there
 	uint32_t f = 0;
@@ -196,10 +220,11 @@ void uart_pty_connect(uart_pty_t * p, char uart)
 	} else {
 		printf("%s: %s now points to %s\n", __func__, link, p->slavename);
 	}
-	if (getenv("SIMAVR_UART_XTERM")) {
+	if (getenv("SIMAVR_UART_XTERM") && atoi(getenv("SIMAVR_UART_XTERM"))) {
 		char cmd[256];
 		sprintf(cmd, "nohup xterm -e picocom -b 115200 %s >/dev/null 2>&1 &", p->slavename);
 		system(cmd);
-	}
+	} else
+		printf("note: export SIMAVR_UART_XTERM=1 and install picocom to get a terminal\n");
 }
 
