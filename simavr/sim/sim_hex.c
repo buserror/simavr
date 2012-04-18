@@ -139,19 +139,21 @@ uint8_t * read_ihex_file(const char * fname, uint32_t * dsize, uint32_t * start)
 }
 
 
-int read_ihex_chunks(const char * fname, struct ihex_chunk_t * chunks, int max_chunks)
+int
+read_ihex_chunks(
+		const char * fname,
+		ihex_chunk_p * chunks )
 {
-	if (!fname || !chunks || !max_chunks)
+	if (!fname || !chunks)
 		return -1;
-	memset((void*)chunks, 0, sizeof(chunks[0]) * max_chunks);
 	FILE * f = fopen(fname, "r");
 	if (!f) {
 		perror(fname);
 		return -1;
 	}
 	uint32_t segment = 0;	// segment address
-	int chunk = 0;
-	chunks[0].baseaddr = ~0;
+	int chunk = 0, max_chunks = 0;
+	*chunks = NULL;
 
 	while (!feof(f)) {
 		char line[128];
@@ -196,19 +198,22 @@ int read_ihex_chunks(const char * fname, struct ihex_chunk_t * chunks, int max_c
 				fprintf(stderr, "%s: %s, unsupported check type %02x\n", __FUNCTION__, fname, bline[3]);
 				continue;
 		}
-		if (addr != chunks[chunk].baseaddr + chunks[chunk].size) {
-			if (chunks[chunk].size)
+		if (chunk < max_chunks && addr != ((*chunks)[chunk].baseaddr + (*chunks)[chunk].size)) {
+			if ((*chunks)[chunk].size)
 				chunk++;
-			chunks[chunk].baseaddr = addr;
 		}
-		chunks[chunk].data = realloc(chunks[chunk].data, chunks[chunk].size + bline[0]);
-		memcpy(chunks[chunk].data + chunks[chunk].size, bline + 4, bline[0]);
-		chunks[chunk].size += bline[0];
+		if (chunk >= max_chunks) {
+			max_chunks++;
+			*chunks = realloc(*chunks, max_chunks * sizeof(ihex_chunk_t));
+			memset(*chunks + chunk, 0, (max_chunks - chunk) * sizeof(ihex_chunk_t));
+			(*chunks)[chunk].baseaddr = addr;
+		}
+		(*chunks)[chunk].data = realloc((*chunks)[chunk].data, (*chunks)[chunk].size + bline[0]);
+		memcpy((*chunks)[chunk].data + (*chunks)[chunk].size, bline + 4, bline[0]);
+		(*chunks)[chunk].size += bline[0];
 	}
-	if (chunks[chunk].size)
-		chunk++;
 	fclose(f);
-	return chunk;
+	return max_chunks;
 }
 
 
