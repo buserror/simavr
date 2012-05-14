@@ -38,7 +38,7 @@ stepper_update_timer(
 		float f;
 		uint32_t i;
 	} m = { .f = p->position / p->steps_per_mm };
-	printf("%s (%s) %3.4f\n", __func__, p->name, m.f);
+//	printf("%s (%s) %3.4f\n", __func__, p->name, m.f);
 	avr_raise_irq(p->irq + IRQ_STEPPER_POSITION_OUT, m.i);
 	avr_raise_irq(p->irq + IRQ_STEPPER_ENDSTOP_OUT, p->position == p->endstop);
 	return when + p->timer_period;

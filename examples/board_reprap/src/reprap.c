@@ -47,9 +47,9 @@
 #define __AVR_ATmega644__
 #include "marlin/pins.h"
 
+#include <stdbool.h>
 #define PROGMEM
-#define THERMISTORHEATER_0 5
-#include "marlin/thermistortables.h"
+#include "marlin/Configuration.h"
 
 /*
  * these are the sources of heat and cold to register to the heatpots
@@ -114,6 +114,11 @@ ardupin_t arduidiot_644[32] = {
 	[31] = { .ardupin = 31, .port = 'A', .pin =  0, .analog = 1, .adc = 0 },
 };
 
+// gnu hackery to make sure the parameter is expanded
+#define _TERMISTOR_TABLE(num) \
+		temptable_##num
+#define TERMISTOR_TABLE(num) \
+		_TERMISTOR_TABLE(num)
 
 struct avr_irq_t *
 get_ardu_irq(
@@ -235,7 +240,7 @@ int main(int argc, char *argv[])
 	avr->frequency = 20000000;
 	avr->aref = avr->avcc = avr->vcc = 5 * 1000;	// needed for ADC
 
-	if (1) {
+	if (0) {
 		elf_firmware_t f;
 		const char * fname = "/opt/reprap/tvrrug/Marlin.base/Marlin/applet/Marlin.elf";
 		elf_read_firmware(fname, &f);
@@ -247,7 +252,7 @@ int main(int argc, char *argv[])
 		uint32_t base, size;
 //		snprintf(path, sizeof(path), "%s/%s", pwd, "ATmegaBOOT_168_atmega328.ihex");
 		strcpy(path, "marlin/Marlin.hex");
-		strcpy(path, "marlin/bootloader-644-20MHz.hex");
+//		strcpy(path, "marlin/bootloader-644-20MHz.hex");
 		uint8_t * boot = read_ihex_file(path, &size, &base);
 		if (!boot) {
 			fprintf(stderr, "%s: Unable to load %s\n", argv[0], path);
@@ -278,11 +283,16 @@ int main(int argc, char *argv[])
 	uart_pty_connect(&uart_pty, '0');
 
 	thermistor_init(avr, &therm_hotend, 0,
-			(short*)temptable_5, sizeof(temptable_5) / sizeof(short) / 2, OVERSAMPLENR, 25.0f);
+			(short*)TERMISTOR_TABLE(TEMP_SENSOR_0),
+			sizeof(TERMISTOR_TABLE(TEMP_SENSOR_0)) / sizeof(short) / 2,
+			OVERSAMPLENR, 25.0f);
 	thermistor_init(avr, &therm_hotbed, 2,
-			(short*)temptable_5, sizeof(temptable_5) / sizeof(short) / 2, OVERSAMPLENR, 30.0f);
+			(short*)TERMISTOR_TABLE(TEMP_SENSOR_BED),
+			sizeof(TERMISTOR_TABLE(TEMP_SENSOR_BED)) / sizeof(short) / 2,
+			OVERSAMPLENR, 30.0f);
 	thermistor_init(avr, &therm_spare, 1,
-			(short*)temptable_5, sizeof(temptable_5) / sizeof(short) / 2, OVERSAMPLENR, 10.0f);
+			(short*)temptable_5, sizeof(temptable_5) / sizeof(short) / 2,
+			OVERSAMPLENR, 10.0f);
 
 	heatpot_init(avr, &hotend, "hotend", 28.0f);
 	heatpot_init(avr, &hotbed, "hotbed", 25.0f);
@@ -291,13 +301,14 @@ int main(int argc, char *argv[])
 	avr_connect_irq(hotend.irq + IRQ_HEATPOT_TEMP_OUT, therm_hotend.irq + IRQ_TERM_TEMP_VALUE_IN);
 	avr_connect_irq(hotbed.irq + IRQ_HEATPOT_TEMP_OUT, therm_hotbed.irq + IRQ_TERM_TEMP_VALUE_IN);
 
+	float axis_pp_per_mm[4] = DEFAULT_AXIS_STEPS_PER_UNIT;	// from Marlin!
 	{
 		avr_irq_t * e = get_ardu_irq(avr, X_ENABLE_PIN, arduidiot_644);
 		avr_irq_t * s = get_ardu_irq(avr, X_STEP_PIN, arduidiot_644);
 		avr_irq_t * d = get_ardu_irq(avr, X_DIR_PIN, arduidiot_644);
 		avr_irq_t * m = get_ardu_irq(avr, X_MIN_PIN, arduidiot_644);
 
-		stepper_init(avr, &step_x, "X", 80.80, 100, 220, 0);
+		stepper_init(avr, &step_x, "X", axis_pp_per_mm[0], 100, 220, 0);
 		stepper_connect(&step_x, s, d, e, m, stepper_endstop_inverted);
 	}
 	{
@@ -306,7 +317,7 @@ int main(int argc, char *argv[])
 		avr_irq_t * d = get_ardu_irq(avr, Y_DIR_PIN, arduidiot_644);
 		avr_irq_t * m = get_ardu_irq(avr, Y_MIN_PIN, arduidiot_644);
 
-		stepper_init(avr, &step_y, "Y", 79.79, 100, 220, 0);
+		stepper_init(avr, &step_y, "Y", axis_pp_per_mm[1], 100, 220, 0);
 		stepper_connect(&step_y, s, d, e, m, stepper_endstop_inverted);
 	}
 	{
@@ -315,7 +326,7 @@ int main(int argc, char *argv[])
 		avr_irq_t * d = get_ardu_irq(avr, Z_DIR_PIN, arduidiot_644);
 		avr_irq_t * m = get_ardu_irq(avr, Z_MIN_PIN, arduidiot_644);
 
-		stepper_init(avr, &step_z, "Z", 2560, 20, 110, 0);
+		stepper_init(avr, &step_z, "Z", axis_pp_per_mm[2], 20, 110, 0);
 		stepper_connect(&step_z, s, d, e, m, stepper_endstop_inverted);
 	}
 	{
@@ -323,7 +334,7 @@ int main(int argc, char *argv[])
 		avr_irq_t * s = get_ardu_irq(avr, E0_STEP_PIN, arduidiot_644);
 		avr_irq_t * d = get_ardu_irq(avr, E0_DIR_PIN, arduidiot_644);
 
-		stepper_init(avr, &step_e, "E", 599.14, 0, 0, 0);
+		stepper_init(avr, &step_e, "E", axis_pp_per_mm[3], 0, 0, 0);
 		stepper_connect(&step_e, s, d, e, NULL, 0);
 	}
 
