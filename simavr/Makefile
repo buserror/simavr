@@ -18,7 +18,6 @@
 
 SIMAVR_VERSION	= 1.0a10
 SIMAVR_REVISION	= 1
-SHELL=/bin/bash
 
 target	= run_avr
 

@@ -8,8 +8,8 @@ boards=$(boards_base)
 endif
 
 all:
-	for bi in ${boards}; do make -C $$bi; done
+	for bi in ${boards}; do $(MAKE) -C $$bi; done
 
 clean:
-	for bi in ${boards}; do make -C $$bi clean; done
+	for bi in ${boards}; do $(MAKE) -C $$bi clean; done
 

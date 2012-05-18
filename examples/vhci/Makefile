@@ -18,7 +18,7 @@ all: library
 module: vhci-hcd-$(HCD_V)/usb-vhci-hcd.ko
 
 vhci-hcd-$(HCD_V)/usb-vhci-hcd.ko: vhci-hcd-$(HCD_V)
-	make -C vhci-hcd-$(HCD_V) \
+	$(MAKE) -C vhci-hcd-$(HCD_V) \
 		KDIR=/lib/modules/${shell uname -r}/build \
 		CORE_INCLUDE_DIR=$(PWD)/vhci-hcd-$(HCD_V)/linux/2.6.32/drivers/usb/core
 
@@ -37,7 +37,7 @@ lib/libusb_vhci.a: module libusb_vhci-$(VHCI_V)
 	ln -snf vhci-hcd-$(HCD_V) linux && \
 		cd libusb_vhci-$(VHCI_V) && \
 		./configure --prefix=$(PWD) CPPFLAGS="-I$(PWD)" --enable-static --disable-shared && \
-			make -j && make install
+			$(MAKE) -j && $(MAKE) install
 
 libusb_vhci-$(VHCI_V).tar.bz2:
 	wget $(BASE_URL)/native%20libraries/libusb_vhci-$(VHCI_V).tar.bz2

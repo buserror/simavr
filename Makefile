@@ -1,15 +1,15 @@
-all:	make-simavr make-tests make-examples
+all:	$(MAKE)-simavr $(MAKE)-tests $(MAKE)-examples
 
-make-simavr:
-	make -C simavr
+$(MAKE)-simavr:
+	$(MAKE) -C simavr
 
-make-tests: make-simavr
-	make -C tests
+$(MAKE)-tests: $(MAKE)-simavr
+	$(MAKE) -C tests
 
-make-examples: make-simavr
-	make -C examples
+$(MAKE)-examples: $(MAKE)-simavr
+	$(MAKE) -C examples
 
 clean:
-	make -C simavr clean
-	make -C tests clean
-	make -C examples clean
+	$(MAKE) -C simavr clean
+	$(MAKE) -C tests clean
+	$(MAKE) -C examples clean

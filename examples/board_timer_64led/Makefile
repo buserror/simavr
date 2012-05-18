@@ -21,8 +21,6 @@ firm_src = ${wildcard at*${target}.c}
 firmware = ${firm_src:.c=.axf}
 simavr = ../../
 
-SHELL	 = /bin/bash
-
 IPATH = .
 IPATH += ../parts
 IPATH += ${simavr}/include

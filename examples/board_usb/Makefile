@@ -21,8 +21,6 @@ firm_src = at90usb162_cdc_loopback.c
 firmware = ${firm_src:.c=.hex}
 simavr = ../../
 
-SHELL	 = /bin/bash
-
 IPATH = .
 IPATH += ../parts
 IPATH += ../vhci/include
@@ -47,14 +45,14 @@ ${board} : ${OBJ}/${target}.o
 
 ../vhci/lib/libusb_vhci.a:
 	@echo -n "BUILDIN $@ "
-	@{ make -j -C ../vhci >/tmp/vhci.build.log 2>&1 || \
+	@{ $(MAKE) -j -C ../vhci >/tmp/vhci.build.log 2>&1 || \
 		{ echo "ERROR check /tmp/vhci.build.log"; exit 1; }; } && \
 			echo " Done" 
 
 vhci : ../vhci/lib/libusb_vhci.a 
 
 clean-vhci:
-	make -C ../vhci clean
+	$(MAKE) -C ../vhci clean
 
 ${target}: vhci ${board}
 	@echo $@ done

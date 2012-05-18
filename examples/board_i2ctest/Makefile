@@ -21,8 +21,6 @@ firm_src = ${wildcard at*${board}.c}
 firmware = ${firm_src:.c=.axf}
 simavr = ../..
 
-SHELL	 = /bin/bash
-
 IPATH = .
 IPATH += ${simavr}/examples/shared
 IPATH += ${simavr}/examples/parts

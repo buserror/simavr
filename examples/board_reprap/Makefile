@@ -21,8 +21,6 @@ firm_src = ${wildcard atmega*.c}
 firmware = ${firm_src:.c=.hex}
 simavr = ../../
 
-SHELL	 = /bin/bash
-
 IPATH = .
 IPATH += src
 IPATH += ../parts

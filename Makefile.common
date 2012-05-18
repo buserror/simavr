@@ -57,6 +57,7 @@ AR 			?= ar
 RANLIB 		?= ranlib
 MKDIR		?= mkdir -p
 INSTALL		?= install
+SHELL	 	:= ${shell which bash}
 
 # simavr directory
 SIMAVR		?= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && echo $$p/simavr; done}
