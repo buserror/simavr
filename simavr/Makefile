@@ -16,13 +16,12 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
-SIMAVR_VERSION	= 1.0a10
+SIMAVR_VERSION	= ${shell git tag |tail -1}
 SIMAVR_REVISION	= 1
 
 target	= run_avr
 
-CFLAGS	+= -O3 -Wall -Werror
-
+CFLAGS	+= -Werror
 # tracing id useful especialy if you develop simavr core.
 # it otherwise eat quite a bit of few cycles, even disabled
 #CFLAGS	+= -DCONFIG_SIMAVR_TRACE=1

@@ -29,6 +29,7 @@
 # get the first character of what the compiler says it is, unless it's 'x86_64' doh
 ARCH 		= ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
 
+CFLAGS		+= -O2 -Wall
 ifeq ($(ARCH), i)
 CFLAGS		+= -mfpmath=sse -msse2
 endif
