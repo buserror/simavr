@@ -30,11 +30,8 @@ VPATH = .
 VPATH += ../parts
 
 LDFLAGS += -lpthread
-ifneq (${shell uname}, Darwin)
-LDFLAGS += -lGL -lglut
-else
-LDFLAGS += -framework GLUT -framework OpenGL 
-endif
+
+include ../Makefile.opengl
 
 all: obj ${firmware} ${target}
 

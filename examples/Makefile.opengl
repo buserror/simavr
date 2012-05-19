@@ -1,0 +1,18 @@
+
+UNAME = ${shell uname}
+
+ifeq (${UNAME}, Darwin)
+LDFLAGS += -framework GLUT -framework OpenGL
+else
+ifeq  (${UNAME}, Linux)
+CFLAGS	+= ${shell pkg-config --cflags glu}
+LDFLAGS += ${shell pkg-config --libs glu} -lglut
+else
+CFLAGS	+= ${shell pkg-config --cflags glu glut} -DFREEBSD=1
+LDFLAGS += ${shell pkg-config --libs glu glut}
+endif
+endif
+
+ifeq  (${UNAME}, FreeBSD)
+CFLAGS	+= -DFREEBSD=1 -DNO_ALLOCA=1
+endif

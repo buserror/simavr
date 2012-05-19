@@ -37,11 +37,8 @@ VPATH += ../shared
 CFLAGS += -DMOTHERBOARD=91
 CFLAGS += ${shell pkg-config --cflags pangocairo}
 
-ifneq (${shell uname}, Darwin)
-LDFLAGS += -lGL -lglut -lGLU
-else
-LDFLAGS += -framework GLUT -framework OpenGL 
-endif
+include ../Makefile.opengl
+
 LDFLAGS += ${shell pkg-config --libs pangocairo}
 LDFLAGS += -lpthread -lutil -ldl
 LDFLAGS += -lm

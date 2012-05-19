@@ -26,6 +26,9 @@
 #ifndef __C_UTILS_H__
 #define __C_UTILS_H__
 
+#ifndef NO_ALLOCA
+#include <alloca.h>
+#endif
 #include "c_array.h"
 
 /********************************************************************
@@ -107,6 +110,7 @@ static inline str_p str_dup(const str_p s)
 	memcpy(r, s, l);
 	return r;
 }
+#ifndef NO_ALLOCA
 static inline str_p str_adup(const str_p s)
 {
 	size_t l = sizeof(*s) + s->len + 1;
@@ -115,6 +119,7 @@ static inline str_p str_adup(const str_p s)
 	r->rom = 1;
 	return r;
 }
+#endif
 static inline uint16_t str_hash(str_p s)
 {
 	if (!s->hash) s->hash = crc16_string(s->str);
