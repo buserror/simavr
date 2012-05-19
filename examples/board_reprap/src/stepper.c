@@ -79,7 +79,7 @@ stepper_step_hook(
 		return;
 	if (value)
 		return;
-	p->position += p->dir ? -1 : 1;
+	p->position += p->dir ? 1 : -1;
 	if (p->position < 0)
 		p->position = 0;
 	if (p->endstop && p->position < p->endstop)
@@ -141,3 +141,11 @@ stepper_connect(
 	p->timer_period = avr_usec_to_cycles(p->avr, 100000 / 1000); // 1ms
 	avr_cycle_timer_register(p->avr, p->timer_period, stepper_update_timer, p);
 }
+
+float
+stepper_get_position_mm(
+		stepper_p p)
+{
+	return p->position / p->steps_per_mm;
+}
+

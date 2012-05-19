@@ -68,4 +68,8 @@ stepper_connect(
 		avr_irq_t *	endstop,
 		uint16_t flags);
 
+float
+stepper_get_position_mm(
+		stepper_p p);
+
 #endif /* __STEPPER_H___ */

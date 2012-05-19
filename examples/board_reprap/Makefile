@@ -29,13 +29,28 @@ IPATH += ${simavr}/include
 IPATH += ${simavr}/simavr/sim
 
 VPATH = src
+VPATH += src/c3
 VPATH += ../parts
 VPATH += ../shared
 
 # for the Open Motion Controller board
 CFLAGS += -DMOTHERBOARD=91
+CFLAGS += ${shell pkg-config --cflags pangocairo}
 
+ifneq (${shell uname}, Darwin)
+LDFLAGS += -lGL -lglut -lGLU
+else
+LDFLAGS += -framework GLUT -framework OpenGL 
+endif
+LDFLAGS += ${shell pkg-config --libs pangocairo}
 LDFLAGS += -lpthread -lutil -ldl
+LDFLAGS += -lm
+
+C3SRC	= ${wildcard src/c3/*.c}
+C3OBJ 	= ${patsubst src/c3%,${OBJ}%,${C3SRC:.c=.o}}
+
+CFLAGS	+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
+
 
 all: obj ${firmware} ${target}
 
@@ -43,16 +58,20 @@ include ${simavr}/Makefile.common
 
 board = ${OBJ}/${target}.elf
 
+${board} : ${C3OBJ}
 ${board} : ${OBJ}/mongoose.o
 ${board} : ${OBJ}/button.o
 ${board} : ${OBJ}/uart_pty.o
 ${board} : ${OBJ}/thermistor.o
 ${board} : ${OBJ}/heatpot.o
 ${board} : ${OBJ}/stepper.o
+${board} : ${OBJ}/c_utils.o
 ${board} : ${OBJ}/${target}.o
+${board} : ${OBJ}/${target}_gl.o
 
 ${target}: ${board}
 	@echo $@ done
 
 clean: clean-${OBJ}
 	rm -rf *.a *.axf ${target} *.vcd
+

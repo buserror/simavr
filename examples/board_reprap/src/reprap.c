@@ -33,16 +33,13 @@
 #include "sim_elf.h"
 #include "sim_hex.h"
 #include "sim_gdb.h"
-#include "sim_vcd_file.h"
 
 #include "mongoose.h"
 
+#include "reprap_gl.h"
+
 #include "button.h"
-#include "uart_pty.h"
-#include "thermistor.h"
-#include "thermistor.h"
-#include "heatpot.h"
-#include "stepper.h"
+#include "reprap.h"
 
 #define __AVR_ATmega644__
 #include "marlin/pins.h"
@@ -60,17 +57,9 @@ enum {
 	TALLY_HOTEND_FAN,
 };
 
-thermistor_t	therm_hotend;
-thermistor_t	therm_hotbed;
-thermistor_t	therm_spare;
-heatpot_t		hotend;
-heatpot_t		hotbed;
+reprap_t reprap;
 
-stepper_t		step_x, step_y, step_z, step_e;
-
-uart_pty_t uart_pty;
 avr_t * avr = NULL;
-avr_vcd_t vcd_file;
 
 typedef struct ardupin_t {
 	uint32_t port : 7, pin : 3, analog : 1, adc : 3, pwm : 1, ardupin;
@@ -143,11 +132,16 @@ get_ardu_irq(
  * called when the AVR change any of the pins on port B
  * so lets update our buffer
  */
-void hotbed_change_hook(struct avr_irq_t * irq, uint32_t value, void * param)
+void
+hotbed_change_hook(
+		struct avr_irq_t * irq,
+		uint32_t value,
+		void * param)
 {
 	printf("%s %d\n", __func__, value);
 //	pin_state = (pin_state & ~(1 << irq->irq)) | (value << irq->irq);
 }
+
 
 
 char avr_flash_path[1024];
@@ -185,7 +179,7 @@ void avr_special_deinit( avr_t* avr)
 		perror(avr_flash_path);
 	}
 	close(avr_flash_fd);
-	uart_pty_stop(&uart_pty);
+	uart_pty_stop(&reprap.uart_pty);
 }
 
 static void *
@@ -215,9 +209,89 @@ reprap_relief_callback(
 		void * param)
 {
 //	printf("%s write %x\n", __func__, addr);
-	usleep(1000);
+	static uint16_t tick = 0;
+	if (!(tick++ & 0xf))
+		usleep(100);
 }
 
+static void *
+avr_run_thread(
+		void * ignore)
+{
+	while (1) {
+		avr_run(avr);
+	}
+	return NULL;
+}
+
+void
+reprap_init(
+		avr_t * avr,
+		reprap_p r)
+{
+	r->avr = avr;
+	uart_pty_init(avr, &r->uart_pty);
+	uart_pty_connect(&r->uart_pty, '0');
+
+	thermistor_init(avr, &r->therm_hotend, 0,
+			(short*)TERMISTOR_TABLE(TEMP_SENSOR_0),
+			sizeof(TERMISTOR_TABLE(TEMP_SENSOR_0)) / sizeof(short) / 2,
+			OVERSAMPLENR, 25.0f);
+	thermistor_init(avr, &r->therm_hotbed, 2,
+			(short*)TERMISTOR_TABLE(TEMP_SENSOR_BED),
+			sizeof(TERMISTOR_TABLE(TEMP_SENSOR_BED)) / sizeof(short) / 2,
+			OVERSAMPLENR, 30.0f);
+	thermistor_init(avr, &r->therm_spare, 1,
+			(short*)temptable_5, sizeof(temptable_5) / sizeof(short) / 2,
+			OVERSAMPLENR, 10.0f);
+
+	heatpot_init(avr, &r->hotend, "hotend", 28.0f);
+	heatpot_init(avr, &r->hotbed, "hotbed", 25.0f);
+
+	/* connect heatpot temp output to thermistors */
+	avr_connect_irq(r->hotend.irq + IRQ_HEATPOT_TEMP_OUT,
+			r->therm_hotend.irq + IRQ_TERM_TEMP_VALUE_IN);
+	avr_connect_irq(r->hotbed.irq + IRQ_HEATPOT_TEMP_OUT,
+			r->therm_hotbed.irq + IRQ_TERM_TEMP_VALUE_IN);
+
+	float axis_pp_per_mm[4] = DEFAULT_AXIS_STEPS_PER_UNIT;	// from Marlin!
+	{
+		avr_irq_t * e = get_ardu_irq(avr, X_ENABLE_PIN, arduidiot_644);
+		avr_irq_t * s = get_ardu_irq(avr, X_STEP_PIN, arduidiot_644);
+		avr_irq_t * d = get_ardu_irq(avr, X_DIR_PIN, arduidiot_644);
+		avr_irq_t * m = get_ardu_irq(avr, X_MIN_PIN, arduidiot_644);
+
+		stepper_init(avr, &r->step_x, "X", axis_pp_per_mm[0], 100, 220, 0);
+		stepper_connect(&r->step_x, s, d, e, m, stepper_endstop_inverted);
+	}
+	{
+		avr_irq_t * e = get_ardu_irq(avr, Y_ENABLE_PIN, arduidiot_644);
+		avr_irq_t * s = get_ardu_irq(avr, Y_STEP_PIN, arduidiot_644);
+		avr_irq_t * d = get_ardu_irq(avr, Y_DIR_PIN, arduidiot_644);
+		avr_irq_t * m = get_ardu_irq(avr, Y_MIN_PIN, arduidiot_644);
+
+		stepper_init(avr, &r->step_y, "Y", axis_pp_per_mm[1], 100, 220, 0);
+		stepper_connect(&r->step_y, s, d, e, m, stepper_endstop_inverted);
+	}
+	{
+		avr_irq_t * e = get_ardu_irq(avr, Z_ENABLE_PIN, arduidiot_644);
+		avr_irq_t * s = get_ardu_irq(avr, Z_STEP_PIN, arduidiot_644);
+		avr_irq_t * d = get_ardu_irq(avr, Z_DIR_PIN, arduidiot_644);
+		avr_irq_t * m = get_ardu_irq(avr, Z_MIN_PIN, arduidiot_644);
+
+		stepper_init(avr, &r->step_z, "Z", axis_pp_per_mm[2], 20, 110, 0);
+		stepper_connect(&r->step_z, s, d, e, m, stepper_endstop_inverted);
+	}
+	{
+		avr_irq_t * e = get_ardu_irq(avr, E0_ENABLE_PIN, arduidiot_644);
+		avr_irq_t * s = get_ardu_irq(avr, E0_STEP_PIN, arduidiot_644);
+		avr_irq_t * d = get_ardu_irq(avr, E0_DIR_PIN, arduidiot_644);
+
+		stepper_init(avr, &r->step_e, "E", axis_pp_per_mm[3], 0, 0, 0);
+		stepper_connect(&r->step_e, s, d, e, NULL, 0);
+	}
+
+}
 
 int main(int argc, char *argv[])
 {
@@ -279,74 +353,18 @@ int main(int argc, char *argv[])
 	// I changed Marlin to do a spurious write to the GPIOR0 register so we can trap it
 	avr_register_io_write(avr, MEGA644_GPIOR0, reprap_relief_callback, NULL);
 
-	uart_pty_init(avr, &uart_pty);
-	uart_pty_connect(&uart_pty, '0');
-
-	thermistor_init(avr, &therm_hotend, 0,
-			(short*)TERMISTOR_TABLE(TEMP_SENSOR_0),
-			sizeof(TERMISTOR_TABLE(TEMP_SENSOR_0)) / sizeof(short) / 2,
-			OVERSAMPLENR, 25.0f);
-	thermistor_init(avr, &therm_hotbed, 2,
-			(short*)TERMISTOR_TABLE(TEMP_SENSOR_BED),
-			sizeof(TERMISTOR_TABLE(TEMP_SENSOR_BED)) / sizeof(short) / 2,
-			OVERSAMPLENR, 30.0f);
-	thermistor_init(avr, &therm_spare, 1,
-			(short*)temptable_5, sizeof(temptable_5) / sizeof(short) / 2,
-			OVERSAMPLENR, 10.0f);
-
-	heatpot_init(avr, &hotend, "hotend", 28.0f);
-	heatpot_init(avr, &hotbed, "hotbed", 25.0f);
-
-	/* connect heatpot temp output to thermistors */
-	avr_connect_irq(hotend.irq + IRQ_HEATPOT_TEMP_OUT, therm_hotend.irq + IRQ_TERM_TEMP_VALUE_IN);
-	avr_connect_irq(hotbed.irq + IRQ_HEATPOT_TEMP_OUT, therm_hotbed.irq + IRQ_TERM_TEMP_VALUE_IN);
-
-	float axis_pp_per_mm[4] = DEFAULT_AXIS_STEPS_PER_UNIT;	// from Marlin!
-	{
-		avr_irq_t * e = get_ardu_irq(avr, X_ENABLE_PIN, arduidiot_644);
-		avr_irq_t * s = get_ardu_irq(avr, X_STEP_PIN, arduidiot_644);
-		avr_irq_t * d = get_ardu_irq(avr, X_DIR_PIN, arduidiot_644);
-		avr_irq_t * m = get_ardu_irq(avr, X_MIN_PIN, arduidiot_644);
-
-		stepper_init(avr, &step_x, "X", axis_pp_per_mm[0], 100, 220, 0);
-		stepper_connect(&step_x, s, d, e, m, stepper_endstop_inverted);
-	}
-	{
-		avr_irq_t * e = get_ardu_irq(avr, Y_ENABLE_PIN, arduidiot_644);
-		avr_irq_t * s = get_ardu_irq(avr, Y_STEP_PIN, arduidiot_644);
-		avr_irq_t * d = get_ardu_irq(avr, Y_DIR_PIN, arduidiot_644);
-		avr_irq_t * m = get_ardu_irq(avr, Y_MIN_PIN, arduidiot_644);
-
-		stepper_init(avr, &step_y, "Y", axis_pp_per_mm[1], 100, 220, 0);
-		stepper_connect(&step_y, s, d, e, m, stepper_endstop_inverted);
-	}
-	{
-		avr_irq_t * e = get_ardu_irq(avr, Z_ENABLE_PIN, arduidiot_644);
-		avr_irq_t * s = get_ardu_irq(avr, Z_STEP_PIN, arduidiot_644);
-		avr_irq_t * d = get_ardu_irq(avr, Z_DIR_PIN, arduidiot_644);
-		avr_irq_t * m = get_ardu_irq(avr, Z_MIN_PIN, arduidiot_644);
-
-		stepper_init(avr, &step_z, "Z", axis_pp_per_mm[2], 20, 110, 0);
-		stepper_connect(&step_z, s, d, e, m, stepper_endstop_inverted);
-	}
-	{
-		avr_irq_t * e = get_ardu_irq(avr, E0_ENABLE_PIN, arduidiot_644);
-		avr_irq_t * s = get_ardu_irq(avr, E0_STEP_PIN, arduidiot_644);
-		avr_irq_t * d = get_ardu_irq(avr, E0_DIR_PIN, arduidiot_644);
-
-		stepper_init(avr, &step_e, "E", axis_pp_per_mm[3], 0, 0, 0);
-		stepper_connect(&step_e, s, d, e, NULL, 0);
-	}
+	reprap_init(avr, &reprap);
 
 	const char *options[] = {"listening_ports", "9090", NULL};
 
 	struct mg_context *ctx = mg_start(&mongoose_callback, NULL, options);
 	printf("mongoose %p\n", ctx);
 
-	while (1) {
-		int state = avr_run(avr);
-		if ( state == cpu_Done || state == cpu_Crashed)
-			break;
-	}
+	gl_init(argc, argv);
+	pthread_t run;
+	pthread_create(&run, NULL, avr_run_thread, NULL);
+
+	gl_runloop();
+
 	mg_stop(ctx);
 }
