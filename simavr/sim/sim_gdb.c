@@ -289,6 +289,7 @@ static void gdb_handle_command(avr_gdb_t * g, char * cmd)
 		}	break;
 		default:
 			gdb_send_reply(g, "");
+			break;
 	}
 }
 
