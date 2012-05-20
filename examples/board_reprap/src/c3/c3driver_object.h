@@ -1,5 +1,5 @@
 /*
-	c3object_driver.h
+	c3driver_object.h
 
 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
@@ -20,54 +20,46 @@
  */
 
 
-#ifndef __C3OBJECT_DRIVER_H___
-#define __C3OBJECT_DRIVER_H___
+#ifndef __C3DRIVER_OBJECT_H___
+#define __C3DRIVER_OBJECT_H___
 
-#include "c3/c3geometry.h"
+#include "c3/c3driver.h"
+
 struct c3object_t;
 struct c3geometry_array_t;
 union c3mat4;
 
-typedef struct c3object_driver_t {
-	struct c3object_driver_t * next;
-	struct c3object_t * object;
+typedef struct c3driver_object_t {
 	/*
 	 * Delete any object related to this object, geometry etc
 	 * The object will still exist, just empty
 	 */
-	void (*clear)(struct c3object_driver_t * d);
+	void (*clear)(
+			struct c3object_t * object,
+			const struct c3driver_object_t * d);
 	/*
 	 * Dispose of the remaining memory for an object, detaches it
 	 * and frees remaining traces of it
 	 */
-	void (*dispose)(struct c3object_driver_t * d);
+	void (*dispose)(
+			struct c3object_t * object,
+			const struct c3driver_object_t * d);
 	/*
 	 * Adds sub objects geometry and self geometry to array 'out'
 	 */
-	void (*get_geometry)(struct c3object_driver_t * d,
+	void (*get_geometry)(
+			struct c3object_t * object,
+			const struct c3driver_object_t * d,
 			struct c3geometry_array_t * out);
 	/*
 	 * Reproject geometry along matrix 'mat', applies our own
 	 * transform and call down the chain for sub-objects
 	 */
-	void (*project)(struct c3object_driver_t * d,
+	void (*project)(
+			struct c3object_t * object,
+			const struct c3driver_object_t * d,
 			union c3mat4 * mat);
-} c3object_driver_t, *c3object_driver_p;
+} c3driver_object_t, *c3driver_object_p;
 
 
-#define C3O_DRIVER_CALL(__callback, __driver, __args...) { \
-		typeof(__driver) __d = __driver;\
-		while (__d) {\
-			if (__d->__callback) {\
-				__d->__callback(__d, ##__args);\
-				break;\
-			}\
-			__d = __d->next;\
-		}\
-	}
-#define C3O_DRIVER(__o, __callback, __args...) \
-		C3O_DRIVER_CALL(__callback, __o->driver, ##__args)
-#define C3O_DRIVER_INHERITED(__callback, __driver, __args...) \
-		C3O_DRIVER_CALL(__callback, __driver->next, ##__args)
-
-#endif /* __C3OBJECT_DRIVER_H___ */
+#endif /* __C3DRIVER_OBJECT_H___ */

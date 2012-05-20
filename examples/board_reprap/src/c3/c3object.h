@@ -26,7 +26,6 @@
 #include <stdbool.h>
 #include "c3/c3transform.h"
 #include "c3/c3geometry.h"
-#include "c3/c3object_driver.h"
 
 struct c3object_t;
 
@@ -34,9 +33,10 @@ DECLARE_C_ARRAY(struct c3object_t*, c3object_array, 4);
 
 typedef struct c3object_t {
 	str_p name;
-	int	dirty : 1;
+	int	dirty : 1, visible : 1 /* TODO: Implement visible */;
+	struct c3context_t * context;
 	struct c3object_t * parent;
-	c3object_driver_p	driver;
+	const struct c3driver_object_t ** driver;
 	c3transform_array_t	transform;
 	c3object_array_t	objects;
 	c3geometry_array_t	geometry;
@@ -56,6 +56,7 @@ c3object_p
 c3object_init(
 		c3object_p o /* = NULL */,
 		c3object_p parent);
+
 void
 c3object_set_dirty(
 		c3object_p o,

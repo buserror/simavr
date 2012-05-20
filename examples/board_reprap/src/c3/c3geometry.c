@@ -21,24 +21,14 @@
 
 
 #include "c3/c3object.h"
+#include "c3/c3context.h"
+#include "c3/c3driver_geometry.h"
+#include "c3/c3driver_context.h"
 
-
-c3geometry_p
-c3geometry_new(
-		int type,
-		c3object_p o /* = NULL */)
-{
-	c3geometry_p res = malloc(sizeof(c3geometry_t));
-	memset(res, 0, sizeof(*res));
-	res->type = type;
-	res->dirty = 1;
-	c3object_add_geometry(o, res);
-	return res;
-}
-
-void
-c3geometry_dispose(
-		c3geometry_p g)
+static void
+_c3geometry_dispose(
+		c3geometry_p  g,
+		const struct c3driver_geometry_t *d)
 {
 	/*
 	 * If we're still attached to an object, detach
@@ -58,4 +48,65 @@ c3geometry_dispose(
 	c3tex_array_free(&g->textures);
 	c3colorf_array_free(&g->colorf);
 	free(g);
+//	C3_DRIVER_INHERITED(g, d, dispose);
+}
+
+static void
+_c3geometry_prepare(
+		c3geometry_p g,
+		const struct c3driver_geometry_t *d)
+{
+
+	if (g->object && g->object->context)
+		C3_DRIVER(g->object->context, geometry_prepare, g);
+	g->dirty = 0;
+//	C3_DRIVER_INHERITED(g, d, prepare);
+}
+
+const  c3driver_geometry_t c3geometry_driver = {
+	.dispose = _c3geometry_dispose,
+	.prepare = _c3geometry_prepare,
+};
+
+c3geometry_p
+c3geometry_new(
+		c3geometry_type_t type,
+		c3object_p o /* = NULL */)
+{
+	c3geometry_p res = malloc(sizeof(c3geometry_t));
+	return c3geometry_init(res, type, o);
+}
+
+c3geometry_p
+c3geometry_init(
+		c3geometry_p g,
+		c3geometry_type_t type,
+		struct c3object_t * o /* = NULL */)
+{
+	memset(g, 0, sizeof(*g));
+	static const c3driver_geometry_t * list[] = {
+			&c3geometry_driver, NULL,
+	};
+	g->driver = list;
+	g->type = type;
+	g->dirty = 1;
+	if (o)
+		c3object_add_geometry(o, g);
+	return g;
+}
+
+void
+c3geometry_dispose(
+		c3geometry_p g)
+{
+	C3_DRIVER(g, dispose);
+}
+
+void
+c3geometry_prepare(
+		c3geometry_p g )
+{
+	if (!g->dirty)
+		return;
+	C3_DRIVER(g, prepare);
 }

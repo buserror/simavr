@@ -26,6 +26,7 @@
 #endif
 
 #include <stdio.h>
+#include <math.h>
 
 #include "reprap.h"
 #include "reprap_gl.h"
@@ -33,15 +34,26 @@
 #include "c3/c3.h"
 #include "c3/c3camera.h"
 #include "c3/c3arcball.h"
+#include "c3/c3driver_context.h"
 
 int _w = 800, _h = 600;
 c3cam cam;
 c3arcball arcball;
-c3object_p root;
+c3context_p c3;
 c3object_p head;
-c3geometry_array_t geo_sorted = C_ARRAY_NULL;
 
 extern reprap_t reprap;
+
+static int dumpError(const char * what)
+{
+	GLenum e;
+	int count = 0;
+	while ((e = glGetError()) != GL_NO_ERROR) {
+		printf("%s: %s\n", what, gluErrorString(e));
+		count++;
+	}
+	return count;
+}
 
 static void
 _gl_key_cb(
@@ -65,6 +77,98 @@ _gl_key_cb(
 	}
 }
 
+static void
+_c3_geometry_prepare(
+		c3context_p c,
+		const struct c3driver_context_t *d,
+		c3geometry_p g)
+{
+	printf("_c3_geometry_prepare %p %d/%d!\n", g, g->type.type, g->type.subtype);
+	switch(g->type.type) {
+		case C3_TEXTURE_TYPE: {
+			c3texture_p t = (c3texture_p)g;
+			g->type.subtype = GL_TRIANGLE_FAN;
+			g->mat.color = c3vec4f(0.0, 1.0, 0.0, 0.5);
+			printf("_c3_geometry_prepare xrure %d!\n", g->textures.count);
+			if (!g->texture) {
+				GLuint texID = 0;
+				dumpError("cp_gl_texture_load_argb flush");
+
+				glEnable(GL_TEXTURE_RECTANGLE_ARB);
+				dumpError("cp_gl_texture_load_argb GL_TEXTURE_RECTANGLE_ARB");
+
+				glGenTextures(1, &texID);
+				dumpError("cp_gl_texture_load_argb glBindTexture GL_TEXTURE_RECTANGLE_ARB");
+
+				glPixelStorei(GL_UNPACK_ROW_LENGTH, t->pixels.row / 4);
+				glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+				g->mat.texture = texID;
+				g->texture = 1;
+			}
+			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, g->mat.texture);
+			glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RGBA8,
+					t->pixels.w, t->pixels.h, 0,
+					GL_RGBA, GL_UNSIGNED_BYTE,
+					t->pixels.base);
+		}	break;
+		default:
+		    break;
+	}
+}
+
+static void
+_c3_geometry_draw(
+		c3context_p c,
+		const struct c3driver_context_t *d,
+		c3geometry_p g )
+{
+	glColor4fv(g->mat.color.n);
+	glVertexPointer(3, GL_FLOAT, 0,
+			g->projected.count ? g->projected.e : g->vertice.e);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	if (g->textures.count && g->texture) {
+		glDisable(GL_TEXTURE_2D);
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, g->mat.texture);
+		glTexCoordPointer(2, GL_FLOAT, 0,
+				g->textures.e);
+		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+	} else
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+
+	glDrawArrays(g->type.subtype, 0, g->vertice.count);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+}
+
+const c3driver_context_t c3context_driver = {
+		.geometry_prepare = _c3_geometry_prepare,
+		.geometry_draw = _c3_geometry_draw,
+};
+
+/*
+ * Computes the distance from the eye, sort by this value
+ */
+static int
+_c3_z_sorter(
+		const void *_p1,
+		const void *_p2)
+{
+	c3geometry_p g1 = *(c3geometry_p*)_p1;
+	c3geometry_p g2 = *(c3geometry_p*)_p2;
+	// get center of bboxes
+	c3vec3 c1 = c3vec3_add(g1->bbox.min, c3vec3_divf(c3vec3_sub(g1->bbox.max, g1->bbox.min), 2));
+	c3vec3 c2 = c3vec3_add(g2->bbox.min, c3vec3_divf(c3vec3_sub(g2->bbox.max, g2->bbox.min), 2));
+
+	c3f d1 = c3vec3_length2(c3vec3_sub(c1, cam.eye));
+	c3f d2 = c3vec3_length2(c3vec3_sub(c2, cam.eye));
+
+	return d1 < d2 ? 1 : d1 > d2 ? -1 : 0;
+}
 
 static void
 _gl_display_cb(void)		/* function called whenever redisplay needed */
@@ -101,25 +205,14 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 	c3mat4 headmove = translation3D(headp);
 	c3transform_set(head->transform.e[0], &headmove);
 
-	if (root->dirty) {
+	if (c3->root->dirty) {
 		printf("reproject\n");
-		c3mat4 m = identity3D();
-		c3object_project(root, &m);
-		c3geometry_array_clear(&geo_sorted);
-		c3object_get_geometry(root, &geo_sorted);
+		c3context_prepare(c3);
+
+		qsort(c3->projected.e, c3->projected.count,
+				sizeof(c3->projected.e[0]), _c3_z_sorter);
 	}
-
-	for (int gi = 0; gi < geo_sorted.count; gi++) {
-		c3geometry_p g = geo_sorted.e[gi];
-		glColor4fv(g->mat.color.n);
-	    glVertexPointer(3, GL_FLOAT, 0, g->projected.count ? g->projected.e : g->vertice.e);
-	    glEnableClientState(GL_VERTEX_ARRAY);
-
-	    glDrawArrays(g->type, 0, g->vertice.count);
-
-	    glDisableClientState(GL_VERTEX_ARRAY);
-
-	}
+	c3context_draw(c3);
 
 	glMatrixMode(GL_PROJECTION); // Select projection matrix
 	glLoadIdentity(); // Start with an identity matrix
@@ -187,6 +280,7 @@ _gl_motion_cb(
 			c3cam_rot_about_lookat(&cam, &rotx);
 
 		    c3cam_update_matrix(&cam);
+		    c3->root->dirty = 1;	// resort the array
 //		    c3arcball_mouse_motion(&arcball, x, y, 0,0,0);
 		}	break;
 		case GLUT_RIGHT_BUTTON: {
@@ -226,8 +320,17 @@ gl_init(
 	glutMouseFunc(_gl_button_cb);
 	glutMotionFunc(_gl_motion_cb);
 
+	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+	glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
 	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+
 	glEnable(GL_LINE_SMOOTH);
+
+	glEnable(GL_BLEND);
+	// Works for the UI !!
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	cam = c3cam_new();
 	cam.lookat = c3vec3f(100.0, 100.0, 0.0);
     cam.eye = c3vec3f(100.0, -100.0, 100.0);
@@ -236,27 +339,31 @@ gl_init(
     c3arcball_init_center(&arcball, c3vec2f(_w/2, _h/2), 100);
 //	hd44780_gl_init();
 
-    root = c3object_new(NULL);
+    c3 = c3context_new(_w, _h);
+    static const c3driver_context_t * list[] = { &c3context_driver, NULL };
+    c3->driver = list;
 
-    c3object_p grid = c3object_new(root);
+    c3object_p grid = c3object_new(c3->root);
     {
-    	c3geometry_p g = c3geometry_new(GL_LINES, grid);
-    	g->mat.color = c3vec4f(1.0, 1.0, 1.0, 1.0);
         for (int x = 0; x < 20; x++) {
         	for (int y = 0; y < 20; y++) {
         		c3vec3 p[4] = {
         			c3vec3f(-1+x*10,y*10,0), c3vec3f(1+x*10,y*10,0),
         			c3vec3f(x*10,-1+y*10,0), c3vec3f(x*10,1+y*10,0),
         		};
+            	c3geometry_p g = c3geometry_new(
+            			c3geometry_type(C3_RAW_TYPE, GL_LINES), grid);
+            	g->mat.color = c3vec4f(1.0, 1.0, 1.0, 1.0);
         		c3vertex_array_insert(&g->vertice,
         				g->vertice.count, p, 4);
         	}
         }
     }
-    head = c3object_new(root);
+    head = c3object_new(c3->root);
     c3transform_new(head);
     {
-    	c3geometry_p g = c3geometry_new(GL_LINES, head);
+    	c3geometry_p g = c3geometry_new(
+    			c3geometry_type(C3_RAW_TYPE, GL_LINES), head);
     	g->mat.color = c3vec4f(1.0, 0.0, 0.0, 1.0);
 		c3vec3 p[4] = {
 			c3vec3f(-1, 0, 0), c3vec3f(1, 0, 0),
@@ -265,6 +372,11 @@ gl_init(
         c3vertex_array_insert(&g->vertice,
         		g->vertice.count, p, 4);
     }
+    c3texture_p b = c3texture_new(head);
+    c3pixels_init(&b->pixels, 64, 64, 4, 4 * 64, NULL);
+    b->geometry.dirty = 1;
+    memset(b->pixels.base, 0xff, 10 * b->pixels.row);
+
 	return 1;
 }
 

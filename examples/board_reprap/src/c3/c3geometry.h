@@ -38,35 +38,72 @@ DECLARE_C_ARRAY(c3colorf, c3colorf_array, 16);
 
 typedef struct c3material_t {
 	c3colorf	color;
+	uint32_t	texture;
 } c3material_t;
 
+typedef struct c3bbox_t {
+	c3vec3	min, max;
+} c3bbox_t;
+
+#define C3_RAW_TYPE	(0)
+
+typedef union {
+	struct  { uint32_t type : 16, subtype : 16; };
+	uint32_t value;
+} c3geometry_type_t;
+
 typedef struct c3geometry_t {
-	int	type;	// GL_LINES etc
-	int	dirty : 1;
-	str_p name;
+	c3geometry_type_t	type;	// GL_LINES etc
+	int					dirty : 1, texture : 1;
+	str_p 				name;	// optional
 	c3material_t		mat;
 	struct c3object_t * object;
+	const struct c3driver_geometry_t ** driver;
 	c3vertex_array_t 	vertice;
 	c3tex_array_t		textures;
 	c3colorf_array_t	colorf;
 
 	// projected version of the vertice
 	c3vertex_array_t 	projected;
+	c3bbox_t			bbox;
+
+	/*
+	 * optional, geometry dependant custom draw method
+	 * return nonzero will orevent the default drawing code
+	 * from being called (c3context one)
+	 */
+	int	(*draw)(struct c3geometry_t *);
 } c3geometry_t, *c3geometry_p;
 
 DECLARE_C_ARRAY(c3geometry_p, c3geometry_array, 4);
 
 c3geometry_p
 c3geometry_new(
-		int type,
+		c3geometry_type_t type,
+		struct c3object_t * o /* = NULL */);
+c3geometry_p
+c3geometry_init(
+		c3geometry_p g,
+		c3geometry_type_t type,
 		struct c3object_t * o /* = NULL */);
 void
 c3geometry_dispose(
 		c3geometry_p g);
 
+void
+c3geometry_prepare(
+		c3geometry_p g );
+
 IMPLEMENT_C_ARRAY(c3geometry_array);
 IMPLEMENT_C_ARRAY(c3vertex_array);
 IMPLEMENT_C_ARRAY(c3tex_array);
 IMPLEMENT_C_ARRAY(c3colorf_array);
+
+static inline c3geometry_type_t
+c3geometry_type(int type, int subtype)
+{
+	c3geometry_type_t r = { .type = type, . subtype = subtype };
+	return r;
+}
 
 #endif /* __C3GEOMETRY_H___ */

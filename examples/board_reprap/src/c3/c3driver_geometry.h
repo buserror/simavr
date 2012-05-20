@@ -1,5 +1,5 @@
 /*
-	c3.h
+	c3driver_geometry.h
 
 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
@@ -20,13 +20,21 @@
  */
 
 
-#ifndef __C3_H___
-#define __C3_H___
+#ifndef __C3DRIVER_GEOMETRY_H___
+#define __C3DRIVER_GEOMETRY_H___
 
-#include "c3/c3context.h"
-#include "c3/c3object.h"
-#include "c3/c3geometry.h"
-#include "c3/c3transform.h"
-#include "c3/c3texture.h"
+#include "c3/c3driver.h"
 
-#endif /* __C3_H___ */
+struct c3geometry_t;
+
+typedef struct c3driver_geometry_t {
+	void (*dispose)(
+			struct c3geometry_t * geometry,
+			const struct c3driver_geometry_t *d);
+	void (*prepare)(
+			struct c3geometry_t * geometry,
+			const struct c3driver_geometry_t *d);
+} c3driver_geometry_t, *c3driver_geometry_p;
+
+
+#endif /* __C3DRIVER_GEOMETRY_H___ */

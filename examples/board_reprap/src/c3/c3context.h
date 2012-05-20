@@ -1,5 +1,5 @@
 /*
-	c3.h
+	c3context.h
 
 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
@@ -20,13 +20,38 @@
  */
 
 
-#ifndef __C3_H___
-#define __C3_H___
+#ifndef __C3CONTEXT_H___
+#define __C3CONTEXT_H___
 
-#include "c3/c3context.h"
-#include "c3/c3object.h"
+#include "c3/c3algebra.h"
 #include "c3/c3geometry.h"
-#include "c3/c3transform.h"
-#include "c3/c3texture.h"
 
-#endif /* __C3_H___ */
+
+typedef struct c3context_t {
+	c3vec2	size;
+	struct c3object_t * root;
+	c3geometry_array_t	projected;
+
+	const struct c3driver_context_t ** driver;
+} c3context_t, *c3context_p;
+
+c3context_p
+c3context_new(
+		int w,
+		int h);
+
+c3context_p
+c3context_init(
+		c3context_p c,
+		int w,
+		int h);
+
+// Reproject geometry for dirty objects
+void
+c3context_prepare(
+		c3context_p c);
+void
+c3context_draw(
+		c3context_p c);
+
+#endif /* __C3CONTEXT_H___ */

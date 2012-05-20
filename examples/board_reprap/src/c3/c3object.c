@@ -21,12 +21,13 @@
 
 
 #include "c3/c3object.h"
+#include "c3/c3driver_object.h"
 
 void
 _c3object_clear(
-		c3object_driver_p d)
+		c3object_p o,
+		const c3driver_object_t * d)
 {
-	c3object_p o = d->object;
 	for (int oi = 0; oi < o->transform.count; oi++) {
 		o->transform.e[oi]->object = NULL;
 		c3transform_dispose(o->transform.e[oi]);
@@ -46,9 +47,9 @@ _c3object_clear(
 
 void
 _c3object_dispose(
-		c3object_driver_p d)
+		c3object_p o,
+		const c3driver_object_t * d)
 {
-	c3object_p o = d->object;
 	if (o->parent) {
 		for (int oi = 0; oi < o->parent->objects.count; oi++)
 			if (o->parent->objects.e[oi] == o) {
@@ -59,24 +60,15 @@ _c3object_dispose(
 		o->parent = NULL;
 	}
 	//C3O_DRIVER_INHERITED(dispose, d);
-	/*
-	 * free the driver chain
-	 */
-	c3object_driver_p driver = o->driver;
-	while (driver) {
-		c3object_driver_p n = driver->next;
-		free(n);
-		driver = n;
-	}
 	free(o);
 }
 
 void
 _c3object_get_geometry(
-		c3object_driver_p d,
+		c3object_p o,
+		const c3driver_object_t * d,
 		c3geometry_array_p out)
 {
-	c3object_p o = d->object;
 	for (int oi = 0; oi < o->geometry.count; oi++)
 		c3geometry_array_add(out, o->geometry.e[oi]);
 	for (int oi = 0; oi < o->objects.count; oi++)
@@ -85,27 +77,39 @@ _c3object_get_geometry(
 
 void
 _c3object_project(
-		c3object_driver_p d,
+		c3object_p o,
+		const c3driver_object_t * d,
 		c3mat4p m)
 {
-	c3object_p o = d->object;
 	if (!o->dirty)
 		return;
 
-	c3mat4 identity = identity3D();
+//	c3mat4 identity = identity3D();
 	c3mat4 p = *m;
 	for (int pi = 0; pi < o->transform.count; pi++)
 		p = c3mat4_mul(&p, &o->transform.e[pi]->matrix);
-	bool is_identity = c3mat4_equal(m, &identity);
+//	bool is_identity = c3mat4_equal(m, &identity);
 
 	for (int gi = 0; gi < o->geometry.count; gi++) {
 		c3geometry_p g = o->geometry.e[gi];
 		c3vertex_array_clear(&g->projected);
-		if (1) {
+
+		g->bbox.min = g->bbox.max = c3vec3f(0,0,0);
+		c3geometry_prepare(g);
+
+		/* 'prepare' might have done something ? */
+		if (g->vertice.count && !g->projected.count) {
 			c3vertex_array_realloc(&g->projected, g->vertice.count);
 			g->projected.count = g->vertice.count;
-			for (int vi = 0; vi < g->vertice.count; vi++)
+			for (int vi = 0; vi < g->vertice.count; vi++) {
 				g->projected.e[vi] = c3mat4_mulv3(&p, g->vertice.e[vi]);
+				if (vi == 0)
+					g->bbox.min = g->bbox.max = g->projected.e[vi];
+				else {
+					g->bbox.max = c3vec3_min(g->bbox.min, g->projected.e[vi]);
+					g->bbox.max = c3vec3_max(g->bbox.max, g->projected.e[vi]);
+				}
+			}
 		}
 	}
 	for (int oi = 0; oi < o->objects.count; oi++)
@@ -113,12 +117,13 @@ _c3object_project(
 	o->dirty = false;
 }
 
-const c3object_driver_t c3object_base_driver = {
+const c3driver_object_t c3object_driver = {
 	.clear = _c3object_clear,
 	.dispose = _c3object_dispose,
 	.get_geometry = _c3object_get_geometry,
 	.project = _c3object_project,
 };
+
 
 c3object_p
 c3object_init(
@@ -127,11 +132,13 @@ c3object_init(
 {
 	memset(o, 0, sizeof(*o));
 	o->parent = parent;
-	o->driver = malloc(sizeof(c3object_driver_t));
-	*o->driver = c3object_base_driver;
-	o->driver->object = o;
-	if (parent)
+	static const c3driver_object_t * list[] =
+			{ &c3object_driver, NULL };
+	o->driver = list;
+	if (parent) {
 		c3object_array_add(&parent->objects, o);
+		o->context = parent->context;
+	}
 	return o;
 }
 
@@ -147,7 +154,7 @@ void
 c3object_clear(
 		c3object_p o)
 {
-	C3O_DRIVER(o, clear);
+	C3_DRIVER(o, clear);
 }
 
 void
@@ -155,7 +162,7 @@ c3object_dispose(
 		c3object_p o)
 {
 	c3object_clear(o);
-	C3O_DRIVER(o, dispose);
+	C3_DRIVER(o, dispose);
 }
 
 void
@@ -229,7 +236,7 @@ c3object_get_geometry(
 		c3object_p o,
 		c3geometry_array_p array )
 {
-	C3O_DRIVER(o, get_geometry, array);
+	C3_DRIVER(o, get_geometry, array);
 }
 
 void
@@ -237,5 +244,5 @@ c3object_project(
 		c3object_p o,
 		const c3mat4p m)
 {
-	C3O_DRIVER(o, project, m);
+	C3_DRIVER(o, project, m);
 }

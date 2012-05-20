@@ -1,5 +1,5 @@
 /*
-	c3.h
+	c3driver_context.h
 
 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
@@ -20,13 +20,24 @@
  */
 
 
-#ifndef __C3_H___
-#define __C3_H___
+#ifndef __C3DRIVER_CONTEXT_H___
+#define __C3DRIVER_CONTEXT_H___
 
-#include "c3/c3context.h"
-#include "c3/c3object.h"
-#include "c3/c3geometry.h"
-#include "c3/c3transform.h"
-#include "c3/c3texture.h"
+#include "c3/c3driver.h"
 
-#endif /* __C3_H___ */
+struct c3context_t;
+struct c3driver_context_t;
+struct c3geometry_t;
+
+typedef struct c3driver_context_t {
+	void (*geometry_prepare)(
+			struct c3context_t * c,
+			const struct c3driver_context_t *d,
+			struct c3geometry_t * g);
+	void (*geometry_draw)(
+			struct c3context_t * c,
+			const struct c3driver_context_t *d,
+			struct c3geometry_t * g);
+} c3driver_context_t, *c3driver_context_p;
+
+#endif /* __C3DRIVER_CONTEXT_H___ */
