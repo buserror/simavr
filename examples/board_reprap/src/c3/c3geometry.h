@@ -45,7 +45,11 @@ typedef struct c3bbox_t {
 	c3vec3	min, max;
 } c3bbox_t;
 
-#define C3_RAW_TYPE	(0)
+enum {
+	C3_RAW_TYPE = 0,
+	C3_TRIANGLE_TYPE,
+	C3_TEXTURE_TYPE,
+};
 
 typedef union {
 	struct  { uint32_t type : 16, subtype : 16; };
@@ -65,6 +69,7 @@ typedef struct c3geometry_t {
 	c3vertex_array_t 	vertice;
 	c3tex_array_t		textures;
 	c3colorf_array_t	colorf;
+	c3vertex_array_t 	normals;
 
 	// projected version of the vertice
 	c3vertex_array_t 	projected;

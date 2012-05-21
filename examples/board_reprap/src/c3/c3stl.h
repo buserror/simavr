@@ -1,5 +1,5 @@
 /*
-	c3texture.h
+	c3stl.h
 
 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
@@ -20,23 +20,12 @@
  */
 
 
-#ifndef __C3TEXTURE_H___
-#define __C3TEXTURE_H___
+#ifndef __C3STL_H___
+#define __C3STL_H___
 
-#include "c3/c3geometry.h"
-#include "c3/c3pixels.h"
+struct c3object_t *
+c3stl_load(
+		const char * filename,
+		struct c3object_t * parent);
 
-typedef struct c3texture_t {
-	c3geometry_t	geometry;
-	c3pixels_t		pixels;
-} c3texture_t, *c3texture_p;
-
-c3texture_p
-c3texture_new(
-		struct c3object_t * parent /* = NULL */);
-c3texture_p
-c3texture_init(
-		c3texture_p t,
-		struct c3object_t * parent /* = NULL */);
-
-#endif /* __C3TEXTURE_H___ */
+#endif /* __C3STL_H___ */

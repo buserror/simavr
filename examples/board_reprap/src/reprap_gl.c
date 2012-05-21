@@ -35,6 +35,7 @@
 #include "c3/c3camera.h"
 #include "c3/c3arcball.h"
 #include "c3/c3driver_context.h"
+#include "c3/c3stl.h"
 
 int _w = 800, _h = 600;
 c3cam cam;
@@ -85,6 +86,10 @@ _c3_geometry_prepare(
 		c3geometry_p g)
 {
 	switch(g->type.type) {
+		case C3_TRIANGLE_TYPE: {
+			g->type.subtype = GL_TRIANGLES;
+			//g->mat.color = c3vec4f(0.0, 0.0, 1.0, 1.0);
+		}	break;
 		case C3_TEXTURE_TYPE: {
 			c3texture_p t = (c3texture_p)g;
 			g->type.subtype = GL_TRIANGLE_FAN;
@@ -127,6 +132,7 @@ _c3_geometry_draw(
 		c3geometry_p g )
 {
 	glColor4fv(g->mat.color.n);
+//	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, g->mat.color.n);
 	glVertexPointer(3, GL_FLOAT, 0,
 			g->projected.count ? g->projected.e : g->vertice.e);
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -139,10 +145,15 @@ _c3_geometry_draw(
 		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	} else
 		glDisable(GL_TEXTURE_RECTANGLE_ARB);
-
+	if (g->normals.count) {
+		glNormalPointer(GL_FLOAT, 0,
+				g->normals.e);
+		glEnableClientState(GL_NORMAL_ARRAY);
+	}
 	glDrawArrays(g->type.subtype, 0, g->vertice.count);
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	glDisableClientState(GL_NORMAL_ARRAY);
 }
 
 const c3driver_context_t c3context_driver = {
@@ -167,27 +178,34 @@ _c3_z_sorter(
 	c3f d1 = c3vec3_length2(c3vec3_sub(c1, cam.eye));
 	c3f d2 = c3vec3_length2(c3vec3_sub(c2, cam.eye));
 
+	/*
+	 * make sure transparent items are drawn after everyone else
+	 */
+	if (g1->mat.color.n[3] < 1)
+		d1 -= 100000.0;
+	if (g2->mat.color.n[3] < 1)
+		d2 -= 100000.0;
+
 	return d1 < d2 ? 1 : d1 > d2 ? -1 : 0;
 }
 
 static void
 _gl_display_cb(void)		/* function called whenever redisplay needed */
 {
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// Set up projection matrix
 	glMatrixMode(GL_PROJECTION); // Select projection matrix
 	glLoadIdentity(); // Start with an identity matrix
 
-	gluPerspective(45, _w / _h, 0, 10000);
+	gluPerspective(60, _w / _h, 60, 400);
 
-//	glEnable(GL_TEXTURE_2D);
-	glShadeModel(GL_SMOOTH);
+//	glDepthMask(GL_TRUE);
+//	glCullFace(GL_BACK);
+//	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
 
-	glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
-	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);                         // Enable Blending
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);          // Type Of Blending To Use
 
@@ -309,7 +327,7 @@ gl_init(
 {
 	glutInit(&argc, argv);		/* initialize GLUT system */
 
-	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitWindowSize(_w, _h);		/* width=400pixels height=500pixels */
 	/*window =*/ glutCreateWindow("Press 'q' to quit");	/* create window */
 
@@ -327,9 +345,37 @@ gl_init(
 
 	glEnable(GL_LINE_SMOOTH);
 
-	glEnable(GL_BLEND);
+	// enable color tracking
+	glEnable(GL_COLOR_MATERIAL);
+	// set material properties which will be assigned by glColor
+	glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+
+
+	glShadeModel(GL_SMOOTH);
+#if 1
+//	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_LIGHTING);
+	GLfloat global_ambient[] = { 0.5f, 0.5f, 0.5f, 1.0f };
+	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, global_ambient);
+
+	{
+		GLfloat specular[] = {1.0f, 1.0f, 1.0f , 0.8f};
+		GLfloat position[] = { -50.0f, -50.0f, 100.0f, 1.0f };
+		glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
+		glLightfv(GL_LIGHT0, GL_POSITION, position);
+		glEnable(GL_LIGHT0);
+	}
+	{
+		GLfloat specular[] = {1.0f, 1.0f, 1.0f , 0.8f};
+		GLfloat position[] = { 250.0f, -50.0f, 100.0f, 1.0f };
+		glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
+		glLightfv(GL_LIGHT0, GL_POSITION, position);
+		glEnable(GL_LIGHT0);
+	}
+#endif
+//	glEnable(GL_BLEND);
 	// Works for the UI !!
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+//	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	cam = c3cam_new();
 	cam.lookat = c3vec3f(100.0, 100.0, 0.0);
@@ -353,29 +399,25 @@ gl_init(
         		};
             	c3geometry_p g = c3geometry_new(
             			c3geometry_type(C3_RAW_TYPE, GL_LINES), grid);
-            	g->mat.color = c3vec4f(1.0, 1.0, 1.0, 1.0);
+            	g->mat.color = c3vec4f(0.0, 0.0, 0.0, 1.0);
         		c3vertex_array_insert(&g->vertice,
         				g->vertice.count, p, 4);
         	}
         }
     }
-    head = c3object_new(c3->root);
+    head = c3stl_load("gfx/buserror-nozzle-model.stl", c3->root);
+    //head = c3object_new(c3->root);
     c3transform_new(head);
-    {
-    	c3geometry_p g = c3geometry_new(
-    			c3geometry_type(C3_RAW_TYPE, GL_LINES), head);
-    	g->mat.color = c3vec4f(1.0, 0.0, 0.0, 1.0);
-		c3vec3 p[4] = {
-			c3vec3f(-1, 0, 0), c3vec3f(1, 0, 0),
-			c3vec3f(0, -1, 0), c3vec3f(0, 1, 0),
-		};
-        c3vertex_array_insert(&g->vertice,
-        		g->vertice.count, p, 4);
+    if (head->geometry.count > 0) {
+    	head->geometry.e[0]->mat.color = c3vec4f(0.6, 0.5, 0.0, 1.0);
     }
+
+#if 0
     c3texture_p b = c3texture_new(head);
     c3pixels_init(&b->pixels, 64, 64, 4, 4 * 64, NULL);
     b->geometry.dirty = 1;
     memset(b->pixels.base, 0xff, 10 * b->pixels.row);
+#endif
 
 	return 1;
 }
