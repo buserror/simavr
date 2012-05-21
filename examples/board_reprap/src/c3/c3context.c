@@ -48,6 +48,15 @@ c3context_init(
 }
 
 void
+c3context_dispose(
+		c3context_p c)
+{
+	c3object_dispose(c->root);
+	c3geometry_array_free(&c->projected);
+	free(c);
+}
+
+void
 c3context_prepare(
 		c3context_p c)
 {
@@ -67,6 +76,6 @@ c3context_draw(
 	c3context_prepare(c);
 	for (int gi = 0; gi < c->projected.count; gi++) {
 		c3geometry_p g = c->projected.e[gi];
-		C3_DRIVER(c, geometry_draw, g);
+		c3geometry_draw(g);
 	}
 }

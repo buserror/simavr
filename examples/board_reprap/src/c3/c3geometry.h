@@ -54,11 +54,14 @@ typedef union {
 
 typedef struct c3geometry_t {
 	c3geometry_type_t	type;	// GL_LINES etc
-	int					dirty : 1, texture : 1;
+	int					dirty : 1,
+						texture : 1,	// has a valid material.texture
+						custom : 1;		// has a custom driver
 	str_p 				name;	// optional
 	c3material_t		mat;
 	struct c3object_t * object;
 	const struct c3driver_geometry_t ** driver;
+
 	c3vertex_array_t 	vertice;
 	c3tex_array_t		textures;
 	c3colorf_array_t	colorf;
@@ -66,13 +69,6 @@ typedef struct c3geometry_t {
 	// projected version of the vertice
 	c3vertex_array_t 	projected;
 	c3bbox_t			bbox;
-
-	/*
-	 * optional, geometry dependant custom draw method
-	 * return nonzero will orevent the default drawing code
-	 * from being called (c3context one)
-	 */
-	int	(*draw)(struct c3geometry_t *);
 } c3geometry_t, *c3geometry_p;
 
 DECLARE_C_ARRAY(c3geometry_p, c3geometry_array, 4);
@@ -92,6 +88,14 @@ c3geometry_dispose(
 
 void
 c3geometry_prepare(
+		c3geometry_p g );
+void
+c3geometry_draw(
+		c3geometry_p g );
+
+//! allocate (if not there) and return a custom driver for this geometry
+struct c3driver_geometry_t *
+c3geometry_get_custom(
 		c3geometry_p g );
 
 IMPLEMENT_C_ARRAY(c3geometry_array);

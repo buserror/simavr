@@ -31,4 +31,7 @@ gl_init(
 int
 gl_runloop();
 
+void
+gl_dispose();
+
 #endif /* __REPRAP_GL_H___ */

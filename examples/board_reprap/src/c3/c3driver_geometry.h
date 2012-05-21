@@ -34,6 +34,9 @@ typedef struct c3driver_geometry_t {
 	void (*prepare)(
 			struct c3geometry_t * geometry,
 			const struct c3driver_geometry_t *d);
+	void (*draw)(
+			struct c3geometry_t * geometry,
+			const struct c3driver_geometry_t *d);
 } c3driver_geometry_t, *c3driver_geometry_p;
 
 

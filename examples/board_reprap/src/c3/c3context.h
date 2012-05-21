@@ -46,6 +46,10 @@ c3context_init(
 		int w,
 		int h);
 
+void
+c3context_dispose(
+		c3context_p c);
+
 // Reproject geometry for dirty objects
 void
 c3context_prepare(

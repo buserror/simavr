@@ -64,6 +64,7 @@ _gl_key_cb(
 	switch (key) {
 		case 'q':
 		//	avr_vcd_stop(&vcd_file);
+			c3context_dispose(c3);
 			exit(0);
 			break;
 		case 'r':
@@ -83,7 +84,6 @@ _c3_geometry_prepare(
 		const struct c3driver_context_t *d,
 		c3geometry_p g)
 {
-	printf("_c3_geometry_prepare %p %d/%d!\n", g, g->type.type, g->type.subtype);
 	switch(g->type.type) {
 		case C3_TEXTURE_TYPE: {
 			c3texture_p t = (c3texture_p)g;
@@ -206,7 +206,7 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 	c3transform_set(head->transform.e[0], &headmove);
 
 	if (c3->root->dirty) {
-		printf("reproject\n");
+	//	printf("reproject\n");
 		c3context_prepare(c3);
 
 		qsort(c3->projected.e, c3->projected.count,
@@ -380,9 +380,16 @@ gl_init(
 	return 1;
 }
 
+void
+gl_dispose()
+{
+	c3context_dispose(c3);
+}
+
 int
 gl_runloop()
 {
 	glutMainLoop();
+	gl_dispose();
 	return 0;
 }

@@ -63,9 +63,20 @@ _c3geometry_prepare(
 //	C3_DRIVER_INHERITED(g, d, prepare);
 }
 
+static void
+_c3geometry_draw(
+		c3geometry_p g,
+		const struct c3driver_geometry_t *d)
+{
+	if (g->object && g->object->context)
+		C3_DRIVER(g->object->context, geometry_draw, g);
+//	C3_DRIVER_INHERITED(g, d, draw);
+}
+
 const  c3driver_geometry_t c3geometry_driver = {
 	.dispose = _c3geometry_dispose,
 	.prepare = _c3geometry_prepare,
+	.draw = _c3geometry_draw,
 };
 
 c3geometry_p
@@ -95,6 +106,24 @@ c3geometry_init(
 	return g;
 }
 
+c3driver_geometry_p
+c3geometry_get_custom(
+		c3geometry_p g )
+{
+	if (g->custom)
+		return (c3driver_geometry_p)g->driver[0];
+	int cnt = 0;
+	for (int di = 0; g->driver[di]; di++)
+		cnt++;
+	c3driver_geometry_p * newd = malloc(sizeof(c3driver_geometry_p) * (cnt + 2));
+	memcpy(&newd[1], g->driver, (cnt + 1) * sizeof(c3driver_geometry_p));
+	newd[0] = malloc(sizeof(c3driver_geometry_t));
+	memset(newd[0], 0, sizeof(c3driver_geometry_t));
+	g->custom = 1;
+	g->driver = (typeof(g->driver))newd;
+	return newd[0];
+}
+
 void
 c3geometry_dispose(
 		c3geometry_p g)
@@ -109,4 +138,11 @@ c3geometry_prepare(
 	if (!g->dirty)
 		return;
 	C3_DRIVER(g, prepare);
+}
+
+void
+c3geometry_draw(
+		c3geometry_p g )
+{
+	C3_DRIVER(g, draw);
 }
