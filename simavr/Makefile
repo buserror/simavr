@@ -95,6 +95,12 @@ endif
 
 config: ${OBJ}/cores.deps sim_core_config.h sim_core_decl.h
 
+#
+# this tries to preprocess all the cores and decide
+# which ones have a chance of compiling at all. Some platform
+# ship with old version of avr-gcc and associated and needs
+# to be verified
+#
 sim_core_config.h ${OBJ}/cores.deps: $(cores) Makefile
 	@echo CONF $@
 	@conf=""; decl=""; array=""; \
@@ -102,7 +108,7 @@ sim_core_config.h ${OBJ}/cores.deps: $(cores) Makefile
 	for core in cores/*.c ; do \
 		file=$$core; global=$${core/cores\/sim_}; global=$${global/.c}; \
 		upper=$$(echo $$global|tr '[a-z]' '[A-Z]'); \
-		if $(CC) -E $(CFLAGS) -I$(AVR_INC)/include $$file \
+		if $(CC) -E $(CFLAGS) ${AVR_CPPFLAGS} $$file \
 			>/dev/null 2>&1 ; then \
 			conf+="#define CONFIG_$$upper 1\n"; \
 			obj=$${file/.c/.o} ; obj=$${obj/cores\/}; \
@@ -118,6 +124,11 @@ sim_core_config.h ${OBJ}/cores.deps: $(cores) Makefile
 	  printf "#endif\n"; \
 	) >sim_core_config.h
 
+#
+# This take the config file that was generated, and create the static
+# table of all available cores for name lookups, as well as a C
+# config file
+#  
 sim_core_decl.h: sim_core_config.h $(cores) Makefile
 	@echo CONF $@
 	@decl=""; array=""; \

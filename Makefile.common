@@ -30,12 +30,10 @@
 ARCH 		= ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
 
 CFLAGS		+= -O2 -Wall
+CFLAGS		+= -g
 ifeq ($(ARCH), i)
-CFLAGS		+= -mfpmath=sse -msse2
+CFLAGS		+= -msse2
 endif
-
-CFLAGS		+= -g --std=gnu99 -Wall
-CFLAGS		+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
 
 ifeq (${shell uname}, Darwin)
 AVR_ROOT 	:= "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/"
@@ -53,7 +51,12 @@ AVR 		:= avr-
 CFLAGS 		+= -fPIC
 endif
 
-CC 			?= gcc
+CPPFLAGS	+= --std=gnu99 -Wall
+CPPFLAGS	+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
+
+AVR_CPPFLAGS= ${CPPFLAGS} -idirafter ${AVR_INC}/include
+
+CC 			= gcc
 AR 			?= ar
 RANLIB 		?= ranlib
 MKDIR		?= mkdir -p
@@ -104,22 +107,22 @@ endif
 # this rule has precedence
 ${OBJ}/sim_%.o : cores/sim_%.c
 ifeq ($(V),1)
-	$(CC) $(CFLAGS) -MMD \
-		-I${AVR_INC}/include/ \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD \
+		${AVR_CPPFLAGS} \
 		$<  -c -o $@
 else
-	@$(CC) $(CFLAGS) -MMD \
-		-I${AVR_INC}/include/ \
+	@$(CC) $(CPPFLAGS) $(CFLAGS) $(CFLAGS) -MMD \
+		${AVR_CPPFLAGS} \
 		$<  -c -o $@
 	@echo CORE $<
 endif
 
 ${OBJ}/%.o: %.c
 ifeq ($(V),1)
-	$(CC) $(CFLAGS) -MMD \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD \
 		$<  -c -o $@
 else
-	@$(CC) $(CFLAGS) -MMD \
+	@$(CC) $(CPPFLAGS) $(CFLAGS) -MMD \
 		$<  -c -o $@
 	@echo CC $<
 endif

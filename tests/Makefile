@@ -40,10 +40,10 @@ axf: ${sources:.c=.axf}
 
 ${OBJ}/%.tst: tests.c %.c
 ifeq ($(V),1)
-	$(CC) -MMD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
+	$(CC) -MMD ${CPPFLAGS} ${CFLAGS} ${LFLAGS} -o $@ ${patsubst %.h,, ${^}} $(LDFLAGS)
 else
 	@echo TST $@
-	@$(CC) -MMD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
+	@$(CC) -MMD ${CPPFLAGS} ${CFLAGS} ${LFLAGS} -o $@ ${patsubst %.h,, ${^}} $(LDFLAGS)
 endif
 
 run_tests: all
