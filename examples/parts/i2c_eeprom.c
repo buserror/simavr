@@ -127,7 +127,7 @@ i2c_eeprom_init(
 		uint8_t * data,
 		size_t size)
 {
-	memset(p, 0, sizeof(p));
+	memset(p, 0, sizeof(*p));
 	memset(p->ee, 0xff, sizeof(p->ee));
 	p->irq = avr_alloc_irq(&avr->irq_pool, 0, 2, _ee_irq_names);
 	avr_irq_register_notify(p->irq + TWI_IRQ_MOSI, i2c_eeprom_in_hook, p);

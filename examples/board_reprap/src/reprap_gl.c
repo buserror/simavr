@@ -240,18 +240,6 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 
 	glMatrixMode(GL_MODELVIEW); // Select modelview matrix
 
-	#if 0
-	glPushMatrix();
-	glLoadIdentity(); // Start with an identity matrix
-	glScalef(3, 3, 1);
-	hd44780_gl_draw(
-		&hd44780,
-			colors[color][0], /* background */
-			colors[color][1], /* character background */
-			colors[color][2], /* text */
-			colors[color][3] /* shadow */ );
-	glPopMatrix();
-#endif
     glutSwapBuffers();
 }
 

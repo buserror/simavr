@@ -65,7 +65,7 @@ c3pixels_dispose(
 	if (p->alloc)
 		free(p);
 	else
-		memset(p, 0, sizeof(p));
+		memset(p, 0, sizeof(*p));
 }
 
 void

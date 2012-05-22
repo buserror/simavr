@@ -273,8 +273,6 @@ void usb162_init(struct avr_t * avr)
 {
 	struct mcu_t * mcu = (struct mcu_t*)avr;
 
-	printf("%s init\n", avr->mmcu);
-
 	avr_eeprom_init(avr, &mcu->eeprom);
 	avr_flash_init(avr, &mcu->selfprog);
 	avr_extint_init(avr, &mcu->extint);

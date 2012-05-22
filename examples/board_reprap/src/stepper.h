@@ -40,7 +40,7 @@ typedef struct stepper_t {
 	char name[32];
 	int enable : 1, dir : 1, trace : 1;
 	double steps_per_mm;
-	uint64_t	position;	// in steps
+	int64_t	position;	// in steps
 	uint64_t max_position;
 	uint64_t endstop;
 	avr_cycle_count_t timer_period;
