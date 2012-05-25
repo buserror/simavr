@@ -26,8 +26,12 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
-#include <pty.h>
 #include <signal.h>
+#ifdef __APPLE__
+#include <util.h>
+#else
+#include <pty.h>
+#endif
 
 #include "uart_pty.h"
 #include "avr_uart.h"

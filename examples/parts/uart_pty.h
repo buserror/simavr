@@ -23,6 +23,7 @@
 #ifndef __UART_PTY_H___
 #define __UART_PTY_H___
 
+#include <pthread.h>
 #include "sim_irq.h"
 #include "fifo_declare.h"
 

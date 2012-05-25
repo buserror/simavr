@@ -38,6 +38,7 @@ static avr_cycle_count_t
 cycle_timer_longjmp_cb(struct avr_t *avr, avr_cycle_count_t when, void *param) {
 	jmp_buf *jmp = param;
 	longjmp(*jmp, LJR_CYCLE_TIMER);
+	return 0;	// clear warning
 }
 
 static jmp_buf *special_deinit_jmpbuf = NULL;

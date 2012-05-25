@@ -1277,7 +1277,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 
 		case 0xc000: {
 			// RJMP 1100 kkkk kkkk kkkk
-			short o = ((short)(opcode << 4)) >> 4;
+//			int16_t o = ((int16_t)(opcode << 4)) >> 4; // CLANG BUG!
+			int16_t o = ((int16_t)((opcode << 4)&0xffff)) >> 4;
 			STATE("rjmp .%d [%04x]\n", o, new_pc + (o << 1));
 			new_pc = new_pc + (o << 1);
 			cycle++;
@@ -1286,7 +1287,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 
 		case 0xd000: {
 			// RCALL 1100 kkkk kkkk kkkk
-			short o = ((short)(opcode << 4)) >> 4;
+//			int16_t o = ((int16_t)(opcode << 4)) >> 4; // CLANG BUG!
+			int16_t o = ((int16_t)((opcode << 4)&0xffff)) >> 4;
 			STATE("rcall .%d [%04x]\n", o, new_pc + (o << 1));
 			_avr_push16(avr, new_pc >> 1);
 			new_pc = new_pc + (o << 1);
@@ -1311,7 +1313,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 				case 0xf200:
 				case 0xf400:
 				case 0xf600: {	// All the SREG branches
-					short o = ((short)(opcode << 6)) >> 9; // offset
+					int16_t o = ((int16_t)(opcode << 6)) >> 9; // offset
 					uint8_t s = opcode & 7;
 					int set = (opcode & 0x0400) == 0;		// this bit means BRXC otherwise BRXS
 					int branch = (avr->sreg[s] && set) || (!avr->sreg[s] && !set);

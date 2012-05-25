@@ -111,7 +111,7 @@ IMPLEMENT_C_ARRAY(c3colorf_array);
 static inline c3geometry_type_t
 c3geometry_type(int type, int subtype)
 {
-	c3geometry_type_t r = { .type = type, . subtype = subtype };
+	c3geometry_type_t r = { .type = type, .subtype = subtype };
 	return r;
 }
 

@@ -36,6 +36,8 @@ CFLAGS		+= -msse2
 endif
 
 ifeq (${shell uname}, Darwin)
+# gcc 4.2 from MacOS is really not up to scratch anymore 
+CC			= clang
 AVR_ROOT 	:= "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/"
 AVR_INC 	:= ${AVR_ROOT}/avr-4/
 AVR 		:= ${AVR_ROOT}/bin/avr-
@@ -56,7 +58,7 @@ CPPFLAGS	+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
 
 AVR_CPPFLAGS= ${CPPFLAGS} -idirafter ${AVR_INC}/include
 
-CC 			= gcc
+CC 			?= gcc
 AR 			?= ar
 RANLIB 		?= ranlib
 MKDIR		?= mkdir -p
