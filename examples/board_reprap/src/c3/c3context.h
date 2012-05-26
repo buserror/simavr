@@ -26,7 +26,16 @@
 #include "c3/c3algebra.h"
 #include "c3/c3geometry.h"
 
-
+//! c3context_t is a container for a 'scene' to be drawn
+/*!
+ * A c3context_t holds a root object, a list of already cached projected
+ * version of the geometry, and a driver that can be customized to draw it.
+ *
+ * This is a wrapper around a "top level object", the list of projected
+ * geometries is kept, purged and resorted if the root object becomes
+ * dirty
+ * TODO: Add the camera/eye/arcball control there
+ */
 typedef struct c3context_t {
 	c3vec2	size;
 	struct c3object_t * root;
@@ -35,25 +44,29 @@ typedef struct c3context_t {
 	const struct c3driver_context_t ** driver;
 } c3context_t, *c3context_p;
 
+//! Allocates a new context of size w=width, h=height
 c3context_p
 c3context_new(
 		int w,
 		int h);
 
+//! Initializes a new context 'c' of size w=width, h=height
 c3context_p
 c3context_init(
 		c3context_p c,
 		int w,
 		int h);
 
+//! Disposes the context, and everything underneath
 void
 c3context_dispose(
 		c3context_p c);
 
-// Reproject geometry for dirty objects
+//! Reproject geometry for dirty objects
 void
 c3context_prepare(
 		c3context_p c);
+//! Draws the context
 void
 c3context_draw(
 		c3context_p c);
