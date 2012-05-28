@@ -21,10 +21,16 @@
 #ifndef __SIM_CORE_DECLARE_H__
 #define __SIM_CORE_DECLARE_H__
 
+/* we have to declare this, as none of the distro but debian has a modern
+ * toolchain and avr-libc. This affects a lot of names, like MCUSR etc
+ */
+#define __AVR_LIBC_DEPRECATED_ENABLE__
+
 /*
  * The macros "fake" the ones in the real avrlib
  */
 #define _SFR_IO8(v) ((v)+32)
+#define _SFR_IO16(v) ((v)+32)
 #define _SFR_MEM8(v) (v)
 #define _BV(v) (v)
 #define _VECTOR(v) (v)
