@@ -26,14 +26,21 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
+# simavr directory
+SIMAVR		?= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && echo $$p/simavr; done}
+
+# You can override the build settings with local changes in this file
+# for example:
+# export CC=clang
+# export CFLAGS=-march=corei7-avx
+# etc
+-include ${wildcard ${SIMAVR}/../.make.options*}
+
 # get the first character of what the compiler says it is, unless it's 'x86_64' doh
 ARCH 		= ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
 
 CFLAGS		+= -O2 -Wall
 CFLAGS		+= -g
-ifeq ($(ARCH), i)
-CFLAGS		+= -msse2
-endif
 
 ifeq (${shell uname}, Darwin)
 # gcc 4.2 from MacOS is really not up to scratch anymore 
@@ -58,15 +65,12 @@ CPPFLAGS	+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
 
 AVR_CPPFLAGS= ${CPPFLAGS} -idirafter ${AVR_INC}/include
 
-CC 			?= gcc
+CC 			?= clang
 AR 			?= ar
 RANLIB 		?= ranlib
 MKDIR		?= mkdir -p
 INSTALL		?= install
 SHELL	 	:= ${shell which bash}
-
-# simavr directory
-SIMAVR		?= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && echo $$p/simavr; done}
 	
 OBJ 		= obj-${shell $(CC) -dumpmachine}
 LIBDIR		= ${shell pwd}/${SIMAVR}/${OBJ}
