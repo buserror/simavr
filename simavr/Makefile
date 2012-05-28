@@ -26,7 +26,7 @@ CFLAGS	+= -Werror
 # it otherwise eat quite a bit of few cycles, even disabled
 #CFLAGS	+= -DCONFIG_SIMAVR_TRACE=1
 
-all:	obj config ${target}
+all:	obj config libsimavr ${target}
 
 include ../Makefile.common
 
@@ -46,15 +46,23 @@ IPATH	+= ../include
 # Static library
 #
 ${OBJ}/libsimavr.a	:	${sim_o}
+ifeq ($(V),1)
+	$(AR) cru $@ $^ && $(RANLIB) $@
+else
 	@echo AR $@
 	@$(AR) cru $@ $^ && $(RANLIB) $@
+endif
 
 #
 # Shared library (Linux)
 #
 ${OBJ}/libsimavr.so.1	:	${sim_o}
+ifeq ($(V),1)
+	$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^
+else
 	@echo SHARED $@
 	@$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^
+endif
 
 ${OBJ}/libsimavr.so		: ${OBJ}/libsimavr.so.1
 	ln -sf libsimavr.so.1 $@
@@ -65,7 +73,6 @@ ifeq (${shell uname}, Linux)
 libsimavr	:	${OBJ}/libsimavr.so
 endif
 
-${OBJ}/${target}.o		: libsimavr 
 ${OBJ}/${target}.elf	: ${OBJ}/${target}.o
 
 ${target}	: ${OBJ}/${target}.elf

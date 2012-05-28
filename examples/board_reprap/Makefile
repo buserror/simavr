@@ -34,8 +34,8 @@ VPATH += ../parts
 VPATH += ../shared
 
 # for the Open Motion Controller board
-CFLAGS += -DMOTHERBOARD=91
-CFLAGS += ${shell pkg-config --cflags pangocairo}
+CPPFLAGS += -DMOTHERBOARD=91
+CPPFLAGS += ${shell pkg-config --cflags pangocairo}
 
 include ../Makefile.opengl
 
@@ -46,7 +46,7 @@ LDFLAGS += -lm
 C3SRC	= ${wildcard src/c3/*.c}
 C3OBJ 	= ${patsubst src/c3%,${OBJ}%,${C3SRC:.c=.o}}
 
-CFLAGS	+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
+CPPFLAGS	+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
 
 
 all: obj ${firmware} ${target}
