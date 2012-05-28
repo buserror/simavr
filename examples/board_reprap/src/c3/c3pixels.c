@@ -23,7 +23,7 @@
 #include <string.h>
 #include "c3pixels.h"
 
-c3pixelsp
+c3pixels_p
 c3pixels_new(
 		uint32_t w,
 		uint32_t h,
@@ -31,15 +31,15 @@ c3pixels_new(
 		size_t row,
 		void * base)
 {
-	c3pixelsp p = malloc(sizeof(*p));
+	c3pixels_p p = malloc(sizeof(*p));
 	c3pixels_init(p, w, h, psize, row, base);
 	p->alloc = 1;
 	return p;
 }
 
-c3pixelsp
+c3pixels_p
 c3pixels_init(
-		c3pixelsp p,
+		c3pixels_p p,
 		uint32_t w,
 		uint32_t h,
 		int 	 psize /* in bytes */,
@@ -58,7 +58,7 @@ c3pixels_init(
 
 void
 c3pixels_dispose(
-		c3pixelsp p )
+		c3pixels_p p )
 {
 	if (p->own && p->base)
 		free(p->base);
@@ -70,7 +70,7 @@ c3pixels_dispose(
 
 void
 c3pixels_alloc(
-		c3pixelsp p )
+		c3pixels_p p )
 {
 	if (p->base)
 		return;
@@ -80,7 +80,7 @@ c3pixels_alloc(
 
 void
 c3pixels_purge(
-		c3pixelsp p )
+		c3pixels_p p )
 {
 	if (!p->base)
 		return;
@@ -92,7 +92,7 @@ c3pixels_purge(
 
 void
 c3pixels_zero(
-		c3pixelsp p)
+		c3pixels_p p)
 {
 	if (!p->base)
 		return;

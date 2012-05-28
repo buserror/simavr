@@ -25,6 +25,13 @@
 
 #include <stdint.h>
 
+//! for format hint
+enum {
+	C3PIXEL_ARGB = 0,
+	C3PIXEL_RGB,
+	C3PIXEL_A
+};
+
 typedef struct c3pixels_t {
 	uint32_t w, h;	// width & height in pixels
 	size_t row;		// size of one row in bytes
@@ -33,7 +40,7 @@ typedef struct c3pixels_t {
 	union {
 		struct {
 			uint32_t	own : 1,	// is the base our own to delete
-				alloc : 1,			// is the c3pixelsp our own to delete
+				alloc : 1,			// is the c3pixels_p our own to delete
 				dirty : 1,			// pixels have been changed
 				psize : 4,			// pixel size in byte
 				format : 8;			// not used internally
@@ -41,10 +48,10 @@ typedef struct c3pixels_t {
 		uint32_t flags;
 	};
 	int		refCount;	// TODO: Implement reference counting ?
-} c3pixels_t, *c3pixelsp;
+} c3pixels_t, *c3pixels_p;
 
 //! Allocates a new c3pixels, also allocates the pixels if row == NULL
-c3pixelsp
+c3pixels_p
 c3pixels_new(
 		uint32_t w,
 		uint32_t h,
@@ -53,9 +60,9 @@ c3pixels_new(
 		void * base);
 
 //! Initializes p, also allocates the pixels if row == NULL
-c3pixelsp
+c3pixels_p
 c3pixels_init(
-		c3pixelsp p,
+		c3pixels_p p,
 		uint32_t w,
 		uint32_t h,
 		int 	 psize /* in bytes */,
@@ -65,22 +72,22 @@ c3pixels_init(
 //! Dispose of the pixels, and potentially p if it was allocated with c3pixels_new
 void
 c3pixels_dispose(
-		c3pixelsp p );
+		c3pixels_p p );
 
 //! Disposes of the pixels, only
 void
 c3pixels_purge(
-		c3pixelsp p );
+		c3pixels_p p );
 
 //! (Re)allocate pixels if pixels had been purged
 void
 c3pixels_alloc(
-		c3pixelsp p );
+		c3pixels_p p );
 
 //! Get a pixel address
 static inline void *
 c3pixels_get(
-		c3pixelsp p,
+		c3pixels_p p,
 		int x, int y)
 {
 	return ((uint8_t*)p->base) + (y * p->row) + (x * p->psize);
@@ -89,6 +96,6 @@ c3pixels_get(
 //! Zeroes the pixels
 void
 c3pixels_zero(
-		c3pixelsp p);
+		c3pixels_p p);
 
 #endif /* __C3PIXELS_H___ */

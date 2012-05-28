@@ -38,16 +38,17 @@ _c3cairo_dispose(
 }
 
 static void
-_c3cairo_prepare(
+_c3cairo_project(
 		c3geometry_p g,
-		const struct c3driver_geometry_t *d)
+		const struct c3driver_geometry_t *d,
+		c3mat4p m)
 {
-	C3_DRIVER_INHERITED(g, d, prepare);
+	C3_DRIVER_INHERITED(g, d, project, m);
 }
 
 const c3driver_geometry_t c3cairo_base_driver = {
 	.dispose = _c3cairo_dispose,
-	.prepare = _c3cairo_prepare,
+	.project = _c3cairo_project,
 };
 const c3driver_geometry_t c3texture_driver;
 const c3driver_geometry_t c3geometry_driver;

@@ -30,10 +30,11 @@ struct c3driver_context_t;
 struct c3geometry_t;
 
 typedef struct c3driver_context_t {
-	void (*geometry_prepare)(
+	void (*geometry_project)(
 			struct c3context_t * c,
 			const struct c3driver_context_t *d,
-			struct c3geometry_t * g);
+			struct c3geometry_t * g,
+			union c3mat4 * mat);
 	void (*geometry_draw)(
 			struct c3context_t * c,
 			const struct c3driver_context_t *d,

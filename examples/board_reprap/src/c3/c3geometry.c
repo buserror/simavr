@@ -52,15 +52,29 @@ _c3geometry_dispose(
 }
 
 static void
-_c3geometry_prepare(
+_c3geometry_project(
 		c3geometry_p g,
-		const struct c3driver_geometry_t *d)
+		const struct c3driver_geometry_t *d,
+		c3mat4p m)
 {
+	if (g->vertice.count) {
+		c3vertex_array_realloc(&g->projected, g->vertice.count);
+		g->projected.count = g->vertice.count;
+		for (int vi = 0; vi < g->vertice.count; vi++) {
+			g->projected.e[vi] = c3mat4_mulv3(m, g->vertice.e[vi]);
+			if (vi == 0)
+				g->bbox.min = g->bbox.max = g->projected.e[vi];
+			else {
+				g->bbox.max = c3vec3_min(g->bbox.min, g->projected.e[vi]);
+				g->bbox.max = c3vec3_max(g->bbox.max, g->projected.e[vi]);
+			}
+		}
+	}
 
 	if (g->object && g->object->context)
-		C3_DRIVER(g->object->context, geometry_prepare, g);
+		C3_DRIVER(g->object->context, geometry_project, g, m);
 	g->dirty = 0;
-//	C3_DRIVER_INHERITED(g, d, prepare);
+//	C3_DRIVER_INHERITED(g, d, project);
 }
 
 static void
@@ -75,7 +89,7 @@ _c3geometry_draw(
 
 const  c3driver_geometry_t c3geometry_driver = {
 	.dispose = _c3geometry_dispose,
-	.prepare = _c3geometry_prepare,
+	.project = _c3geometry_project,
 	.draw = _c3geometry_draw,
 };
 
@@ -132,12 +146,13 @@ c3geometry_dispose(
 }
 
 void
-c3geometry_prepare(
-		c3geometry_p g )
+c3geometry_project(
+		c3geometry_p g,
+		c3mat4p m)
 {
 	if (!g->dirty)
 		return;
-	C3_DRIVER(g, prepare);
+	C3_DRIVER(g, project, m);
 }
 
 void

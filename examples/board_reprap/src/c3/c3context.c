@@ -57,7 +57,7 @@ c3context_dispose(
 }
 
 void
-c3context_prepare(
+c3context_project(
 		c3context_p c)
 {
 	if (!c->root || !c->root->dirty)
@@ -73,7 +73,7 @@ void
 c3context_draw(
 		c3context_p c)
 {
-	c3context_prepare(c);
+	c3context_project(c);
 	for (int gi = 0; gi < c->projected.count; gi++) {
 		c3geometry_p g = c->projected.e[gi];
 		c3geometry_draw(g);

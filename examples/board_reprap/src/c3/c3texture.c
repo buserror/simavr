@@ -34,13 +34,14 @@ _c3texture_dispose(
 }
 
 void
-_c3texture_prepare(
+_c3texture_project(
 		c3geometry_p g,
-		const c3driver_geometry_t * d)
+		const c3driver_geometry_t * d,
+		c3mat4p m)
 {
 	c3texture_p t = (c3texture_p)g;
 	if (!t->pixels.base) {
-		C3_DRIVER_INHERITED(g, d, prepare);
+		C3_DRIVER_INHERITED(g, d, project, m);
 		return;
 	}
 	c3vec3 v[4] = {
@@ -52,19 +53,21 @@ _c3texture_prepare(
 	c3vertex_array_insert(&g->vertice, 0, v, 4);
 
 	c3vec2 ti[4] = {
-			c3vec2f(0, 0), c3vec2f(t->pixels.w, 0),
-			c3vec2f(t->pixels.w, t->pixels.h), c3vec2f(0, t->pixels.h)
+			c3vec2f(0, 0), c3vec2f(1, 0),
+			c3vec2f(1, 1), c3vec2f(0, 1)
+//			c3vec2f(0, 0), c3vec2f(t->pixels.w, 0),
+//			c3vec2f(t->pixels.w, t->pixels.h), c3vec2f(0, t->pixels.h)
 	};
 	c3tex_array_clear(&t->geometry.textures);
 	c3tex_array_realloc(&t->geometry.textures, 4);
 	c3tex_array_insert(&t->geometry.textures, 0, ti, 4);
 
-	C3_DRIVER_INHERITED(g, d, prepare);
+	C3_DRIVER_INHERITED(g, d, project, m);
 }
 
 const c3driver_geometry_t c3texture_driver = {
 		.dispose = _c3texture_dispose,
-		.prepare = _c3texture_prepare,
+		.project = _c3texture_project,
 };
 const c3driver_geometry_t c3geometry_driver;
 

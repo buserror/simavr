@@ -46,6 +46,7 @@ DECLARE_C_ARRAY(c3colorf, c3colorf_array, 16);
 typedef struct c3material_t {
 	c3colorf	color;
 	uint32_t	texture;
+	uint32_t	mode;
 } c3material_t;
 
 //! Bounding box. TODO: Move to a separate file?
@@ -56,6 +57,7 @@ typedef struct c3bbox_t {
 //! Generic geometry type
 enum {
 	C3_RAW_TYPE = 0,
+	C3_LINES_TYPE,
 	C3_TRIANGLE_TYPE,
 	C3_TEXTURE_TYPE,
 };
@@ -117,14 +119,15 @@ c3geometry_dispose(
 
 //! Prepares a geometry. 
 /*!
- * The prepare phase is called only when the container object is 'dirty'
+ * The project phase is called only when the container object is 'dirty'
  * for example if it's projection has changed.
- * The prepare call is responsible for reprojecting the geometry and that
+ * The project call is responsible for reprojecting the geometry and that
  * sort of things
  */
 void
-c3geometry_prepare(
-		c3geometry_p g );
+c3geometry_project(
+		c3geometry_p g,
+		c3mat4p m);
 
 //! Draw the geometry
 /*
@@ -143,7 +146,7 @@ c3geometry_draw(
  * global to save memory for each of the 'generic' object.
  * This call will duplicate that stack and allocate (if not there) a read/write
  * empty driver that the application can use to put their own, per object,
- * callback. For example you can add your own prepare() or draw() function
+ * callback. For example you can add your own project() or draw() function
  * and have it called first
  */
 struct c3driver_geometry_t *

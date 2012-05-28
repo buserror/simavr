@@ -95,22 +95,7 @@ _c3object_project(
 		c3vertex_array_clear(&g->projected);
 
 		g->bbox.min = g->bbox.max = c3vec3f(0,0,0);
-		c3geometry_prepare(g);
-
-		/* 'prepare' might have done something ? */
-		if (g->vertice.count && !g->projected.count) {
-			c3vertex_array_realloc(&g->projected, g->vertice.count);
-			g->projected.count = g->vertice.count;
-			for (int vi = 0; vi < g->vertice.count; vi++) {
-				g->projected.e[vi] = c3mat4_mulv3(&p, g->vertice.e[vi]);
-				if (vi == 0)
-					g->bbox.min = g->bbox.max = g->projected.e[vi];
-				else {
-					g->bbox.max = c3vec3_min(g->bbox.min, g->projected.e[vi]);
-					g->bbox.max = c3vec3_max(g->bbox.max, g->projected.e[vi]);
-				}
-			}
-		}
+		c3geometry_project(g, &p);
 	}
 	for (int oi = 0; oi < o->objects.count; oi++)
 		c3object_project(o->objects.e[oi], &p);
