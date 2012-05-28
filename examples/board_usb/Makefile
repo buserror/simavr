@@ -45,7 +45,7 @@ ${board} : ${OBJ}/${target}.o
 
 ../vhci/lib/libusb_vhci.a:
 	@echo -n "BUILDIN $@ "
-	@{ $(MAKE) -j -C ../vhci >/tmp/vhci.build.log 2>&1 || \
+	@{ export CC=;export CFLAGS=; $(MAKE) -j -C ../vhci >/tmp/vhci.build.log 2>&1 || \
 		{ echo "ERROR check /tmp/vhci.build.log"; exit 1; }; } && \
 			echo " Done" 
 

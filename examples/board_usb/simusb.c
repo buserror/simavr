@@ -85,7 +85,7 @@ void avr_special_deinit( avr_t* avr)
 
 int main(int argc, char *argv[])
 {
-	elf_firmware_t f;
+//		elf_firmware_t f;
 	const char * pwd = dirname(argv[0]);
 
 	avr = avr_make_mcu_by_name("at90usb162");
