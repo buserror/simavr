@@ -79,9 +79,7 @@ stepper_step_hook(
 		return;
 	if (value)
 		return;
-	p->position += p->dir ? 1 : -1;
-	if (p->position < 0)
-		p->position = 0;
+	p->position += !p->dir && p->position == 0 ? 0 : p->dir ? 1 : -1;
 	if (p->endstop && p->position < p->endstop)
 		p->position = p->endstop;
 	if (p->max_position > 0 && p->position > p->max_position)
