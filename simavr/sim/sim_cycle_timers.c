@@ -68,11 +68,11 @@ avr_cycle_timer_insert(
 	if (cnt)
 		memmove(&pool->timer[inserti + 1], &pool->timer[inserti],
 				cnt * sizeof(avr_cycle_timer_slot_t));
-	pool->count++;
 
 	pool->timer[inserti].timer = timer;
 	pool->timer[inserti].param = param;
 	pool->timer[inserti].when = when;
+	pool->count++;
 	DEBUG(printf("%s %2d/%2d when %7d %p/%p\n", __func__, inserti, pool->count, (int)(when - avr->cycle), timer, param);)
 	DUMP(pool, "after");
 }
