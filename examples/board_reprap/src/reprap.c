@@ -34,8 +34,6 @@
 #include "sim_hex.h"
 #include "sim_gdb.h"
 
-#include "mongoose.h"
-
 #include "reprap_gl.h"
 
 #include "button.h"
@@ -182,23 +180,6 @@ void avr_special_deinit( avr_t* avr)
 	uart_pty_stop(&reprap.uart_pty);
 }
 
-static void *
-mongoose_callback(
-        enum mg_event event,
-        struct mg_connection *conn,
-        const struct mg_request_info *request_info)
-{
-	if (event == MG_NEW_REQUEST) {
-		// Echo requested URI back to the client
-		mg_printf(conn, "HTTP/1.1 200 OK\r\n"
-				"Content-Type: text/plain\r\n\r\n"
-				"%s", request_info->uri);
-		return ""; // Mark as processed
-	} else {
-		return NULL;
-	}
-}
-
 #define MEGA644_GPIOR0 0x3e
 
 static void
@@ -295,6 +276,13 @@ reprap_init(
 
 int main(int argc, char *argv[])
 {
+	char path[256];
+	strcpy(path, argv[0]);
+	strcpy(path, dirname(path));
+	strcpy(path, dirname(path));
+	printf("Stripped base directory to '%s'\n", path);
+	chdir(path);
+
 	int debug = 0;
 
 	for (int i = 1; i < argc; i++)
@@ -314,11 +302,10 @@ int main(int argc, char *argv[])
 	avr->frequency = 20000000;
 	avr->aref = avr->avcc = avr->vcc = 5 * 1000;	// needed for ADC
 
-	if (0) {
-		elf_firmware_t f;
-		const char * fname = "/opt/reprap/tvrrug/Marlin.base/Marlin/applet/Marlin.elf";
-		elf_read_firmware(fname, &f);
-
+	elf_firmware_t f;
+	const char * fname = "/opt/reprap/tvrrug/Marlin/Marlin/applet/Marlin.elf";
+	// try to load an ELF file, before trying the .hex
+	if (elf_read_firmware(fname, &f) == 0) {
 		printf("firmware %s f=%d mmcu=%s\n", fname, (int)f.frequency, f.mmcu);
 		avr_load_firmware(avr, &f);
 	} else {
@@ -355,16 +342,10 @@ int main(int argc, char *argv[])
 
 	reprap_init(avr, &reprap);
 
-	const char *options[] = {"listening_ports", "9090", NULL};
-
-	struct mg_context *ctx = mg_start(&mongoose_callback, NULL, options);
-	printf("mongoose %p\n", ctx);
-
 	gl_init(argc, argv);
 	pthread_t run;
 	pthread_create(&run, NULL, avr_run_thread, NULL);
 
 	gl_runloop();
 
-	mg_stop(ctx);
 }
