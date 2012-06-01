@@ -21,15 +21,17 @@ firm_src = ${wildcard atmega*.c}
 firmware = ${firm_src:.c=.hex}
 simavr = ../../
 
+LIBC3	= ../shared/libc3
+
 IPATH = .
 IPATH += src
 IPATH += ../parts
 IPATH += ../shared
+IPATH += $(LIBC3)/src
 IPATH += ${simavr}/include
 IPATH += ${simavr}/simavr/sim
 
 VPATH = src
-VPATH += src/c3
 VPATH += ../parts
 VPATH += ../shared
 
@@ -42,9 +44,7 @@ include ../Makefile.opengl
 LDFLAGS += ${shell pkg-config --libs pangocairo}
 LDFLAGS += -lpthread -lutil -ldl
 LDFLAGS += -lm
-
-C3SRC	= ${wildcard src/c3/*.c}
-C3OBJ 	= ${patsubst src/c3%,${OBJ}%,${C3SRC:.c=.o}}
+LDFLAGS += -rpath $(LIBC3)/${OBJ}/.libs -L$(LIBC3)/${OBJ}/.libs -lc3
 
 CPPFLAGS	+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
 
@@ -55,18 +55,19 @@ include ${simavr}/Makefile.common
 
 board = ${OBJ}/${target}.elf
 
-${board} : ${C3OBJ}
 ${board} : ${OBJ}/mongoose.o
 ${board} : ${OBJ}/button.o
 ${board} : ${OBJ}/uart_pty.o
 ${board} : ${OBJ}/thermistor.o
 ${board} : ${OBJ}/heatpot.o
 ${board} : ${OBJ}/stepper.o
-${board} : ${OBJ}/c_utils.o
 ${board} : ${OBJ}/${target}.o
 ${board} : ${OBJ}/${target}_gl.o
 
-${target}: ${board}
+build-libc3:
+	$(MAKE) -C $(LIBC3) CC="$(CC)" CFLAGS="$(CFLAGS)"
+
+${target}:  build-libc3 ${board}
 	@echo $@ done
 
 clean: clean-${OBJ}
