@@ -55,7 +55,13 @@ uart_pty_in_hook(
 {
 	uart_pty_t * p = (uart_pty_t*)param;
 	TRACE(printf("uart_pty_in_hook %02x\n", value);)
-	uart_pty_fifo_write(&p->in, value);
+	uart_pty_fifo_write(&p->pty.in, value);
+
+	if (p->tap.s) {
+		if (p->tap.crlf && value == '\n')
+			uart_pty_fifo_write(&p->tap.in, '\r');
+		uart_pty_fifo_write(&p->tap.in, value);
+	}
 }
 
 // try to empty our fifo, the uart_pty_xoff_hook() will be called when
@@ -64,10 +70,22 @@ static void
 uart_pty_flush_incoming(
 		uart_pty_t * p)
 {
-	while (p->xon && !uart_pty_fifo_isempty(&p->out)) {
-		uint8_t byte = uart_pty_fifo_read(&p->out);
+	while (p->xon && !uart_pty_fifo_isempty(&p->pty.out)) {
+		uint8_t byte = uart_pty_fifo_read(&p->pty.out);
 		TRACE(printf("uart_pty_flush_incoming send %02x\n", byte);)
 		avr_raise_irq(p->irq + IRQ_UART_PTY_BYTE_OUT, byte);
+
+		if (p->tap.s) {
+			if (p->tap.crlf && byte == '\n')
+				uart_pty_fifo_write(&p->tap.in, '\r');
+			uart_pty_fifo_write(&p->tap.in, byte);
+		}
+	}
+	if (p->tap.s) {
+		while (p->xon && !uart_pty_fifo_isempty(&p->tap.out)) {
+			uint8_t byte = uart_pty_fifo_read(&p->tap.out);
+			avr_raise_irq(p->irq + IRQ_UART_PTY_BYTE_OUT, byte);
+		}
 	}
 }
 
@@ -109,44 +127,55 @@ uart_pty_thread(
 
 	while (1) {
 		fd_set read_set, write_set;
-		int max = p->s + 1;
+		int max = 0;
 		FD_ZERO(&read_set);
 		FD_ZERO(&write_set);
 
-		// read more only if buffer was flushed
-		if (p->buffer_len == p->buffer_done)
-			FD_SET(p->s, &read_set);
-		if (!uart_pty_fifo_isempty(&p->in))
-			FD_SET(p->s, &write_set);
+		for (int ti = 0; ti < 2; ti++) if (p->port[ti].s) {
+			// read more only if buffer was flushed
+			if (p->port[ti].buffer_len == p->port[ti].buffer_done) {
+				FD_SET(p->port[ti].s, &read_set);
+				max = p->port[ti].s > max ? p->port[ti].s : max;
+			}
+			if (!uart_pty_fifo_isempty(&p->port[ti].in)) {
+				FD_SET(p->port[ti].s, &write_set);
+				max = p->port[ti].s > max ? p->port[ti].s : max;
+			}
+		}
 
 		struct timeval timo = { 0, 500 };	// short, but not too short interval
-		int ret = select(max, &read_set, &write_set, NULL, &timo);
+		int ret = select(max+1, &read_set, &write_set, NULL, &timo);
 
 		if (!ret)
 			continue;
 		if (ret < 0)
 			break;
 
-		if (FD_ISSET(p->s, &read_set)) {
-			ssize_t r = read(p->s, p->buffer, sizeof(p->buffer)-1);
-			p->buffer_len = r;
-			p->buffer_done = 0;
-			TRACE(hdump("pty recv", p->buffer, r);)
-		}
-		if (p->buffer_done < p->buffer_len) {
-			// write them in fifo
-			while (p->buffer_done < p->buffer_len && !uart_pty_fifo_isfull(&p->out))
-				uart_pty_fifo_write(&p->out, p->buffer[p->buffer_done++]);
-		}
-		if (FD_ISSET(p->s, &write_set)) {
-			uint8_t buffer[512];
-			// write them in fifo
-			uint8_t * dst = buffer;
-			while (!uart_pty_fifo_isempty(&p->in) && dst < (buffer+sizeof(buffer)))
-				*dst++ = uart_pty_fifo_read(&p->in);
-			size_t len = dst - buffer;
-			TRACE(size_t r =) write(p->s, buffer, len);
-			TRACE(hdump("pty send", buffer, r);)
+		for (int ti = 0; ti < 2; ti++) if (p->port[ti].s) {
+			if (FD_ISSET(p->port[ti].s, &read_set)) {
+				ssize_t r = read(p->port[ti].s, p->port[ti].buffer, sizeof(p->port[ti].buffer)-1);
+				p->port[ti].buffer_len = r;
+				p->port[ti].buffer_done = 0;
+				TRACE(hdump("pty recv", p->port[ti].buffer, r);)
+			}
+			if (p->port[ti].buffer_done < p->port[ti].buffer_len) {
+				// write them in fifo
+				while (p->port[ti].buffer_done < p->port[ti].buffer_len &&
+						!uart_pty_fifo_isfull(&p->port[ti].out))
+					uart_pty_fifo_write(&p->port[ti].out,
+							p->port[ti].buffer[p->port[ti].buffer_done++]);
+			}
+			if (FD_ISSET(p->port[ti].s, &write_set)) {
+				uint8_t buffer[512];
+				// write them in fifo
+				uint8_t * dst = buffer;
+				while (!uart_pty_fifo_isempty(&p->port[ti].in) &&
+						dst < (buffer + sizeof(buffer)))
+					*dst++ = uart_pty_fifo_read(&p->port[ti].in);
+				size_t len = dst - buffer;
+				TRACE(size_t r =) write(p->port[ti].s, buffer, len);
+				TRACE(hdump("pty send", buffer, r);)
+			}
 		}
 		uart_pty_flush_incoming(p);
 	}
@@ -163,19 +192,32 @@ uart_pty_init(
 		struct avr_t * avr,
 		uart_pty_t * p)
 {
+	memset(p, 0, sizeof(*p));
+
 	p->avr = avr;
 	p->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_UART_PTY_COUNT, irq_names);
 	avr_irq_register_notify(p->irq + IRQ_UART_PTY_BYTE_IN, uart_pty_in_hook, p);
 
-	int m, s;
+	int hastap = (getenv("SIMAVR_UART_TAP") && atoi(getenv("SIMAVR_UART_TAP"))) ||
+			(getenv("SIMAVR_UART_XTERM") && atoi(getenv("SIMAVR_UART_XTERM"))) ;
 
-	if (openpty(&m, &s, p->slavename, NULL, NULL) < 0) {
-		fprintf(stderr, "%s: Can't create pty: %s", __FUNCTION__, strerror(errno));
-		return ;
+	for (int ti = 0; ti < 1 + hastap; ti++) {
+		int m, s;
+
+		if (openpty(&m, &s, p->port[ti].slavename, NULL, NULL) < 0) {
+			fprintf(stderr, "%s: Can't create pty: %s", __FUNCTION__, strerror(errno));
+			return ;
+		}
+		struct termios tio;
+		tcgetattr(m, &tio);
+		cfmakeraw(&tio);
+		tcsetattr(m, TCSANOW, &tio);
+		p->port[ti].s = m;
+		p->port[ti].tap = ti != 0;
+		p->port[ti].crlf = ti != 0;
+		printf("uart_pty_init %s on port *** %s ***\n",
+				ti == 0 ? "bridge" : "tap", p->port[ti].slavename);
 	}
-	p->s = m;
-
-	printf("uart_pty_init bridge on port *** %s ***\n", p->slavename);
 
 	pthread_create(&p->thread, NULL, uart_pty_thread, p);
 
@@ -187,7 +229,9 @@ uart_pty_stop(
 {
 	puts(__func__);
 	pthread_kill(p->thread, SIGINT);
-	close(p->s);
+	for (int ti = 0; ti < 2; ti++)
+		if (p->port[ti].s)
+			close(p->port[ti].s);
 	void * ret;
 	pthread_join(p->thread, &ret);
 }
@@ -216,17 +260,20 @@ uart_pty_connect(
 	if (xoff)
 		avr_irq_register_notify(xoff, uart_pty_xoff_hook, p);
 
-	char link[128];
-	sprintf(link, "/tmp/simavr-uart%c", uart);
-	unlink(link);
-	if (symlink(p->slavename, link) != 0) {
-		fprintf(stderr, "WARN %s: Can't create %s: %s", __func__, link, strerror(errno));
-	} else {
-		printf("%s: %s now points to %s\n", __func__, link, p->slavename);
+	for (int ti = 0; ti < 1; ti++) if (p->port[ti].s) {
+		char link[128];
+		sprintf(link, "/tmp/simavr-uart%s%c", ti == 1 ? "tap" : "", uart);
+		unlink(link);
+		if (symlink(p->port[ti].slavename, link) != 0) {
+			fprintf(stderr, "WARN %s: Can't create %s: %s", __func__, link, strerror(errno));
+		} else {
+			printf("%s: %s now points to %s\n", __func__, link, p->port[ti].slavename);
+		}
 	}
 	if (getenv("SIMAVR_UART_XTERM") && atoi(getenv("SIMAVR_UART_XTERM"))) {
 		char cmd[256];
-		sprintf(cmd, "nohup xterm -e picocom -b 115200 %s >/dev/null 2>&1 &", p->slavename);
+		sprintf(cmd, "xterm -e picocom -b 115200 %s >/dev/null 2>&1 &",
+				p->tap.slavename);
 		system(cmd);
 	} else
 		printf("note: export SIMAVR_UART_XTERM=1 and install picocom to get a terminal\n");

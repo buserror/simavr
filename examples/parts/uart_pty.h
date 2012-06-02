@@ -35,19 +35,30 @@ enum {
 
 DECLARE_FIFO(uint8_t,uart_pty_fifo, 512);
 
+typedef struct uart_pty_port_t {
+	int			tap : 1, crlf : 1;
+	int 		s;			// socket we chat on
+	char 		slavename[64];
+	uart_pty_fifo_t in;
+	uart_pty_fifo_t out;
+	uint8_t		buffer[512];
+	size_t		buffer_len, buffer_done;
+} uart_pty_port_t, *uart_pty_port_p;
+
 typedef struct uart_pty_t {
 	avr_irq_t *	irq;		// irq list
 	struct avr_t *avr;		// keep it around so we can pause it
 
 	pthread_t	thread;
-	int 		s;			// socket we chat on
-	char 		slavename[64];
 	int			xon;
-	uart_pty_fifo_t in;
-	uart_pty_fifo_t out;
 
-	uint8_t		buffer[512];
-	size_t		buffer_len, buffer_done;
+	union {
+		struct {
+			uart_pty_port_t		pty;
+			uart_pty_port_t		tap;
+		};
+		uart_pty_port_t port[2];
+	};
 } uart_pty_t;
 
 void
