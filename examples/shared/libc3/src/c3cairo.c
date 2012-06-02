@@ -52,8 +52,8 @@ const c3driver_geometry_t c3cairo_base_driver = {
 	.dispose = _c3cairo_dispose,
 	.project = _c3cairo_project,
 };
-const c3driver_geometry_t c3texture_driver;
-const c3driver_geometry_t c3geometry_driver;
+extern const c3driver_geometry_t c3texture_driver;
+extern const c3driver_geometry_t c3geometry_driver;
 
 c3cairo_p
 c3cairo_new(

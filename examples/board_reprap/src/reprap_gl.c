@@ -52,8 +52,9 @@ int _w = 800, _h = 600;
 c3context_p c3;
 c3context_p hud;
 c3object_p head;
-
 c3texture_p fbo_c3;
+
+int glsl_version = 110;
 
 extern reprap_t reprap;
 
@@ -187,9 +188,17 @@ static GLuint create_shader(const char * fname, GLuint pid)
 	fseek(f, 0, SEEK_END);
 	long fs = ftell(f);
 	fseek(f, 0, SEEK_SET);
-	buf = malloc(fs + 1);
-	fread((void*)buf, 1, fs, f);
-	((char*)buf)[fs] = 0;
+	/*
+	 * need to insert a header since there is nothing to detect the version number
+	 * reliably without it, and __VERSION__ returns idiocy
+	 */
+	char head[128];
+	sprintf(head, "#version %d\n#define GLSL_VERSION %d\n", glsl_version, glsl_version);
+	const int header = strlen(head);
+	buf = malloc(header + fs + 1);
+	memcpy((void*)buf, head, header);
+	fread((void*)buf + header, 1, fs, f);
+	((char*)buf)[header + fs] = 0;
 	fclose(f);
 
 	GLuint vs = glCreateShader(pid);
@@ -463,21 +472,20 @@ _c3_z_sorter(
 	return d1 < d2 ? 1 : d1 > d2 ? -1 : 0;
 }
 
-#define FBO 0
+#define FBO 1
 
 static void
 _gl_display_cb(void)		/* function called whenever redisplay needed */
 {
 #if FBO
-	if (program_postproc) {
-		/*
-		 * Draw in FBO object
-		 */
-		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-		// draw (without glutSwapBuffers)
-		dumpError("glBindFramebuffer fbo");
-		glViewport(0, 0, _w, _h);
-	}
+	/*
+	 * Draw in FBO object
+	 */
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	// draw (without glutSwapBuffers)
+	dumpError("glBindFramebuffer fbo");
+	glViewport(0, 0, _w, _h);
+
 #else
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 #endif
@@ -490,7 +498,7 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 	c3transform_set(head->transform.e[0], &headmove);
 
 	if (c3->root->dirty) {
-		printf("reproject head %.2f,%.2f,%.2f\n", headp.x, headp.y,headp.z);
+	//	printf("reproject head %.2f,%.2f,%.2f\n", headp.x, headp.y,headp.z);
 		c3context_project(c3);
 
 		z_min = 1000000000;
@@ -548,31 +556,14 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	dumpError("glBindFramebuffer 0");
 
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+#endif
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_LIGHTING);
 	glDisable(GL_ALPHA_TEST);
 
-	glMatrixMode(GL_PROJECTION); // Select projection matrix
-	glLoadIdentity(); // Start with an identity matrix
-
-	glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	glMatrixMode(GL_MODELVIEW); // Select modelview matrix
-	glLoadIdentity(); // Start with an identity matrix
-
-#if 0
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, fbo_texture);
-	dumpError("glBindTexture fbo");
-#if 0
-	glUseProgram(program_postproc);
-	dumpError("glUseProgram program_postproc");
-	glUniform1i(uniform_fbo_texture, /*GL_TEXTURE*/0);
-#endif
 	glUseProgram(0);
-#endif
-#endif
 
 	glMatrixMode(GL_PROJECTION); // Select projection matrix
 	glLoadIdentity(); // Start with an identity matrix
@@ -636,10 +627,6 @@ _gl_motion_cb(
 
 	switch (button) {
 		case GLUT_LEFT_BUTTON: {
-
-//			c3mat4 rotx = rotation3D(c3vec3f(1.0, 0, 0), delta.n[1] / 4);
-//			c3mat4 roty = rotation3D(c3vec3f(0.0, 0.0, 1.0), delta.n[0] / 4);
-
 			c3mat4 rotx = rotation3D(c3->cam.side, delta.n[1] / 4);
 			c3mat4 roty = rotation3D(c3vec3f(0.0, 0.0, 1.0), delta.n[0] / 4);
 			rotx = c3mat4_mul(&rotx, &roty);
@@ -703,10 +690,8 @@ gl_init(
 	// set material properties which will be assigned by glColor
 	glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
 
-
+	/* setup some lights */
 	glShadeModel(GL_SMOOTH);
-#if 1
-//	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_LIGHTING);
 	GLfloat global_ambient[] = { 0.5f, 0.5f, 0.5f, 1.0f };
 	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, global_ambient);
@@ -725,7 +710,19 @@ gl_init(
 		glLightfv(GL_LIGHT0, GL_POSITION, position);
 		glEnable(GL_LIGHT0);
 	}
-#endif
+
+	/*
+	 * Extract the GLSL version as a nuneric value for later
+	 */
+	const char * glsl = (const char *)glGetString(GL_SHADING_LANGUAGE_VERSION);
+	{
+		int M = 0, m = 0;
+		if (sscanf(glsl, "%d.%d", &M, &m) == 2)
+			glsl_version = (M * 100) + m;
+
+	}
+	printf("GL_SHADING_LANGUAGE_VERSION %s = %d\n", glsl, glsl_version);
+
 	gl_offscreenInit(_w, _h);
 	gl_ppProgram();
 
@@ -865,7 +862,7 @@ gl_init(
     /*
      * This is the offscreen framebuffer where the 3D scene is drawn
      */
-    if (program_postproc) {
+    if (FBO) {
     	c3texture_p b = c3texture_new(hud->root);
 
     	c3pixels_p dst = c3pixels_new(_w, _h, 4, _w * 4, NULL);

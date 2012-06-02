@@ -72,4 +72,6 @@ ${target}:  build-libc3 ${board}
 
 clean: clean-${OBJ}
 	rm -rf *.a *.axf ${target} *.vcd
+	$(MAKE) -C $(LIBC3) CC="$(CC)" CFLAGS="$(CFLAGS)" clean
+	
 

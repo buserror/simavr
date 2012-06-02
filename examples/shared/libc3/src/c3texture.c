@@ -75,7 +75,7 @@ const c3driver_geometry_t c3texture_driver = {
 		.dispose = _c3texture_dispose,
 		.project = _c3texture_project,
 };
-const c3driver_geometry_t c3geometry_driver;
+extern const c3driver_geometry_t c3geometry_driver;
 
 c3texture_p
 c3texture_new(

@@ -1,4 +1,4 @@
-#version 120
+
 //uniform mat4 g_WorldViewProjectionMatrix;
 uniform vec2 g_Resolution = vec2(800,600);
 uniform float m_SubPixelShift = 1.0 / 4.0;

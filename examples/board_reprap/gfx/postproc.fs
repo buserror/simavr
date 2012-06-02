@@ -1,10 +1,11 @@
-#version 120
+
+#if (GLSL_VERSION == 120)
+#extension GL_EXT_gpu_shader4 : enable
+#endif
 
 // References:
 // http://www.geeks3d.com/20110405/fxaa-fast-approximate-anti-aliasing-demo-glsl-opengl-test-radeon-geforce/3/
 // http://jmonkeyengine.googlecode.com/svn-history/r9095/trunk/engine/src/core-data/Common/MatDefs/Post/
-
-#extension GL_EXT_gpu_shader4 : enable
 
 uniform sampler2D m_Texture;
 uniform vec2 g_Resolution = vec2(800,600);
@@ -17,9 +18,13 @@ varying vec2 texCoord;
 varying vec4 posPos;
 
 #define FxaaTex(t, p) texture2D(t, p)
-
-    #define OffsetVec(a, b) ivec2(a, b)
+#define OffsetVec(a, b) ivec2(a, b)
+#if (GLSL_VERSION == 120)
     #define FxaaTexOff(t, p, o, r) texture2DLodOffset(t, p, 0.0, o)
+#endif
+#if (GLSL_VERSION == 130)
+    #define FxaaTexOff(t, p, o, r) textureLodOffset(t, p, 0.0, o)
+#endif
 
 vec3 FxaaPixelShader(
   vec4 posPos,   // Output of FxaaVertexShader interpolated across screen.

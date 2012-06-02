@@ -14,8 +14,14 @@ C3OBJ 		= ${patsubst src/%,${OBJ}/%,${C3SRC:.c=.lo}}
 
 CC 			= clang
 PKGCONFIG	= pkg-config
-LIBTOOL		= libtool
 INSTALL		= install
+
+ifeq (${shell uname}, Darwin)
+# you need to install libtool via 'brew install libtool' on the mac
+LIBTOOL		= glibtool
+else
+LIBTOOL		= libtool
+endif
 
 CFLAGS		= -g -O2
 CPPFLAGS	+= --std=gnu99 -fPIC
