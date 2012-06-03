@@ -34,7 +34,7 @@
 #define C_ARRAY_SIZE_TYPE uint32_t
 #endif
 
-#define DECLARE_C_ARRAY(__type, __name, __page) \
+#define DECLARE_C_ARRAY(__type, __name, __page, __args...) \
 enum { __name##_page_size = __page }; \
 typedef __type __name##_element_t; \
 typedef C_ARRAY_SIZE_TYPE __name##_count_t; \
@@ -42,6 +42,7 @@ typedef struct __name##_t {\
 	volatile __name##_count_t count;\
 	volatile __name##_count_t size;\
 	__name##_element_t * e;\
+	__args ;\
 } __name##_t, *__name##_p;
 
 #define C_ARRAY_NULL { 0, 0, NULL }

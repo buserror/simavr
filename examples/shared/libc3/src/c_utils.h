@@ -79,6 +79,12 @@ typedef struct str_t {
 	char str[0];
 } str_t, *str_p;
 
+static inline str_p str_alloc(size_t len)
+{
+	str_p r = (str_p)malloc(sizeof(*r) + len + 1);
+	r->rom = r->hash = 0; r->len = len;
+	return r;
+}
 static inline str_p str_new_i(const char *s, void * (*_alloc)(size_t))
 {
 	int l = s ? strlen(s) : 0;
@@ -97,12 +103,6 @@ static inline str_p str_new(const char *s)
 {
 	return str_new_i(s, malloc);
 }
-static inline str_p str_anew(const char *s)
-{
-	str_p r = str_new_i(s, alloca);
-	r->rom = 1;
-	return r;
-}
 static inline str_p str_dup(const str_p s)
 {
 	size_t l = sizeof(*s) + s->len + 1;
@@ -111,6 +111,12 @@ static inline str_p str_dup(const str_p s)
 	return r;
 }
 #ifndef NO_ALLOCA
+static inline str_p str_anew(const char *s)
+{
+	str_p r = str_new_i(s, alloca);
+	r->rom = 1;
+	return r;
+}
 static inline str_p str_adup(const str_p s)
 {
 	size_t l = sizeof(*s) + s->len + 1;
