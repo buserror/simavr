@@ -84,6 +84,12 @@ uart_pty_flush_incoming(
 	if (p->tap.s) {
 		while (p->xon && !uart_pty_fifo_isempty(&p->tap.out)) {
 			uint8_t byte = uart_pty_fifo_read(&p->tap.out);
+			if (p->tap.crlf && byte == '\r') {
+				uart_pty_fifo_write(&p->tap.in, '\n');
+			}
+			if (byte == '\n')
+				continue;
+			uart_pty_fifo_write(&p->tap.in, byte);
 			avr_raise_irq(p->irq + IRQ_UART_PTY_BYTE_OUT, byte);
 		}
 	}
