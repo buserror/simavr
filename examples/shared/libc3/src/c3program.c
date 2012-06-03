@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
+#include <ctype.h>
 #include <fcntl.h>
 
 #include "c3program.h"
@@ -40,16 +41,29 @@ c3program_new(
 
 void
 c3program_dispose(
-		const char * name)
+		c3program_p p)
 {
-	// TODO: implement c3program_dispose
+	c3program_purge(p);
+	for (int pi = 0; pi < p->params.count; pi++) {
+		c3program_param_p pa = &p->params.e[pi];
+		str_free(pa->name);
+	}
+	c3program_param_array_free(&p->params);
+	str_free(p->name);
+	str_free(p->log);
+	free(p);
 }
 
 void
 c3program_purge(
 		c3program_p p)
 {
-	// TODO: implement c3program_purge
+	for (int si = 0; si < p->shaders.count; si++) {
+		c3shader_p s = &p->shaders.e[si];
+		str_free(s->name);
+		str_free(s->shader);
+	}
+	c3shader_array_free(&p->shaders);
 }
 
 int
@@ -108,6 +122,11 @@ c3program_load_shader(
 			 * found a parameter, extract it's type & name
 			 */
 			if (uniform && unitype && uniname) {
+				// trim semicolons etc
+				char *cl = uniname;
+				while (isalpha(*cl) || *cl == '_')
+					cl++;
+				*cl = 0;
 				str_p name = str_new(uniname);
 				for (int pi = 0; pi < p->params.count && uniform; pi++)
 					if (!str_cmp(name, p->params.e[pi].name))
@@ -116,6 +135,7 @@ c3program_load_shader(
 					c3program_param_t pa = {
 							.type = str_new(unitype),
 							.name = name,
+							.program = p,
 					};
 					c3program_param_array_add(&p->params, pa);
 					printf("%s %s: new parameter '%s' '%s'\n", __func__,

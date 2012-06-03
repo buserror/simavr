@@ -46,15 +46,18 @@
 
 #include <cairo/cairo.h>
 
+#define FBO 1
+
 struct cairo_surface_t;
 
 int _w = 800, _h = 600;
-//c3cam cam;
-c3context_p c3;
-c3context_p hud;
-c3object_p head;
-c3texture_p fbo_c3;
-c3program_p fxaa = NULL;
+
+c3context_p c3 = NULL;
+c3context_p hud = NULL;
+
+c3object_p head = NULL; 	// hotend
+c3texture_p fbo_c3;			// frame buffer object texture
+c3program_p fxaa = NULL;	// full screen antialias shader
 
 int glsl_version = 110;
 
@@ -262,6 +265,7 @@ _c3_load_program(
     for (int pi = 0; pi < p->params.count; pi++) {
     	c3program_param_p pa = &p->params.e[pi];
     	pa->pid = glGetUniformLocation(p->pid, pa->name->str);
+    	printf("%s %s load parameter '%s'\n", __func__, p->name->str, pa->name->str);
     	if (pa->pid == -1) {
     		fprintf(stderr, "%s %s: parameter '%s' not found\n",
     				__func__, p->name->str, pa->name->str);
@@ -417,8 +421,6 @@ const c3driver_context_t c3context_driver = {
 		.geometry_project = _c3_geometry_project,
 		.geometry_draw = _c3_geometry_draw,
 };
-
-#define FBO 1
 
 static void
 _gl_display_cb(void)		/* function called whenever redisplay needed */

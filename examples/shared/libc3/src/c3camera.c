@@ -20,7 +20,7 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
+#include <string.h>
 #include "c3camera.h"
 
 
@@ -376,7 +376,7 @@ void
 c3cam_init(
 		c3cam_p c)
 {
-	c3cam_reset(&c);
+	c3cam_reset(c);
 }
 
 void

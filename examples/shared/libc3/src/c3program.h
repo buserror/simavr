@@ -30,12 +30,12 @@ typedef struct c3shader_t {
 	uint32_t type;
 	str_p	name;
 	str_p	shader;
-	str_p	log;
 } c3shader_t, *c3shader_p;
 
 DECLARE_C_ARRAY(c3shader_t, c3shader_array, 4);
 
 typedef struct c3program_param_t {
+	struct c3program_t * program;
 	int32_t pid;	// parameter id
 	str_p	type;
 	str_p	name;
@@ -53,14 +53,17 @@ typedef struct c3program_t {
 
 DECLARE_C_ARRAY(c3program_p, c3program_array, 4);
 
+//! Allocates a new, empty program
 c3program_p
 c3program_new(
 		const char * name);
 
+//! disposes of a c3program memory
 void
 c3program_dispose(
-		const char * name);
+		c3program_p p);
 
+//! purge deletes the shader storage, but keep the program and parameters
 void
 c3program_purge(
 		c3program_p p);
