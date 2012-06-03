@@ -50,7 +50,8 @@
  * these are the sources of heat and cold to register to the heatpots
  */
 enum {
-	TALLY_HOTEND_PWM	= 1,
+	TALLY_AMBIANT = 1,
+	TALLY_HOTEND_PWM,
 	TALLY_HOTBED,
 	TALLY_HOTEND_FAN,
 };
@@ -130,14 +131,44 @@ get_ardu_irq(
  * called when the AVR change any of the pins on port B
  * so lets update our buffer
  */
-void
+static void
 hotbed_change_hook(
+		struct avr_irq_t * irq,
+		uint32_t value,
+		void * param)
+{
+//	printf("%s %d\n", __func__, value);
+//	pin_state = (pin_state & ~(1 << irq->irq)) | (value << irq->irq);
+	heatpot_tally(
+			&reprap.hotbed,
+			TALLY_HOTEND_PWM,
+			value ? 1.0f : 0 );
+}
+static void
+hotend_change_hook(
+		struct avr_irq_t * irq,
+		uint32_t value,
+		void * param)
+{
+//	printf("%s %d\n", __func__, value);
+//	pin_state = (pin_state & ~(1 << irq->irq)) | (value << irq->irq);
+	heatpot_tally(
+			&reprap.hotend,
+			TALLY_HOTBED,
+			value ? 1.0f : 0 );
+}
+static void
+hotend_fan_change_hook(
 		struct avr_irq_t * irq,
 		uint32_t value,
 		void * param)
 {
 	printf("%s %d\n", __func__, value);
 //	pin_state = (pin_state & ~(1 << irq->irq)) | (value << irq->irq);
+	heatpot_tally(
+			&reprap.hotend,
+			TALLY_HOTEND_FAN,
+			value ? -0.05 : 0 );
 }
 
 
@@ -229,12 +260,26 @@ reprap_init(
 	heatpot_init(avr, &r->hotend, "hotend", 28.0f);
 	heatpot_init(avr, &r->hotbed, "hotbed", 25.0f);
 
+	heatpot_tally(&r->hotend, TALLY_AMBIANT, -0.5f);
+	heatpot_tally(&r->hotbed, TALLY_AMBIANT, -0.3f);
+
 	/* connect heatpot temp output to thermistors */
 	avr_connect_irq(r->hotend.irq + IRQ_HEATPOT_TEMP_OUT,
 			r->therm_hotend.irq + IRQ_TERM_TEMP_VALUE_IN);
 	avr_connect_irq(r->hotbed.irq + IRQ_HEATPOT_TEMP_OUT,
 			r->therm_hotbed.irq + IRQ_TERM_TEMP_VALUE_IN);
 
+	avr_irq_register_notify(
+			get_ardu_irq(avr, HEATER_0_PIN, arduidiot_644),
+			hotend_change_hook, NULL);
+	avr_irq_register_notify(
+			get_ardu_irq(avr, FAN_PIN, arduidiot_644),
+			hotend_fan_change_hook, NULL);
+	avr_irq_register_notify(
+			get_ardu_irq(avr, HEATER_BED_PIN, arduidiot_644),
+			hotbed_change_hook, NULL);
+
+	//avr_irq_register_notify()
 	float axis_pp_per_mm[4] = DEFAULT_AXIS_STEPS_PER_UNIT;	// from Marlin!
 	{
 		avr_irq_t * e = get_ardu_irq(avr, X_ENABLE_PIN, arduidiot_644);

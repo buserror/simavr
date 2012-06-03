@@ -20,7 +20,9 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "sim_avr.h"
 #include "sim_time.h"
 
@@ -33,6 +35,29 @@ heatpot_evaluate_timer(
         void * param)
 {
 	heatpot_p  p = (heatpot_p) param;
+
+	float weight = 0.0;
+
+	for (int si = 0; si < 32; si++)
+		if (p->tally[si].sid)
+			weight += p->tally[si].cost;
+
+	float delta = p->current - p->ambiant;
+	float noise = (float)((random() % 32) - 16) / 32.0;
+	delta += noise;
+
+	float cost = ((delta/2) + noise) * -weight;
+
+	if (delta < 0) {
+		cost = (-delta / 10);
+	} else {
+		cost = weight > 0 ? 0.1 : -0.1;
+	}
+	p->current += cost;
+//	printf("%s w=%.3f d=%.3f c=%.3f = %.3f\n", p->name, weight, delta, cost, p->current);
+
+	avr_raise_irq(p->irq + IRQ_HEATPOT_TEMP_OUT, p->current * 256);
+
 	return when + p->cycle;
 }
 
@@ -59,14 +84,16 @@ heatpot_init(
 		const char * name,
 		float ambiant )
 {
+	memset(p, 0, sizeof(*p));
 	p->avr = avr;
 	strcpy(p->name, (char*)name);
 	p->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_HEATPOT_COUNT, irq_names);
 	avr_irq_register_notify(p->irq + IRQ_HEATPOT_TALLY, heatpot_tally_in_hook, p);
 
-	p->cycle = avr_usec_to_cycles(avr, 100000 / 1000);
+	p->cycle = avr_usec_to_cycles(avr, 100000 / 1 /*1000 */);
 	avr_cycle_timer_register_usec(avr, p->cycle, heatpot_evaluate_timer, p);
 
+	p->ambiant = p->current = ambiant;
 }
 
 void
@@ -78,7 +105,7 @@ heatpot_tally(
 	int f = -1, ei = -1;
 	for (int si = 0; si < 32 && f == -1; si++)
 		if (p->tally[si].sid == 0)
-			ei = si;
+			ei = ei == -1 ? si : ei;
 		else if (p->tally[si].sid == sid)
 			f = si;
 	if (f == -1) {
