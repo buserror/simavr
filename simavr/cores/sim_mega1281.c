@@ -43,7 +43,7 @@ void m1281_reset(struct avr_t * avr);
 /*
  * This is a template for all of the 1281 devices, hopefully
  */
-struct mcu_t {
+const struct mcu_t {
 	avr_t          core;
 	avr_eeprom_t 	eeprom;
 	avr_flash_t 	selfprog;
@@ -509,7 +509,7 @@ struct mcu_t {
 
 static avr_t * make()
 {
-        return &mcu_mega1281.core;
+	return avr_core_allocate(&mcu_mega1281.core, sizeof(struct mcu_t));
 }
 
 avr_kind_t mega1281 = {

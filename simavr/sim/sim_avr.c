@@ -292,36 +292,19 @@ int avr_run(avr_t * avr)
 	return avr->state;
 }
 
-#if 0
-extern avr_kind_t tiny13;
-extern avr_kind_t tiny2313;
-extern avr_kind_t tiny25,tiny45,tiny85;
-extern avr_kind_t tiny24,tiny44,tiny84;
-extern avr_kind_t mega8;
-extern avr_kind_t mega48,mega88,mega168,mega328;
-extern avr_kind_t mega164,mega324,mega644;
-extern avr_kind_t mega128;
-extern avr_kind_t mega1281;
-extern avr_kind_t mega16m1;
-extern avr_kind_t usb162;
+avr_t *
+avr_core_allocate(
+		const avr_t * core,
+		uint32_t coreLen)
+{
+	uint8_t * b = malloc(coreLen);
+	memcpy(b, core, coreLen);
+	return (avr_t *)b;
+}
 
-avr_kind_t * avr_kind[] = {
-	&tiny13,
-	&tiny2313,
-	&tiny25, &tiny45, &tiny85,
-	&tiny24, &tiny44, &tiny84,
-	&mega8,
-	&mega48, &mega88, &mega168, &mega328,
-	&mega164, &mega324, &mega644,
-	&mega128,
-	&mega1281,
-	&mega16m1,
-	&usb162,
-	NULL
-};
-#endif
-
-avr_t * avr_make_mcu_by_name(const char *name)
+avr_t *
+avr_make_mcu_by_name(
+		const char *name)
 {
 	avr_kind_t * maker = NULL;
 	for (int i = 0; avr_kind[i] && !maker; i++) {

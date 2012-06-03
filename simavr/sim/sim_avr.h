@@ -281,6 +281,12 @@ avr_make_mcu_by_name(
 int
 avr_init(
 		avr_t * avr);
+// Used by the cores, allocated a mutable avr_t from the const global
+avr_t *
+avr_core_allocate(
+		const avr_t * core,
+		uint32_t coreLen);
+
 // resets the AVR, and the IO modules
 void
 avr_reset(

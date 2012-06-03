@@ -40,7 +40,7 @@ void usb162_reset(struct avr_t * avr);
 #define __ASSEMBLER__
 #include "avr/iousb162.h"
 
-struct mcu_t {
+const struct mcu_t {
 	avr_t			 core;
 	avr_eeprom_t 	eeprom;
 	avr_flash_t 	selfprog;
@@ -261,7 +261,7 @@ struct mcu_t {
 
 static avr_t * make()
 {
-	return &mcu_usb162.core;
+	return avr_core_allocate(&mcu_usb162.core, sizeof(struct mcu_t));
 }
 
 avr_kind_t usb162 = {

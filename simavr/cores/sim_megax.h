@@ -70,7 +70,7 @@ struct mcu_t {
 #define EIMSK GICR
 #define EIFR GIFR
 
-struct mcu_t SIM_CORENAME = {
+const struct mcu_t SIM_CORENAME = {
 	.core = {
 		.mmcu = SIM_MMCU,
 		DEFAULT_CORE(SIM_VECTOR_SIZE),

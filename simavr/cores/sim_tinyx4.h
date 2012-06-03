@@ -57,7 +57,7 @@ struct mcu_t {
 #error SIM_MMCU is not declared
 #endif
 
-struct mcu_t SIM_CORENAME = {
+const struct mcu_t SIM_CORENAME = {
     .core = {
         .mmcu = SIM_MMCU,
         DEFAULT_CORE(SIM_VECTOR_SIZE),

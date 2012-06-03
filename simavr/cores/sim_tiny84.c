@@ -35,7 +35,7 @@
 
 static avr_t * make()
 {
-    return &SIM_CORENAME.core;
+	return avr_core_allocate(&SIM_CORENAME.core, sizeof(struct mcu_t));
 }
 
 avr_kind_t tiny84 = {

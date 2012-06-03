@@ -43,7 +43,7 @@ void m128_reset(struct avr_t * avr);
 /*
  * This is a template for all of the 128 devices, hopefuly
  */
-struct mcu_t {
+const struct mcu_t {
 	avr_t          core;
 	avr_eeprom_t 	eeprom;
 	avr_flash_t 	selfprog;
@@ -481,7 +481,7 @@ struct mcu_t {
 
 static avr_t * make()
 {
-        return &mcu_mega128.core;
+	return avr_core_allocate(&mcu_mega128.core, sizeof(struct mcu_t));
 }
 
 avr_kind_t mega128 = {

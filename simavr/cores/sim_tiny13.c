@@ -37,7 +37,7 @@ static void init(struct avr_t * avr);
 static void reset(struct avr_t * avr);
 
 
-static struct mcu_t {
+const static struct mcu_t {
 	avr_t core;
 	avr_eeprom_t 	eeprom;
 	avr_watchdog_t	watchdog;
@@ -122,7 +122,7 @@ static struct mcu_t {
 
 static avr_t * make()
 {
-	return &mcu.core;
+	return avr_core_allocate(&mcu.core, sizeof(struct mcu_t));
 }
 
 avr_kind_t tiny13 = {
