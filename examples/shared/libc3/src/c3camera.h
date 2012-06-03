@@ -25,12 +25,12 @@
 
 #include "c3algebra.h"
 
-typedef struct c3cam {
+typedef struct c3cam_t {
 	c3vec3 eye, lookat;
 	c3vec3 up, side, forward;
 	c3mat4 mtx;
 	c3f distance;
-} c3cam, *c3camp;
+} c3cam_t, *c3cam_p;
 
 /******************************* set_distance() ***********/
 /* This readjusts the distance from the eye to the lookat */
@@ -38,17 +38,17 @@ typedef struct c3cam {
 /* The lookat point is unaffected                         */
 void
 c3cam_set_distance(
-		c3camp c,
+		c3cam_p c,
 		const c3f new_distance);
 
 /******************************* set_up() ***************/
 void
 c3cam_set_upv(
-		c3camp c,
+		c3cam_p c,
 		const c3vec3 new_up);
 void
 c3cam_set_upf(
-		c3camp c,
+		c3cam_p c,
 		const c3f x,
 		const c3f y,
 		const c3f z);
@@ -56,11 +56,11 @@ c3cam_set_upf(
 /******************************* set_eye() ***************/
 void
 c3cam_set_eyev(
-		c3camp c,
+		c3cam_p c,
 		const c3vec3 new_eye);
 void
 c3cam_set_eyef(
-		c3camp c,
+		c3cam_p c,
 		const c3f x,
 		const c3f y,
 		const c3f z);
@@ -68,11 +68,11 @@ c3cam_set_eyef(
 /******************************* set_lookat() ***************/
 void
 c3cam_set_lookatv(
-		c3camp c,
+		c3cam_p c,
 		const c3vec3 new_lookat);
 void
 c3cam_set_lookatf(
-		c3camp c,
+		c3cam_p c,
 		const c3f x,
 		const c3f y,
 		const c3f z);
@@ -82,7 +82,7 @@ c3cam_set_lookatf(
 /* eye and lookat remain unchanged                      */
 void
 c3cam_roll(
-		c3camp c,
+		c3cam_p c,
 		const c3f angle);
 
 /******************************* eye_yaw() *********************/
@@ -90,7 +90,7 @@ c3cam_roll(
 /* Lookat is unaffected                                        */
 void
 c3cam_eye_yaw(
-		c3camp c,
+		c3cam_p c,
 		const c3f angle);
 
 /******************************* eye_yaw_abs() ******************/
@@ -98,7 +98,7 @@ c3cam_eye_yaw(
 /* Lookat is unaffected                                         */
 void
 c3cam_eye_yaw_abs(
-		c3camp c,
+		c3cam_p c,
 		const c3f angle,
 		const c3vec3 axis);
 
@@ -107,7 +107,7 @@ c3cam_eye_yaw_abs(
 /* Lookat is unaffected                                 */
 void
 c3cam_eye_pitch(
-		c3camp c,
+		c3cam_p c,
 		const c3f angle);
 
 /******************************* lookat_yaw()************/
@@ -116,7 +116,7 @@ c3cam_eye_pitch(
 /* Eye point is unaffected                              */
 void
 c3cam_lookat_yaw(
-		c3camp c,
+		c3cam_p c,
 		const c3f angle);
 
 /******************************* lookat_pitch() *********/
@@ -125,7 +125,7 @@ c3cam_lookat_yaw(
 /* Eye point is unaffected                              */
 void
 c3cam_lookat_pitch(
-		c3camp c,
+		c3cam_p c,
 		const c3f angle);
 
 /******************************* reset_up() ******************/
@@ -134,11 +134,11 @@ c3cam_lookat_pitch(
 /* along the specified axis                                  */
 void
 c3cam_reset_up_axis(
-		c3camp c,
+		c3cam_p c,
 		const int axis_num);
 void
 c3cam_reset_up(
-		c3camp c);
+		c3cam_p c);
 
 /******************************* move() ********************/
 /* Moves a specified distance in the forward, side, and up */
@@ -147,13 +147,13 @@ c3cam_reset_up(
 /* function.                                               */
 void
 c3cam_movef(
-		c3camp c,
+		c3cam_p c,
 		const c3f side_move,
 		const c3f up_move,
 		const c3f forw_move);
 void
 c3cam_movev(
-		c3camp c,
+		c3cam_p c,
 		const c3vec3 v); /* A vector version of the above command */
 
 /******************************* move_by_eye() ***********/
@@ -161,7 +161,7 @@ c3cam_movev(
 /* same amount as the eye is moved.                      */
 void
 c3cam_move_by_eye(
-		c3camp c,
+		c3cam_p c,
 		const c3vec3 new_eye);
 
 /******************************* move_by_lookat() *********/
@@ -169,14 +169,14 @@ c3cam_move_by_eye(
 /* same amount as the lookat is moved.                    */
 void
 c3cam_move_by_lookat(
-		c3camp c,
+		c3cam_p c,
 		const c3vec3 new_lookat);
 
 /******************************* move_abs() *****************/
 /* Move the eye and lookat in world coordinates             */
 void
 c3cam_move_abs(
-		c3camp c,
+		c3cam_p c,
 		const c3vec3 v);
 
 /****************************** rot_about_eye() ************/
@@ -184,7 +184,7 @@ c3cam_move_abs(
 /* (pure) rotation matrix                                  */
 void
 c3cam_rot_about_eye(
-		c3camp c,
+		c3cam_p c,
 		const c3mat4p rot);
 
 /****************************** rot_about_lookat() ************/
@@ -192,14 +192,14 @@ c3cam_rot_about_eye(
 /* (pure) rotation matrix                                  */
 void
 c3cam_rot_about_lookat(
-		c3camp c,
+		c3cam_p c,
 		const c3mat4p rot);
 
 /******************************* make_mtx() *************/
 /* Constructs a 4x4 matrix - used by load_to_openGL()   */
 void
 c3cam_update_matrix(
-		c3camp c);
+		c3cam_p c);
 
 /******************************* load_to_openGL() ********/
 /* Sets the OpenGL modelview matrix based on the current */
@@ -216,17 +216,21 @@ c3cam_update_matrix(
 /* Resets the parameters of this class                  */
 void
 c3cam_reset(
-		c3camp c);
+		c3cam_p c);
 
-/******************************* ViewModel() ************/
+/******************************* c3cam_t() ************/
 /* Constructor                                          */
-c3cam c3cam_new();
+c3cam_t
+c3cam_new();
 
+void
+c3cam_init(
+		c3cam_p c);
 /******************************* update() ****************/
 /* updates the view params.  Call this after making      */
 /* direct changes to the vectors or points of this class */
 void c3cam_update(
-		c3camp c);
+		c3cam_p c);
 
 /******************************* dump() *******************/
 /* Prints the contents of this class to a file, typically */

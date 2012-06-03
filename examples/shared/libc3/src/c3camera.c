@@ -26,7 +26,7 @@
 
 void
 c3cam_set_distance(
-		c3camp c,
+		c3cam_p c,
 		const c3f new_distance)
 {
     if ( new_distance <= 0.0 )  /* Distance has to be positive */
@@ -46,7 +46,7 @@ c3cam_set_distance(
 
 void
 c3cam_set_upv(
-		c3camp c,
+		c3cam_p c,
 		const c3vec3 new_up)
 {
     c->up = new_up;
@@ -55,7 +55,7 @@ c3cam_set_upv(
 
 void
 c3cam_set_upf(
-		c3camp c,
+		c3cam_p c,
 		const c3f x,
 		const c3f y,
 		const c3f z)
@@ -65,7 +65,7 @@ c3cam_set_upf(
 
 void
 c3cam_set_eyev(
-		c3camp c,
+		c3cam_p c,
 		const c3vec3 new_eye)
 {
     c->eye = new_eye;
@@ -74,7 +74,7 @@ c3cam_set_eyev(
 
 void
 c3cam_set_eyef(
-		c3camp c,
+		c3cam_p c,
 		const c3f x,
 		const c3f y,
 		const c3f z)
@@ -84,7 +84,7 @@ c3cam_set_eyef(
 
 void
 c3cam_set_lookatv(
-		c3camp c,
+		c3cam_p c,
 		const c3vec3 new_lookat)
 {
     c->lookat = new_lookat;
@@ -93,7 +93,7 @@ c3cam_set_lookatv(
 
 void
 c3cam_set_lookatf(
-		c3camp c,
+		c3cam_p c,
 		const c3f x,
 		const c3f y,
 		const c3f z)
@@ -104,7 +104,7 @@ c3cam_set_lookatf(
 
 void
 c3cam_roll(
-		c3camp c,
+		c3cam_p c,
 		const c3f angle)
 {
     c3mat4 rot = rotation3D(c->forward, angle );
@@ -114,7 +114,7 @@ c3cam_roll(
 
 void
 c3cam_eye_yaw(
-		c3camp c,
+		c3cam_p c,
 		const c3f angle)
 {
     c3vec3 eye_pt = c3vec3_sub(c->eye, c->lookat); /* eye w/lookat at center */
@@ -128,7 +128,7 @@ c3cam_eye_yaw(
 
 void
 c3cam_eye_yaw_abs(
-		c3camp c,
+		c3cam_p c,
 		const c3f angle,
 		const c3vec3 axis)
 {
@@ -146,7 +146,7 @@ c3cam_eye_yaw_abs(
 
 void
 c3cam_eye_pitch(
-		c3camp c,
+		c3cam_p c,
 		const c3f angle)
 {
     c3vec3 eye_pt = c3vec3_sub(c->eye, c->lookat); /* eye w/lookat at center */
@@ -162,7 +162,7 @@ c3cam_eye_pitch(
 
 void
 c3cam_lookat_yaw(
-		c3camp c,
+		c3cam_p c,
 		const c3f angle)
 {
     c3vec3 lookat_pt = c3vec3_sub(c->lookat, c->eye); /* lookat w/eye at center */
@@ -176,7 +176,7 @@ c3cam_lookat_yaw(
 
 void
 c3cam_lookat_pitch(
-		c3camp c,
+		c3cam_p c,
 		const c3f angle)
 {
     c3vec3 lookat_pt = c3vec3_sub(c->lookat, c->eye); /* lookat w/eye at center */
@@ -192,7 +192,7 @@ c3cam_lookat_pitch(
 
 void
 c3cam_reset_up_axis(
-		c3camp c,
+		c3cam_p c,
 		const int axis_num)
 {
     c3vec3 eye_pt = c3vec3_sub(c->lookat, c->eye); /* eye w/lookat at center */
@@ -213,14 +213,14 @@ c3cam_reset_up_axis(
 
 void
 c3cam_reset_up(
-		c3camp c)
+		c3cam_p c)
 {
 	c3cam_reset_up_axis(c, VY ); /* Resets to the Y axis */
 }
 
 void
 c3cam_movef(
-		c3camp c,
+		c3cam_p c,
 		const c3f side_move,
 		const c3f up_move,
 		const c3f forw_move)
@@ -236,7 +236,7 @@ c3cam_movef(
 
 void
 c3cam_movev(
-		c3camp c,
+		c3cam_p c,
 		const c3vec3 v) /* A vector version of the above command */
 {
 	c3cam_movef(c, v.n[VX], v.n[VY], v.n[VZ] );
@@ -244,7 +244,7 @@ c3cam_movev(
 
 void
 c3cam_move_by_eye(
-		c3camp c,
+		c3cam_p c,
 		const c3vec3 new_eye)
 {
     c3vec3 diff = c3vec3_sub(new_eye, c->eye);
@@ -257,7 +257,7 @@ c3cam_move_by_eye(
 
 void
 c3cam_move_by_lookat(
-		c3camp c,
+		c3cam_p c,
 		const c3vec3 new_lookat)
 {
     c3vec3 diff = c3vec3_sub(new_lookat, c->lookat);
@@ -270,7 +270,7 @@ c3cam_move_by_lookat(
 
 void
 c3cam_move_abs(
-		c3camp c,
+		c3cam_p c,
 		const c3vec3 v)
 {
     c->lookat = c3vec3_add(c->lookat, v);
@@ -281,7 +281,7 @@ c3cam_move_abs(
 
 void
 c3cam_rot_about_eye(
-		c3camp c,
+		c3cam_p c,
 		const c3mat4p rot)
 {
     c3vec3  view = c3vec3_sub(c->lookat, c->eye);
@@ -296,7 +296,7 @@ c3cam_rot_about_eye(
 
 void
 c3cam_rot_about_lookat(
-		c3camp c,
+		c3cam_p c,
 		const c3mat4p rot)
 {
     // NOT QUITE RIGHT YET
@@ -313,7 +313,7 @@ c3cam_rot_about_lookat(
 
 void
 c3cam_update_matrix(
-		c3camp c)
+		c3cam_p c)
 {
     c3cam_update(c);
 
@@ -325,7 +325,7 @@ c3cam_update_matrix(
 }
 #if 0
 void
-c3cam_load_to_openGL(c3camp c)
+c3cam_load_to_openGL(c3cam_p c)
 {
     c3mat4  m;
 
@@ -338,7 +338,7 @@ c3cam_load_to_openGL(c3camp c)
 }
 
 void
-c3cam_load_to_openGL_noident(c3camp c)
+c3cam_load_to_openGL_noident(c3cam_p c)
 {
     c3mat4  m;
 
@@ -352,8 +352,9 @@ c3cam_load_to_openGL_noident(c3camp c)
 
 void
 c3cam_reset(
-		c3camp c)
+		c3cam_p c)
 {
+	memset(c, 0, sizeof(*c));
     c->up = c3vec3f( 0.0, 1.0, 0.0 );
     c->eye = c3vec3f(0.0, 0.0, 10.0);
     c->lookat = c3vec3f(0.0,0.0,0.0);
@@ -363,17 +364,24 @@ c3cam_reset(
     c3cam_update(c);
 }
 
-c3cam
+c3cam_t
 c3cam_new()
 {
-	c3cam c;
+	c3cam_t c;
 	c3cam_reset(&c);
 	return c;
 }
 
 void
+c3cam_init(
+		c3cam_p c)
+{
+	c3cam_reset(&c);
+}
+
+void
 c3cam_update(
-		c3camp c)
+		c3cam_p c)
 {
 	/* get proper side and forward vectors, and distance  */
 	c->forward = c3vec3_minus(c3vec3_sub(c->lookat, c->eye));
@@ -390,7 +398,7 @@ c3cam_update(
 
 # if 0
 void
-c3cam_dump(c3camp c, FILE *output) const
+c3cam_dump(c3cam_p c, FILE *output) const
 {
     fprintf( output, "Viewmodel: \n" );
     eye.print(    output, "  eye"    );

@@ -30,15 +30,31 @@ struct c3driver_context_t;
 struct c3geometry_t;
 
 typedef struct c3driver_context_t {
+	/*
+	 * Called when a geometry projection had changed in world view
+	 * can also be used to prepare resources like textures and so on
+	 */
 	void (*geometry_project)(
 			struct c3context_t * c,
 			const struct c3driver_context_t *d,
 			struct c3geometry_t * g,
 			union c3mat4 * mat);
+	/*
+	 * Called to draw a geometry
+	 */
 	void (*geometry_draw)(
 			struct c3context_t * c,
 			const struct c3driver_context_t *d,
 			struct c3geometry_t * g);
+
+	/*
+	 * called when a geometry is disposed of, let the application
+	 * delete resources like textures etc
+	 */
+	void (*geometry_dispose)(
+		struct c3context_t * c,
+		const struct c3driver_context_t *d,
+		struct c3geometry_t * g);
 } c3driver_context_t, *c3driver_context_p;
 
 #endif /* __C3DRIVER_CONTEXT_H___ */

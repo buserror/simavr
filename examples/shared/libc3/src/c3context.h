@@ -26,7 +26,27 @@
 #include "c3algebra.h"
 #include "c3geometry.h"
 #include "c3pixels.h"
+#include "c3program.h"
 #include "c3camera.h"
+
+enum {
+	C3_CONTEXT_VIEW_EYE = 0,
+	C3_CONTEXT_VIEW_LIGHT
+};
+
+typedef struct c3context_view_t {
+	int			type : 4,	// C3_CONTEXT_VIEW_EYE...
+				dirty : 1;
+	c3vec2		size;					// in pixels. for fbo/textures/window
+	c3cam_t 	cam;
+
+	c3geometry_array_t	projected;
+	struct {
+		c3f min, max;
+	} z;
+} c3context_view_t, *c3context_view_p;
+
+DECLARE_C_ARRAY(c3context_view_t, c3context_view_array, 4);
 
 //! c3context_t is a container for a 'scene' to be drawn
 /*!
@@ -39,13 +59,13 @@
  * TODO: Add the camera/eye/arcball control there
  */
 typedef struct c3context_t {
-	c3vec2		size;
-	c3cam 		cam;
+	int	current;
+	c3context_view_array_t	views;
 
 	struct c3object_t * root;	// root object
-	c3pixels_array_t 	pixels;	// pixels, textures...
 
-	c3geometry_array_t	projected;
+	c3pixels_array_t 	pixels;	// pixels, textures...
+	c3program_array_t	programs;	// fragment, vertex, geometry shaders
 
 	const struct c3driver_context_t ** driver;
 } c3context_t, *c3context_p;
@@ -76,5 +96,38 @@ c3context_project(
 void
 c3context_draw(
 		c3context_p c);
+
+IMPLEMENT_C_ARRAY(c3context_view_array);
+
+/*
+ * Set and get the current view, this is done
+ * before projecting and drawing
+ */
+static inline c3context_view_p
+c3context_view_get(
+		c3context_p c )
+{
+	return &c->views.e[c->current];
+}
+
+static inline c3context_view_p
+c3context_view_get_at(
+		c3context_p c,
+		int view)
+{
+	if (view < c->views.count)
+		return &c->views.e[view];
+	return NULL;
+}
+
+static inline void
+c3context_view_set(
+		c3context_p c,
+		int view)
+{
+	if (view < c->views.count)
+		c->current = view;
+}
+
 
 #endif /* __C3CONTEXT_H___ */

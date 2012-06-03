@@ -42,6 +42,9 @@ _c3geometry_dispose(
 			}
 		g->object = NULL;
 	}
+	/* let the context driver have a chance to clear it's own stuff */
+	if (g->object && g->object->context)
+		C3_DRIVER(g->object->context, geometry_dispose, g);
 	str_free(g->name);
 	c3vertex_array_free(&g->vertice);
 	c3vertex_array_free(&g->projected);

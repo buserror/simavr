@@ -42,6 +42,7 @@
 #include "c3driver_context.h"
 #include "c3stl.h"
 #include "c3lines.h"
+#include "c3program.h"
 
 #include <cairo/cairo.h>
 
@@ -53,6 +54,7 @@ c3context_p c3;
 c3context_p hud;
 c3object_p head;
 c3texture_p fbo_c3;
+c3program_p fxaa = NULL;
 
 int glsl_version = 110;
 
@@ -71,26 +73,6 @@ static int dumpError(const char * what)
 
 #define GLCHECK(_w) {_w; dumpError(#_w);}
 
-void print_log(GLuint obj)
-{
-	int infologLength = 0;
-	int maxLength;
-
-	if(glIsShader(obj))
-		glGetShaderiv(obj,GL_INFO_LOG_LENGTH,&maxLength);
-	else
-		glGetProgramiv(obj,GL_INFO_LOG_LENGTH,&maxLength);
-
-	char infoLog[maxLength];
-
-	if (glIsShader(obj))
-		glGetShaderInfoLog(obj, maxLength, &infologLength, infoLog);
-	else
-		glGetProgramInfoLog(obj, maxLength, &infologLength, infoLog);
-
-	if (infologLength > 0)
-		printf("%s\n",infoLog);
-}
 /* Global */
 GLuint fbo, fbo_texture, rbo_depth;
 //GLuint vbo_fbo_vertices;
@@ -159,10 +141,6 @@ gl_offscreenReshape(
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, screen_width,
 	        screen_height);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-//	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-//    glViewport(0, 0, screen_width, screen_height);
-//	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void gl_offscreenFree()
@@ -171,93 +149,6 @@ void gl_offscreenFree()
 	glDeleteRenderbuffers(1, &rbo_depth);
 	glDeleteTextures(1, &fbo_texture);
 	glDeleteFramebuffers(1, &fbo);
-//	  glDeleteBuffers(1, &vbo_fbo_vertices);
-}
-
-GLuint program_postproc = 0, uniform_fbo_texture;
-
-static GLuint create_shader(const char * fname, GLuint pid)
-{
-	const GLchar * buf;
-
-	FILE *f = fopen(fname, "r");
-	if (!f) {
-		perror(fname);
-		return 0;
-	}
-	fseek(f, 0, SEEK_END);
-	long fs = ftell(f);
-	fseek(f, 0, SEEK_SET);
-	/*
-	 * need to insert a header since there is nothing to detect the version number
-	 * reliably without it, and __VERSION__ returns idiocy
-	 */
-	char head[128];
-	sprintf(head, "#version %d\n#define GLSL_VERSION %d\n", glsl_version, glsl_version);
-	const int header = strlen(head);
-	buf = malloc(header + fs + 1);
-	memcpy((void*)buf, head, header);
-	fread((void*)buf + header, 1, fs, f);
-	((char*)buf)[header + fs] = 0;
-	fclose(f);
-
-	GLuint vs = glCreateShader(pid);
-	glShaderSource(vs, 1, &buf, NULL);
-	glCompileShader(vs);
-	dumpError("glCompileShader");
-	print_log(vs);
-	free((void*)buf);
-	return vs;
-}
-
-
-int gl_ppProgram()
-{
-	int vs, fs;
-	int link_ok, validate_ok;
-	/* init_resources */
-	/* Post-processing */
-	if ((vs = create_shader("gfx/postproc.vs", GL_VERTEX_SHADER)) == 0)
-		return 0;
-	if ((fs = create_shader("gfx/postproc.fs", GL_FRAGMENT_SHADER)) == 0)
-		return 0;
-
-	program_postproc = glCreateProgram();
-	glAttachShader(program_postproc, vs);
-	glAttachShader(program_postproc, fs);
-	glLinkProgram(program_postproc);
-	glGetProgramiv(program_postproc, GL_LINK_STATUS, &link_ok);
-	if (!link_ok) {
-		fprintf(stderr, "glLinkProgram:");
-		goto error;
-	}
-	glValidateProgram(program_postproc);
-	glGetProgramiv(program_postproc, GL_VALIDATE_STATUS, &validate_ok);
-	if (!validate_ok) {
-		fprintf(stderr, "glValidateProgram:");
-		goto error;
-	}
-
-	char * uniform_name = "m_Texture";
-	uniform_fbo_texture = glGetUniformLocation(program_postproc, uniform_name);
-	if (uniform_fbo_texture == -1) {
-		fprintf(stderr, "Could not bind uniform %s\n", uniform_name);
-		goto error;
-	}
-	return 0;
-error:
-	print_log(program_postproc);
-	glDeleteProgram(program_postproc);
-	program_postproc = 0;
-	return -1;
-}
-
-void
-gl_ppFree()
-{
-	if (program_postproc)
-		glDeleteProgram(program_postproc);
-	program_postproc = 0;
 }
 
 static void
@@ -292,13 +183,98 @@ _gl_key_cb(
 		//	avr_vcd_stop(&vcd_file);
 			break;
 		case '1':
-			if (fbo_c3->geometry.mat.program.pid)
-				fbo_c3->geometry.mat.program.pid = 0;
+			if (fbo_c3->geometry.mat.program)
+				fbo_c3->geometry.mat.program = NULL;
 			else
-				fbo_c3->geometry.mat.program.pid = program_postproc;
+				fbo_c3->geometry.mat.program = fxaa;
 			glutPostRedisplay();
 			break;
 	}
+}
+
+static void
+_c3_load_program(
+		c3program_p p)
+{
+	if (!p || p->pid || p->log)
+		return;
+
+	printf("%s loading %s\n", __func__, p->name->str);
+	for (int si = 0; si < p->shaders.count && !p->log; si++) {
+		c3shader_p s = &p->shaders.e[si];
+
+		printf("%s compiling shader %s\n", __func__, s->name->str);
+
+		s->sid = glCreateShader(s->type);
+		const GLchar * pgm = s->shader->str;
+		glShaderSource(s->sid, 1, &pgm, NULL);
+
+		glCompileShader(s->sid);
+
+		GLint status;
+		glGetShaderiv(s->sid, GL_COMPILE_STATUS, &status);
+
+		if (status != GL_FALSE)
+			continue;
+
+		GLint infoLogLength;
+		glGetShaderiv(s->sid, GL_INFO_LOG_LENGTH, &infoLogLength);
+
+		p->log = str_alloc(infoLogLength);
+		glGetShaderInfoLog(s->sid, infoLogLength, NULL, p->log->str);
+
+		fprintf(stderr, "%s compile %s: %s\n", __func__, s->name->str, p->log->str);
+		break;
+	}
+	if (p->log)
+		return;
+    p->pid = glCreateProgram();
+
+	for (int si = 0; si < p->shaders.count && !p->log; si++) {
+		c3shader_p s = &p->shaders.e[si];
+
+    	glAttachShader(p->pid, s->sid);
+	}
+    glLinkProgram(p->pid);
+
+    GLint status;
+    glGetProgramiv (p->pid, GL_LINK_STATUS, &status);
+
+	for (int si = 0; si < p->shaders.count && !p->log; si++) {
+		c3shader_p s = &p->shaders.e[si];
+
+		glDetachShader(p->pid, s->sid);
+		glDeleteShader(s->sid);
+    	s->sid = 0;
+	}
+
+    if (status == GL_FALSE) {
+        GLint infoLogLength;
+        glGetProgramiv(p->pid, GL_INFO_LOG_LENGTH, &infoLogLength);
+
+		p->log = str_alloc(infoLogLength);
+
+        glGetProgramInfoLog(p->pid, infoLogLength, NULL, p->log->str);
+		fprintf(stderr, "%s link %s: %s\n", __func__, p->name->str, p->log->str);
+
+		goto error;
+    }
+    for (int pi = 0; pi < p->params.count; pi++) {
+    	c3program_param_p pa = &p->params.e[pi];
+    	pa->pid = glGetUniformLocation(p->pid, pa->name->str);
+    	if (pa->pid == -1) {
+    		fprintf(stderr, "%s %s: parameter '%s' not found\n",
+    				__func__, p->name->str, pa->name->str);
+    	}
+    }
+
+    c3program_purge(p);
+    return;
+error:
+c3program_purge(p);
+	if (p->pid)
+		glDeleteProgram(p->pid);
+	p->pid = 0;
 }
 
 static void
@@ -368,6 +344,9 @@ _c3_geometry_project(
 //		printf("_c3_geometry_project xrure %d!\n", g->textures.count);
 		_c3_load_pixels(g->mat.texture);
 	}
+	if (g->mat.program) {
+		_c3_load_program(g->mat.program);
+	}
 
 	switch(g->type.type) {
 		case C3_TRIANGLE_TYPE:
@@ -415,8 +394,8 @@ _c3_geometry_draw(
 		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 		dumpError("GL_TEXTURE_COORD_ARRAY");
 	}
-	if (g->mat.program.pid) {
-		glUseProgram(g->mat.program.pid);
+	if (g->mat.program) {
+		glUseProgram(g->mat.program->pid);
 		dumpError("glUseProgram program_postproc");
 	}
 	if (g->normals.count) {
@@ -430,7 +409,7 @@ _c3_geometry_draw(
 	glDisableClientState(GL_NORMAL_ARRAY);
 	if (g->mat.texture)
 		glDisable(g->mat.texture->normalize ? GL_TEXTURE_2D : GL_TEXTURE_RECTANGLE_ARB);
-	if (g->mat.program.pid)
+	if (g->mat.program)
 		glUseProgram(0);
 }
 
@@ -438,39 +417,6 @@ const c3driver_context_t c3context_driver = {
 		.geometry_project = _c3_geometry_project,
 		.geometry_draw = _c3_geometry_draw,
 };
-
-float z_min, z_max;
-/*
- * Computes the distance from the eye, sort by this value
- */
-static int
-_c3_z_sorter(
-		const void *_p1,
-		const void *_p2)
-{
-	c3geometry_p g1 = *(c3geometry_p*)_p1;
-	c3geometry_p g2 = *(c3geometry_p*)_p2;
-	// get center of bboxes
-	c3vec3 c1 = c3vec3_add(g1->bbox.min, c3vec3_divf(c3vec3_sub(g1->bbox.max, g1->bbox.min), 2));
-	c3vec3 c2 = c3vec3_add(g2->bbox.min, c3vec3_divf(c3vec3_sub(g2->bbox.max, g2->bbox.min), 2));
-
-	c3f d1 = c3vec3_length2(c3vec3_sub(c1, c3->cam.eye));
-	c3f d2 = c3vec3_length2(c3vec3_sub(c2, c3->cam.eye));
-
-	if (d1 > z_max) z_max = d1;
-	if (d1 < z_min) z_min = d1;
-	if (d2 > z_max) z_max = d2;
-	if (d2 < z_min) z_min = d2;
-	/*
-	 * make sure transparent items are drawn after everyone else
-	 */
-	if (g1->mat.color.n[3] < 1)
-		d1 -= 100000.0;
-	if (g2->mat.color.n[3] < 1)
-		d2 -= 100000.0;
-
-	return d1 < d2 ? 1 : d1 > d2 ? -1 : 0;
-}
 
 #define FBO 1
 
@@ -490,6 +436,7 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 #endif
 
+	c3context_view_set(c3, 0);
 	c3vec3 headp = c3vec3f(
 			stepper_get_position_mm(&reprap.step_x),
 			stepper_get_position_mm(&reprap.step_y),
@@ -500,22 +447,14 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 	if (c3->root->dirty) {
 	//	printf("reproject head %.2f,%.2f,%.2f\n", headp.x, headp.y,headp.z);
 		c3context_project(c3);
-
-		z_min = 1000000000;
-		z_max = -1000000000;
-		qsort(c3->projected.e, c3->projected.count, sizeof(c3->projected.e[0]),
-		        _c3_z_sorter);
-		z_min = sqrt(z_min);
-		z_max = sqrt(z_max);
-		//	printf("z_min %f, z_max %f\n", z_min, z_max);
-		//z_min -= 50;
-		if (z_min < 0)
-			z_min = 10;
-		z_min = 10;
-		if (z_max < z_min || z_max > 1000)
-			z_max = 1000;
 	}
-
+	float z_min = c3context_view_get(c3)->z.min,
+			z_max = c3context_view_get(c3)->z.max;
+	if (z_min < 0)
+		z_min = 10;
+	z_min = 10;
+	if (z_max < z_min || z_max > 1000)
+		z_max = 1000;
 
 	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -542,8 +481,11 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	glMultMatrixf(c3->cam.mtx.n);
-	glTranslatef(-c3->cam.eye.n[VX], -c3->cam.eye.n[VY], -c3->cam.eye.n[VZ]);
+
+	glMultMatrixf(c3context_view_get(c3)->cam.mtx.n);
+	glTranslatef(-c3context_view_get(c3)->cam.eye.n[VX],
+			-c3context_view_get(c3)->cam.eye.n[VY],
+			-c3context_view_get(c3)->cam.eye.n[VZ]);
 
 	dumpError("flush");
 
@@ -597,6 +539,7 @@ void _gl_button_cb(
 {
 	button = s == GLUT_DOWN ? b : 0;
 	move = c3vec2f(x, y);
+	c3context_view_p view = c3context_view_get_at(c3, 0);
 //	printf("button %d: %.1f,%.1f\n", b, move.x, move.y);
 	switch (b) {
 		case GLUT_LEFT_BUTTON:
@@ -604,11 +547,12 @@ void _gl_button_cb(
 			break;
 		case GLUT_WHEEL_UP:
 		case GLUT_WHEEL_DOWN:
-			if (c3->cam.distance > 10) {
+			if (view->cam.distance > 10) {
 				const float d = 0.004;
-				c3cam_set_distance(&c3->cam, c3->cam.distance * ((b == GLUT_WHEEL_DOWN) ? (1.0+d) : (1.0-d)));
-				c3cam_update_matrix(&c3->cam);
-				c3->root->dirty = 1;	// resort the array
+				c3cam_set_distance(&view->cam,
+						view->cam.distance * ((b == GLUT_WHEEL_DOWN) ? (1.0+d) : (1.0-d)));
+				c3cam_update_matrix(&view->cam);
+				view->dirty = 1;	// resort the array
 			}
 			break;
 	}
@@ -621,29 +565,32 @@ _gl_motion_cb(
 {
 	c3vec2 m = c3vec2f(x, y);
 	c3vec2 delta = c3vec2_sub(move, m);
+	c3context_view_p view = c3context_view_get_at(c3, 0);
 
 //	printf("%s b%d click %.1f,%.1f now %d,%d delta %.1f,%.1f\n",
 //			__func__, button, move.n[0], move.n[1], x, y, delta.x, delta.y);
 
 	switch (button) {
 		case GLUT_LEFT_BUTTON: {
-			c3mat4 rotx = rotation3D(c3->cam.side, delta.n[1] / 4);
+			c3mat4 rotx = rotation3D(view->cam.side, delta.n[1] / 4);
 			c3mat4 roty = rotation3D(c3vec3f(0.0, 0.0, 1.0), delta.n[0] / 4);
 			rotx = c3mat4_mul(&rotx, &roty);
-			c3cam_rot_about_lookat(&c3->cam, &rotx);
+			c3cam_rot_about_lookat(&view->cam, &rotx);
+			c3cam_update_matrix(&view->cam);
 
-		    c3cam_update_matrix(&c3->cam);
-		    c3->root->dirty = 1;	// resort the array
+			view->dirty = 1;	// resort the array
 		}	break;
 		case GLUT_RIGHT_BUTTON: {
 			// offset both points, but following the plane
-			c3vec3 f = c3vec3_mulf(c3vec3f(-c3->cam.side.y, c3->cam.side.x, 0), -delta.n[1] / 4);
-			c3->cam.eye = c3vec3_add(c3->cam.eye, f);
-			c3->cam.lookat = c3vec3_add(c3->cam.lookat, f);
-			c3cam_movef(&c3->cam, delta.n[0] / 8, 0, 0);
+			c3vec3 f = c3vec3_mulf(
+					c3vec3f(-view->cam.side.y, view->cam.side.x, 0),
+					-delta.n[1] / 4);
+			view->cam.eye = c3vec3_add(view->cam.eye, f);
+			view->cam.lookat = c3vec3_add(view->cam.lookat, f);
+			c3cam_movef(&view->cam, delta.n[0] / 8, 0, 0);
+			c3cam_update_matrix(&view->cam);
 
-		    c3cam_update_matrix(&c3->cam);
-		    c3->root->dirty = 1;	// resort the array
+		    view->dirty = 1;	// resort the array
 		}	break;
 	}
 	move = m;
@@ -724,15 +671,15 @@ gl_init(
 	printf("GL_SHADING_LANGUAGE_VERSION %s = %d\n", glsl, glsl_version);
 
 	gl_offscreenInit(_w, _h);
-	gl_ppProgram();
+	//gl_ppProgram();
 
     c3 = c3context_new(_w, _h);
     static const c3driver_context_t * list[] = { &c3context_driver, NULL };
     c3->driver = list;
 
-	c3->cam.lookat = c3vec3f(100.0, 100.0, 0.0);
-	c3->cam.eye = c3vec3f(100.0, -100.0, 100.0);
-    c3cam_update_matrix(&c3->cam);
+    c3cam_p cam = &c3context_view_get_at(c3, 0)->cam;
+	cam->lookat = c3vec3f(100.0, 100.0, 0.0);
+	cam->eye = c3vec3f(100.0, -100.0, 100.0);
 
     {
     	const char *path = "gfx/hb.png";
@@ -859,11 +806,26 @@ gl_init(
 
     hud = c3context_new(_w, _h);
     hud->driver = list;
+
     /*
      * This is the offscreen framebuffer where the 3D scene is drawn
      */
     if (FBO) {
-    	c3texture_p b = c3texture_new(hud->root);
+    	/*
+    	 * need to insert a header since there is nothing to detect the version number
+    	 * reliably without it, and __VERSION__ returns idiocy
+    	 */
+    	char head[128];
+    	sprintf(head, "#version %d\n#define GLSL_VERSION %d\n", glsl_version, glsl_version);
+
+        fxaa = c3program_new("fxaa");
+        c3program_array_add(&hud->programs, fxaa);
+        c3program_load_shader(fxaa, GL_VERTEX_SHADER, head,
+        		"gfx/postproc.vs", C3_PROGRAM_LOAD_UNIFORM);
+        c3program_load_shader(fxaa, GL_FRAGMENT_SHADER, head,
+        		"gfx/postproc.fs", C3_PROGRAM_LOAD_UNIFORM);
+
+        c3texture_p b = c3texture_new(hud->root);
 
     	c3pixels_p dst = c3pixels_new(_w, _h, 4, _w * 4, NULL);
 		dst->name = str_new("fbo");
@@ -872,7 +834,7 @@ gl_init(
 		dst->dirty = 0;
 	//	dst->trace = 1;
     	b->geometry.mat.texture = dst;
-    	b->geometry.mat.program.pid = program_postproc;
+    	b->geometry.mat.program = fxaa;
     	b->size = c3vec2f(_w, _h);
 		b->geometry.mat.color = c3vec4f(1.0, 1.0, 1.0, 1.0);
 		fbo_c3 = b;

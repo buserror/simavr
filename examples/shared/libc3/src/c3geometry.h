@@ -38,22 +38,20 @@ typedef c3vec2 c3tex, *c3tex_p;
 
 struct c3object_t;
 struct c3pixels_t;
+struct c3program_t;
 
-DECLARE_C_ARRAY(c3vertex, c3vertex_array, 16);
-DECLARE_C_ARRAY(c3tex, c3tex_array, 16);
-DECLARE_C_ARRAY(c3colorf, c3colorf_array, 16);
+DECLARE_C_ARRAY(c3vertex, c3vertex_array, 16, uint32_t bid);
+DECLARE_C_ARRAY(c3tex, c3tex_array, 16, uint32_t bid);
+DECLARE_C_ARRAY(c3colorf, c3colorf_array, 16, uint32_t bid);
 
 //! Geometry material. TODO: Beef up. Add vertex/fragment programs..
 typedef struct c3material_t {
 	c3colorf	color;
 	struct c3pixels_t * texture;
-//	uint32_t	texmode;
+	struct c3program_t * program;
 	struct {
 		uint32_t src, dst;
 	} blend;
-	struct {
-		uint32_t pid;
-	} program;
 } c3material_t;
 
 //! Bounding box. TODO: Move to a separate file?
