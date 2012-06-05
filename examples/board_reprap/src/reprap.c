@@ -287,7 +287,7 @@ reprap_init(
 		avr_irq_t * d = get_ardu_irq(avr, X_DIR_PIN, arduidiot_644);
 		avr_irq_t * m = get_ardu_irq(avr, X_MIN_PIN, arduidiot_644);
 
-		stepper_init(avr, &r->step_x, "X", axis_pp_per_mm[0], 100, 220, 0);
+		stepper_init(avr, &r->step_x, "X", axis_pp_per_mm[0], 100, 200, 0);
 		stepper_connect(&r->step_x, s, d, e, m, stepper_endstop_inverted);
 	}
 	{
@@ -296,7 +296,7 @@ reprap_init(
 		avr_irq_t * d = get_ardu_irq(avr, Y_DIR_PIN, arduidiot_644);
 		avr_irq_t * m = get_ardu_irq(avr, Y_MIN_PIN, arduidiot_644);
 
-		stepper_init(avr, &r->step_y, "Y", axis_pp_per_mm[1], 100, 220, 0);
+		stepper_init(avr, &r->step_y, "Y", axis_pp_per_mm[1], 100, 200, 0);
 		stepper_connect(&r->step_y, s, d, e, m, stepper_endstop_inverted);
 	}
 	{
@@ -305,7 +305,7 @@ reprap_init(
 		avr_irq_t * d = get_ardu_irq(avr, Z_DIR_PIN, arduidiot_644);
 		avr_irq_t * m = get_ardu_irq(avr, Z_MIN_PIN, arduidiot_644);
 
-		stepper_init(avr, &r->step_z, "Z", axis_pp_per_mm[2], 20, 110, 0);
+		stepper_init(avr, &r->step_z, "Z", axis_pp_per_mm[2], 20, 130, 0);
 		stepper_connect(&r->step_z, s, d, e, m, stepper_endstop_inverted);
 	}
 	{

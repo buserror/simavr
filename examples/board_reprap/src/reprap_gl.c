@@ -42,6 +42,7 @@
 #include "c3driver_context.h"
 #include "c3stl.h"
 #include "c3lines.h"
+#include "c3sphere.h"
 #include "c3program.h"
 
 #include <cairo/cairo.h>
@@ -208,65 +209,65 @@ _c3_load_program(
 
 		printf("%s compiling shader %s\n", __func__, s->name->str);
 
-		s->sid = glCreateShader(s->type);
+		s->sid = (c3apiobject_t)glCreateShader(s->type);
 		const GLchar * pgm = s->shader->str;
-		glShaderSource(s->sid, 1, &pgm, NULL);
+		glShaderSource((GLuint)s->sid, 1, &pgm, NULL);
 
-		glCompileShader(s->sid);
+		glCompileShader((GLuint)s->sid);
 
 		GLint status;
-		glGetShaderiv(s->sid, GL_COMPILE_STATUS, &status);
+		glGetShaderiv((GLuint)s->sid, GL_COMPILE_STATUS, &status);
 
 		if (status != GL_FALSE)
 			continue;
 
 		GLint infoLogLength;
-		glGetShaderiv(s->sid, GL_INFO_LOG_LENGTH, &infoLogLength);
+		glGetShaderiv((GLuint)s->sid, GL_INFO_LOG_LENGTH, &infoLogLength);
 
 		p->log = str_alloc(infoLogLength);
-		glGetShaderInfoLog(s->sid, infoLogLength, NULL, p->log->str);
+		glGetShaderInfoLog((GLuint)s->sid, infoLogLength, NULL, p->log->str);
 
 		fprintf(stderr, "%s compile %s: %s\n", __func__, s->name->str, p->log->str);
 		break;
 	}
 	if (p->log)
 		return;
-    p->pid = glCreateProgram();
+    p->pid = (c3apiobject_t)glCreateProgram();
 
 	for (int si = 0; si < p->shaders.count && !p->log; si++) {
 		c3shader_p s = &p->shaders.e[si];
 
-    	glAttachShader(p->pid, s->sid);
+    	glAttachShader((GLuint)p->pid, (GLuint)s->sid);
 	}
-    glLinkProgram(p->pid);
+    glLinkProgram((GLuint)p->pid);
 
     GLint status;
-    glGetProgramiv (p->pid, GL_LINK_STATUS, &status);
+    glGetProgramiv((GLuint)p->pid, GL_LINK_STATUS, &status);
 
 	for (int si = 0; si < p->shaders.count && !p->log; si++) {
 		c3shader_p s = &p->shaders.e[si];
 
-		glDetachShader(p->pid, s->sid);
-		glDeleteShader(s->sid);
+		glDetachShader((GLuint)p->pid, (GLuint)s->sid);
+		glDeleteShader((GLuint)s->sid);
     	s->sid = 0;
 	}
 
     if (status == GL_FALSE) {
         GLint infoLogLength;
-        glGetProgramiv(p->pid, GL_INFO_LOG_LENGTH, &infoLogLength);
+        glGetProgramiv((GLuint)p->pid, GL_INFO_LOG_LENGTH, &infoLogLength);
 
 		p->log = str_alloc(infoLogLength);
 
-        glGetProgramInfoLog(p->pid, infoLogLength, NULL, p->log->str);
+        glGetProgramInfoLog((GLuint)p->pid, infoLogLength, NULL, p->log->str);
 		fprintf(stderr, "%s link %s: %s\n", __func__, p->name->str, p->log->str);
 
 		goto error;
     }
     for (int pi = 0; pi < p->params.count; pi++) {
     	c3program_param_p pa = &p->params.e[pi];
-    	pa->pid = glGetUniformLocation(p->pid, pa->name->str);
+    	pa->pid = (c3apiobject_t)glGetUniformLocation((GLuint)p->pid, pa->name->str);
     	printf("%s %s load parameter '%s'\n", __func__, p->name->str, pa->name->str);
-    	if (pa->pid == -1) {
+    	if (pa->pid == (c3apiobject_t)-1) {
     		fprintf(stderr, "%s %s: parameter '%s' not found\n",
     				__func__, p->name->str, pa->name->str);
     	}
@@ -275,9 +276,9 @@ _c3_load_program(
     c3program_purge(p);
     return;
 error:
-c3program_purge(p);
+	c3program_purge(p);
 	if (p->pid)
-		glDeleteProgram(p->pid);
+		glDeleteProgram((GLuint)p->pid);
 	p->pid = 0;
 }
 
@@ -287,7 +288,8 @@ _c3_load_pixels(
 {
 	GLuint mode = pix->normalize ? GL_TEXTURE_2D : GL_TEXTURE_RECTANGLE_ARB;
 	if (!pix->texture) {
-		printf("Creating texture %s %dx%d\n", pix->name ? pix->name->str : "", pix->w, pix->h);
+		printf("%s Creating texture %s %dx%d\n",
+				__func__, pix->name ? pix->name->str : "", pix->w, pix->h);
 		pix->dirty = 1;
 		GLuint texID = 0;
 		dumpError("cp_gl_texture_load_argb flush");
@@ -319,12 +321,12 @@ _c3_load_pixels(
 		if (pix->normalize)
 			GLCHECK(glGenerateMipmap(mode));
 
-		pix->texture = texID;
+		pix->texture = (c3apiobject_t)texID;
 		pix->dirty = 1;
 	}
 	if (pix->dirty) {
 		pix->dirty = 0;
-		GLCHECK(glBindTexture(mode, pix->texture));
+		GLCHECK(glBindTexture(mode, (GLuint)pix->texture));
 		glTexImage2D(mode, 0,
 				pix->format == C3PIXEL_A ? GL_ALPHA16 : GL_RGBA8,
 				pix->w, pix->h, 0,
@@ -344,32 +346,30 @@ _c3_geometry_project(
 		c3geometry_p g,
 		c3mat4p m)
 {
-	if (g->mat.texture) {
-//		printf("_c3_geometry_project xrure %d!\n", g->textures.count);
+	if (g->mat.texture)
 		_c3_load_pixels(g->mat.texture);
-	}
-	if (g->mat.program) {
+	if (g->mat.program)
 		_c3_load_program(g->mat.program);
-	}
 
 	switch(g->type.type) {
+		case C3_SPHERE_TYPE:
 		case C3_TRIANGLE_TYPE:
-			g->type.subtype = GL_TRIANGLES;
+		case C3_LINES_TYPE:
+			g->type.subtype = (c3apiobject_t)GL_TRIANGLES;
 			break;
 		case C3_TEXTURE_TYPE: {
-		//	c3texture_p t = (c3texture_p)g;
-			if (g->mat.texture) {
-				g->type.subtype = GL_TRIANGLE_FAN;
-			}
+			if (g->mat.texture)
+				g->type.subtype = (c3apiobject_t)GL_TRIANGLE_FAN;
 		}	break;
-		case C3_LINES_TYPE:
-			g->type.subtype = GL_TRIANGLES;
-			break;
 		default:
 		    break;
 	}
 }
 
+/*
+ * Thid id the meta function that draws a c3geometry. It looks for normals,
+ * indices, textures and so on and call the glDrawArrays
+ */
 static void
 _c3_geometry_draw(
 		c3context_p c,
@@ -385,29 +385,38 @@ _c3_geometry_draw(
 	dumpError("GL_VERTEX_ARRAY");
 	glDisable(GL_TEXTURE_2D);
 	if (g->mat.texture) {
-		GLuint mode = g->mat.texture->normalize ? GL_TEXTURE_2D : GL_TEXTURE_RECTANGLE_ARB;
+		GLuint mode = g->mat.texture->normalize ?
+				GL_TEXTURE_2D : GL_TEXTURE_RECTANGLE_ARB;
 		glEnable(mode);
 		if (g->mat.texture->trace)
 			printf("%s uses texture %s (%d tex)\n",
 					__func__, g->mat.texture->name->str, g->textures.count);
 	//	printf("tex mode %d texture %d\n", g->mat.mode, g->mat.texture);
 		dumpError("glEnable texture");
-		glBindTexture(mode, g->mat.texture->texture);
+		glBindTexture(mode, (GLuint)g->mat.texture->texture);
 		dumpError("glBindTexture");
 		glTexCoordPointer(2, GL_FLOAT, 0, g->textures.e);
 		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 		dumpError("GL_TEXTURE_COORD_ARRAY");
 	}
 	if (g->mat.program) {
-		glUseProgram(g->mat.program->pid);
-		dumpError("glUseProgram program_postproc");
+		GLCHECK(glUseProgram((GLuint)g->mat.program->pid));
 	}
 	if (g->normals.count) {
-		glNormalPointer(GL_FLOAT, 0, g->normals.e);
+		GLCHECK(glNormalPointer(GL_FLOAT, 0, g->normals.e));
 		glEnableClientState(GL_NORMAL_ARRAY);
 	}
-	glDrawArrays(g->type.subtype, 0,
+	if (g->indices.count) {
+	//	GLCHECK(glIndexPointer(GL_UNSIGNED_SHORT, 0, g->indices.e));
+	//	glEnableClientState(GL_INDEX_ARRAY);
+		GLCHECK(glDrawElements((GLuint)g->type.subtype,
+				g->indices.count, GL_UNSIGNED_SHORT,
+				g->indices.e));
+	//	glDisableClientState(GL_INDEX_ARRAY);
+	} else {
+		glDrawArrays((GLuint)g->type.subtype, 0,
 			g->projected.count ? g->projected.count : g->vertice.count);
+	}
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glDisableClientState(GL_NORMAL_ARRAY);
@@ -647,7 +656,7 @@ gl_init(
 
 	{
 		GLfloat specular[] = {1.0f, 1.0f, 1.0f , 0.8f};
-		GLfloat position[] = { -50.0f, -50.0f, 100.0f, 1.0f };
+		GLfloat position[] = { -30.0f, -30.0f, 200.0f, 1.0f };
 		glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
 		glLightfv(GL_LIGHT0, GL_POSITION, position);
 		glEnable(GL_LIGHT0);
@@ -751,7 +760,7 @@ gl_init(
     	}
 #endif
     	line_aa_tex = dst;
-
+#if 0
     	c3pixels_p p = dst;
     	printf("struct { int w, h, stride, size, format; uint8_t pix[] } img = {\n"
     			"%d, %d, %d, %d, %d\n",
@@ -759,6 +768,7 @@ gl_init(
     	for (int i = 0; i < 32; i++)
     		printf("0x%08x ", ((uint32_t*)p->base)[i]);
     	printf("\n");
+#endif
     }
     c3object_p grid = c3object_new(c3->root);
     {
@@ -775,6 +785,10 @@ gl_init(
         		c3lines_init(g, p, 4, 0.2);
         	}
         }
+    }
+    {	// light bulb
+    	c3geometry_p g = c3sphere_uv(c3->root, c3vec3f(-30.0f, -20.0f, 200.0f), 3, 10, 10);
+    	g->mat.color = c3vec4f(1.0, 1.0, 0.0, 1.0);
     }
 
    if (0) {
@@ -795,6 +809,7 @@ gl_init(
     //head = c3object_new(c3->root);
     c3transform_new(head);
     if (head->geometry.count > 0) {
+    	c3geometry_factor(head->geometry.e[0], 0.1, (20 * M_PI) / 180.0);
     	head->geometry.e[0]->mat.color = c3vec4f(0.6, 0.5, 0.0, 1.0);
     }
 
@@ -831,7 +846,7 @@ gl_init(
 
     	c3pixels_p dst = c3pixels_new(_w, _h, 4, _w * 4, NULL);
 		dst->name = str_new("fbo");
-		dst->texture = fbo_texture;
+		dst->texture = (c3apiobject_t)fbo_texture;
 		dst->normalize = 1;
 		dst->dirty = 0;
 	//	dst->trace = 1;
