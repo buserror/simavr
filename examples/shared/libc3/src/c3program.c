@@ -3,20 +3,20 @@
 
 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
- 	This file is part of simavr.
+ 	This file is part of libc3.
 
-	simavr is free software: you can redistribute it and/or modify
+	libc3 is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	simavr is distributed in the hope that it will be useful,
+	libc3 is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
+	along with libc3.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <sys/types.h>
@@ -64,6 +64,17 @@ c3program_purge(
 		str_free(s->shader);
 	}
 	c3shader_array_free(&p->shaders);
+}
+
+c3program_param_p
+c3program_locate_param(
+		c3program_p p,
+		const char * name )
+{
+	for (int pi = 0; pi < p->params.count; pi++)
+		if (!strcmp(p->params.e[pi].name->str, name))
+			return &p->params.e[pi];
+	return NULL;
 }
 
 int
@@ -138,6 +149,7 @@ c3program_load_shader(
 							.program = p,
 					};
 					c3program_param_array_add(&p->params, pa);
+					if (p->verbose)
 					printf("%s %s: new parameter '%s' '%s'\n", __func__,
 							p->name->str, unitype, uniname);
 				} else

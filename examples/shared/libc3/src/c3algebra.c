@@ -6,20 +6,20 @@
 	Derivative and inspiration from original C++:
 	Paul Rademacher & Jean-Francois DOUEG,
 
- 	This file is part of simavr.
+ 	This file is part of libc3.
 
-	simavr is free software: you can redistribute it and/or modify
+	libc3 is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	simavr is distributed in the hope that it will be useful,
+	libc3 is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
+	along with libc3.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <math.h>
@@ -349,6 +349,14 @@ c3vec3 c3vec3_max(const c3vec3 a, const c3vec3 b)
 c3vec3 c3vec3_prod(const c3vec3 a, const c3vec3 b)
 {
     return c3vec3f(a.n[VX]*b.n[VX], a.n[VY]*b.n[VY], a.n[VZ]*b.n[VZ]);
+}
+
+c3vec3 c3vec3_polar(const c3vec3 a)
+{
+	c3f l = c3vec3_length(a);
+	c3f phi = atan2(a.y, a.x);
+	c3f theta = acos(a.z / l);
+	return c3vec3f(phi, theta, l);
 }
 
 /****************************************************************

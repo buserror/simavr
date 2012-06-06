@@ -1,5 +1,5 @@
 /*
-	c3cairo.h
+	c3sphere.h
 
 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
@@ -20,36 +20,21 @@
  */
 
 
-#ifndef __C3CAIRO_H___
-#define __C3CAIRO_H___
+#ifndef __C3SPHERE_H___
+#define __C3SPHERE_H___
 
-#include "c3config.h"
-#include "c3texture.h"
-#include "c3pixels.h"
+#include "c3algebra.h"
 
-#if CONFIG_C3_CAIRO
-#include <pango/pangocairo.h>
+enum {
+	C3_SPHERE_TYPE = C3_TYPE('s','p','h','e'),
+};
 
-typedef struct c3cairo_t {
-	c3texture_t	tex;
-	cairo_t	*	cr;
-	cairo_surface_t * surface;
-} c3cairo_t, *c3cairo_p;
+struct c3geometry_t *
+c3sphere_uv(
+		struct c3object_t * parent,
+		c3vec3 center,
+		c3f radius,
+		int rings,
+		int sectors );
 
-c3cairo_p
-c3cairo_new(
-		struct c3object_t * parent /* = NULL */);
-
-c3cairo_p
-c3cairo_init(
-		c3cairo_p o,
-		struct c3object_t * parent /* = NULL */);
-
-c3cairo_p
-c3cairo_new_offscreen(
-		struct c3object_t * parent /* = NULL */,
-		int w, int h);
-
-#endif // CONFIG_C3_CAIRO
-
-#endif /* __C3CAIRO_H___ */
+#endif /* __C3SPHERE_H___ */

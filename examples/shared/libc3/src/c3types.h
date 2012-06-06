@@ -1,5 +1,5 @@
 /*
-	c3cairo.h
+	c3types.h
 
 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
@@ -20,36 +20,26 @@
  */
 
 
-#ifndef __C3CAIRO_H___
-#define __C3CAIRO_H___
+#ifndef __C3TYPES_H___
+#define __C3TYPES_H___
 
-#include "c3config.h"
-#include "c3texture.h"
-#include "c3pixels.h"
+#include <stdint.h>
+#include "c3algebra.h"
 
-#if CONFIG_C3_CAIRO
-#include <pango/pangocairo.h>
+typedef c3vec3 c3vertex_t, *c3vertex_p;
+typedef c3vec4 c3colorf_t, *c3colorf_p;
+typedef c3vec2 c3tex_t, *c3tex_p;
+typedef uint16_t	c3index_t, *c3index_p;
 
-typedef struct c3cairo_t {
-	c3texture_t	tex;
-	cairo_t	*	cr;
-	cairo_surface_t * surface;
-} c3cairo_t, *c3cairo_p;
+/* this type is used to store an API object (texture id etc
+ * it is made to force a cast in most cases as OpenGL uses integers
+ * for object ids
+ */
+typedef void * c3apiobject_t;
 
-c3cairo_p
-c3cairo_new(
-		struct c3object_t * parent /* = NULL */);
+//! Bounding box
+typedef struct c3bbox_t {
+	c3vec3	min, max;
+} c3bbox_t;
 
-c3cairo_p
-c3cairo_init(
-		c3cairo_p o,
-		struct c3object_t * parent /* = NULL */);
-
-c3cairo_p
-c3cairo_new_offscreen(
-		struct c3object_t * parent /* = NULL */,
-		int w, int h);
-
-#endif // CONFIG_C3_CAIRO
-
-#endif /* __C3CAIRO_H___ */
+#endif /* __C3TYPES_H___ */

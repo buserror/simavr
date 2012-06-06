@@ -3,30 +3,31 @@
 
 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
- 	This file is part of simavr.
+ 	This file is part of libc3.
 
-	simavr is free software: you can redistribute it and/or modify
+	libc3 is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	simavr is distributed in the hope that it will be useful,
+	libc3 is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
+	along with libc3.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 
 #ifndef __C3PROGRAM_H___
 #define __C3PROGRAM_H___
 
+#include "c3types.h"
 #include "c_utils.h"
 
 typedef struct c3shader_t {
-	uint32_t sid;	// shader id
+	c3apiobject_t sid;	// shader id
 	uint32_t type;
 	str_p	name;
 	str_p	shader;
@@ -36,7 +37,7 @@ DECLARE_C_ARRAY(c3shader_t, c3shader_array, 4);
 
 typedef struct c3program_param_t {
 	struct c3program_t * program;
-	int32_t pid;	// parameter id
+	c3apiobject_t pid;	// parameter id
 	str_p	type;
 	str_p	name;
 } c3program_param_t, *c3program_param_p;
@@ -44,11 +45,12 @@ typedef struct c3program_param_t {
 DECLARE_C_ARRAY(c3program_param_t, c3program_param_array, 4);
 
 typedef struct c3program_t {
-	uint32_t pid;	// program id
+	c3apiobject_t pid;	// program id
+	int						verbose : 1;
 	str_p name;
 	c3shader_array_t	shaders;
 	c3program_param_array_t params;
-	str_p	log;
+	str_p					log;	// if an error occurs
 } c3program_t, *c3program_p;
 
 DECLARE_C_ARRAY(c3program_p, c3program_array, 4);
@@ -79,6 +81,11 @@ c3program_load_shader(
 		const char * header,
 		const char * filename,
 		uint16_t flags);
+
+c3program_param_p
+c3program_locate_param(
+		c3program_p p,
+		const char * name );
 
 IMPLEMENT_C_ARRAY(c3program_param_array);
 IMPLEMENT_C_ARRAY(c3shader_array);

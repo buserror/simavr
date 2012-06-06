@@ -5,12 +5,17 @@ REVISION	= 1
 SHELL	 	:= ${shell which bash}
 
 IPATH 		+= src
+IPATH 		+= srcgl
 VPATH		+= src
+VPATH		+= srcgl
 
 OBJ 		= obj-${shell $(CC) -dumpmachine}
 
 C3SRC		= ${wildcard src/*.c}
 C3OBJ 		= ${patsubst src/%,${OBJ}/%,${C3SRC:.c=.lo}}
+
+C3GLSRC		= ${wildcard srcgl/*.c}
+C3GLOBJ 	= ${patsubst srcgl/%,${OBJ}/%,${C3GLSRC:.c=.lo}}
 
 CC 			= clang
 PKGCONFIG	= pkg-config
@@ -34,7 +39,7 @@ DESTDIR		= /usr/local
 
 -include ${wildcard .make.options*}
 
-all:	${OBJ} src/c3config.h ${OBJ}/libc3.la
+all:	${OBJ} src/c3config.h ${OBJ}/libc3.la ${OBJ}/libc3gl.la
 
 ${OBJ}:
 	mkdir -p ${OBJ}
@@ -56,6 +61,14 @@ src/c3config.h:
 	) >$@
 
 ${OBJ}/libc3.la: ${C3OBJ}
+	@echo LINK $@
+	$(E)$(LIBTOOL) --mode=link --tag=CC \
+		$(CC) $(CPPFLAGS) $(CFLAGS) \
+			$^ -o $@ \
+			-version-info 0:1:0 \
+			-rpath $(DESTDIR)/lib $(LDFLAGS)
+
+${OBJ}/libc3gl.la: ${C3GLOBJ}
 	@echo LINK $@
 	$(E)$(LIBTOOL) --mode=link --tag=CC \
 		$(CC) $(CPPFLAGS) $(CFLAGS) \

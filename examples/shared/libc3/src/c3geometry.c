@@ -3,23 +3,25 @@
 
 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
- 	This file is part of simavr.
+ 	This file is part of libc3.
 
-	simavr is free software: you can redistribute it and/or modify
+	libc3 is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	simavr is distributed in the hope that it will be useful,
+	libc3 is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
+	along with libc3.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 
+#include <stdio.h>
+#include <math.h>
 #include "c3object.h"
 #include "c3context.h"
 #include "c3driver_geometry.h"
@@ -165,4 +167,84 @@ c3geometry_draw(
 	C3_DRIVER(g, draw);
 }
 
+void
+c3geometry_factor(
+		c3geometry_p g,
+		c3f tolerance,
+		c3f normaltolerance)
+{
+	printf("%s Start geometry has %d vertices and %d indexes\n", __func__,
+			g->vertice.count, g->indices.count);
+	printf("%s Start geometry has %d normals and %d tex\n", __func__,
+			g->normals.count, g->textures.count);
 
+	c3f tolerance2 = tolerance * tolerance;
+
+	int in_index = g->indices.count;
+	int vcount = in_index ? in_index : g->vertice.count;
+	int input = 0;
+	int output = 0;
+	g->indices.count = 0;
+	while (input < vcount) {
+		int current = in_index ? g->indices.e[input] : input;
+		c3vec3 v = g->vertice.e[current];
+		c3vec3 n = g->normals.count ? g->normals.e[current] : c3vec3f(0,0,0);
+		c3vec3 np = c3vec3_polar(n);	// normal in polar coord
+
+		int oi = -1;
+		for (int ci = 0; ci < output && oi == -1; ci++)
+			if (c3vec3_length2(c3vec3_sub(g->vertice.e[ci], v)) < tolerance2) {
+				if (g->normals.count) {
+					c3vec3 nc = g->normals.e[ci];
+					c3vec3 pc = c3vec3_polar(nc);
+
+					c3vec3 d = c3vec3_sub(np, pc);
+					while (d.n[0] <= -M_PI) d.n[0] += (2*M_PI);
+					while (d.n[1] <= -M_PI) d.n[1] += (2*M_PI);
+
+					if (fabs(d.n[0]) < normaltolerance &&
+							fabs(d.n[1]) < normaltolerance) {
+						oi = ci;
+						// replace the compared normal with the 'merged' one
+						// that should hopefully trim it to the right direction
+						// somehow. Not perfect obviously
+						g->normals.e[ci] = c3vec3_add(n, nc);
+					}
+				} else
+					oi = ci;
+			}
+		if (oi == -1) {
+			oi = output;
+			g->vertice.e[output] = g->vertice.e[current];
+			if (g->textures.count)
+				g->textures.e[output] = g->textures.e[current];
+			if (g->normals.count)
+				g->normals.e[output] = n;
+			if (g->colorf.count)
+				g->colorf.e[output] = g->colorf.e[current];
+			output++;
+		}
+		c3indices_array_add(&g->indices, oi);
+		input++;
+	}
+	g->vertice.count = output;
+	c3vertex_array_realloc(&g->vertice, output);
+	if (g->textures.count) {
+		g->textures.count = output;
+		c3tex_array_realloc(&g->textures, output);
+	}
+	if (g->normals.count) {
+		g->normals.count = output;
+		c3vertex_array_realloc(&g->normals, output);
+		for (int ni = 0; ni < output; ni++)
+			g->normals.e[ni] = c3vec3_normalize(g->normals.e[ni]);
+	}
+	if (g->colorf.count) {
+		g->colorf.count = output;
+		c3colorf_array_realloc(&g->colorf, output);
+	}
+	g->dirty = 1;
+
+	printf("%s end geometry has %d vertices and %d indexes\n",  __func__,
+			g->vertice.count, g->indices.count);
+}

@@ -1,0 +1,220 @@
+digraph g {
+//	label = "libc3\n - lightweight scene graph library - Data Structure Hierarchy";
+	label = <
+	<font point-size="18">libc3</font> - 
+	<font color="blue">http://github.com/buserror-uk/libc3</font>
+	 - Lightweight C Scene Graph Library - Data Structure Flowchart
+	>;
+	node [fontsize=24,shape=box];
+	// concentrate=true;
+
+	c3context [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3context</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Keeps track of a root c3object,<br/>
+		possible multiple views, and also stores <br/>
+		texture pixels and shader programs
+		</font></td></tr>
+		</table>
+	>];
+	c3context_view [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3context_view</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Keep tracks of a scene point of view.<br/>
+		used for the eye(s), and the light(s)
+		</font></td></tr>
+		</table>
+	>];
+	c3camera [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3camera</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Keeps an 'eye' point, a 'lookat'<br/>
+		point the related vectors, and a<br/>
+		transform matrix
+		</font></td></tr>
+		</table>
+	>];
+	c3object [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3object</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Anchor point that holds optional<br/>
+		transform matrices, other sub-c3objects<br/>
+		and c3geometries<br/>
+		</font></td></tr>
+		</table>
+	>];
+	c3transform [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3transform</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Holds a matrix to be applies to<br/>
+		a c3object and it's descendants
+		</font></td></tr>
+		</table>
+	>];
+	c3cairo [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4" color="gray">
+		<tr><td>c3cairo</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Maps a Cairo image surface<br/>
+		to a c3texture - Optional.
+		</font></td></tr>
+		</table>
+	>];
+	c3texture [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3texture</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Provides a geometry to render a<br/>
+		c3pixel (and anonymous texture)
+		</font></td></tr>
+		</table>
+	>];
+	c3geometry [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3geometry</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Contains the real drawing data, vertices,<br/>
+		tex coordinates, normals and a material.
+		</font></td></tr>
+		</table>
+	>];
+	c3pixels [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3pixels</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Basic description of a pixmap<br/>
+		to be loaded as a texture.
+		</font></td></tr>
+		</table>
+	>];
+	c3program [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3program</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Holds a vertex/fragment/... program,<br/>
+		also parses them for uniform/parameters
+		</font></td></tr>
+		</table>
+	>];
+	c3color [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3color</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Base RGBA float color
+		</font></td></tr>
+		</table>
+	>];
+	c3vertex [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3vertex</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Array of X,Y,Z coordinates,<br/>
+		with associated buffer object
+		</font></td></tr>
+		</table>
+	>];
+	c3normal [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3normal</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Array of normals with<br/>
+		associated buffer object
+		</font></td></tr>
+		</table>
+	>];
+	c3tex [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3tex</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Array of texture coordinates<br/>
+		with associated buffer object
+		</font></td></tr>
+		</table>
+	>];
+	c3indice [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3indice</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Array of indices into<br/>
+		the other arrays
+		</font></td></tr>
+		</table>
+	>];
+	c3mat [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3mat</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Geometry material related data<br/>
+		ie color, texture, program.
+		</font></td></tr>
+		</table>
+	>];
+	c3stl [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3stl</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Loads ASCII STL model files<br/>
+		and generates corresponding c3object.
+		</font></td></tr>
+		</table>
+	>];
+	c3lines [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3lines</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Converts segments into a textured<br/>
+		triangle mesh for wide, <br/>
+		antialiasied lines
+		</font></td></tr>
+		</table>
+	>];
+	c3sphere [shape=none, label=<
+		<table border="1" cellborder="0" cellpadding="4">
+		<tr><td>c3sphere</td></tr>
+		<tr><td color="gray" border="1" align="center"><font point-size="10">
+		Creares geometry for a sphere<br/>
+		with texture coordinaes&amp;normals
+		</font></td></tr>
+		</table>
+	>];
+	c3context -> c3context_view;
+	c3context -> c3object [style=bold];
+	c3context -> c3pixels [style=dashed];
+	c3context -> c3program [style=dashed];
+	
+	c3context_view -> c3camera;
+	
+	{ rank = same;  c3object; c3stl; }
+	{ rank = same;  c3geometry; c3lines; c3sphere; }
+	c3stl -> c3object [ weight=0.1, color="gray" ];
+	c3lines -> c3geometry [ weight=0.1, color="gray" ];
+	c3sphere -> c3geometry [ weight=0.1, color="gray" ];
+	
+	c3texture -> c3geometry;
+	{ node [style=dashed]; c3cairo; }
+	c3cairo -> c3texture;
+
+	c3object -> c3geometry [style=bold];
+	c3object -> c3texture;
+	c3object -> c3cairo;
+	c3object -> c3transform;
+	
+	c3object -> c3object;
+	
+	c3geometry -> c3vertex;
+	c3geometry -> c3normal	;
+	c3geometry -> c3tex;
+	c3geometry -> c3mat;
+	c3geometry -> c3indice;
+	
+	c3mat -> c3pixels;
+	c3mat -> c3program;
+	c3mat -> c3color;
+	
+	c3texture -> c3pixels;
+};

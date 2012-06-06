@@ -1,30 +1,29 @@
 /*
-	c3.c
+	c3gl.h
 
 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 
- 	This file is part of libc3.
+ 	This file is part of simavr.
 
-	libc3 is free software: you can redistribute it and/or modify
+	simavr is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	libc3 is distributed in the hope that it will be useful,
+	simavr is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with libc3.  If not, see <http://www.gnu.org/licenses/>.
+	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 
-#include "c3.h"
-#include "c3config.h"
+#ifndef __C3GL_H___
+#define __C3GL_H___
 
-const char *
-c3version()
-{
-	return CONFIG_C3_VERSION;
-}
+const struct c3driver_context_t *
+c3gl_getdriver();
+
+#endif /* __C3GL_H___ */
