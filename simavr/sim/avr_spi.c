@@ -41,6 +41,7 @@ static uint8_t avr_spi_read(struct avr_t * avr, avr_io_addr_t addr, void * param
 	avr_spi_t * p = (avr_spi_t *)param;
 	uint8_t v = p->input_data_register;
 	p->input_data_register = 0;
+	avr_regbit_clear(avr, p->spi.raised);
 //	printf("avr_spi_read = %02x\n", v);
 	return v;
 }
