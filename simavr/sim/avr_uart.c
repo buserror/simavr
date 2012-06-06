@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include "avr_uart.h"
 #include "sim_hex.h"
 
@@ -156,13 +157,14 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 				p->usec_per_byte, avr_uart_txc_raise, p); // should be uart speed dependent
 
 		if (p->flags & AVR_UART_FLAG_STDIO) {
-			static char buf[128];
-			static int l = 0;
-			buf[l++] = v < ' ' ? '.' : v;
-			buf[l] = 0;
-			if (v == '\n' || l == 127) {
-				l = 0;
-				printf( FONT_GREEN "%s\n" FONT_DEFAULT, buf);
+			const int maxsize = 256;
+			if (!p->stdio_out)
+				p->stdio_out = malloc(maxsize);
+			p->stdio_out[p->stdio_len++] = v < ' ' ? '.' : v;
+			p->stdio_out[p->stdio_len] = 0;
+			if (v == '\n' || p->stdio_len == maxsize) {
+				p->stdio_len = 0;
+				printf( FONT_GREEN "%s\n" FONT_DEFAULT, p->stdio_out);
 			}
 		}
 		TRACE(printf("UDR%c(%02x) = %02x\n", p->name, addr, v);)

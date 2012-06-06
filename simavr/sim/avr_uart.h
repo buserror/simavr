@@ -106,6 +106,9 @@ typedef struct avr_uart_t {
 
 	uint32_t		flags;
 	avr_cycle_count_t usec_per_byte;
+
+	uint8_t *		stdio_out;
+	int				stdio_len;	// current size in the stdio output
 } avr_uart_t;
 
 /* takes a uint32_t* as parameter */
