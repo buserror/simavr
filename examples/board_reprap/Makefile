@@ -56,7 +56,7 @@ include ${simavr}/Makefile.common
 
 board = ${OBJ}/${target}.elf
 
-${board} : ${OBJ}/mongoose.o
+${board} : ${OBJ}/arduidiot_pins.o
 ${board} : ${OBJ}/button.o
 ${board} : ${OBJ}/uart_pty.o
 ${board} : ${OBJ}/thermistor.o
