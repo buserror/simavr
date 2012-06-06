@@ -1,30 +1,25 @@
 
 This will emulate an arduino. Right now it loads the bootloader, then wait on it's "serial port"
-(a UDP socket on port 4321) until someone programs it... eventualy it timesout and run the previous
+(a pseudo tty) until someone programs it... eventualy it timesout and run the previous
 app that was programmed.
 
-To actualy program it, you need "socat" to make a bridge between avrdude and simavr.
-
-% socat -d -d PTY UDP:localhost:4321
-	2009/12/24 16:19:26 socat[26974] N PTY is /dev/pts/10
-	2009/12/24 16:19:26 socat[26974] N opening connection to AF=2 127.0.0.1:4321
-	2009/12/24 16:19:26 socat[26974] N successfully connected from local address AF=2 127.0.0.1:48246
-	2009/12/24 16:19:26 socat[26974] N starting data transfer loop with FDs [3,3] and [6,6]
 
 Once that bridge is setup, launch simduino:
 
 % ./simduino
 	Starting atmega328 - flashend 7fff ramend 08ff e2end 03ff
 	atmega328 init
-	avr_flash_init init SPM 0057
-	read_ihex_file: ./ATmegaBOOT_168_atmega328.ihex, unsupported check type 03
+	read_ihex_file: ATmegaBOOT_168_atmega328.ihex, unsupported check type 03
 	Booloader 7800: 1950
-	uart_udp_init bridge on port 4321
-	UART-0 configured to 0010 = 58823 baud
+	uart_pty_init bridge on port *** /dev/pts/11 ***
+	uart_pty_connect: /tmp/simavr-uart0 now points to /dev/pts/11
+	note: export SIMAVR_UART_XTERM=1 and install picocom to get a terminal
+	UART-0 configured to 0010 = 58823 bps (x1), 5 data 1 stop
+	Roughtly 136 usec per bytes
 
 What that is done, you have a few seconds to program it:
 
-% avrdude -p m328p -c arduino -P /dev/pts/10 -U flash:w:atmega328p_dummy_blinky.hex
+% avrdude -p m328p -c arduino -P /tmp/simavr-uart0 -U flash:w:atmega328p_dummy_blinky.hex
 
 	avrdude: AVR device initialized and ready to accept instructions
 	
