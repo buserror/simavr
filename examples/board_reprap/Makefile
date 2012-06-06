@@ -28,6 +28,7 @@ IPATH += src
 IPATH += ../parts
 IPATH += ../shared
 IPATH += $(LIBC3)/src
+IPATH += $(LIBC3)/srcgl
 IPATH += ${simavr}/include
 IPATH += ${simavr}/simavr/sim
 
@@ -44,7 +45,7 @@ include ../Makefile.opengl
 LDFLAGS += ${shell pkg-config --libs pangocairo}
 LDFLAGS += -lpthread -lutil -ldl
 LDFLAGS += -lm
-LDFLAGS += -rpath $(LIBC3)/${OBJ}/.libs -L$(LIBC3)/${OBJ}/.libs -lc3
+LDFLAGS += -rpath $(LIBC3)/${OBJ}/.libs -L$(LIBC3)/${OBJ}/.libs -lc3 -lc3gl
 
 CPPFLAGS	+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
 
