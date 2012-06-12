@@ -81,21 +81,16 @@ _c3object_project(
 		const c3driver_object_t * d,
 		c3mat4p m)
 {
+	o->world = *m;
 	if (!o->dirty)
 		return;
-
-//	c3mat4 identity = identity3D();
 	c3mat4 p = *m;
 	for (int pi = 0; pi < o->transform.count; pi++)
 		p = c3mat4_mul(&p, &o->transform.e[pi]->matrix);
-//	bool is_identity = c3mat4_equal(m, &identity);
 	o->world = p;
 
 	for (int gi = 0; gi < o->geometry.count; gi++) {
 		c3geometry_p g = o->geometry.e[gi];
-		c3vertex_array_clear(&g->projected);
-
-		g->bbox.min = g->bbox.max = c3vec3f(0,0,0);
 		c3geometry_project(g, &p);
 	}
 	for (int oi = 0; oi < o->objects.count; oi++)

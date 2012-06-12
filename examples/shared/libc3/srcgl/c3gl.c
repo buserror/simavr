@@ -237,10 +237,15 @@ _c3_geometry_draw(
 	glColor4fv(g->mat.color.n);
 	dumpError("glColor");
 //	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, g->mat.color.n);
-	glVertexPointer(3, GL_FLOAT, 0,
-			g->projected.count ? g->projected.e : g->vertice.e);
+	glVertexPointer(3, GL_FLOAT, 0, g->vertice.e);
 	glEnableClientState(GL_VERTEX_ARRAY);
 	dumpError("GL_VERTEX_ARRAY");
+
+	c3mat4 eye = c3mat4_mul(
+			&g->object->world,
+			&c3context_view_get(g->object->context)->cam.mtx);
+	glLoadMatrixf(eye.n);
+
 	glDisable(GL_TEXTURE_2D);
 	if (g->mat.texture) {
 		GLuint mode = g->mat.texture->normalize ?
@@ -265,15 +270,11 @@ _c3_geometry_draw(
 		glEnableClientState(GL_NORMAL_ARRAY);
 	}
 	if (g->indices.count) {
-	//	GLCHECK(glIndexPointer(GL_UNSIGNED_SHORT, 0, g->indices.e));
-	//	glEnableClientState(GL_INDEX_ARRAY);
 		GLCHECK(glDrawElements((GLuint)g->type.subtype,
 				g->indices.count, GL_UNSIGNED_SHORT,
 				g->indices.e));
-	//	glDisableClientState(GL_INDEX_ARRAY);
 	} else {
-		glDrawArrays((GLuint)g->type.subtype, 0,
-			g->projected.count ? g->projected.count : g->vertice.count);
+		glDrawArrays((GLuint)g->type.subtype, 0, g->vertice.count);
 	}
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);

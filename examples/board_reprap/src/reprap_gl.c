@@ -162,6 +162,7 @@ _gl_reshape_cb(int w, int h)
     _w  = w;
     _h = h;
 
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, _w, _h);
     gl_offscreenReshape(_w, _h);
     glutPostRedisplay();
@@ -238,9 +239,9 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 
 	// Set up projection matrix
 	glMatrixMode(GL_PROJECTION); // Select projection matrix
-	glLoadIdentity(); // Start with an identity matrix
+	c3mat4 p = perspective3D(50, (float)_w / (float)_h, z_min, z_max);
+	glLoadMatrixf(p.n);
 
-	gluPerspective(50, (float)_w / (float)_h, z_min, z_max);
 #if 0
 	glCullFace(GL_BACK);
 	glEnable(GL_CULL_FACE);
@@ -257,14 +258,6 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Type Of Blending To Use
 
 	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	glMultMatrixf(c3context_view_get(c3)->cam.mtx.n);
-	glTranslatef(-c3context_view_get(c3)->cam.eye.n[VX],
-			-c3context_view_get(c3)->cam.eye.n[VY],
-			-c3context_view_get(c3)->cam.eye.n[VZ]);
-
-	dumpError("flush");
 
 	c3context_draw(c3);
 
@@ -290,7 +283,6 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 	glScalef(1, -1, 1);
 	glTranslatef(0, -1 * _h, 0);
 	glMatrixMode(GL_MODELVIEW); // Select modelview matrix
-	glLoadIdentity(); // Start with an identity matrix
 
 	if (hud)
 		c3context_draw(hud);

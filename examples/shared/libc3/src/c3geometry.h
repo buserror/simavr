@@ -68,8 +68,8 @@ enum {
  * real format of the vertices. like GL_LINES etc
  */
 typedef struct c3geometry_type_t {
-	uint32_t type;
-	c3apiobject_t subtype;
+	uint32_t type;			// C3_RAW_TYPE etc
+	c3apiobject_t subtype;	// GL_LINES etc
 } c3geometry_type_t;
 
 /*!
@@ -79,23 +79,23 @@ typedef struct c3geometry_type_t {
  * c3object that has the projection
  */
 typedef struct c3geometry_t {
-	c3geometry_type_t	type;	// C3_TRIANGLE_TYPE, GL_LINES etc
+	c3geometry_type_t	type;	// geometry type
 	int					dirty : 1,
 						custom : 1;		// has a custom driver
 	str_p 				name;	// optional
+	c3apiobject_t 		bid;	// buffer id for opengl
+
 	c3material_t		mat;
-	struct c3object_t * object;
+	struct c3object_t * object;	// parent object
 	const struct c3driver_geometry_t ** driver;
 
+	c3bbox_t			bbox;	// world aligned bounding box
 	c3vertex_array_t 	vertice;
-	c3tex_array_t		textures;
-	c3colorf_array_t	colorf;
-	c3vertex_array_t 	normals;
-	c3indices_array_t	indices;
-
-	// projected version of the vertice
-	c3vertex_array_t 	projected;
-	c3bbox_t			bbox;
+	c3tex_array_t		textures;	// optional: texture coordinates
+	c3vertex_array_t 	normals;	// optional: vertex normals
+	c3indices_array_t	indices;	// optional: vertex indices
+	// could go ?
+	c3colorf_array_t	colorf;		// optional: vertex colors
 
 	/*
 	 * Some shared attributes

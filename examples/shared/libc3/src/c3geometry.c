@@ -49,7 +49,6 @@ _c3geometry_dispose(
 		C3_DRIVER(g->object->context, geometry_dispose, g);
 	str_free(g->name);
 	c3vertex_array_free(&g->vertice);
-	c3vertex_array_free(&g->projected);
 	c3tex_array_free(&g->textures);
 	c3colorf_array_free(&g->colorf);
 	free(g);
@@ -63,18 +62,17 @@ _c3geometry_project(
 		c3mat4p m)
 {
 	if (g->vertice.count) {
-		c3vertex_array_realloc(&g->projected, g->vertice.count);
-		g->projected.count = g->vertice.count;
 		for (int vi = 0; vi < g->vertice.count; vi++) {
-			g->projected.e[vi] = c3mat4_mulv3(m, g->vertice.e[vi]);
+			c3vec3 v = c3mat4_mulv3(m, g->vertice.e[vi]);
 			if (vi == 0)
-				g->bbox.min = g->bbox.max = g->projected.e[vi];
+				g->bbox.min = g->bbox.max = v;
 			else {
-				g->bbox.max = c3vec3_min(g->bbox.min, g->projected.e[vi]);
-				g->bbox.max = c3vec3_max(g->bbox.max, g->projected.e[vi]);
+				g->bbox.max = c3vec3_min(g->bbox.min, v);
+				g->bbox.max = c3vec3_max(g->bbox.max, v);
 			}
 		}
-	}
+	} else
+		g->bbox.min = g->bbox.max = c3vec3f(0,0,0);
 
 	if (g->object && g->object->context)
 		C3_DRIVER(g->object->context, geometry_project, g, m);
