@@ -39,6 +39,7 @@ typedef struct c3context_view_t {
 				dirty : 1;
 	c3vec2		size;					// in pixels. for fbo/textures/window
 	c3cam_t 	cam;
+	c3mat4		projection;				// projection matrix
 
 	c3geometry_array_t	projected;
 	struct {
@@ -56,7 +57,6 @@ DECLARE_C_ARRAY(c3context_view_t, c3context_view_array, 4);
  * This is a wrapper around a "top level object", the list of projected
  * geometries is kept, purged and resorted if the root object becomes
  * dirty
- * TODO: Add the camera/eye/arcball control there
  */
 typedef struct c3context_t {
 	int	current;
@@ -128,6 +128,5 @@ c3context_view_set(
 	if (view < c->views.count)
 		c->current = view;
 }
-
 
 #endif /* __C3CONTEXT_H___ */

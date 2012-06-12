@@ -28,6 +28,7 @@
 struct c3context_t;
 struct c3driver_context_t;
 struct c3geometry_t;
+struct c3context_view_t;
 
 typedef struct c3driver_context_t {
 	/*
@@ -46,6 +47,14 @@ typedef struct c3driver_context_t {
 			struct c3context_t * c,
 			const struct c3driver_context_t *d,
 			struct c3geometry_t * g);
+
+	/*
+	 * Called when starting to draw a context view(point)
+	 */
+	void (*context_view_draw)(
+			struct c3context_t * c,
+			const struct c3driver_context_t *d,
+			struct c3context_view_t * ctx);
 
 	/*
 	 * called when a geometry is disposed of, let the application

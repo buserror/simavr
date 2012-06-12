@@ -148,7 +148,11 @@ c3context_draw(
 {
 	c3context_project(c);
 
-	c3geometry_array_p  array = &c3context_view_get(c)->projected;
+	c3context_view_p v = c3context_view_get(c);
+
+	C3_DRIVER(c, context_view_draw, v);
+
+	c3geometry_array_p  array = &v->projected;
 	for (int gi = 0; gi < array->count; gi++) {
 		c3geometry_p g = array->e[gi];
 		c3geometry_draw(g);
