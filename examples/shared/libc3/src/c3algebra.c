@@ -911,7 +911,7 @@ c3mat3 translation2D(const c3vec2 v)
 
 c3mat3 rotation2D(const c3vec2 Center, c3f angleDeg)
 {
-    c3f angleRad = (c3f) (angleDeg * M_PI / 180.0);
+    c3f angleRad = (c3f) (angleDeg * PI_OVER_180);
     c3f c = (c3f) cos(angleRad);
     c3f s = (c3f) sin(angleRad);
 
@@ -929,7 +929,8 @@ c3mat3 scaling2D(const c3vec2 scaleVector)
         c3vec3f(0.0, 0.0, 1.0));
 }
 
-c3mat4 identity3D()
+c3mat4
+identity3D()
 {
     return c3mat4_vec4(
         c3vec4f(1.0, 0.0, 0.0, 0.0),
@@ -941,15 +942,15 @@ c3mat4 identity3D()
 c3mat4 translation3D(const c3vec3 v)
 {
     return c3mat4_vec4(
-        c3vec4f(1.0, 0.0, 0.0, v.n[VX]),
-        c3vec4f(0.0, 1.0, 0.0, v.n[VY]),
-        c3vec4f(0.0, 0.0, 1.0, v.n[VZ]),
-        c3vec4f(0.0, 0.0, 0.0, 1.0));
+        c3vec4f(1.0, 0.0, 0.0, 0.0),
+        c3vec4f(0.0, 1.0, 0.0, 0.0),
+        c3vec4f(0.0, 0.0, 1.0, 0.0),
+        c3vec4f(v.n[VX], v.n[VY], v.n[VZ], 1.0));
 }
 
 c3mat4 rotation3D(const c3vec3 Axis, c3f angleDeg)
 {
-    c3f angleRad = (c3f) (angleDeg * M_PI / 180.0);
+    c3f angleRad = (c3f) (angleDeg * PI_OVER_180);
     c3f c = (c3f) cos(angleRad);
     c3f s = (c3f) sin(angleRad);
     c3f t = 1.0f - c;
@@ -957,18 +958,21 @@ c3mat4 rotation3D(const c3vec3 Axis, c3f angleDeg)
     c3vec3 axis = c3vec3_normalize(Axis);
 
     return c3mat4_vec4(
-        c3vec4f(t * axis.n[VX] * axis.n[VX] + c,
-             t * axis.n[VX] * axis.n[VY] - s * axis.n[VZ],
-             t * axis.n[VX] * axis.n[VZ] + s * axis.n[VY],
-             0.0),
-        c3vec4f(t * axis.n[VX] * axis.n[VY] + s * axis.n[VZ],
-             t * axis.n[VY] * axis.n[VY] + c,
-             t * axis.n[VY] * axis.n[VZ] - s * axis.n[VX],
-             0.0),
-        c3vec4f(t * axis.n[VX] * axis.n[VZ] - s * axis.n[VY],
-             t * axis.n[VY] * axis.n[VZ] + s * axis.n[VX],
-             t * axis.n[VZ] * axis.n[VZ] + c,
-             0.0),
+        c3vec4f(
+        	t * axis.n[VX] * axis.n[VX] + c,
+        	t * axis.n[VX] * axis.n[VY] - s * axis.n[VZ],
+			t * axis.n[VX] * axis.n[VZ] + s * axis.n[VY],
+			0.0),
+        c3vec4f(
+			t * axis.n[VX] * axis.n[VY] + s * axis.n[VZ],
+			t * axis.n[VY] * axis.n[VY] + c,
+			t * axis.n[VY] * axis.n[VZ] - s * axis.n[VX],
+			0.0),
+        c3vec4f(
+			t * axis.n[VX] * axis.n[VZ] - s * axis.n[VY],
+			t * axis.n[VY] * axis.n[VZ] + s * axis.n[VX],
+			t * axis.n[VZ] * axis.n[VZ] + c,
+			0.0),
         c3vec4f(0.0, 0.0, 0.0, 1.0));
 }
 
@@ -1005,12 +1009,27 @@ c3mat4 scaling3D(const c3vec3 scaleVector)
         c3vec4f(0.0, 0.0, 0.0, 1.0));
 }
 
-c3mat4 perspective3D(c3f d)
+c3mat4	frustum3D(
+			c3f left, c3f right, c3f bottom, c3f top,
+			c3f znear, c3f zfar)
 {
+    c3f temp = 2.0 * znear,
+    		temp2 = right - left,
+    		temp3 = top - bottom,
+    		temp4 = zfar - znear;
     return c3mat4_vec4(
-        c3vec4f(1.0f, 0.0f, 0.0f,   0.0f),
-        c3vec4f(0.0f, 1.0f, 0.0f,   0.0f),
-        c3vec4f(0.0f, 0.0f, 1.0f,   0.0f),
-        c3vec4f(0.0f, 0.0f, 1.0f/d, 0.0f));
+  		  c3vec4f(temp / temp2, 0.0, 0.0, 0.0),
+		  c3vec4f(0.0, temp / temp3, 0.0, 0.0),
+		  c3vec4f((right + left) / temp2, (top + bottom) / temp3, (-zfar - znear) / temp4, -1.0),
+		  c3vec4f(-1.0, 0.0, (-temp * zfar) / temp4, 0.0));
 }
 
+c3mat4	perspective3D(c3f fov, c3f aspect, c3f zNear, c3f zFar)
+{
+	c3f ymax = zNear * tan(fov * PI_OVER_360);
+	c3f ymin = -ymax;
+	c3f xmin = ymin * aspect;
+	c3f xmax = ymax * aspect;
+
+	return frustum3D(xmin, xmax, ymin, ymax, zNear, zFar);
+}

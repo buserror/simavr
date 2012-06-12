@@ -30,6 +30,8 @@
 #ifndef M_PI
 #define M_PI 3.141592654
 #endif
+#define PI_OVER_180	 0.017453292519943295769236907684886
+#define PI_OVER_360	 0.0087266462599716478846184538424431
 
 enum {VX, VY, VZ, VW};           // axes
 enum {PA, PB, PC, PD};           // planes
@@ -210,6 +212,9 @@ c3mat4	translation3D(const c3vec3 v);
 c3mat4	rotation3D(const c3vec3 Axis, c3f angleDeg);
 c3mat4	rotation3Drad(const c3vec3 Axis, c3f angleRad);
 c3mat4	scaling3D(const c3vec3 scaleVector);
-c3mat4	perspective3D(c3f d);
+c3mat4	frustum3D(
+			c3f left, c3f right, c3f bottom, c3f top,
+			c3f znear, c3f zfar);
+c3mat4	perspective3D(c3f fov, c3f aspect, c3f znear, c3f zfar);
 
 #endif /* __C3ALGEBRA_H___ */
