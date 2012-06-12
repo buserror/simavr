@@ -220,7 +220,7 @@ c3cam_reset(
 
 /******************************* c3cam_t() ************/
 /* Constructor                                          */
-c3cam_t
+c3cam_p
 c3cam_new();
 
 void
@@ -231,10 +231,5 @@ c3cam_init(
 /* direct changes to the vectors or points of this class */
 void c3cam_update(
 		c3cam_p c);
-
-/******************************* dump() *******************/
-/* Prints the contents of this class to a file, typically */
-/* stdin or stderr                                        */
-//void c3cam_dump(FILE *output);
 
 #endif /* __C3VIEW_H___ */

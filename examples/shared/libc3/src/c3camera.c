@@ -317,38 +317,14 @@ c3cam_update_matrix(
 {
     c3cam_update(c);
 
-    c->mtx = c3mat4_vec4(
+    c3mat4 m1 = translation3D(c3vec3_minus(c->eye));
+    c3mat4 m2 = c3mat4_vec4(
     		c3vec4f(c->side.n[VX], 	c->up.n[VX],	c->forward.n[VX],	0.0),
     		c3vec4f(c->side.n[VY], 	c->up.n[VY],	c->forward.n[VY],	0.0),
     		c3vec4f(c->side.n[VZ], 	c->up.n[VZ],	c->forward.n[VZ],	0.0),
     		c3vec4f(0.0, 			0.0, 			0.0, 				1.0));
+    c->mtx = c3mat4_mul(&m1, &m2);
 }
-#if 0
-void
-c3cam_load_to_openGL(c3cam_p c)
-{
-    c3mat4  m;
-
-    make_mtx();
-
-    glMatrixMode( GL_MODELVIEW );
-    glLoadIdentity();
-    glMultMatrixf( (c3f*) &mtx[0][0]);
-    glTranslatef( -eye[VX], -eye[VY], -eye[VZ] );
-}
-
-void
-c3cam_load_to_openGL_noident(c3cam_p c)
-{
-    c3mat4  m;
-
-    make_mtx();
-
-    glMatrixMode( GL_MODELVIEW );
-    glMultMatrixf( (c3f*) &mtx[0][0]);
-    glTranslatef( -eye[VX], -eye[VY], -eye[VZ] );
-}
-#endif
 
 void
 c3cam_reset(
@@ -364,11 +340,12 @@ c3cam_reset(
     c3cam_update(c);
 }
 
-c3cam_t
+c3cam_p
 c3cam_new()
 {
-	c3cam_t c;
-	c3cam_reset(&c);
+	c3cam_p c = malloc(sizeof(*c));
+	memset(c, 0, sizeof(*c));
+	c3cam_reset(c);
 	return c;
 }
 
@@ -376,6 +353,7 @@ void
 c3cam_init(
 		c3cam_p c)
 {
+	memset(c, 0, sizeof(*c));
 	c3cam_reset(c);
 }
 
@@ -395,17 +373,3 @@ c3cam_update(
 	c->up = c3vec3_normalize(c->up);
 	c->side = c3vec3_normalize(c->side);
 }
-
-# if 0
-void
-c3cam_dump(c3cam_p c, FILE *output) const
-{
-    fprintf( output, "Viewmodel: \n" );
-    eye.print(    output, "  eye"    );
-    lookat.print( output, "  lookat" );
-    up.print(     output, "  up"     );
-    side.print(   output, "  side"   );
-    forward.print(output, "  forward");
-    mtx.print(    output, "  mtx"    );
-}
-#endif

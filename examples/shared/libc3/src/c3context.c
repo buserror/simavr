@@ -44,9 +44,9 @@ c3context_init(
 	c3context_view_t v = {
 			.type = C3_CONTEXT_VIEW_EYE,
 			.size = c3vec2f(w, h),
-			.cam = c3cam_new(),
 			.dirty = 1,
 	};
+	c3cam_init(&v.cam);
 	c3context_view_array_add(&c->views, v);
 	c->root = c3object_new(NULL);
 	c->root->context = c;
