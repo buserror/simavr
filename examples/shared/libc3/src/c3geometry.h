@@ -37,10 +37,23 @@ struct c3object_t;
 struct c3pixels_t;
 struct c3program_t;
 
-DECLARE_C_ARRAY(c3vertex_t, c3vertex_array, 16, c3apiobject_t bid);
-DECLARE_C_ARRAY(c3tex_t, c3tex_array, 16, c3apiobject_t bid);
-DECLARE_C_ARRAY(c3colorf_t, c3colorf_array, 16, c3apiobject_t bid);
-DECLARE_C_ARRAY(c3index_t, c3indices_array, 16, c3apiobject_t bid);
+/*
+ * Allow per-array storage of an extra buffer object
+ * if 'mutable' is not set (default), the array can be clear()ed after
+ * the buffer is bound.
+ * If the array is mutable, setting the 'dirty' flag will signal
+ * the rendering layer that it needs to update the buffer object
+ */
+typedef struct c3geometry_buffer_t {
+	c3apiobject_t bid;	// buffer object
+	void * refCon;		// reference constant for application use
+	int mutable : 1, dirty : 1;
+} c3geometry_buffer_t, * c3geometry_buffer_p;
+
+DECLARE_C_ARRAY(c3vertex_t, c3vertex_array, 16, c3geometry_buffer_t buffer);
+DECLARE_C_ARRAY(c3tex_t, c3tex_array, 16, c3geometry_buffer_t buffer);
+DECLARE_C_ARRAY(c3colorf_t, c3colorf_array, 16, c3geometry_buffer_t buffer);
+DECLARE_C_ARRAY(c3index_t, c3indices_array, 16, c3geometry_buffer_t buffer);
 
 //! Geometry material.
 typedef struct c3material_t {

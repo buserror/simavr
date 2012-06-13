@@ -61,7 +61,11 @@ _c3geometry_project(
 		const struct c3driver_geometry_t *d,
 		c3mat4p m)
 {
-	if (g->vertice.count) {
+	/* make sure there are actual elements in the array
+	 * if it had been purged, the element count might remain
+	 * but the array size is zero
+	 */
+	if (g->vertice.count < g->vertice.size) {
 		for (int vi = 0; vi < g->vertice.count; vi++) {
 			c3vec3 v = c3mat4_mulv3(m, g->vertice.e[vi]);
 			if (vi == 0)
@@ -71,8 +75,9 @@ _c3geometry_project(
 				g->bbox.max = c3vec3_max(g->bbox.max, v);
 			}
 		}
-	} else
-		g->bbox.min = g->bbox.max = c3vec3f(0,0,0);
+	}
+	/* else -- do not clear bbox on purged arrays
+		g->bbox.min = g->bbox.max = c3vec3f(0,0,0); */
 
 	if (g->object && g->object->context)
 		C3_DRIVER(g->object->context, geometry_project, g, m);
