@@ -216,5 +216,11 @@ c3mat4	frustum3D(
 			c3f left, c3f right, c3f bottom, c3f top,
 			c3f znear, c3f zfar);
 c3mat4	perspective3D(c3f fov, c3f aspect, c3f znear, c3f zfar);
+c3mat4	ortho3D(
+		c3f left, c3f right, c3f bottom, c3f top,
+		c3f near, c3f far);
+c3mat4	screen_ortho3D(
+		c3f left, c3f right, c3f bottom, c3f top,
+		c3f near, c3f far);
 
 #endif /* __C3ALGEBRA_H___ */

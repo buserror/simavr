@@ -1033,3 +1033,49 @@ c3mat4	perspective3D(c3f fov, c3f aspect, c3f zNear, c3f zFar)
 
 	return frustum3D(xmin, xmax, ymin, ymax, zNear, zFar);
 }
+
+c3mat4	ortho3D(
+		c3f left, c3f right, c3f bottom, c3f top,
+		c3f near, c3f far)
+{
+	c3f a = 2.0f / (right - left);
+	c3f b = 2.0f / (top - bottom);
+	c3f c = -2.0f / (far - near);
+
+	c3f tx = - (right + left)/(right - left);
+	c3f ty = - (top + bottom)/(top - bottom);
+	c3f tz = - (far + near)/(far - near);
+
+	float ortho[16] = {
+		a, 0, 0, 0,
+		0, b, 0, 0,
+		0, 0, c, 0,
+		tx, ty, tz, 1
+	};
+    return *((c3mat4p)ortho);
+}
+
+/*
+ * Same as previous, but this one is screen aligned, with 0,0 being top,left
+ * instead of bottom,left
+ */
+c3mat4	screen_ortho3D(
+		c3f left, c3f right, c3f bottom, c3f top,
+		c3f near, c3f far)
+{
+	c3f a = 2.0f / (right - left);
+	c3f b = 2.0f / (top - bottom);
+	c3f c = -2.0f / (far - near);
+
+	c3f tx = - (right + left)/(right - left);
+	c3f ty = - (top + bottom)/(top - bottom);
+	c3f tz = - (far + near)/(far - near);
+
+	float ortho[16] = {
+		a, 0, 0, 0,
+		0, -b, 0, 0,
+		0, 0, c, 0,
+		tx, -ty, tz, 1
+	};
+    return *((c3mat4p)ortho);
+}
