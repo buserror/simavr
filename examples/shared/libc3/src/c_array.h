@@ -55,7 +55,8 @@ static C_ARRAY_INLINE \
 {\
 	if (!a) return;\
 	if (a->e) free(a->e);\
-	*a = __name##_zero;\
+	a->count = a->size = 0;\
+	a->e = NULL;\
 }\
 static C_ARRAY_INLINE \
 	void __name##_clear(\
@@ -69,7 +70,8 @@ static C_ARRAY_INLINE \
 			__name##_p a, __name##_count_t size) \
 {\
 	if (!a || a->size == size) return; \
-	a->e = realloc(a->e, size * sizeof(__name##_element_t));\
+	if (size == 0) { if (a->e) free(a->e); a->e = NULL; } \
+	else a->e = realloc(a->e, size * sizeof(__name##_element_t));\
 	a->size = size; \
 }\
 static C_ARRAY_INLINE \
