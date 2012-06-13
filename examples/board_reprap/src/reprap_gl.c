@@ -279,9 +279,10 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 
 	glMatrixMode(GL_PROJECTION); // Select projection matrix
 	glLoadIdentity(); // Start with an identity matrix
-	glOrtho(0, _w, 0, _h, 0, 10);
-	glScalef(1, -1, 1);
-	glTranslatef(0, -1 * _h, 0);
+
+	c3mat4 pro = screen_ortho3D(0, _w, 0, _h, 0, 10);
+	glLoadMatrixf(pro.n);
+
 	glMatrixMode(GL_MODELVIEW); // Select modelview matrix
 
 	if (hud)
@@ -397,12 +398,7 @@ gl_init(
 
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 	glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST);
-	/*
-	glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
-	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
-	glEnable(GL_LINE_SMOOTH);
-	 */
+
 	// enable color tracking
 	glEnable(GL_COLOR_MATERIAL);
 	// set material properties which will be assigned by glColor
@@ -430,7 +426,7 @@ gl_init(
 	}
 
 	/*
-	 * Extract the GLSL version as a nuneric value for later
+	 * Extract the GLSL version as a numeric value for later
 	 */
 	const char * glsl = (const char *)glGetString(GL_SHADING_LANGUAGE_VERSION);
 	{

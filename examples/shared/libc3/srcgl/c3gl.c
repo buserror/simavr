@@ -197,6 +197,108 @@ _c3_load_pixels(
 	}
 }
 
+static void _c3_create_buffer(
+		GLuint name,
+        GLuint bufferType,
+        void * data,
+        size_t dataSize,
+        GLuint	* out)
+{
+	GLuint bid;
+	glGenBuffers(1, &bid);
+
+	GLCHECK(glBindBuffer(GL_ARRAY_BUFFER, bid));
+	GLCHECK(glBufferData(GL_ARRAY_BUFFER,
+			dataSize,
+	        data,
+	        bufferType));
+	GLCHECK(glEnableClientState(name));
+}
+
+static void
+_c3_load_vbo(
+		c3geometry_p g)
+{
+	if (!g->bid) {
+		GLuint	vao;
+		glGenVertexArrays(1, &vao);
+		g->bid = (c3apiobject_t)vao;
+	}
+	glBindVertexArray((GLuint)g->bid);
+
+	/*
+	 * Use 'realloc' on the array as it frees the data, but leaves 'count'
+	 * unchanged. We neec that for the vertices and the indexes, the others
+	 * can have a straight free()
+	 */
+	if (!g->vertice.buffer.bid && g->vertice.count) {
+		GLuint bid;
+
+		_c3_create_buffer(GL_VERTEX_ARRAY,
+				g->vertice.buffer.mutable ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW,
+				g->vertice.e, g->vertice.count * sizeof(g->vertice.e[0]),
+				&bid);
+		glVertexPointer(3, GL_FLOAT, 0, (void*)0);
+		g->vertice.buffer.bid = (c3apiobject_t)bid;
+		if (!g->vertice.buffer.mutable)
+			c3vertex_array_realloc(&g->vertice, 0);
+		g->vertice.buffer.dirty = 0;
+	}
+	if (!g->textures.buffer.bid && g->textures.count) {
+		GLuint bid;
+
+		_c3_create_buffer(GL_TEXTURE_COORD_ARRAY,
+				g->textures.buffer.mutable ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW,
+				g->textures.e, g->textures.count * sizeof(g->textures.e[0]),
+				&bid);
+		glTexCoordPointer(2, GL_FLOAT, 0, (void*)0);
+		g->textures.buffer.bid = (c3apiobject_t)bid;
+		if (!g->textures.buffer.mutable)
+			c3tex_array_free(&g->textures);
+		g->textures.buffer.dirty = 0;
+	}
+	if (!g->normals.buffer.bid && g->normals.count) {
+		GLuint bid;
+
+		_c3_create_buffer(GL_NORMAL_ARRAY,
+				g->normals.buffer.mutable ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW,
+				g->normals.e, g->normals.count * sizeof(g->normals.e[0]),
+				&bid);
+		glNormalPointer(GL_FLOAT, 0, (void*) 0);
+		g->normals.buffer.bid = (c3apiobject_t)bid;
+		if (!g->normals.buffer.mutable)
+			c3vertex_array_free(&g->normals);
+		g->normals.buffer.dirty = 0;
+	}
+	if (!g->colorf.buffer.bid && g->colorf.count) {
+		GLuint bid;
+
+		_c3_create_buffer(GL_COLOR_ARRAY,
+				g->colorf.buffer.mutable ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW,
+				g->colorf.e, g->colorf.count * sizeof(g->colorf.e[0]),
+				&bid);
+		glColorPointer(4, GL_FLOAT, 0, (void*) 0);
+		g->colorf.buffer.bid = (c3apiobject_t)bid;
+		if (!g->colorf.buffer.mutable)
+			c3colorf_array_free(&g->colorf);
+		g->colorf.buffer.dirty = 0;
+	}
+	if (!g->indices.buffer.bid && g->indices.count) {
+		GLuint bid;
+		glGenBuffers(1, &bid);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bid);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+        		g->indices.count * sizeof(g->indices.e[0]),
+        		g->indices.e,
+        		g->indices.buffer.mutable ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
+		g->indices.buffer.bid = (c3apiobject_t)bid;
+		if (!g->indices.buffer.mutable)
+			c3indices_array_realloc(&g->indices, 0);
+		g->indices.buffer.dirty = 0;
+	}
+}
+
 static void
 _c3_geometry_project(
 		c3context_p c,
@@ -222,6 +324,11 @@ _c3_geometry_project(
 		default:
 		    break;
 	}
+
+	_c3_load_vbo(g);
+//	_c3_update_vbo(g);
+
+	glBindVertexArray(0);
 }
 
 /*
@@ -237,14 +344,13 @@ _c3_geometry_draw(
 	glColor4fv(g->mat.color.n);
 	dumpError("glColor");
 //	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, g->mat.color.n);
-	glVertexPointer(3, GL_FLOAT, 0, g->vertice.e);
-	glEnableClientState(GL_VERTEX_ARRAY);
-	dumpError("GL_VERTEX_ARRAY");
 
 	c3mat4 eye = c3mat4_mul(
 			&g->object->world,
 			&c3context_view_get(g->object->context)->cam.mtx);
 	glLoadMatrixf(eye.n);
+
+	GLCHECK(glBindVertexArray((GLuint)g->bid));
 
 	glDisable(GL_TEXTURE_2D);
 	if (g->mat.texture) {
@@ -258,27 +364,19 @@ _c3_geometry_draw(
 		dumpError("glEnable texture");
 		glBindTexture(mode, (GLuint)g->mat.texture->texture);
 		dumpError("glBindTexture");
-		glTexCoordPointer(2, GL_FLOAT, 0, g->textures.e);
-		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-		dumpError("GL_TEXTURE_COORD_ARRAY");
 	}
-	if (g->mat.program) {
+	if (g->mat.program)
 		GLCHECK(glUseProgram((GLuint)g->mat.program->pid));
-	}
-	if (g->normals.count) {
-		GLCHECK(glNormalPointer(GL_FLOAT, 0, g->normals.e));
-		glEnableClientState(GL_NORMAL_ARRAY);
-	}
-	if (g->indices.count) {
+
+	if (g->indices.buffer.bid) {
 		GLCHECK(glDrawElements((GLuint)g->type.subtype,
 				g->indices.count, GL_UNSIGNED_SHORT,
-				g->indices.e));
+				(void*)NULL /*g->indices.e*/));
 	} else {
 		glDrawArrays((GLuint)g->type.subtype, 0, g->vertice.count);
 	}
-	glDisableClientState(GL_VERTEX_ARRAY);
-	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-	glDisableClientState(GL_NORMAL_ARRAY);
+	glBindVertexArray(0);
+
 	if (g->mat.texture)
 		glDisable(g->mat.texture->normalize ? GL_TEXTURE_2D : GL_TEXTURE_RECTANGLE_ARB);
 	if (g->mat.program)
