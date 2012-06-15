@@ -43,12 +43,12 @@
 #include "c3stl.h"
 #include "c3lines.h"
 #include "c3sphere.h"
+#include "c3light.h"
 #include "c3program.h"
 #include "c3gl.h"
+#include "c3gl_fbo.h"
 
 #include <cairo/cairo.h>
-
-#define FBO 1
 
 struct cairo_surface_t;
 
@@ -60,6 +60,7 @@ c3context_p hud = NULL;
 c3object_p head = NULL; 	// hotend
 c3texture_p fbo_c3;			// frame buffer object texture
 c3program_p fxaa = NULL;	// full screen antialias shader
+c3gl_fbo_t fbo;
 
 int glsl_version = 110;
 
@@ -78,83 +79,6 @@ static int dumpError(const char * what)
 
 #define GLCHECK(_w) {_w; dumpError(#_w);}
 
-/* Global */
-GLuint fbo, fbo_texture, rbo_depth;
-//GLuint vbo_fbo_vertices;
-
-static void
-gl_offscreenInit(
-		int screen_width,
-		int screen_height)
-{
-	/* init_resources */
-	/* Create back-buffer, used for post-processing */
-
-	/* Texture */
-	GLCHECK(glActiveTexture(GL_TEXTURE0));
-	glGenTextures(1, &fbo_texture);
-	glBindTexture(GL_TEXTURE_2D, fbo_texture);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screen_width, screen_height, 0,
-	        GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	/* Depth buffer */
-	GLCHECK(glGenRenderbuffers(1, &rbo_depth));
-	glBindRenderbuffer(GL_RENDERBUFFER, rbo_depth);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, screen_width,
-	        screen_height);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-	/* Framebuffer to link everything together */
-	GLCHECK(glGenFramebuffers(1, &fbo));
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-	        fbo_texture, 0);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-	        GL_RENDERBUFFER, rbo_depth);
-
-	GLenum status;
-	if ((status = glCheckFramebufferStatus(GL_FRAMEBUFFER))
-	        != GL_FRAMEBUFFER_COMPLETE) {
-		fprintf(stderr, "glCheckFramebufferStatus: error %d", (int)status);
-		return ;
-	}
-#if 0
-	// Set the list of draw buffers.
-	GLenum DrawBuffers[2] = {GL_COLOR_ATTACHMENT0};
-	glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-#endif
-}
-
-void
-gl_offscreenReshape(
-		int screen_width,
-		int screen_height)
-{
-// Rescale FBO and RBO as well
-	glBindTexture(GL_TEXTURE_2D, fbo_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screen_width, screen_height, 0,
-	        GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	glBindRenderbuffer(GL_RENDERBUFFER, rbo_depth);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, screen_width,
-	        screen_height);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-}
-
-void gl_offscreenFree()
-{
-	/* free_resources */
-	glDeleteRenderbuffers(1, &rbo_depth);
-	glDeleteTextures(1, &fbo_texture);
-	glDeleteFramebuffers(1, &fbo);
-}
 
 static void
 _gl_reshape_cb(int w, int h)
@@ -162,9 +86,19 @@ _gl_reshape_cb(int w, int h)
     _w  = w;
     _h = h;
 
+	c3vec2 size = c3vec2f(_w, _h);
+
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, _w, _h);
-    gl_offscreenReshape(_w, _h);
+    c3gl_fbo_resize(&fbo, size);
+    c3texture_resize(fbo_c3, size);
+
+    if (fxaa) {
+    	glUseProgram((GLuint)fxaa->pid);
+    	GLCHECK(glUniform2fv((GLuint)fxaa->params.e[0].pid, 1, size.n));
+    	glUseProgram(0);
+    }
+
     glutPostRedisplay();
 }
 
@@ -201,18 +135,13 @@ _gl_key_cb(
 static void
 _gl_display_cb(void)		/* function called whenever redisplay needed */
 {
-#if FBO
 	/*
 	 * Draw in FBO object
 	 */
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)fbo.fbo);
 	// draw (without glutSwapBuffers)
 	dumpError("glBindFramebuffer fbo");
 	glViewport(0, 0, _w, _h);
-
-#else
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-#endif
 
 	c3context_view_set(c3, 0);
 	c3vec3 headp = c3vec3f(
@@ -261,16 +190,16 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 
 	c3context_draw(c3);
 
-#if FBO
 	/*
 	 * Draw back FBO over the screen
 	 */
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	dumpError("glBindFramebuffer 0");
+	glViewport(0, 0, _w, _h);
 
 	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-#endif
+
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_LIGHTING);
 	glDisable(GL_ALPHA_TEST);
@@ -285,8 +214,11 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 
 	glMatrixMode(GL_MODELVIEW); // Select modelview matrix
 
-	if (hud)
-		c3context_draw(hud);
+	if (hud->root->dirty) {
+	//	printf("reproject head %.2f,%.2f,%.2f\n", headp.x, headp.y,headp.z);
+		c3context_project(hud);
+	}
+	c3context_draw(hud);
 
     glutSwapBuffers();
 }
@@ -410,19 +342,12 @@ gl_init(
 	GLfloat global_ambient[] = { 0.5f, 0.5f, 0.5f, 1.0f };
 	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, global_ambient);
 
-	{
-		GLfloat specular[] = {1.0f, 1.0f, 1.0f , 0.8f};
-		GLfloat position[] = { -30.0f, -30.0f, 200.0f, 1.0f };
-		glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
-		glLightfv(GL_LIGHT0, GL_POSITION, position);
-		glEnable(GL_LIGHT0);
-	}
-	{
+	if (0) {
 		GLfloat specular[] = {1.0f, 1.0f, 1.0f , 0.8f};
 		GLfloat position[] = { 250.0f, -50.0f, 100.0f, 1.0f };
-		glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
-		glLightfv(GL_LIGHT0, GL_POSITION, position);
-		glEnable(GL_LIGHT0);
+		glLightfv(GL_LIGHT1, GL_SPECULAR, specular);
+		glLightfv(GL_LIGHT1, GL_POSITION, position);
+		glEnable(GL_LIGHT1);
 	}
 
 	/*
@@ -437,7 +362,7 @@ gl_init(
 	}
 	printf("GL_SHADING_LANGUAGE_VERSION %s = %d\n", glsl, glsl_version);
 
-	gl_offscreenInit(_w, _h);
+	c3gl_fbo_create(&fbo, c3vec2f(_w, _h), (1 << C3GL_FBO_COLOR)|(1 << C3GL_FBO_DEPTH));
 
 	c3_driver_list[0] = c3gl_getdriver();
 
@@ -447,6 +372,28 @@ gl_init(
     c3cam_p cam = &c3context_view_get_at(c3, 0)->cam;
 	cam->lookat = c3vec3f(100.0, 100.0, 0.0);
 	cam->eye = c3vec3f(100.0, -100.0, 100.0);
+
+	/*
+	 * Create a light, attach it to a movable object, and attach a sphere
+	 * to it too so it's visible.
+	 */
+	{
+		c3object_p ligthhook = c3object_new(c3->root);
+	    c3transform_p pos = c3transform_new(ligthhook);
+
+	    pos->matrix = translation3D(c3vec3f(-30.0f, -30.0f, 200.0f));
+
+		c3light_p light = c3light_new(ligthhook);
+		light->geometry.name = str_new("light0");
+		light->color.specular = c3vec4f(1.0f, 1.0f, 1.0f , 0.8f);
+		light->position = c3vec4f(0, 0, 0, 1.0f );
+
+	    {	// light bulb
+	    	c3geometry_p g = c3sphere_uv(ligthhook, c3vec3f(0, 0, 0), 3, 10, 10);
+	    	g->mat.color = c3vec4f(1.0, 1.0, 0.0, 1.0);
+	    	g->hidden = 0;	// hidden from light scenes
+	    }
+	}
 
     {
     	const char *path = "gfx/hb.png";
@@ -542,10 +489,6 @@ gl_init(
         	}
         }
     }
-    {	// light bulb
-    	c3geometry_p g = c3sphere_uv(c3->root, c3vec3f(-30.0f, -20.0f, 200.0f), 3, 10, 10);
-    	g->mat.color = c3vec4f(1.0, 1.0, 0.0, 1.0);
-    }
 
    if (0) {
 		c3vec3 p[4] = {
@@ -583,7 +526,7 @@ gl_init(
     /*
      * This is the offscreen framebuffer where the 3D scene is drawn
      */
-    if (FBO) {
+    {
     	/*
     	 * need to insert a header since there is nothing to detect the version number
     	 * reliably without it, and __VERSION__ returns idiocy
@@ -591,7 +534,8 @@ gl_init(
     	char head[128];
     	sprintf(head, "#version %d\n#define GLSL_VERSION %d\n", glsl_version, glsl_version);
 
-        fxaa = c3program_new("fxaa");
+    	const char *uniforms[] = { "g_Resolution", NULL };
+        fxaa = c3program_new("fxaa", uniforms);
         c3program_array_add(&hud->programs, fxaa);
         c3program_load_shader(fxaa, GL_VERTEX_SHADER, head,
         		"gfx/postproc.vs", C3_PROGRAM_LOAD_UNIFORM);
@@ -602,7 +546,7 @@ gl_init(
 
     	c3pixels_p dst = c3pixels_new(_w, _h, 4, _w * 4, NULL);
 		dst->name = str_new("fbo");
-		dst->texture = (c3apiobject_t)fbo_texture;
+		dst->texture = fbo.buffers[C3GL_FBO_COLOR].bid;
 		dst->normalize = 1;
 		dst->dirty = 0;
 	//	dst->trace = 1;
@@ -630,6 +574,8 @@ void
 gl_dispose()
 {
 	c3context_dispose(c3);
+	c3context_dispose(hud);
+	c3gl_fbo_dispose(&fbo);
 }
 
 int
