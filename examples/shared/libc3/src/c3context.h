@@ -30,16 +30,19 @@
 #include "c3camera.h"
 
 enum {
-	C3_CONTEXT_VIEW_EYE = 0,
+	C3_CONTEXT_VIEW_NONE = 0,
+	C3_CONTEXT_VIEW_EYE,
 	C3_CONTEXT_VIEW_LIGHT
 };
 
 typedef struct c3context_view_t {
-	int			type : 4,	// C3_CONTEXT_VIEW_EYE...
-				dirty : 1;
-	c3vec2		size;					// in pixels. for fbo/textures/window
+	int			type : 4,			// C3_CONTEXT_VIEW_EYE...
+				dirty : 1,
+				index : 4;			// index in context array
+	c3apiobject_t	bid;			// buffer id (fbo, texture...)
+	c3vec2		size;				// in pixels. for fbo/textures/window
 	c3cam_t 	cam;
-	c3mat4		projection;				// projection matrix
+	c3mat4		projection;			// projection matrix
 
 	c3geometry_array_t	projected;
 	struct {

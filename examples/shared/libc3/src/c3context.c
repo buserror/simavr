@@ -22,6 +22,7 @@
 #include <math.h>
 #include "c3context.h"
 #include "c3object.h"
+#include "c3light.h"
 #include "c3driver_context.h"
 
 c3context_p
@@ -45,6 +46,7 @@ c3context_init(
 			.type = C3_CONTEXT_VIEW_EYE,
 			.size = c3vec2f(w, h),
 			.dirty = 1,
+			.index = c->views.count,
 	};
 	c3cam_init(&v.cam);
 	c3context_view_array_add(&c->views, v);
@@ -95,6 +97,10 @@ _c3_z_sorter(
 		d1 -= 100000.0;
 	if (g2->mat.color.n[3] < 1)
 		d2 -= 100000.0;
+	if (g1->type.type == C3_LIGHT_TYPE)
+		d1 = -200000 + (int)(((c3light_p)g1)->light_id);
+	if (g2->type.type == C3_LIGHT_TYPE)
+		d2 = -200000 + (int)(((c3light_p)g2)->light_id);
 
 	return d1 < d2 ? 1 : d1 > d2 ? -1 : 0;
 }
@@ -158,3 +164,4 @@ c3context_draw(
 		c3geometry_draw(g);
 	}
 }
+
