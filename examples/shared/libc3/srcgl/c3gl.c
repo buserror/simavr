@@ -36,6 +36,7 @@
 #include "c3.h"
 #include "c3lines.h"
 #include "c3sphere.h"
+#include "c3light.h"
 #include "c3program.h"
 
 #include "c3driver_context.h"
@@ -219,6 +220,8 @@ static void
 _c3_load_vbo(
 		c3geometry_p g)
 {
+	if (!g->vertice.count)
+		return ;
 	if (!g->bid) {
 		GLuint	vao;
 		glGenVertexArrays(1, &vao);
@@ -321,6 +324,14 @@ _c3_geometry_project(
 			if (g->mat.texture)
 				g->type.subtype = (c3apiobject_t)GL_TRIANGLE_FAN;
 		}	break;
+		case C3_LIGHT_TYPE: {
+			c3light_p l = (c3light_p)g;
+			GLuint lid = GL_LIGHT0 + (int)l->light_id;
+			if (l->color.specular.w > 0)
+				glLightfv(lid, GL_SPECULAR, l->color.specular.n);
+			if (l->color.ambiant.w > 0)
+				glLightfv(lid, GL_AMBIENT, l->color.ambiant.n);
+		}	break;
 		default:
 		    break;
 	}
@@ -341,14 +352,27 @@ _c3_geometry_draw(
 		const struct c3driver_context_t *d,
 		c3geometry_p g )
 {
-	glColor4fv(g->mat.color.n);
-	dumpError("glColor");
-//	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, g->mat.color.n);
-
 	c3mat4 eye = c3mat4_mul(
 			&g->object->world,
 			&c3context_view_get(g->object->context)->cam.mtx);
 	glLoadMatrixf(eye.n);
+
+	switch(g->type.type) {
+		case C3_LIGHT_TYPE: {
+			c3light_p l = (c3light_p)g;
+			GLuint lid = GL_LIGHT0 + (int)l->light_id;
+			glLightfv(lid, GL_POSITION, l->position.n);
+			if (c3context_view_get(c)->type != C3_CONTEXT_VIEW_LIGHT)
+				glEnable(lid);
+			else
+				glDisable(lid);
+		}	break;
+	}
+	if (!g->bid)
+		return;
+
+	glColor4fv(g->mat.color.n);
+	dumpError("glColor");
 
 	GLCHECK(glBindVertexArray((GLuint)g->bid));
 
