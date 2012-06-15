@@ -46,7 +46,7 @@ DECLARE_C_ARRAY(struct c3object_t*, c3object_array, 4);
 typedef struct c3object_t {
 	str_p 				name;	//! optional name
 	int					dirty : 1, 
-						visible : 1 /* TODO: Implement visible */;
+						hidden : 8 /* hidden bit mask, related to c3context's views */;
 	struct c3context_t * context; //! context this object is attached to
 	struct c3object_t * parent;		//! Parent object
 	const struct c3driver_object_t ** driver;	//! Driver stack

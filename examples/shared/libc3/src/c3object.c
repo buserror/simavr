@@ -21,6 +21,7 @@
 
 
 #include "c3object.h"
+#include "c3context.h"
 #include "c3driver_object.h"
 
 void
@@ -69,8 +70,16 @@ _c3object_get_geometry(
 		const c3driver_object_t * d,
 		c3geometry_array_p out)
 {
-	for (int oi = 0; oi < o->geometry.count; oi++)
-		c3geometry_array_add(out, o->geometry.e[oi]);
+	// if this object is not visible in this view, exit
+	// there will be no geometry, so no drawing
+	uint16_t viewmask = (1 << o->context->current);
+	if (o->hidden & viewmask)
+		return;
+	for (int oi = 0; oi < o->geometry.count; oi++) {
+		c3geometry_p g = o->geometry.e[oi];
+		if (!(g->hidden & viewmask))
+			c3geometry_array_add(out, g);
+	}
 	for (int oi = 0; oi < o->objects.count; oi++)
 		c3object_get_geometry(o->objects.e[oi], out);
 }
