@@ -31,11 +31,27 @@
 
 c3program_p
 c3program_new(
-		const char * name)
+		const char * name,
+		const char ** uniforms )
 {
 	c3program_p p = malloc(sizeof(*p));
 	memset(p, 0, sizeof(*p));
 	p->name = str_new(name);
+
+	/* Allow specifying uniform names to make sure they are in
+	 * the specified order in the array, this allow direct indexing
+	 * instead of doign string lookup
+	 */
+	if (uniforms) {
+		for (int ui = 0; uniforms[ui]; ui++) {
+			c3program_param_t pa = {
+				.name = str_new(uniforms[ui]),
+				.program = p,
+				.index = p->params.count,
+			};
+			c3program_param_array_add(&p->params, pa);
+		}
+	}
 	return p;
 }
 
@@ -140,17 +156,21 @@ c3program_load_shader(
 				*cl = 0;
 				str_p name = str_new(uniname);
 				for (int pi = 0; pi < p->params.count && uniform; pi++)
-					if (!str_cmp(name, p->params.e[pi].name))
+					if (!str_cmp(name, p->params.e[pi].name)) {
+						if (!p->params.e[pi].type)
+							p->params.e[pi].type = str_new(unitype);
 						uniform = NULL;	// already there
+					}
 				if (uniform) {
 					c3program_param_t pa = {
 							.type = str_new(unitype),
 							.name = name,
 							.program = p,
+							.index = p->params.count,
 					};
 					c3program_param_array_add(&p->params, pa);
 					if (p->verbose)
-					printf("%s %s: new parameter '%s' '%s'\n", __func__,
+						printf("%s %s: new parameter '%s' '%s'\n", __func__,
 							p->name->str, unitype, uniname);
 				} else
 					str_free(name);

@@ -37,6 +37,7 @@ DECLARE_C_ARRAY(c3shader_t, c3shader_array, 4);
 
 typedef struct c3program_param_t {
 	struct c3program_t * program;
+	int index;			// index number in paramerer array
 	c3apiobject_t pid;	// parameter id
 	str_p	type;
 	str_p	name;
@@ -56,9 +57,16 @@ typedef struct c3program_t {
 DECLARE_C_ARRAY(c3program_p, c3program_array, 4);
 
 //! Allocates a new, empty program
+/* if 'uniforms' is non null it is a NULL terminated array of
+ * uniform names to pre-add to the uniform array in the specified
+ * order.
+ * This make sure they are in the specified order in the array,
+ * to allow direct indexing instead of doing string lookup by name
+ */
 c3program_p
 c3program_new(
-		const char * name);
+		const char * name,
+		const char ** uniforms /* optional */);
 
 //! disposes of a c3program memory
 void
