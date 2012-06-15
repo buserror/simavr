@@ -103,8 +103,11 @@ c3texture_init(
 }
 
 void
-c3texture_setpixels(
-		)
+c3texture_resize(
+		c3texture_p t,
+		c3vec2 size )
 {
-
+	t->size = size;
+	t->geometry.dirty = 1;
+	c3geometry_set_dirty(&t->geometry, 1);
 }

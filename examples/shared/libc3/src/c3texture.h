@@ -42,5 +42,9 @@ c3texture_p
 c3texture_init(
 		c3texture_p t,
 		struct c3object_t * parent /* = NULL */);
+void
+c3texture_resize(
+		c3texture_p t,
+		c3vec2 size );
 
 #endif /* __C3TEXTURE_H___ */
