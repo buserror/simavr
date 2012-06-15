@@ -94,7 +94,8 @@ typedef struct c3geometry_type_t {
 typedef struct c3geometry_t {
 	c3geometry_type_t	type;	// geometry type
 	int					dirty : 1,
-						custom : 1;		// has a custom driver
+						custom : 1,		// has a custom driver
+						hidden : 8;		// hidden from context_view, bitfield
 	str_p 				name;	// optional
 	c3apiobject_t 		bid;	// buffer id for opengl
 
@@ -159,6 +160,15 @@ c3geometry_project(
 void
 c3geometry_draw(
 		c3geometry_p g );
+
+//! Sets or clear geometry dirty bit
+/*
+ * This will dirty parent objects if set to 1
+ */
+void
+c3geometry_set_dirty(
+		c3geometry_p g,
+		int dirty );
 
 /*
  * if not present, create an index array, and collapses

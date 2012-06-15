@@ -176,10 +176,9 @@ c3geometry_factor(
 		c3f tolerance,
 		c3f normaltolerance)
 {
-	printf("%s Start geometry has %d vertices and %d indexes\n", __func__,
-			g->vertice.count, g->indices.count);
-	printf("%s Start geometry has %d normals and %d tex\n", __func__,
-			g->normals.count, g->textures.count);
+	printf("%s has %d/%d/%d vertices/normals/tex and %d indexes\n", __func__,
+			g->vertice.count, g->normals.count, g->textures.count,
+			g->indices.count);
 
 	c3f tolerance2 = tolerance * tolerance;
 
@@ -246,8 +245,18 @@ c3geometry_factor(
 		g->colorf.count = output;
 		c3colorf_array_realloc(&g->colorf, output);
 	}
-	g->dirty = 1;
+	c3geometry_set_dirty(g, 1);
 
-	printf("%s end geometry has %d vertices and %d indexes\n",  __func__,
+	printf("%s converted to %d vertices and %d indexes\n",  __func__,
 			g->vertice.count, g->indices.count);
+}
+
+void
+c3geometry_set_dirty(
+		c3geometry_p g,
+		int dirty )
+{
+	g->dirty = dirty;
+	if (dirty && g->object)
+		c3object_set_dirty(g->object, 1);
 }
