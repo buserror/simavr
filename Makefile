@@ -1,15 +1,21 @@
-all:	$(MAKE)-simavr $(MAKE)-tests $(MAKE)-examples
 
-$(MAKE)-simavr:
+
+all:	build-simavr build-tests build-examples
+
+build-simavr:
 	$(MAKE) -C simavr
 
-$(MAKE)-tests: $(MAKE)-simavr
+build-tests: build-simavr
 	$(MAKE) -C tests
 
-$(MAKE)-examples: $(MAKE)-simavr
+build-examples: build-simavr
 	$(MAKE) -C examples
+
+install:
+	$(MAKE) -C simavr install
 
 clean:
 	$(MAKE) -C simavr clean
 	$(MAKE) -C tests clean
 	$(MAKE) -C examples clean
+
