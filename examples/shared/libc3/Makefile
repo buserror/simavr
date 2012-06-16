@@ -1,5 +1,5 @@
 
-VERSION		= 0.1.0
+VERSION		= 0.1.1
 REVISION	= 1
 
 SHELL	 	:= ${shell which bash}
@@ -21,17 +21,22 @@ CC 			= clang
 PKGCONFIG	= pkg-config
 INSTALL		= install
 
-ifeq (${shell uname}, Darwin)
+PLATFORM	= ${shell uname | tr '[A-Z]' '[a-z]'}
+
+ifeq (${PLATFORM}, darwin)
 # you need to install libtool via 'brew install libtool' on the mac
 LIBTOOL		= glibtool
 else
 LIBTOOL		= libtool
 endif
 
+CONFIG_H	= c3config-${PLATFORM}.h
+CPPCAIRO	+= ${shell $(PKGCONFIG) --cflags pango cairo}
+
 CFLAGS		= -g -O2
 CPPFLAGS	+= --std=gnu99 -fPIC
 CPPFLAGS	+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
-CPPFLAGS 	+= ${shell $(PKGCONFIG) --cflags pango cairo}
+CPPFLAGS 	+= $(CPPCAIRO) 
 
 LDFLAGS		+= 
 
@@ -39,7 +44,7 @@ DESTDIR		= /usr/local
 
 -include ${wildcard .make.options*}
 
-all:	${OBJ} src/c3config.h ${OBJ}/libc3.la ${OBJ}/libc3gl.la
+all:	${OBJ} src/$(CONFIG_H) ${OBJ}/libc3.la ${OBJ}/libc3gl.la
 
 ${OBJ}:
 	mkdir -p ${OBJ}
@@ -49,12 +54,13 @@ E=@
 LIBTOOL += --quiet
 endif
 
-src/c3config.h:
+src/$(CONFIG_H): Makefile
 	$(E)rm -f $@
 	$(E)echo CONFIG $@
 	$(E)( \
 	printf "#ifndef __C3_CONFIG__\n#define __C3_CONFIG__\n"; \
 	printf "#define CONFIG_C3_VERSION \"$(VERSION)\"\n"; \
+	printf "#define CONFIG_C3_PLATFORM \"$(PLATFORM)\"\n"; \
 	$(PKGCONFIG) --exists pango cairo || printf "// " ; \
 		printf "#define CONFIG_C3_CAIRO 1\n"; \
 	printf "#endif\n"; \
@@ -76,7 +82,6 @@ ${OBJ}/libc3gl.la: ${C3GLOBJ}
 			-version-info 0:1:0 \
 			-rpath $(DESTDIR)/lib $(LDFLAGS)
 
-${OBJ}/%.lo: src/c3config.h
 ${OBJ}/%.lo: %.c
 	@echo CC $<
 	$(E)$(LIBTOOL) --mode=compile --tag=CC \
