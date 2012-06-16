@@ -26,4 +26,8 @@
 const struct c3driver_context_t *
 c3gl_getdriver();
 
+int
+c3gl_program_load(
+		c3program_p p);
+
 #endif /* __C3GL_H___ */

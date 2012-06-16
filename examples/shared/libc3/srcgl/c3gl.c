@@ -56,12 +56,12 @@ static int dumpError(const char * what)
 	return count;
 }
 
-static void
-_c3_load_program(
+int
+c3gl_program_load(
 		c3program_p p)
 {
 	if (!p || p->pid || p->log)
-		return;
+		return -1;
 
 	if (p->verbose)
 		printf("%s loading %s\n", __func__, p->name->str);
@@ -93,7 +93,7 @@ _c3_load_program(
 		break;
 	}
 	if (p->log)
-		return;
+		return -1;
     p->pid = (c3apiobject_t)glCreateProgram();
 
 	for (int si = 0; si < p->shaders.count && !p->log; si++) {
@@ -128,21 +128,24 @@ _c3_load_program(
     for (int pi = 0; pi < p->params.count; pi++) {
     	c3program_param_p pa = &p->params.e[pi];
     	pa->pid = (c3apiobject_t)glGetUniformLocation((GLuint)p->pid, pa->name->str);
-    	if (p->verbose)
-    		printf("%s %s load parameter '%s'\n", __func__, p->name->str, pa->name->str);
     	if (pa->pid == (c3apiobject_t)-1) {
     		fprintf(stderr, "%s %s: parameter '%s' not found\n",
     				__func__, p->name->str, pa->name->str);
-    	}
+    	} else
+        	if (p->verbose)
+        		printf("%s %s load parameter [%d]'%s'=%d\n", __func__,
+        				p->name->str, pi, pa->name->str,
+        				(int)pa->pid);
     }
 
     c3program_purge(p);
-    return;
+    return 0;
 error:
 	c3program_purge(p);
 	if (p->pid)
 		glDeleteProgram((GLuint)p->pid);
 	p->pid = 0;
+	return -1;
 }
 
 static void
@@ -198,7 +201,8 @@ _c3_load_pixels(
 	}
 }
 
-static void _c3_create_buffer(
+static void
+_c3_create_buffer(
 		GLuint name,
         GLuint bufferType,
         void * data,
@@ -312,7 +316,7 @@ _c3_geometry_project(
 	if (g->mat.texture)
 		_c3_load_pixels(g->mat.texture);
 	if (g->mat.program)
-		_c3_load_program(g->mat.program);
+		c3gl_program_load(g->mat.program);
 
 	switch(g->type.type) {
 		case C3_SPHERE_TYPE:
@@ -340,10 +344,11 @@ _c3_geometry_project(
 //	_c3_update_vbo(g);
 
 	glBindVertexArray(0);
+	C3_DRIVER_INHERITED(c, d, geometry_project, g, m);
 }
 
 /*
- * Thid id the meta function that draws a c3geometry. It looks for normals,
+ * This id the meta function that draws a c3geometry. It looks for normals,
  * indices, textures and so on and call the glDrawArrays
  */
 static void
@@ -368,9 +373,10 @@ _c3_geometry_draw(
 				glDisable(lid);
 		}	break;
 	}
-	if (!g->bid)
+	if (!g->bid) {
+		C3_DRIVER_INHERITED(c, d, geometry_draw, g);
 		return;
-
+	}
 	glColor4fv(g->mat.color.n);
 	dumpError("glColor");
 
@@ -405,6 +411,7 @@ _c3_geometry_draw(
 		glDisable(g->mat.texture->normalize ? GL_TEXTURE_2D : GL_TEXTURE_RECTANGLE_ARB);
 	if (g->mat.program)
 		glUseProgram(0);
+	C3_DRIVER_INHERITED(c, d, geometry_draw, g);
 }
 
 const c3driver_context_t c3context_driver = {
