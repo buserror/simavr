@@ -105,13 +105,13 @@ _c3_z_sorter(
 	return d1 < d2 ? 1 : d1 > d2 ? -1 : 0;
 }
 
-void
+int
 c3context_project(
 		c3context_p c)
 {
 	if (!c->root)
-		return;
-
+		return 0;
+	int res = 0;
 	/*
 	 * if the root object is dirty, all the views are also
 	 * dirty since the geometry has changed
@@ -121,6 +121,7 @@ c3context_project(
 			c->views.e[ci].dirty = 1;
 		c3mat4 m = identity3D();
 		c3object_project(c->root, &m);
+		res++;
 	}
 
 	/*
@@ -129,6 +130,7 @@ c3context_project(
 	 */
 	c3context_view_p v = qsort_view = c3context_view_get(c);
 	if (v->dirty) {
+		res++;
 	    c3cam_update_matrix(&v->cam);
 
 		c3geometry_array_p  array = &c3context_view_get(c)->projected;
@@ -141,11 +143,20 @@ c3context_project(
 		qsort(v->projected.e,
 				v->projected.count, sizeof(v->projected.e[0]),
 		        _c3_z_sorter);
-		v->z.min = sqrt(v->z.min);
+		v->z.min = sqrt(v->z.min) * 0.5f;
 		v->z.max = sqrt(v->z.max);
+
+		/*
+		 * Recalculate the perspective view using the new Z values
+		 */
+		v->projection = perspective3D(
+				v->cam.fov,
+				v->size.x / v->size.y,
+				v->z.min, v->z.max);
 
 		v->dirty = 0;
 	}
+	return res;
 }
 
 void

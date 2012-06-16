@@ -92,7 +92,7 @@ c3context_dispose(
 		c3context_p c);
 
 //! Reproject geometry for dirty objects
-void
+int
 c3context_project(
 		c3context_p c);
 //! Draws the context
