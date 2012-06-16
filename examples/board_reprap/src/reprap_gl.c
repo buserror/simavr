@@ -57,10 +57,27 @@ int _w = 800, _h = 600;
 c3context_p c3 = NULL;
 c3context_p hud = NULL;
 
-c3object_p head = NULL; 	// hotend
+c3object_p 	head = NULL; 	// hotend
 c3texture_p fbo_c3;			// frame buffer object texture
 c3program_p fxaa = NULL;	// full screen antialias shader
-c3gl_fbo_t fbo;
+c3program_p scene = NULL;
+c3gl_fbo_t 	fbo;
+c3gl_fbo_t 	shadow;
+
+
+enum {
+	uniform_ShadowMap = 0,
+	uniform_pixelOffset,
+	uniform_tex0,
+	uniform_shadowMatrix
+};
+const char *uniforms_scene[] = {
+		"shadowMap",
+		"pixelOffset",
+		"tex0",
+		"shadowMatrix",
+		NULL
+};
 
 int glsl_version = 110;
 
@@ -92,6 +109,7 @@ _gl_reshape_cb(int w, int h)
     glViewport(0, 0, _w, _h);
     c3gl_fbo_resize(&fbo, size);
     c3texture_resize(fbo_c3, size);
+    c3context_view_get_at(c3, 0)->size = size;
 
     if (fxaa) {
     	glUseProgram((GLuint)fxaa->pid);
@@ -135,15 +153,9 @@ _gl_key_cb(
 static void
 _gl_display_cb(void)		/* function called whenever redisplay needed */
 {
-	/*
-	 * Draw in FBO object
-	 */
-	glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)fbo.fbo);
-	// draw (without glutSwapBuffers)
-	dumpError("glBindFramebuffer fbo");
-	glViewport(0, 0, _w, _h);
+	int drawIndexes[] = { 1, 0 };
+	int drawViewStart = c3->root->dirty ? 0 : 1;
 
-	c3context_view_set(c3, 0);
 	c3vec3 headp = c3vec3f(
 			stepper_get_position_mm(&reprap.step_x),
 			stepper_get_position_mm(&reprap.step_y),
@@ -151,44 +163,75 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 	c3mat4 headmove = translation3D(headp);
 	c3transform_set(head->transform.e[0], &headmove);
 
-	if (c3->root->dirty) {
-	//	printf("reproject head %.2f,%.2f,%.2f\n", headp.x, headp.y,headp.z);
+	for (int vi = drawViewStart; vi < 2; vi++) {
+		c3context_view_set(c3, drawIndexes[vi]);
+
+		/*
+		 * Draw in FBO object
+		 */
+		c3context_view_p view = c3context_view_get(c3);
+		glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)view->bid);
+		// draw (without glutSwapBuffers)
+		dumpError("glBindFramebuffer fbo");
+		glViewport(0, 0, view->size.x, view->size.y);
+
 		c3context_project(c3);
+
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// Set up projection matrix
+		glMatrixMode(GL_PROJECTION); // Select projection matrix
+		glLoadMatrixf(view->projection.n);
+
+		glEnable(GL_CULL_FACE);
+		glDepthMask(GL_TRUE);
+		glDepthFunc(GL_LEQUAL);
+		glEnable(GL_DEPTH_TEST);
+	//	glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+
+		//glEnable(GL_ALPHA_TEST);
+		//glAlphaFunc(GL_GREATER, 1.0f / 255.0f);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Type Of Blending To Use
+
+		glMatrixMode(GL_MODELVIEW);
+
+
+		if (view->type == C3_CONTEXT_VIEW_EYE) {
+		//	glShadeModel(GL_SMOOTH);
+		//	glEnable(GL_LIGHTING);
+			glCullFace(GL_BACK);
+			glEnable(GL_BLEND); // Enable Blending
+
+			c3context_view_p light = c3context_view_get_at(c3, 1);
+
+			// This is matrix transform every coordinate x,y,z
+			// x = x* 0.5 + 0.5
+			// y = y* 0.5 + 0.5
+			// z = z* 0.5 + 0.5
+			// Moving from unit cube [-1,1] to [0,1]
+			const c3f bias[16] = {
+				0.5, 0.0, 0.0, 0.0,
+				0.0, 0.5, 0.0, 0.0,
+				0.0, 0.0, 0.5, 0.0,
+				0.5, 0.5, 0.5, 1.0};
+
+			c3mat4 b = c3mat4_mul(&light->projection, (c3mat4p)bias);
+			c3mat4 tex = c3mat4_mul(&light->cam.mtx, &b);
+
+			GLCHECK(glUseProgram((GLuint)scene->pid));
+			glUniformMatrix4fv(
+					(GLuint)scene->params.e[uniform_shadowMatrix].pid,
+					1, GL_FALSE, tex.n);
+		} else {
+			glCullFace(GL_FRONT);
+			glShadeModel(GL_FLAT);
+			glDisable(GL_LIGHTING);
+			glDisable(GL_BLEND); // Disable Blending
+		}
+
+		c3context_draw(c3);
 	}
-	float z_min = c3context_view_get(c3)->z.min,
-			z_max = c3context_view_get(c3)->z.max;
-	if (z_min < 0)
-		z_min = 10;
-	z_min = 10;
-	if (z_max < z_min || z_max > 1000)
-		z_max = 1000;
-
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	// Set up projection matrix
-	glMatrixMode(GL_PROJECTION); // Select projection matrix
-	c3mat4 p = perspective3D(50, (float)_w / (float)_h, z_min, z_max);
-	glLoadMatrixf(p.n);
-
-#if 0
-	glCullFace(GL_BACK);
-	glEnable(GL_CULL_FACE);
-#endif
-	glDepthMask(GL_TRUE);
-	glDepthFunc(GL_LEQUAL);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_LIGHTING);
-//	glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-
-	glEnable(GL_ALPHA_TEST);
-	glAlphaFunc(GL_GREATER, 1.0f / 255.0f);
-	glEnable(GL_BLEND); // Enable Blending
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Type Of Blending To Use
-
-	glMatrixMode(GL_MODELVIEW);
-
-	c3context_draw(c3);
 
 	/*
 	 * Draw back FBO over the screen
@@ -203,6 +246,7 @@ _gl_display_cb(void)		/* function called whenever redisplay needed */
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_LIGHTING);
 	glDisable(GL_ALPHA_TEST);
+	glDisable(GL_CULL_FACE);
 
 	glUseProgram(0);
 
@@ -337,8 +381,6 @@ gl_init(
 	glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
 
 	/* setup some lights */
-	glShadeModel(GL_SMOOTH);
-	glEnable(GL_LIGHTING);
 	GLfloat global_ambient[] = { 0.5f, 0.5f, 0.5f, 1.0f };
 	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, global_ambient);
 
@@ -363,6 +405,7 @@ gl_init(
 	printf("GL_SHADING_LANGUAGE_VERSION %s = %d\n", glsl, glsl_version);
 
 	c3gl_fbo_create(&fbo, c3vec2f(_w, _h), (1 << C3GL_FBO_COLOR)|(1 << C3GL_FBO_DEPTH));
+	// shadow buffer
 
 	c3_driver_list[0] = c3gl_getdriver();
 
@@ -372,7 +415,8 @@ gl_init(
     c3cam_p cam = &c3context_view_get_at(c3, 0)->cam;
 	cam->lookat = c3vec3f(100.0, 100.0, 0.0);
 	cam->eye = c3vec3f(100.0, -100.0, 100.0);
-
+	// associate the framebuffer object with this view
+	c3context_view_get_at(c3, 0)->bid = fbo.fbo;
 	/*
 	 * Create a light, attach it to a movable object, and attach a sphere
 	 * to it too so it's visible.
@@ -394,6 +438,23 @@ gl_init(
 	    	g->hidden = 0;	// hidden from light scenes
 	    }
 	}
+	{
+		c3vec2 size = c3vec2f(1024, 1024);
+		c3gl_fbo_create(&shadow, size, (1 << C3GL_FBO_DEPTH_TEX));
+
+		c3context_view_t v = {
+				.type = C3_CONTEXT_VIEW_LIGHT,
+				.size = size,
+				.dirty = 1,
+				.index = c3->views.count,
+				.bid = shadow.fbo,
+		};
+		c3cam_init(&v.cam);
+		c3vec3 listpos = c3vec3f(-30.0f, -30.0f, 200.0f);
+		v.cam.eye = listpos;
+		v.cam.lookat = c3vec3f(100.0, 100.0, 0.0);
+		c3context_view_array_add(&c3->views, v);
+	}
 
     {
     	const char *path = "gfx/hb.png";
@@ -407,10 +468,28 @@ gl_init(
     			4, cairo_image_surface_get_stride(image),
     			cairo_image_surface_get_data (image));
 		dst->name = str_new(path);
+    	dst->normalize = 1;
     	b->geometry.mat.texture = dst;
     	b->size = c3vec2f(200, 200);
 		b->geometry.mat.color = c3vec4f(1.0, 1.0, 1.0, 1.0);
 //	    c3transform_new(head);
+    }
+    c3pixels_p brass_tex = NULL;
+    {
+    	const char *path = "gfx/brass.png";
+        cairo_surface_t * image = cairo_image_surface_create_from_png (path);
+        printf("image = %p %p\n", image, cairo_image_surface_get_data (image));
+
+    	c3pixels_p dst = c3pixels_new(
+    			cairo_image_surface_get_width (image),
+    			cairo_image_surface_get_height (image),
+    			4, cairo_image_surface_get_stride(image),
+    			cairo_image_surface_get_data (image));
+		dst->name = str_new(path);
+    	dst->normalize = 1;
+		c3pixels_array_add(&c3->pixels, dst);
+//	    c3transform_new(head);
+		brass_tex = dst;
     }
     c3pixels_p line_aa_tex = NULL;
     {
@@ -505,11 +584,11 @@ gl_init(
 
     }
     head = c3stl_load("gfx/buserror-nozzle-model.stl", c3->root);
-    //head = c3object_new(c3->root);
     c3transform_new(head);
     if (head->geometry.count > 0) {
     	c3geometry_factor(head->geometry.e[0], 0.1, (20 * M_PI) / 180.0);
     	head->geometry.e[0]->mat.color = c3vec4f(0.6, 0.5, 0.0, 1.0);
+    	head->geometry.e[0]->mat.texture = brass_tex;
     }
 
 #if 0
@@ -557,6 +636,38 @@ gl_init(
 		fbo_c3 = b;
     }
 
+    {
+    	/*
+    	 * need to insert a header since there is nothing to detect the version number
+    	 * reliably without it, and __VERSION__ returns idiocy
+    	 */
+    	char head[128];
+    	sprintf(head, "#version %d\n#define GLSL_VERSION %d\n", glsl_version, glsl_version);
+
+        scene = c3program_new("scene", uniforms_scene);
+        scene->verbose = 1;
+        c3program_array_add(&c3->programs, scene);
+        c3program_load_shader(scene, GL_VERTEX_SHADER, head,
+        		"gfx/scene.vs", C3_PROGRAM_LOAD_UNIFORM);
+        c3program_load_shader(scene, GL_FRAGMENT_SHADER, head,
+        		"gfx/scene.fs", C3_PROGRAM_LOAD_UNIFORM);
+        c3gl_program_load(scene);
+
+		GLCHECK(glUseProgram((GLuint)scene->pid));
+        GLCHECK(glUniform1i(
+					(GLuint)scene->params.e[uniform_ShadowMap].pid, 7));
+		GLCHECK(glUniform1i(
+					(GLuint)scene->params.e[uniform_tex0].pid, 0));
+		c3vec2 isize = c3vec2f(1.0f / c3->views.e[1].size.x,
+					1.0f / c3->views.e[1].size.y);
+		GLCHECK(glUniform2fv(
+					(GLuint)scene->params.e[uniform_pixelOffset].pid, 1,
+					isize.n));
+		glActiveTexture(GL_TEXTURE7);
+		GLCHECK(glBindTexture(GL_TEXTURE_2D,
+					(GLuint)shadow.buffers[C3GL_FBO_DEPTH_TEX].bid));
+		glActiveTexture(GL_TEXTURE0);
+    }
     {
 		c3vec3 p[4] = {
 			c3vec3f(10,10,0), c3vec3f(800-10,10,0),
