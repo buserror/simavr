@@ -81,10 +81,36 @@ c3gl_fbo_create(
 		GLuint rbo_depth;
 		GLCHECK(glGenRenderbuffers(1, &rbo_depth));
 		glBindRenderbuffer(GL_RENDERBUFFER, rbo_depth);
-		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16,
-				b->size.x, b->size.y);
+		GLCHECK(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16,
+				b->size.x, b->size.y));
 		glBindRenderbuffer(GL_RENDERBUFFER, 0);
 		b->buffers[C3GL_FBO_DEPTH].bid = (c3apiobject_t)rbo_depth;
+	}
+
+	if (b->flags & (1 << C3GL_FBO_DEPTH_TEX)) {
+		GLuint depthTextureId;
+		glGenTextures(1, &depthTextureId);
+		glBindTexture(GL_TEXTURE_2D, depthTextureId);
+
+		// GL_LINEAR does not make sense for depth texture. However, next tutorial shows usage of GL_LINEAR and PCF. Using GL_NEAREST
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+		// Remove artefact on the edges of the shadowmap
+		glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP );
+		glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP );
+
+		// This is to allow usage of shadow2DProj function in the shader
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+		glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_INTENSITY);
+
+		// No need to force GL_DEPTH_COMPONENT24, drivers usually give you the max precision if available
+		glTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+				b->size.x, b->size.y,
+				0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		b->buffers[C3GL_FBO_DEPTH_TEX].bid = (c3apiobject_t)depthTextureId;
 	}
 
 	/* Framebuffer to link everything together */
@@ -98,12 +124,22 @@ c3gl_fbo_create(
 		// Set the list of draw buffers.
 		GLenum DrawBuffers[2] = { GL_COLOR_ATTACHMENT0 };
 		glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
-	} else
+	} else {
 		glDrawBuffers(0, NULL); // "1" is the size of DrawBuffers
+		glDrawBuffer(GL_NONE);
+		glReadBuffer(GL_NONE);
+	}
 
 	if (b->flags & (1 << C3GL_FBO_DEPTH))
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
 	        GL_RENDERBUFFER, (GLuint)b->buffers[C3GL_FBO_DEPTH].bid);
+
+	if (b->flags & (1 << C3GL_FBO_DEPTH_TEX))
+		// attach the texture to FBO depth attachment point
+		glFramebufferTexture2D(GL_FRAMEBUFFER_EXT,
+				GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+				(GLuint)b->buffers[C3GL_FBO_DEPTH_TEX].bid, 0);
+
 	b->fbo = (c3apiobject_t)fbo;
 
 	GLenum status;
