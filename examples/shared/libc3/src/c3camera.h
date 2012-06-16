@@ -30,6 +30,7 @@ typedef struct c3cam_t {
 	c3vec3 up, side, forward;
 	c3mat4 mtx;
 	c3f distance;
+	c3f fov;
 } c3cam_t, *c3cam_p;
 
 /******************************* set_distance() ***********/

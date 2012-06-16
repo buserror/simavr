@@ -334,7 +334,7 @@ c3cam_reset(
     c->up = c3vec3f( 0.0, 1.0, 0.0 );
     c->eye = c3vec3f(0.0, 0.0, 10.0);
     c->lookat = c3vec3f(0.0,0.0,0.0);
-
+    c->fov = 50.0f;
     c->mtx = identity3D();
 
     c3cam_update(c);
