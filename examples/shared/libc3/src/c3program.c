@@ -144,14 +144,14 @@ c3program_load_shader(
 			char * sep = line->str;
 			char * uniform = strsep(&sep, " \t");
 			char * unitype = strsep(&sep, " \t");
-			char * uniname = strsep(&sep, " \t");
+			char * uniname = strsep(&sep, " \t=;");
 			/*
 			 * found a parameter, extract it's type & name
 			 */
 			if (uniform && unitype && uniname) {
 				// trim semicolons etc
 				char *cl = uniname;
-				while (isalpha(*cl) || *cl == '_')
+				while (isalpha(*cl) || *cl == '_' || isdigit(*cl))
 					cl++;
 				*cl = 0;
 				str_p name = str_new(uniname);
