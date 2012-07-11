@@ -28,7 +28,7 @@
 #define _AVR_IO_H_
 #define __ASSEMBLER__
 #include "avr/iom328p.h"
-// instanciate the new core
+// instantiate the new core
 #include "sim_megax8.h"
 
 static avr_t * make()

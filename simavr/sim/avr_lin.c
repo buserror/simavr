@@ -65,7 +65,7 @@ avr_lin_baud_write(
 	        lbrr, baud);
 
 	p->uart.usec_per_byte = 1000000 / (baud / word_size);
-	printf("Roughtly %d usec per bytes\n", (int) p->uart.usec_per_byte);
+	printf("Roughly %d usec per bytes\n", (int) p->uart.usec_per_byte);
 }
 
 static void

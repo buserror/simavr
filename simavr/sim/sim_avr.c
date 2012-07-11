@@ -46,7 +46,7 @@ int avr_init(avr_t * avr)
 
 	// cpu is in limbo before init is finished.
 	avr->state = cpu_Limbo;
-	avr->frequency = 1000000;	// can be overriden via avr_mcu_section
+	avr->frequency = 1000000;	// can be overridden via avr_mcu_section
 	if (avr->special_init)
 		avr->special_init(avr);
 	if (avr->init)
@@ -260,7 +260,7 @@ void avr_callback_run_raw(avr_t * avr)
 		avr->interrupts.pending_wait++;
 	avr->i_shadow = avr->sreg[S_I];
 
-	// run the cycle timers, get the suggested sleeo time
+	// run the cycle timers, get the suggested sleep time
 	// until the next timer is due
 	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
 

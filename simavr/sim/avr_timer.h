@@ -43,7 +43,7 @@ enum {
 // Get the internal IRQ corresponding to the INT
 #define AVR_IOCTL_TIMER_GETIRQ(_name) AVR_IOCTL_DEF('t','m','r',(_name))
 
-// Waweform generation modes
+// Waveform generation modes
 enum {
 	avr_timer_wgm_none = 0,	// invalid mode
 	avr_timer_wgm_normal,

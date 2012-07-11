@@ -41,7 +41,7 @@ void m128_reset(struct avr_t * avr);
 #include "avr/iom128.h"
 
 /*
- * This is a template for all of the 128 devices, hopefuly
+ * This is a template for all of the 128 devices, hopefully
  */
 const struct mcu_t {
 	avr_t          core;

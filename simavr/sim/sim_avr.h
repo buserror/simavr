@@ -144,7 +144,7 @@ typedef struct avr_t {
 	void (*init)(struct avr_t * avr);
 	// called at init time (for special purposes like using a memory mapped file as flash see: simduino)
 	void (*special_init)(struct avr_t * avr);
-	// called at termination time ( to clean special initalizations)
+	// called at termination time ( to clean special initializations)
 	void (*special_deinit)(struct avr_t * avr);
 	// called at reset time
 	void (*reset)(struct avr_t * avr);
@@ -172,7 +172,7 @@ typedef struct avr_t {
 
 	// Mirror of the SREG register, to facilitate the access to bits
 	// in the opcode decoder.
-	// This array is re-synthetized back/forth when SREG changes
+	// This array is re-synthesized back/forth when SREG changes
 	uint8_t		sreg[8];
 	uint8_t		i_shadow;	// used to detect edges on I flag
 
@@ -323,7 +323,7 @@ avr_loadcode(
 		avr_flashaddr_t address);
 
 /*
- * these are accessors for avr->data but allows watchpoints to be set for gdb
+ * These are accessors for avr->data but allows watchpoints to be set for gdb
  * IO modules use that to set values to registers, and the AVR core decoder uses
  * that to register "public" read by instructions.
  */
@@ -346,7 +346,7 @@ avr_sadly_crashed(
 
 
 /*
- * These are callbacks for the two 'main' bahaviour in simavr
+ * These are callbacks for the two 'main' behaviour in simavr
  */
 void avr_callback_sleep_gdb(avr_t * avr, avr_cycle_count_t howLong);
 void avr_callback_run_gdb(avr_t * avr);

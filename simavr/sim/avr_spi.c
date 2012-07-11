@@ -62,7 +62,7 @@ static void avr_spi_irq_input(struct avr_irq_t * irq, uint32_t value, void * par
 	avr_spi_t * p = (avr_spi_t *)param;
 	avr_t * avr = p->io.avr;
 
-	// check to see fi receiver is enabled
+	// check to see if receiver is enabled
 	if (!avr_regbit_get(avr, p->spe))
 		return;
 

@@ -267,7 +267,7 @@ static void gdb_handle_command(avr_gdb_t * g, char * cmd)
 		case 'z': {
 			uint32_t kind, addr, len;
 			sscanf(cmd, "%d,%x,%x", &kind, &addr, &len);
-//			printf("breakbpoint %d, %08x, %08x\n", kind, addr, len);
+//			printf("breakpoint %d, %08x, %08x\n", kind, addr, len);
 			switch (kind) {
 				case 0:	// software breakpoint
 				case 1:	// hardware breakpoint

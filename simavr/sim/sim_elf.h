@@ -33,7 +33,7 @@ extern "C" {
 #endif
 
 /* these are the addresses the gnu linker uses to 
- * "fake" a non-harward addressign space for the AVR
+ * "fake" a non-Harvard addressing space for the AVR
  */
 #define AVR_SEGMENT_OFFSET_FLASH 0
 #define AVR_SEGMENT_OFFSET_EEPROM 0x00810000

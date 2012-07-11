@@ -36,7 +36,7 @@ extern "C" {
  * Value Change dump module for simavr.
  * 
  * This structure registers IRQ change hooks to various "source" IRQs
- * and dumps their values (if changed) at certains intervals into the VCD file
+ * and dumps their values (if changed) at certain intervals into the VCD file
  */
 
 #define AVR_VCD_MAX_SIGNALS 32

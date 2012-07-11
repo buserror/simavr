@@ -59,7 +59,7 @@ avr_cycle_timer_insert(
 
 	when += avr->cycle;
 
-	// find it's place int the list
+	// find its place in the list
 	int inserti = 0;
 	while (inserti < pool->count && pool->timer[inserti].when > when)
 		inserti++;
@@ -148,7 +148,7 @@ avr_cycle_timer_status(
 }
 
 /*
- * run thru all the timers, call the ones that needs it,
+ * run through all the timers, call the ones that needs it,
  * clear the ones that wants it, and calculate the next
  * potential cycle we could sleep for...
  */
