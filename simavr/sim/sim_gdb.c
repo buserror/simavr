@@ -55,6 +55,7 @@ typedef struct avr_gdb_t {
 	int		s;		// current gdb connection
 
 	avr_gdb_watchpoints_t breakpoints;
+	avr_gdb_watchpoints_t watchpoints;
 } avr_gdb_t;
 
 
@@ -337,13 +338,23 @@ static void gdb_handle_command(avr_gdb_t * g, char * cmd)
 
 					gdb_send_reply(g, "OK");
 					break;
-				// TODO
 				case 2: // write watchpoint
 				case 3: // read watchpoint
 				case 4: // access watchpoint
+					/* Mask out the offset applied to SRAM addresses. */
+					addr &= ~0x800000;
+					if (addr > avr->ramend ||
+							gdb_change_breakpoint(&g->watchpoints, set, 1 << kind, addr, len) == -1) {
+						gdb_send_reply(g, "E01");
+						break;
+					}
+
+					gdb_send_reply(g, "OK");
+					break;
 				default:
 					gdb_send_reply(g, "");
-			}	
+					break;
+			}
 		}	break;
 		default:
 			gdb_send_reply(g, "");
@@ -393,6 +404,7 @@ static int gdb_network_handler(avr_gdb_t * g, uint32_t dosleep)
 			printf("%s connection closed\n", __FUNCTION__);
 			close(g->s);
 			gdb_watch_clear(&g->breakpoints);
+			gdb_watch_clear(&g->watchpoints);
 			g->avr->state = cpu_Running;	// resume
 			g->s = -1;
 			return 1;
