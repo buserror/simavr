@@ -94,7 +94,7 @@ avr_twi_init(
 		avr_twi_t * port);
 
 /*
- * Create a message value for twi incuding the 'msg' bitfield,
+ * Create a message value for twi including the 'msg' bitfield,
  * 'addr' and data. This value is what is sent as the IRQ value
  */
 static inline uint32_t

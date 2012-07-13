@@ -47,7 +47,7 @@ const char * avr_regname(uint8_t reg);
 
 /* 
  * DEBUG bits follow 
- * These will diseapear when gdb arrives
+ * These will disappear when gdb arrives
  */
 void avr_dump_state(avr_t * avr);
 

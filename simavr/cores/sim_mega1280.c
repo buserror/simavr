@@ -297,7 +297,21 @@ const struct mcu_t {
 			[34] = AVR_ADC_SINGLE(10), [35] = AVR_ADC_SINGLE(11),
 			[36] = AVR_ADC_SINGLE(12), [37] = AVR_ADC_SINGLE(13),
 			[38] = AVR_ADC_SINGLE(14), [39] = AVR_ADC_SINGLE(15),
-			/* TODO all the extra differential channels Datasheet page 296 */
+
+			[40] = AVR_ADC_DIFF( 8,  8,  10), [41] = AVR_ADC_DIFF( 9,  8,  10),
+			[42] = AVR_ADC_DIFF( 8,  8, 200), [43] = AVR_ADC_DIFF( 9,  8, 200),
+
+			[44] = AVR_ADC_DIFF(10, 10,  10), [45] = AVR_ADC_DIFF(11, 10,  10),
+			[46] = AVR_ADC_DIFF(10, 10, 200), [47] = AVR_ADC_DIFF(11, 10, 200),
+
+			[48] = AVR_ADC_DIFF( 8,  9,   1), [49] = AVR_ADC_DIFF( 9,  9,   1),
+			[50] = AVR_ADC_DIFF(10,  9,   1), [51] = AVR_ADC_DIFF(11,  9,   1),
+			[52] = AVR_ADC_DIFF(12,  9,   1), [53] = AVR_ADC_DIFF(13,  9,   1),
+			[54] = AVR_ADC_DIFF(14,  9,   1), [55] = AVR_ADC_DIFF(15,  9,   1),
+
+			[56] = AVR_ADC_DIFF( 8, 10,   1), [57] = AVR_ADC_DIFF( 9, 10,   1),
+			[58] = AVR_ADC_DIFF(10, 10,   1), [59] = AVR_ADC_DIFF(11, 10,   1),
+			[60] = AVR_ADC_DIFF(12, 10,   1), [61] = AVR_ADC_DIFF(13, 10,   1),
 		},
 
 		.adc = {

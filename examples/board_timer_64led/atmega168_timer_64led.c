@@ -479,8 +479,8 @@ int main(void)
 	
     for (;;) {    /* main event loop */
     	/* If our internal ideal of which keys are down is different from the one that has been
-			updated cia the interupts, we start counting. If the 'different' key(s) stays the same for
-			50ms, we declare it an 'event' and update the internsl key state
+			updated via the interrupts, we start counting. If the 'different' key(s) stays the same for
+			50ms, we declare it an 'event' and update the internal key state
 		 */
     	if (keyState != lastKeyValue) {
     		for (uint8_t ki = 0; ki < KEY_MAX; ki++)

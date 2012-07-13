@@ -128,7 +128,7 @@ static int avr_ioport_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_para
 				if (r->bit.mask == 0xff)
 					r->irq[o++] = &p->io.irq[IOPORT_IRQ_PIN_ALL];
 				else {
-					// otherwise fil up the ones needed
+					// otherwise fill up the ones needed
 					for (int bi = 0; bi < 8; bi++)
 						if (r->bit.mask & (1 << bi))
 							r->irq[o++] = &p->io.irq[r->bit.bit + bi];

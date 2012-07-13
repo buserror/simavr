@@ -30,7 +30,7 @@
 #define __ASSEMBLER__
 #include "avr/iotn84.h"
 #define HFUSE_DEFAULT FUSE_HFUSE_DEFAULT
-// instanciate the new core
+// instantiate the new core
 #include "sim_tinyx4.h"
 
 static avr_t * make()
