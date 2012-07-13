@@ -38,19 +38,96 @@
 
 #define DBG(w)
 
+#define WATCH_LIMIT (32)
+
+typedef struct {
+	uint32_t len; /**< How many points are taken (points[0] .. points[len - 1]). */
+	struct {
+		uint32_t addr; /**< Which address is watched. */
+		uint32_t size; /**< How large is the watched segment. */
+		uint32_t kind; /**< Bitmask of enum avr_gdb_watch_type values. */
+	} points[WATCH_LIMIT];
+} avr_gdb_watchpoints_t;
+
 typedef struct avr_gdb_t {
 	avr_t * avr;
 	int		listen;	// listen socket
 	int		s;		// current gdb connection
 
-	uint32_t	watchmap;
-	struct {
-		avr_flashaddr_t	pc;
-		uint32_t	len;
-		int kind;
-	} watch[32];
+	avr_gdb_watchpoints_t breakpoints;
 } avr_gdb_t;
 
+
+/**
+ * Returns the index of the watchpoint if found, -1 otherwise.
+ */
+static int gdb_watch_find(const avr_gdb_watchpoints_t * w, uint32_t addr)
+{
+	for (int i = 0; i < w->len; i++) {
+		if (w->points[i].addr == addr) {
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+/**
+ * Returns -1 on error, 0 otherwise.
+ */
+static int gdb_watch_add_or_update(avr_gdb_watchpoints_t * w, enum avr_gdb_watch_type kind, uint32_t addr,
+		uint32_t size)
+{
+	/* If the watchpoint exists, update it. */
+	int i = gdb_watch_find(w, addr);
+	if (i != -1) {
+		w->points[i].size = size;
+		w->points[i].kind |= kind;
+		return 0;
+	}
+
+	/* Otherwise add it. */
+	if (w->len == WATCH_LIMIT) {
+		return -1;
+	}
+
+	w->points[w->len].kind = kind;
+	w->points[w->len].addr = addr;
+	w->points[w->len].size = size;
+
+	w->len++;
+
+	return 0;
+}
+
+/**
+ * Returns -1 on error or if the specified point does not exist, 0 otherwise.
+ */
+static int gdb_watch_rm(avr_gdb_watchpoints_t * w, enum avr_gdb_watch_type kind, uint32_t addr)
+{
+	int i = gdb_watch_find(w, addr);
+	if (i == -1) {
+		return -1;
+	}
+
+	w->points[i].kind &= ~kind;
+	if (w->points[i].kind) {
+		return 0;
+	}
+
+	for (i = i + 1; i < w->len; i++) {
+		w->points[i - 1] = w->points[i];
+	}
+
+	w->len--;
+
+	return 0;
+}
+
+static void gdb_watch_clear(avr_gdb_watchpoints_t * w)
+{
+	w->len = 0;
+}
 
 static void gdb_send_reply(avr_gdb_t * g, char * cmd)
 {
@@ -78,37 +155,17 @@ static void gdb_send_quick_status(avr_gdb_t * g, uint8_t signal)
 	gdb_send_reply(g, cmd);
 }
 
-static int gdb_change_breakpoint(avr_gdb_t * g, int set, int kind, avr_flashaddr_t addr, uint32_t len)
+static int gdb_change_breakpoint(avr_gdb_watchpoints_t * w, int set, enum avr_gdb_watch_type kind,
+		uint32_t addr, uint32_t size)
 {
-	DBG(printf("set %d kind %d addr %08x len %d (map %08x)\n", set, kind, addr, len, g->watchmap);)
-	if (set) {
-		if (g->watchmap == 0xffffffff)
-			return -1;	// map full
+	DBG(printf("set %d kind %d addr %08x len %d\n", set, kind, addr, len);)
 
-		// check to see if it exists
-		for (int i = 0; i < 32; i++)
-			if ((g->watchmap & (1 << i)) && g->watch[i].pc == addr) {
-				g->watch[i].len = len;
-				return 0;
-			}
-		for (int i = 0; i < 32; i++)
-			if (!(g->watchmap & (1 << i))) {
-				g->watchmap |= (1 << i);
-				g->watch[i].len = len;
-				g->watch[i].pc = addr;
-				g->watch[i].kind = kind;
-				return 0;
-			}
+	if (set) {
+		return gdb_watch_add_or_update(w, kind, addr, size);
 	} else {
-		for (int i = 0; i < 32; i++)
-			if ((g->watchmap & (1 << i)) && g->watch[i].pc == addr) {
-				g->watchmap &= ~(1 << i);
-				g->watch[i].len = 0;
-				g->watch[i].pc = 0;
-				g->watch[i].kind = 0;
-				return 0;
-			}
+		return gdb_watch_rm(w, kind, addr);
 	}
+
 	return -1;
 }
 
@@ -266,18 +323,19 @@ static void gdb_handle_command(avr_gdb_t * g, char * cmd)
 		case 'Z': 	// set clear break/watchpoint
 		case 'z': {
 			uint32_t kind, addr, len;
+			int set = (command == 'Z');
 			sscanf(cmd, "%d,%x,%x", &kind, &addr, &len);
 //			printf("breakpoint %d, %08x, %08x\n", kind, addr, len);
 			switch (kind) {
 				case 0:	// software breakpoint
 				case 1:	// hardware breakpoint
-					if (addr <= avr->flashend) {
-						if (gdb_change_breakpoint(g, command == 'Z', kind, addr, len))
-							gdb_send_reply(g, "E01");
-						else
-							gdb_send_reply(g, "OK");
-					} else
-						gdb_send_reply(g, "E01");		// out of flash address
+					if (addr > avr->flashend ||
+							gdb_change_breakpoint(&g->breakpoints, set, 1 << kind, addr, len) == -1) {
+						gdb_send_reply(g, "E01");
+						break;
+					}
+
+					gdb_send_reply(g, "OK");
 					break;
 				// TODO
 				case 2: // write watchpoint
@@ -334,7 +392,7 @@ static int gdb_network_handler(avr_gdb_t * g, uint32_t dosleep)
 		if (r == 0) {
 			printf("%s connection closed\n", __FUNCTION__);
 			close(g->s);
-			g->watchmap = 0;				// clear breakpoints
+			gdb_watch_clear(&g->breakpoints);
 			g->avr->state = cpu_Running;	// resume
 			g->s = -1;
 			return 1;
@@ -380,15 +438,11 @@ int avr_gdb_processor(avr_t * avr, int sleep)
 		return 0;	
 	avr_gdb_t * g = avr->gdb;
 
-	if (g->watchmap && avr->state == cpu_Running) {
-		for (int i = 0; i < 32; i++)
-			if ((g->watchmap & (1 << i)) && g->watch[i].pc == avr->pc) {
-				DBG(printf("avr_gdb_processor hit breakpoint at %08x\n", avr->pc);)
-				gdb_send_quick_status(g, 0);
-				avr->state = cpu_Stopped;
-			}		
-	}
-	if (avr->state == cpu_StepDone) {
+	if (avr->state == cpu_Running && gdb_watch_find(&g->breakpoints, avr->pc) != -1) {
+		DBG(printf("avr_gdb_processor hit breakpoint at %08x\n", avr->pc);)
+		gdb_send_quick_status(g, 0);
+		avr->state = cpu_Stopped;
+	} else if (avr->state == cpu_StepDone) {
 		gdb_send_quick_status(g, 0);
 		avr->state = cpu_Stopped;
 	}
