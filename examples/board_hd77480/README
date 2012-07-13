@@ -4,7 +4,7 @@ board_hd44780
 With thanks to Luki <humbell@ethz.ch>
 
 This sample code is derivated from a patch sent by Luki, however it was mostly
-in german, and was usinf the SDL library. Also the implementation of the LCD
+in german, and was using the SDL library. Also the implementation of the LCD
 itself had several shortcomings.
 
 Therefore it was almost entirely rewritten from scratch the LCD was extended

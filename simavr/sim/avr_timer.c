@@ -161,7 +161,7 @@ static void avr_timer_tcnt_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t
 	
 	// this involves some magicking
 	// cancel the current timers, recalculate the "base" we should be at, reset the
-	// timer base as it should, and re-shedule the timers using that base.
+	// timer base as it should, and re-schedule the timers using that base.
 	
 	avr_cycle_timer_cancel(avr, avr_timer_tov, p);
 	avr_cycle_timer_cancel(avr, avr_timer_compa, p);
@@ -283,7 +283,7 @@ static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 	uint16_t oldv[AVR_TIMER_COMP_COUNT];
 	int target = -1;
 
-	/* vheck to see if the OCR values actualy changed */
+	/* check to see if the OCR values actually changed */
 	for (int oi = 0; oi < AVR_TIMER_COMP_COUNT; oi++)
 		oldv[oi] = _timer_get_ocr(p, oi);
 	avr_core_watch_write(avr, addr, v);

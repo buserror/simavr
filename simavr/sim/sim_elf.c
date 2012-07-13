@@ -196,7 +196,7 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 	memset(firmware->codeline,0, bitesize);
 #endif
 
-	/* this is actualy mandatory !! otherwise elf_begin() fails */
+	/* this is actually mandatory !! otherwise elf_begin() fails */
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 			/* library out of date - recover from error */
 	}

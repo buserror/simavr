@@ -673,7 +673,7 @@ avr_usb_ioctl(
 
 			epstate->ueconx.stallrq = 0;
 			// teensy actually depends on this (fails to ack rxouti on usb
-			// control read status stage) even if the datasheet clarely states
+			// control read status stage) even if the datasheet clearly states
 			// that one should do so.
 			epstate->ueintx.rxouti = 0;
 

@@ -141,7 +141,7 @@ static void avr_uart_baud_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 			p->name, val, baud, avr_regbit_get(avr, p->u2x)?2:1, db, sb);
 	// TODO: Use the divider value and calculate the straight number of cycles
 	p->usec_per_byte = 1000000 / (baud / word_size);
-	printf("Roughtly %d usec per bytes\n", (int)p->usec_per_byte);
+	printf("Roughly %d usec per bytes\n", (int)p->usec_per_byte);
 }
 
 static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
@@ -168,7 +168,7 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 			}
 		}
 		TRACE(printf("UDR%c(%02x) = %02x\n", p->name, addr, v);)
-		// tell other modules we are "outputing" a byte
+		// tell other modules we are "outputting" a byte
 		if (avr_regbit_get(avr, p->txen))
 			avr_raise_irq(p->io.irq + UART_IRQ_OUTPUT, v);
 	}
@@ -206,7 +206,7 @@ static void avr_uart_irq_input(struct avr_irq_t * irq, uint32_t value, void * pa
 	avr_uart_t * p = (avr_uart_t *)param;
 	avr_t * avr = p->io.avr;
 
-	// check to see fi receiver is enabled
+	// check to see if receiver is enabled
 	if (!avr_regbit_get(avr, p->rxen))
 		return;
 
@@ -232,7 +232,7 @@ void avr_uart_reset(struct avr_io_t *io)
 	avr_cycle_timer_cancel(avr, avr_uart_txc_raise, p);
 	uart_fifo_reset(&p->input);
 
-	// DEBUG allow printf without fidding with enabling the uart
+	// DEBUG allow printf without fiddling with enabling the uart
 	avr_regbit_set(avr, p->txen);
 	p->usec_per_byte = 100;
 }

@@ -36,7 +36,7 @@ static void avr_extint_irq_notify(struct avr_irq_t * irq, uint32_t value, void *
 	int down = irq->value && !value;
 	switch (mode) {
 		case 0:
-			// unsuported
+			// unsupported
 			break;
 		case 1:
 			if (up || down)

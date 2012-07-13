@@ -52,8 +52,8 @@ const char * _sreg_bit_name = "cznvshti";
 #define REG_ISTOUCHED(a, r) ((a)->trace_data->touched[(r) >> 5] & (1 << ((r) & 0x1f)))
 
 /*
- * This allows a "special case" to skip indtruction tracing when in these
- * symbols. since printf() is useful to have, but generates a lot of cycles
+ * This allows a "special case" to skip instruction tracing when in these
+ * symbols since printf() is useful to have, but generates a lot of cycles.
  */
 int dont_trace(const char * name)
 {
@@ -134,7 +134,7 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 
 /*
  * Set a register (r < 256)
- * if it's an IO regisrer (> 31) also (try to) call any callback that was
+ * if it's an IO register (> 31) also (try to) call any callback that was
  * registered to track changes to that register.
  */
 static inline void _avr_set_r(avr_t * avr, uint8_t r, uint8_t v)
@@ -451,7 +451,7 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
  * + It also doesn't check whether the core it's
  *   emulating is supposed to have the fancy instructions, like multiply and such.
  * 
- * The nunber of cycles taken by instruction has been added, but might not be
+ * The number of cycles taken by instruction has been added, but might not be
  * entirely accurate.
  */
 avr_flashaddr_t avr_run_one(avr_t * avr)

@@ -38,7 +38,7 @@ void mx_init(struct avr_t * avr);
 void mx_reset(struct avr_t * avr);
 
 /*
- * This is a template for all of the 8/32/64 devices, hopefuly
+ * This is a template for all of the 8/32/64 devices, hopefully
  */
 struct mcu_t {
 	avr_t          core;

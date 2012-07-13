@@ -30,7 +30,7 @@ DECLARE_FIFO(uint8_t, uart_fifo, 64);
 
 /*
  * The method of "connecting" the the UART from external code is to use 4 IRQS.
- * The easy one is UART->YOU, where you will be called with the byte everytime
+ * The easy one is UART->YOU, where you will be called with the byte every time
  * the AVR firmware sends one. Do whatever you like with it.
  *
  * The slightly more tricky one is the INPUT part. Since the AVR is quite a bit
