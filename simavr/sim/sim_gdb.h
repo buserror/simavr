@@ -42,6 +42,9 @@ int avr_gdb_init(avr_t * avr);
 // call from the main AVR decoder thread
 int avr_gdb_processor(avr_t * avr, int sleep);
 
+// Called from sim_core.c
+void avr_gdb_handle_watchpoints(avr_t * g, uint16_t addr, enum avr_gdb_watch_type type);
+
 #ifdef __cplusplus
 };
 #endif

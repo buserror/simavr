@@ -74,6 +74,22 @@ static int gdb_watch_find(const avr_gdb_watchpoints_t * w, uint32_t addr)
 }
 
 /**
+ * Contrary to gdb_watch_find, this actually checks the address against
+ * a watched memory _range_.
+ */
+static int gdb_watch_find_range(const avr_gdb_watchpoints_t * w, uint32_t addr)
+{
+	for (int i = 0; i < w->len; i++) {
+		if (w->points[i].addr <= addr &&
+				addr < w->points[i].addr + w->points[i].size) {
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+/**
  * Returns -1 on error, 0 otherwise.
  */
 static int gdb_watch_add_or_update(avr_gdb_watchpoints_t * w, enum avr_gdb_watch_type kind, uint32_t addr,
@@ -442,6 +458,35 @@ static int gdb_network_handler(avr_gdb_t * g, uint32_t dosleep)
 		}
 	}
 	return 1;
+}
+
+/**
+ * If an applicable watchpoint exists for addr, stop the cpu and send a status report.
+ * type is one of AVR_GDB_WATCH_READ, AVR_GDB_WATCH_WRITE depending on the type of access.
+ */
+void avr_gdb_handle_watchpoints(avr_t * avr, uint16_t addr, enum avr_gdb_watch_type type)
+{
+	avr_gdb_t *g = avr->gdb;
+
+	int i = gdb_watch_find_range(&g->watchpoints, addr);
+	if (i == -1) {
+		return;
+	}
+
+	int kind = g->watchpoints.points[i].kind;
+	if (kind & type) {
+		/* Send gdb reply (see GDB user manual appendix E.3). */
+		char cmd[78];
+		sprintf(cmd, "T%02x20:%02x;21:%02x%02x;22:%02x%02x%02x00;%s:%06x;",
+				5, g->avr->data[R_SREG],
+				g->avr->data[R_SPL], g->avr->data[R_SPH],
+				g->avr->pc & 0xff, (g->avr->pc>>8)&0xff, (g->avr->pc>>16)&0xff,
+				kind & AVR_GDB_WATCH_ACCESS ? "awatch" : kind & AVR_GDB_WATCH_WRITE ? "watch" : "rwatch",
+				addr | 0x800000);
+		gdb_send_reply(g, cmd);
+
+		avr->state = cpu_Stopped;
+	}
 }
 
 int avr_gdb_processor(avr_t * avr, int sleep)
