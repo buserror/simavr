@@ -104,16 +104,18 @@ ran on the hardware. The key here is to emulate the _parts_ or peripherals that
 are hooked to the AVR. Of course, you don't have to emulate the full hardware, you just
 need to generate the proper stimulus so that the AVR is fooled.
 
-HD77480 LCD Board Demo
+HD44780 LCD Board Demo
 ----------------------
-![lcd](https://github.com/buserror-uk/simavr/raw/master/doc/img/hd77480.png)
 
-This example board hooks up an Atmega48 to an emulated HD77480 LCD and display a running
+![lcd](https://github.com/buserror-uk/simavr/raw/master/doc/img/hd44780.png)
+
+This example board hooks up an Atmega48 to an emulated HD44780 LCD and display a running
 counter in the 'lcd'. Everything is emulated, the firmware runs exactly like this
 on a real hardware.
-![lcd-gtkwave](https://github.com/buserror-uk/simavr/raw/master/doc/img/hd77480.png)
 
-And this is a gtkwave trace of what the firmware is doing. You can zoom in, measure etc
+![lcd-gtkwave](https://github.com/buserror-uk/simavr/raw/master/doc/img/hd44780-wave.png)
+
+And this is a gtkwave trace of what the firmware is doing. You can zoom in, measure, etc
 in gtkwave, select trades to see etc.
 
 Quite a few other examples are available!
