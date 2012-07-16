@@ -156,7 +156,7 @@ main(
 
 	avr = avr_make_mcu_by_name(f.mmcu);
 	if (!avr) {
-		fprintf(stderr, "%s: AVR '%s' now known\n", argv[0], f.mmcu);
+		fprintf(stderr, "%s: AVR '%s' not known\n", argv[0], f.mmcu);
 		exit(1);
 	}
 
