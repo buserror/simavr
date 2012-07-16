@@ -25,6 +25,7 @@
 #include <ctype.h>
 #include "sim_avr.h"
 #include "sim_core.h"
+#include "sim_gdb.h"
 #include "avr_flash.h"
 #include "avr_watchdog.h"
 
@@ -119,6 +120,11 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 		printf( FONT_RED "%04x : munching stack SP %04x, A=%04x <= %02x\n" FONT_DEFAULT, avr->pc, _avr_sp_get(avr), addr, v);
 	}
 #endif
+
+	if (avr->gdb) {
+		avr_gdb_handle_watchpoints(avr, addr, AVR_GDB_WATCH_WRITE);
+	}
+
 	avr->data[addr] = v;
 }
 
@@ -129,6 +135,11 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, avr->ramend);
 		CRASH();
 	}
+
+	if (avr->gdb) {
+		avr_gdb_handle_watchpoints(avr, addr, AVR_GDB_WATCH_READ);
+	}
+
 	return avr->data[addr];
 }
 
