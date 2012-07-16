@@ -1,8 +1,8 @@
-simavr - lean and mean Atmel AVR simulator for linux
+simavr - a lean and mean Atmel AVR simulator for linux
 ======
 
 _simavr_ is a new AVR simulator for linux, or any platform that uses avr-gcc. It uses 
-avr-gcc own register definition to simplify creating new targets for supported AVR 
+avr-gcc's own register definition to simplify creating new targets for supported AVR
 devices. The core was made to be small and compact, and hackable so allow quick 
 prototyping of an AVR project. The AVR core is now stable for use with parts 
 with <= 128KB flash, and with preliminary support for the bigger parts. The 
@@ -39,18 +39,18 @@ Emulated Cores (very easy to add new ones!)
 
 Extras:
 -------
-* _gdb_ support fully work (gdb server) including some pretty cool “passive modes”.
+* fully working _gdb_ support including some pretty cool “passive modes”.
 * There is also very easy support for “VCD” (Value Change Dump) that can be visualized 
-graphicaly as “waveforms” with tools like _gtkwave_ (see bellow).
+graphically as “waveforms” with tools like _gtkwave_ (see below).
 * There are a few examples of real life firmwares running on simavr, including OpenGL rendering of the display…
-* There is support _Arduino_, but no integration to the IDE
+* There is support for _Arduino_, but no IDE integration
 
-*Note:* a mailinglist/google group now exists 
+*Note:* a mailing list/google group now exists
 You can also join *#simavr* on Freenode for a very quiet IRC channel.
 
 VCD Support -- built in logic analyzer 
 -----------
-_simavr_ can output most of it's pins, firmware variables, interrupts and a few other
+_simavr_ can output most of its pins, firmware variables, interrupts and a few other
 things as signals to be dumped into a file that can be plotted using gtkwave for
 further, precise analysis.
 A firmware can contain instructions for _simavr_ to know what to trace, and the file is
