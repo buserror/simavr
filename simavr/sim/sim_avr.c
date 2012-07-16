@@ -315,7 +315,7 @@ avr_make_mcu_by_name(
 			}
 	}
 	if (!maker) {
-		fprintf(stderr, "%s: AVR '%s' now known\n", __FUNCTION__, name);
+		fprintf(stderr, "%s: AVR '%s' not known\n", __FUNCTION__, name);
 		return NULL;
 	}
 
