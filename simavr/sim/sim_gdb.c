@@ -65,7 +65,9 @@ typedef struct avr_gdb_t {
 static int gdb_watch_find(const avr_gdb_watchpoints_t * w, uint32_t addr)
 {
 	for (int i = 0; i < w->len; i++) {
-		if (w->points[i].addr == addr) {
+		if (w->points[i].addr > addr) {
+			return -1;
+		} else if (w->points[i].addr == addr) {
 			return i;
 		}
 	}
@@ -80,8 +82,9 @@ static int gdb_watch_find(const avr_gdb_watchpoints_t * w, uint32_t addr)
 static int gdb_watch_find_range(const avr_gdb_watchpoints_t * w, uint32_t addr)
 {
 	for (int i = 0; i < w->len; i++) {
-		if (w->points[i].addr <= addr &&
-				addr < w->points[i].addr + w->points[i].size) {
+		if (w->points[i].addr > addr) {
+			return -1;
+		} else if (w->points[i].addr <= addr && addr < w->points[i].addr + w->points[i].size) {
 			return i;
 		}
 	}
@@ -108,11 +111,24 @@ static int gdb_watch_add_or_update(avr_gdb_watchpoints_t * w, enum avr_gdb_watch
 		return -1;
 	}
 
-	w->points[w->len].kind = kind;
-	w->points[w->len].addr = addr;
-	w->points[w->len].size = size;
+	/* Find the insertion point. */
+	for (i = 0; i < w->len; i++) {
+		if (w->points[i].addr > addr) {
+			break;
+		}
+	}
 
 	w->len++;
+
+	/* Make space for new element. */
+	for (int j = i + 1; j < w->len; j++) {
+		w->points[j] = w->points[j - 1];
+	}
+
+	/* Insert it. */
+	w->points[i].kind = kind;
+	w->points[i].addr = addr;
+	w->points[i].size = size;
 
 	return 0;
 }
