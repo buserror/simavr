@@ -1,7 +1,7 @@
 
 simavr -- a simple, lean and mean AVR simulator
 
-http://gitorious.org/simavr
+https://github.com/buserror-uk/simavr
 
 simavr is a new AVR simulator for linux, or any platform that uses avr-gcc. It uses 
 avr-gcc own register definition to simplify creating new targets for suported AVR
