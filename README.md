@@ -57,10 +57,10 @@ A firmware can contain instructions for _simavr_ to know what to trace, and the 
 automatically generated.
 Example:
 
-`const struct avr_mmcu_vcd_trace_t _mytrace[]  _MMCU_ = {
-	{ AVR_MCU_VCD_SYMBOL("UDR0"), .what = (void*)&UDR0, },	
-	{ AVR_MCU_VCD_SYMBOL("UDRE0"), .mask = (1 << UDRE0), .what = (void*)&UCSR0A, },	
-};`
+	const struct avr_mmcu_vcd_trace_t _mytrace[]  _MMCU_ = {
+		{ AVR_MCU_VCD_SYMBOL("UDR0"), .what = (void*)&UDR0, },
+		{ AVR_MCU_VCD_SYMBOL("UDRE0"), .mask = (1 << UDRE0), .what = (void*)&UCSR0A, },
+	};
 
 Will tell _simavr_ to generate a trace everytime the UDR0 register changes and everytime
 the interrupt is raised (in UCSR0A). The *_MMCU_* tag tells gcc that it needs compiling,
@@ -68,19 +68,20 @@ but it won't be linked in your program, so it takes literally zero bytes, this i
 section that is private to _simavr_, it's free!
 A program running with these instructions and writing to the serial port will generate
 a file that will display:
-`$ ./simavr/run_avr tests/atmega88_example.axf
-AVR_MMCU_TAG_VCD_TRACE 00c6:00 - UDR0
-AVR_MMCU_TAG_VCD_TRACE 00c0:20 - UDRE0
-Loaded 1780 .text
-Loaded 114 .data
-Loaded 4 .eeprom
-Starting atmega88 - flashend 1fff ramend 04ff e2end 01ff
-atmega88 init
-avr_eeprom_ioctl: AVR_IOCTL_EEPROM_SET Loaded 4 at offset 0
-Creating VCD trace file 'gtkwave_trace.vcd'
-Read from eeprom 0xdeadbeef -- should be 0xdeadbeef..
-Read from eeprom 0xcafef00d -- should be 0xcafef00d..
-simavr: sleeping with interrupts off, quitting gracefully`
+
+	$ ./simavr/run_avr tests/atmega88_example.axf
+	AVR_MMCU_TAG_VCD_TRACE 00c6:00 - UDR0
+	AVR_MMCU_TAG_VCD_TRACE 00c0:20 - UDRE0
+	Loaded 1780 .text
+	Loaded 114 .data
+	Loaded 4 .eeprom
+	Starting atmega88 - flashend 1fff ramend 04ff e2end 01ff
+	atmega88 init
+	avr_eeprom_ioctl: AVR_IOCTL_EEPROM_SET Loaded 4 at offset 0
+	Creating VCD trace file 'gtkwave_trace.vcd'
+	Read from eeprom 0xdeadbeef -- should be 0xdeadbeef..
+	Read from eeprom 0xcafef00d -- should be 0xcafef00d..
+	simavr: sleeping with interrupts off, quitting gracefully
 
 And when the file is loaded in gtkwave, you see:
 ![gtkwave](https://github.com/buserror-uk/simavr/raw/master/doc/img/gtkwave1.png)
