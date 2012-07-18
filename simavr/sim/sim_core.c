@@ -155,8 +155,7 @@ static inline void _avr_set_r(avr_t * avr, uint8_t r, uint8_t v)
 	if (r == R_SREG) {
 		avr->data[R_SREG] = v;
 		// unsplit the SREG
-		for (int i = 0; i < 8; i++)
-			avr->sreg[i] = (v & (1 << i)) != 0;
+		SET_SREG_FROM(avr, v);
 		SREG();
 	}
 	if (r > 31) {
@@ -209,13 +208,7 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 		 * SREG is special it's reconstructed when read
 		 * while the core itself uses the "shortcut" array
 		 */
-		avr->data[R_SREG] = 0;
-		for (int i = 0; i < 8; i++)
-			if (avr->sreg[i] > 1) {
-				printf("** Invalid SREG!!\n");
-				CRASH();
-			} else if (avr->sreg[i])
-				avr->data[R_SREG] |= (1 << i);
+		READ_SREG_INTO(avr, avr->data[R_SREG]);
 		
 	} else if (addr > 31 && addr < 256) {
 		uint8_t io = AVR_DATA_TO_IO(addr);

@@ -32,6 +32,7 @@
 #include <poll.h>
 #include <pthread.h>
 #include "sim_avr.h"
+#include "sim_core.h" // for SET_SREG_FROM, READ_SREG_INTO
 #include "sim_hex.h"
 #include "avr_eeprom.h"
 #include "sim_gdb.h"
@@ -210,6 +211,7 @@ static int gdb_write_register(avr_gdb_t * g, int regi, uint8_t * src)
 			return 1;
 		case 32:
 			g->avr->data[R_SREG] = *src;
+			SET_SREG_FROM(g->avr, *src);
 			return 1;
 		case 33:
 			g->avr->data[R_SPL] = src[0];
@@ -228,8 +230,11 @@ static int gdb_read_register(avr_gdb_t * g, int regi, char * rep)
 		case 0 ... 31:
 			sprintf(rep, "%02x", g->avr->data[regi]);
 			break;
-		case 32:
-			sprintf(rep, "%02x", g->avr->data[R_SREG]);
+		case 32: {
+				uint8_t sreg;
+				READ_SREG_INTO(g->avr, sreg);
+				sprintf(rep, "%02x", sreg);
+			}
 			break;
 		case 33:
 			sprintf(rep, "%02x%02x", g->avr->data[R_SPL], g->avr->data[R_SPH]);
