@@ -340,8 +340,8 @@ hd44780_pin_changed_hook(
 	b->pinstate = (b->pinstate & ~(1 << irq->irq)) | (value << irq->irq);
 	int eo = old & (1 << IRQ_HD44780_E);
 	int e = b->pinstate & (1 << IRQ_HD44780_E);
-	// on the E pin rising edge, do stuff otherwise just exit
-	if (!eo && e)
+	// on the E pin falling edge, do stuff otherwise just exit
+	if (eo && !e)
 		avr_cycle_timer_register(b->avr, 1, _hd44780_process_e_pinchange, b);
 }
 
