@@ -139,6 +139,13 @@ typedef struct avr_t {
 	// not only to "cycles that runs" but also "cycles that might have run"
 	// like, sleeping.
 	avr_cycle_count_t	cycle;		// current cycle
+
+	/**
+	 * Sleep requests are accumulated in sleep_usec until the minimum sleep value
+	 * is reached, at which point sleep_usec is cleared and the sleep request
+	 * is passed on to the operating system.
+	 */
+	uint32_t sleep_usec;
 	
 	// called at init time
 	void (*init)(struct avr_t * avr);

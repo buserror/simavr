@@ -130,7 +130,11 @@ int main(int argc, char *argv[])
 					}
 				}
 			} else {
-				elf_read_firmware(filename, &f);
+				if (elf_read_firmware(filename, &f) == -1) {
+					fprintf(stderr, "%s: Unable to load firmware from file %s\n",
+							argv[0], filename);
+					exit(1);
+				}
 			}
 		}
 	}

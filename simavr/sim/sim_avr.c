@@ -173,9 +173,25 @@ void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, avr_flashaddr_t ad
 	memcpy(avr->flash + address, code, size);
 }
 
+/**
+ * Accumulates sleep requests (and returns a sleep time of 0) until
+ * a minimum count of requested sleep microseconds are reached
+ * (low amounts cannot be handled accurately).
+ */
+static inline uint32_t avr_pending_sleep_usec(avr_t * avr, avr_cycle_count_t howLong)
+{
+	avr->sleep_usec += avr_cycles_to_usec(avr, howLong);
+	uint32_t usec = avr->sleep_usec;
+	if (usec > 200) {
+		avr->sleep_usec = 0;
+		return usec;
+	}
+	return 0;
+}
+
 void avr_callback_sleep_gdb(avr_t * avr, avr_cycle_count_t howLong)
 {
-	uint32_t usec = avr_cycles_to_usec(avr, howLong);
+	uint32_t usec = avr_pending_sleep_usec(avr, howLong);
 	while (avr_gdb_processor(avr, usec))
 		;
 }
@@ -239,8 +255,10 @@ void avr_callback_run_gdb(avr_t * avr)
 
 void avr_callback_sleep_raw(avr_t * avr, avr_cycle_count_t howLong)
 {
-	uint32_t usec = avr_cycles_to_usec(avr, howLong);
-	usleep(usec);
+	uint32_t usec = avr_pending_sleep_usec(avr, howLong);
+	if (usec > 0) {
+		usleep(usec);
+	}
 }
 
 void avr_callback_run_raw(avr_t * avr)

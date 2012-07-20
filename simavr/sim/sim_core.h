@@ -95,6 +95,26 @@ void avr_dump_state(avr_t * avr);
 
 #endif 
 
+/**
+ * Reconstructs the SREG value from avr->sreg into dst.
+ */
+#define READ_SREG_INTO(avr, dst) { \
+			dst = 0; \
+			for (int i = 0; i < 8; i++) \
+				if (avr->sreg[i] > 1) { \
+					printf("** Invalid SREG!!\n"); \
+				} else if (avr->sreg[i]) \
+					dst |= (1 << i); \
+		}
+
+/**
+ * Splits the SREG value from src into the avr->sreg array.
+ */
+#define SET_SREG_FROM(avr, src) { \
+			for (int i = 0; i < 8; i++) \
+				avr->sreg[i] = (src & (1 << i)) != 0; \
+		}
+
 #ifdef __cplusplus
 };
 #endif
