@@ -117,7 +117,7 @@ avr_raise_interrupt(
 
 		if (!table->pending_wait)
 			table->pending_wait = 1;		// latency on interrupts ??
-		if (avr->state != cpu_Running) {
+		if (avr->state == cpu_Sleeping) {
 			if (vector->trace)
 				printf("Waking CPU due to interrupt\n");
 			avr->state = cpu_Running;	// in case we were sleeping
