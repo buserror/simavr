@@ -16,8 +16,8 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
-SIMAVR_VERSION	= ${shell git tag |tail -1}
-SIMAVR_REVISION	= 1
+SIMAVR_VERSION	= ${shell git tag |tail -1|sed 's/[^0-9]*//'}
+SIMAVR_REVISION	= 2
 
 target	= run_avr
 
@@ -99,6 +99,31 @@ ifeq (${shell uname}, Linux)
 endif
 	$(MKDIR) $(DESTDIR)/bin
 	$(INSTALL) ${OBJ}/${target}.elf $(DESTDIR)/bin/simavr
+
+# Needs 'fpm', oneline package manager. Install with 'gem install fpm'
+# This generates 'mock' debian files, without all the policy, scripts
+# and all the things normal debian requires. If debian decides to roll
+# in simavr officialy, this section shall diseapear
+debian: 
+	rm -rf /tmp/simavr-tmp && mkdir -p /tmp/simavr-tmp/usr && \
+	make install DESTDIR=/tmp/simavr-tmp/usr && \
+	(cd /tmp/simavr-tmp && \
+	fpm -s dir -t deb -C /tmp/simavr-tmp -n libsimavr -v $(SIMAVR_VERSION) \
+		--iteration $(SIMAVR_REVISION) \
+		-d 'libelf' \
+        --description "lean and mean Atmel AVR simulator: Runtime library" \
+        usr/lib/lib*.so* && \
+	fpm -s dir -t deb -C /tmp/simavr-tmp -n libsimavr-dev -v $(SIMAVR_VERSION) \
+		--iteration $(SIMAVR_REVISION) \
+		-d 'libsimavr >= $(SIMAVR_VERSION)' \
+        --description "lean and mean Atmel AVR simulator: Development files" \
+        usr/include usr/lib/lib*.a usr/lib/pkgconfig && \
+	fpm -s dir -t deb -C /tmp/simavr-tmp -n simavr -v $(SIMAVR_VERSION) \
+		--iteration $(SIMAVR_REVISION) \
+		-d 'libsimavr >= $(SIMAVR_VERSION)' \
+        --description "lean and mean Atmel AVR simulator: Executable" \
+        usr/bin ) && \
+	echo Done
 
 config: ${OBJ}/cores.deps sim_core_config.h sim_core_decl.h
 
