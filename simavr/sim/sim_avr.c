@@ -233,7 +233,6 @@ void avr_callback_run_gdb(avr_t * avr)
 		if (!avr->sreg[S_I]) {
 			if (avr->log)
 				printf("simavr: sleeping with interrupts off, quitting gracefully\n");
-			avr_terminate(avr);
 			avr->state = cpu_Done;
 			return;
 		}
@@ -288,7 +287,6 @@ void avr_callback_run_raw(avr_t * avr)
 		if (!avr->sreg[S_I]) {
 			if (avr->log)
 				printf("simavr: sleeping with interrupts off, quitting gracefully\n");
-			avr_terminate(avr);
 			avr->state = cpu_Done;
 			return;
 		}
