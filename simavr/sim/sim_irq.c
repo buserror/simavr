@@ -217,7 +217,7 @@ avr_connect_irq(
 		avr_irq_t * dst)
 {
 	if (!src || !dst || src == dst) {
-		printf("avr_connect_irq invalid irq %p/%p", src, dst);
+		fprintf(stderr, "error: %s invalid irq %p/%p", __FUNCTION__, src, dst);
 		return;
 	}
 	avr_irq_hook_t *hook = src->hook;
@@ -238,7 +238,7 @@ avr_unconnect_irq(
 	avr_irq_hook_t *hook, *prev;
 
 	if (!src || !dst || src == dst) {
-		printf("error: avr_connect_irq invalid irq %p/%p", src, dst); fflush(stdout);
+		fprintf(stderr, "error: %s invalid irq %p/%p", __FUNCTION__, src, dst);
 		return;
 	}
 	hook = src->hook;
