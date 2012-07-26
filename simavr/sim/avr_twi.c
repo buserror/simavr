@@ -392,3 +392,16 @@ void avr_twi_init(avr_t * avr, avr_twi_t * p)
 	avr_register_io_write(avr, p->twsr.reg, avr_twi_write_status, p);
 }
 
+uint32_t
+avr_twi_irq_msg(
+		uint8_t msg,
+		uint8_t addr,
+		uint8_t data)
+{
+	avr_twi_msg_irq_t _msg = {
+			.u.twi.msg = msg,
+			.u.twi.addr = addr,
+			.u.twi.data = data,
+	};
+	return _msg.u.v;
+}
