@@ -19,8 +19,8 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ELF_H_
-#define ELF_H_
+#ifndef __SIM_ELF_H__
+#define __SIM_ELF_H__
 
 #include "avr_mcu_section.h"
 
@@ -81,4 +81,4 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware);
 };
 #endif
 
-#endif /* ELF_H_ */
+#endif /*__SIM_ELF_H__*/

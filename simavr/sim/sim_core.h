@@ -19,8 +19,8 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SIM_CORE_H_
-#define SIM_CORE_H_
+#ifndef __SIM_CORE_H__
+#define __SIM_CORE_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -119,4 +119,4 @@ void avr_dump_state(avr_t * avr);
 };
 #endif
 
-#endif /* SIM_CORE_H_ */
+#endif /*__SIM_CORE_H__*/

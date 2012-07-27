@@ -21,8 +21,8 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef AVR_EXTINT_H_
-#define AVR_EXTINT_H_
+#ifndef __AVR_EXTINT_H__
+#define __AVR_EXTINT_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -94,4 +94,4 @@ void avr_extint_init(avr_t * avr, avr_extint_t * p);
 };
 #endif
 
-#endif /* AVR_EXTINT_H_ */
+#endif /*__AVR_EXTINT_H__*/

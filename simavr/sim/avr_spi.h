@@ -19,8 +19,8 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef AVR_SPI_H_
-#define AVR_SPI_H_
+#ifndef __AVR_SPI_H__
+#define __AVR_SPI_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,4 +61,4 @@ void avr_spi_init(avr_t * avr, avr_spi_t * port);
 };
 #endif
 
-#endif /* AVR_SPI_H_ */
+#endif /*__AVR_SPI_H__*/

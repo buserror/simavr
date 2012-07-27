@@ -19,8 +19,8 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef AVR_UART_H_
-#define AVR_UART_H_
+#ifndef __AVR_UART_H__
+#define __AVR_UART_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -125,4 +125,4 @@ void avr_uart_init(avr_t * avr, avr_uart_t * port);
 };
 #endif
 
-#endif /* AVR_UART_H_ */
+#endif /*__AVR_UART_H__*/

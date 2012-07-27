@@ -19,8 +19,8 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef AVR_TIMER_H_
-#define AVR_TIMER_H_
+#ifndef __AVR_TIMER_H__
+#define __AVR_TIMER_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -132,4 +132,4 @@ void avr_timer_init(avr_t * avr, avr_timer_t * port);
 };
 #endif
 
-#endif /* AVR_TIMER_H_ */
+#endif /*__AVR_TIMER_H__*/

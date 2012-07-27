@@ -19,8 +19,8 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef AVR_USB_H_
-#define AVR_USB_H_
+#ifndef __AVR_USB_H__
+#define __AVR_USB_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -71,4 +71,4 @@ void avr_usb_init(avr_t * avr, avr_usb_t * port);
 };
 #endif
 
-#endif /* AVR_USB_H_ */
+#endif /*__AVR_USB_H__*/

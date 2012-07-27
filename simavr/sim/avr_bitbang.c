@@ -20,6 +20,9 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __AVR_BITBANG_H__
+#define __AVR_BITBANG_H__
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -241,3 +244,5 @@ void avr_bitbang_stop(avr_bitbang_t * p)
 #ifdef __cplusplus
 };
 #endif
+
+#endif /*__AVR_BITBANG_H__*/

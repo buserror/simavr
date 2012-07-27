@@ -19,8 +19,8 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef AVR_TWI_H_
-#define AVR_TWI_H_
+#ifndef __AVR_TWI_H__
+#define __AVR_TWI_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -111,4 +111,4 @@ avr_twi_irq_msg(
 };
 #endif
 
-#endif /* AVR_TWI_H_ */
+#endif /*__AVR_TWI_H__*/
