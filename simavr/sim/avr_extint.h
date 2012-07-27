@@ -24,6 +24,10 @@
 #ifndef AVR_EXTINT_H_
 #define AVR_EXTINT_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sim_avr.h"
 
 
@@ -85,5 +89,9 @@ void avr_extint_init(avr_t * avr, avr_extint_t * p);
 				.vector = INT##_index##_vect, \
 			}, \
 		}
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* AVR_EXTINT_H_ */

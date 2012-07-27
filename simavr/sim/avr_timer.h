@@ -22,6 +22,10 @@
 #ifndef AVR_TIMER_H_
 #define AVR_TIMER_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sim_avr.h"
 
 enum {
@@ -123,5 +127,9 @@ typedef struct avr_timer_t {
 } avr_timer_t;
 
 void avr_timer_init(avr_t * avr, avr_timer_t * port);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* AVR_TIMER_H_ */

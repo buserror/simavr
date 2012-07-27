@@ -22,6 +22,10 @@
 #ifndef __AVR_IOPORT_H__
 #define __AVR_IOPORT_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sim_avr.h"
 
 enum {
@@ -91,5 +95,9 @@ typedef struct avr_ioport_t {
 
 void avr_ioport_init(avr_t * avr, avr_ioport_t * port);
 
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __AVR_IOPORT_H__ */

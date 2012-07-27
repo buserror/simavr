@@ -23,6 +23,9 @@
 #ifndef __AVR_WATCHDOG_H___
 #define __AVR_WATCHDOG_H___
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "sim_avr.h"
 
@@ -79,5 +82,9 @@ void avr_watchdog_init(avr_t * avr, avr_watchdog_t * p);
 			.vector = _vec,\
 		},\
 	}
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __AVR_WATCHDOG_H___ */

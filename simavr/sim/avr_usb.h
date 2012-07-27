@@ -22,6 +22,10 @@
 #ifndef AVR_USB_H_
 #define AVR_USB_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sim_avr.h"
 
 enum {
@@ -62,5 +66,9 @@ typedef struct avr_usb_t {
 } avr_usb_t;
 
 void avr_usb_init(avr_t * avr, avr_usb_t * port);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* AVR_USB_H_ */

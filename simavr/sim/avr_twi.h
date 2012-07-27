@@ -22,6 +22,10 @@
 #ifndef AVR_TWI_H_
 #define AVR_TWI_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sim_avr.h"
 
 //#include "sim_twi.h"
@@ -102,5 +106,9 @@ avr_twi_irq_msg(
 		uint8_t msg,
 		uint8_t addr,
 		uint8_t data);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* AVR_TWI_H_ */

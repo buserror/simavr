@@ -31,6 +31,10 @@
 #ifndef __FIFO_DECLARE__
 #define __FIFO_DECLARE__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
 	doing a :
 	DECLARE_FIFO(uint8_t, myfifo, 128);
@@ -153,5 +157,9 @@ static FIFO_INLINE void __name##_reset(__name##_t *c)\
 	c->read = c->write = c->flags = 0;\
 }\
 struct __name##_t
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif

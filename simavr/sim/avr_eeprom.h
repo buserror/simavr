@@ -22,6 +22,10 @@
 #ifndef __AVR_EEPROM_H__
 #define __AVR_EEPROM_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sim_avr.h"
 
 typedef struct avr_eeprom_t {
@@ -119,5 +123,9 @@ typedef struct avr_eeprom_desc_t {
 			.vector = _vector,\
 		},\
 	}
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __AVR_EEPROM_H__ */

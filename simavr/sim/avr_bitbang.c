@@ -20,6 +20,10 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -233,3 +237,7 @@ void avr_bitbang_stop(avr_bitbang_t * p)
 	avr_cycle_timer_cancel(p->avr, avr_bitbang_clk_timer, p);
 	avr_irq_unregister_notify( avr_io_getirq(p->avr, AVR_IOCTL_IOPORT_GETIRQ( p->p_clk.port ), p->p_clk.pin), avr_bitbang_clk_hook, p);
 }
+
+#ifdef __cplusplus
+};
+#endif

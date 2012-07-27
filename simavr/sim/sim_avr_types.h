@@ -23,6 +23,10 @@
 #ifndef __SIM_AVR_TYPES_H___
 #define __SIM_AVR_TYPES_H___
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <inttypes.h>
 
@@ -45,5 +49,9 @@ typedef struct avr_regbit_t {
 #define PRI_avr_cycle_count PRIu64
 
 struct avr_t;
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __SIM_AVR_TYPES_H___ */

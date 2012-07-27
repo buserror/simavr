@@ -22,6 +22,10 @@
 #ifndef __AVR_ADC_H___
 #define __AVR_ADC_H___
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sim_avr.h"
 
 /*
@@ -141,5 +145,9 @@ void avr_adc_init(avr_t * avr, avr_adc_t * port);
 #define AVR_ADC_VCC4() { \
 		.kind = ADC_MUX_VCC4, \
 	}
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __AVR_ADC_H___ */

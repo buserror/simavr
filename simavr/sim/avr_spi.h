@@ -22,6 +22,10 @@
 #ifndef AVR_SPI_H_
 #define AVR_SPI_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sim_avr.h"
 
 enum {
@@ -52,5 +56,9 @@ typedef struct avr_spi_t {
 } avr_spi_t;
 
 void avr_spi_init(avr_t * avr, avr_spi_t * port);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* AVR_SPI_H_ */

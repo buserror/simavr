@@ -23,6 +23,10 @@
 #ifndef __SIM_TIME_H___
 #define __SIM_TIME_H___
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sim_avr.h"
 
 // converts a number of usec to a number of machine cycles, at current speed
@@ -48,5 +52,9 @@ static inline avr_cycle_count_t avr_hz_to_cycles(avr_t * avr, uint32_t hz)
 {
 	return avr->frequency / hz;
 }
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __SIM_TIME_H___ */
