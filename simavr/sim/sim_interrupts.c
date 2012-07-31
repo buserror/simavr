@@ -138,7 +138,7 @@ avr_clear_interrupt(
 		printf("%s cleared %d\n", __FUNCTION__, vector->vector);
 	vector->pending = 0;
 	avr_raise_irq(&vector->irq, 0);
-	if (vector->raised.reg)
+	if (vector->raised.reg && !vector->raise_sticky)
 		avr_regbit_clear(avr, vector->raised);
 }
 
