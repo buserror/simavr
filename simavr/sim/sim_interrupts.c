@@ -150,7 +150,6 @@ avr_clear_interrupt_if(
 {
 	if (avr_regbit_get(avr, vector->raised)) {
 		avr_clear_interrupt(avr, vector);
-		avr_regbit_clear(avr, vector->raised);
 		return 1;
 	}
 	avr_regbit_setto(avr, vector->raised, old);
