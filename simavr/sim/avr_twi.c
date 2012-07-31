@@ -364,8 +364,8 @@ void avr_twi_reset(struct avr_io_t *io)
 }
 
 static const char * irq_names[TWI_IRQ_COUNT] = {
-	[TWI_IRQ_MISO] = "8<mosi",
-	[TWI_IRQ_MOSI] = "32>miso",
+	[TWI_IRQ_MISO] = "8<miso",
+	[TWI_IRQ_MOSI] = "32>mosi",
 	[TWI_IRQ_STATUS] = "8>status",
 };
 
