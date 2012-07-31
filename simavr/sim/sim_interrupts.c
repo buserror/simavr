@@ -98,7 +98,7 @@ avr_raise_interrupt(
 		return 0;
 	}
 	// always mark the 'raised' flag to one, even if the interrupt is disabled
-	// this allow "pooling" for the "raised" flag, like for non-interrupt
+	// this allow "polling" for the "raised" flag, like for non-interrupt
 	// driven UART and so so. These flags are often "write one to clear"
 	if (vector->raised.reg)
 		avr_regbit_set(avr, vector->raised);
