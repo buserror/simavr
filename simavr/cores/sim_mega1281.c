@@ -501,6 +501,7 @@ const struct mcu_t {
 		.twi = {
 			.enable = AVR_IO_REGBIT(TWCR, TWIE),
 			.raised = AVR_IO_REGBIT(TWCR, TWINT),
+			.raise_sticky = 1,
 			.vector = TWI_vect,
 		},
 	},
