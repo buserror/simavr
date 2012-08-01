@@ -191,8 +191,8 @@ static void avr_timer_configure(avr_timer_t * p, uint32_t clock, uint32_t top)
 
 	p->tov_cycles = frequency / t; // avr_hz_to_cycles(frequency, t);
 
-	if (p->trace_flags)
-		printf("%s-%c TOP %.2fHz = %d cycles\n", __FUNCTION__, p->name, t, (int)p->tov_cycles);
+	AVR_LOG(p->io.avr, LOG_TRACE, "TIMER: %s-%c TOP %.2fHz = %d cycles\n",
+			__FUNCTION__, p->name, t, (int)p->tov_cycles);
 
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
 		if (!p->comp[compi].r_ocr)
@@ -205,8 +205,7 @@ static void avr_timer_configure(avr_timer_t * p, uint32_t clock, uint32_t top)
 
 		if (ocr && ocr <= top) {
 			p->comp[compi].comp_cycles = frequency / fc; // avr_hz_to_cycles(p->io.avr, fa);
-			if (p->trace_flags /*& (1 << compi)*/)
-				printf("%s-%c %c %.2fHz = %d cycles\n", __FUNCTION__, p->name,
+			AVR_LOG(p->io.avr, LOG_TRACE, "TIMER: %s-%c %c %.2fHz = %d cycles\n", __FUNCTION__, p->name,
 					'A'+compi, fc, (int)p->comp[compi].comp_cycles);
 		}
 	}
@@ -244,7 +243,7 @@ static void avr_timer_reconfigure(avr_timer_t * p)
 
 	uint8_t cs = avr_regbit_get_array(avr, p->cs, ARRAY_SIZE(p->cs));
 	if (cs == 0) {
-		printf("%s-%c clock turned off\n", __FUNCTION__, p->name);		
+		AVR_LOG(avr, LOG_TRACE, "TIMER: %s-%c clock turned off\n", __FUNCTION__, p->name);
 		return;
 	}
 
@@ -272,8 +271,8 @@ static void avr_timer_reconfigure(avr_timer_t * p)
 			avr_timer_configure(p, f, (1 << p->mode.size) - 1);
 			break;
 		default:
-			printf("%s-%c unsupported timer mode wgm=%d (%d)\n", __FUNCTION__, p->name,
-					mode, p->mode.kind);
+			AVR_LOG(avr, LOG_WARNING, "TIMER: %s-%c unsupported timer mode wgm=%d (%d)\n",
+					__FUNCTION__, p->name, mode, p->mode.kind);
 	}	
 }
 
@@ -322,7 +321,7 @@ static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 			avr_raise_irq(p->io.irq + TIMER_IRQ_OUT_PWM1, _timer_get_ocr(p, AVR_TIMER_COMPB));
 			break;
 		default:
-			printf("%s-%c mode %d UNSUPPORTED\n", __FUNCTION__, p->name, p->mode.kind);
+			AVR_LOG(avr, LOG_WARNING, "TIMER: %s-%c mode %d UNSUPPORTED\n", __FUNCTION__, p->name, p->mode.kind);
 			avr_timer_reconfigure(p);
 			break;
 	}
