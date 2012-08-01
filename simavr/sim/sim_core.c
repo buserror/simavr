@@ -820,7 +820,12 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 			} else switch (opcode) {
 				case 0x9588: { // SLEEP
 					STATE("sleep\n");
-					avr->state = cpu_Sleeping;
+					/* Don't sleep if there are interrupts about to be serviced.
+					 * Without this check, it was possible to incorrectly enter a state
+					 * in which the cpu was sleeping and interrupts were disabled. For more
+					 * details, see the commit message. */
+					if (!avr_has_pending_interrupts(avr) || !avr->sreg[S_I])
+						avr->state = cpu_Sleeping;
 				}	break;
 				case 0x9598: { // BREAK
 					STATE("break\n");
