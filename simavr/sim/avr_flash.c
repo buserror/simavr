@@ -28,7 +28,7 @@ static avr_cycle_count_t avr_progen_clear(struct avr_t * avr, avr_cycle_count_t 
 {
 	avr_flash_t * p = (avr_flash_t *)param;
 	avr_regbit_clear(p->io.avr, p->selfprgen);
-	printf("avr_progen_clear - SPM not received, clearing PRGEN bit\n");
+	AVR_LOG(avr, LOG_WARNING, "FLASH: avr_progen_clear - SPM not received, clearing PRGEN bit\n");
 	return 0;
 }
 
@@ -63,14 +63,14 @@ static int avr_flash_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param
 	avr_regbit_clear(avr, p->selfprgen);
 	if (avr_regbit_get(avr, p->pgers)) {
 		z &= ~1;
-		printf("Erasing page %04x (%d)\n", (z / p->spm_pagesize), p->spm_pagesize);
+		AVR_LOG(avr, LOG_TRACE, "FLASH: Erasing page %04x (%d)\n", (z / p->spm_pagesize), p->spm_pagesize);
 		for (int i = 0; i < p->spm_pagesize; i++)
 			avr->flash[z++] = 0xff;
 	} else if (avr_regbit_get(avr, p->pgwrt)) {
 		z &= ~1;
-		printf("Writing page %04x (%d)\n", (z / p->spm_pagesize), p->spm_pagesize);
+		AVR_LOG(avr, LOG_TRACE, "FLASH: Writing page %04x (%d)\n", (z / p->spm_pagesize), p->spm_pagesize);
 	} else if (avr_regbit_get(avr, p->blbset)) {
-		printf("Setting lock bits (ignored)\n");
+		AVR_LOG(avr, LOG_TRACE, "FLASH: Setting lock bits (ignored)\n");
 	} else {
 		z &= ~1;
 		avr->flash[z++] = r01;
