@@ -90,7 +90,7 @@ avr_cycle_timer_register(
 	avr_cycle_timer_cancel(avr, timer, param);
 
 	if (pool->count == MAX_CYCLE_TIMERS) {
-		fprintf(stderr, "%s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+		AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
 		return;
 	}
 	avr_cycle_timer_insert(avr, when, timer, param);
