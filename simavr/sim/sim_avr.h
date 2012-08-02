@@ -61,6 +61,21 @@ enum {
 #define AVR_DATA_TO_IO(v) ((v) - 32)
 #define AVR_IO_TO_DATA(v) ((v) + 32)
 
+/**
+ * Logging macros and associated log levels.
+ * The current log level is kept in avr->log.
+ */
+enum {
+	LOG_ERROR = 1,
+	LOG_WARNING,
+	LOG_TRACE,
+};
+#define AVR_LOG(avr, level, ...) \
+	do { \
+		if (avr->log >= level) \
+			fprintf(stdout, __VA_ARGS__); \
+	} while(0)
+
 /*
  * Core states.
  */
