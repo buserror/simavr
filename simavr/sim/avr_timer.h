@@ -92,7 +92,6 @@ typedef struct avr_timer_wgm_t {
 typedef struct avr_timer_t {
 	avr_io_t	io;
 	char name;
-	uint16_t		trace_flags;
 
 	avr_regbit_t	disabled;	// bit in the PRR
 

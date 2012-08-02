@@ -291,13 +291,7 @@ static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 			target = oi;
 			break;
 		}
-	uint16_t otrace = p->trace_flags;
 
-	if (target != -1) {
-		p->trace_flags = 1 << target;
-	} else {
-		p->trace_flags = 0;
-	}
 	switch (p->mode.kind) {
 		case avr_timer_wgm_normal:
 			avr_timer_reconfigure(p);
@@ -325,7 +319,6 @@ static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 			avr_timer_reconfigure(p);
 			break;
 	}
-	p->trace_flags = otrace;
 }
 
 static void avr_timer_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
@@ -487,5 +480,4 @@ void avr_timer_init(avr_t * avr, avr_timer_t * p)
 	}
 	avr_register_io_write(avr, p->r_tcnt, avr_timer_tcnt_write, p);
 	avr_register_io_read(avr, p->r_tcnt, avr_timer_tcnt_read, p);
-	p->trace_flags = 0xf;
 }
