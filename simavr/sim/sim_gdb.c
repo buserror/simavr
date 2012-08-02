@@ -308,11 +308,11 @@ static void gdb_handle_command(avr_gdb_t * g, char * cmd)
 			} else if (addr >= 0x800000 && (addr - 0x800000) == avr->ramend+1 && len == 2) {
 				// Allow GDB to read a value just after end of stack.
 				// This is necessary to make instruction stepping work when stack is empty
-				printf("GDB read just past end of stack %08x, %08x; returning zero\n", addr, len);
+				AVR_LOG(avr, LOG_TRACE, "GDB: read just past end of stack %08x, %08x; returning zero\n", addr, len);
 				gdb_send_reply(g, "0000");
 				break;
 			} else {
-				printf("read memory error %08x, %08x (ramend %04x)\n", addr, len, avr->ramend+1);
+				AVR_LOG(avr, LOG_ERROR, "GDB: read memory error %08x, %08x (ramend %04x)\n", addr, len, avr->ramend+1);
 				gdb_send_reply(g, "E01");
 				break;
 			}
@@ -344,7 +344,7 @@ static void gdb_handle_command(avr_gdb_t * g, char * cmd)
 				avr_ioctl(avr, AVR_IOCTL_EEPROM_SET, &ee);
 				gdb_send_reply(g, "OK");							
 			} else {
-				printf("write memory error %08x, %08x\n", addr, len);
+				AVR_LOG(avr, LOG_ERROR, "GDB: write memory error %08x, %08x\n", addr, len);
 				gdb_send_reply(g, "E01");
 			}		
 		}	break;
@@ -537,7 +537,7 @@ int avr_gdb_init(avr_t * avr)
 	avr->gdb = NULL;
 
 	if ((g->listen = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-		fprintf(stderr, "Can't create socket: %s", strerror(errno));
+		AVR_LOG(avr, LOG_ERROR, "GDB: Can't create socket: %s", strerror(errno));
 		return -1;
 	}
 
@@ -549,7 +549,7 @@ int avr_gdb_init(avr_t * avr)
 	address.sin_port = htons (avr->gdb_port);
 
 	if (bind(g->listen, (struct sockaddr *) &address, sizeof(address))) {
-		fprintf(stderr, "Can not bind socket: %s", strerror(errno));
+		AVR_LOG(avr, LOG_ERROR, "GDB: Can not bind socket: %s", strerror(errno));
 		return -1;
 	}
 	if (listen(g->listen, 1)) {
