@@ -63,10 +63,8 @@ avr_register_io_read(
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
 	if (avr->io[a].r.param || avr->io[a].r.c) {
 		if (avr->io[a].r.param != param || avr->io[a].r.c != readp) {
-			fprintf(stderr,
-					"Error: avr_register_io_read(): Already registered, refusing to override.\n");
-			fprintf(stderr,
-					"Error: avr_register_io_read(%04x : %p/%p): %p/%p\n", a,
+			AVR_LOG(avr, LOG_ERROR, "IO: avr_register_io_read(): Already registered, refusing to override.\n");
+			AVR_LOG(avr, LOG_ERROR, "IO: avr_register_io_read(%04x : %p/%p): %p/%p\n", a,
 					avr->io[a].r.c, avr->io[a].r.param, readp, param);
 			abort();
 		}
@@ -100,8 +98,7 @@ avr_register_io_write(
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
 
 	if (a >= MAX_IOs) {
-		fprintf(stderr,
-				"Error: avr_register_io_write(): IO address 0x%04x out of range (max 0x%04x).\n",
+		AVR_LOG(avr, LOG_ERROR, "IO: avr_register_io_write(): IO address 0x%04x out of range (max 0x%04x).\n",
 					a, MAX_IOs);
 		abort();
 	}
@@ -116,12 +113,10 @@ avr_register_io_write(
 			if (avr->io[a].w.c != _avr_io_mux_write) {
 				int no = avr->io_shared_io_count++;
 				if (avr->io_shared_io_count > 4) {
-					fprintf(stderr,
-							"Error: avr_register_io_write(): Too many shared IO registers.\n");
+					AVR_LOG(avr, LOG_ERROR, "IO: avr_register_io_write(): Too many shared IO registers.\n");
 					abort();
 				}
-				fprintf(stderr,
-						"Note: avr_register_io_write(%04x): Installing muxer on register.\n", addr);
+				AVR_LOG(avr, LOG_TRACE, "IO: avr_register_io_write(%04x): Installing muxer on register.\n", addr);
 				avr->io_shared_io[no].used = 1;
 				avr->io_shared_io[no].io[0].param = avr->io[a].w.param;
 				avr->io_shared_io[no].io[0].c = avr->io[a].w.c;
@@ -131,8 +126,7 @@ avr_register_io_write(
 			int no = (intptr_t)avr->io[a].w.param;
 			int d = avr->io_shared_io[no].used++;
 			if (avr->io_shared_io[no].used > 4) {
-				fprintf(stderr,
-						"Error: avr_register_io_write(): Too many callbacks on %04x.\n", addr);
+				AVR_LOG(avr, LOG_ERROR, "IO: avr_register_io_write(): Too many callbacks on %04x.\n", addr);
 				abort();
 			}
 			avr->io_shared_io[no].io[d].param = param;
