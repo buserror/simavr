@@ -71,7 +71,7 @@ static uint8_t avr_adc_read_l(struct avr_t * avr, avr_io_addr_t addr, void * par
 			break;
 		case ADC_MUX_VCC4:
 			if ( !avr->vcc) {
-				printf("ADC Warning : missing VCC analog voltage\n");
+				AVR_LOG(avr, LOG_WARNING, "ADC: missing VCC analog voltage\n");
 			} else
 				reg = avr->vcc / 4;
 			break;
@@ -80,19 +80,19 @@ static uint8_t avr_adc_read_l(struct avr_t * avr, avr_io_addr_t addr, void * par
 	switch (ref) {
 		case ADC_VREF_VCC:
 			if (!avr->vcc)
-				printf("ADC Warning : missing VCC analog voltage\n");
+				AVR_LOG(avr, LOG_WARNING, "ADC: missing VCC analog voltage\n");
 			else
 				vref = avr->vcc;
 			break;
 		case ADC_VREF_AREF:
 			if (!avr->aref)
-				printf("ADC Warning : missing AREF analog voltage\n");
+				AVR_LOG(avr, LOG_WARNING, "ADC: missing AREF analog voltage\n");
 			else
 				vref = avr->aref;
 			break;
 		case ADC_VREF_AVCC:
 			if (!avr->avcc)
-				printf("ADC Warning : missing AVCC analog voltage\n");
+				AVR_LOG(avr, LOG_WARNING, "ADC: missing AVCC analog voltage\n");
 			else
 				vref = avr->avcc;
 			break;
@@ -105,7 +105,7 @@ static uint8_t avr_adc_read_l(struct avr_t * avr, avr_io_addr_t addr, void * par
 	reg = (reg * 0x3ff) / vref;	// scale to 10 bits ADC
 //	printf("ADC to 10 bits 0x%x %d\n", reg, reg);
 	if (reg > 0x3ff) {
-		printf("ADC Warning channel %d clipped %u/%u VREF %d\n", mux.kind, reg, 0x3ff, vref);
+		AVR_LOG(avr, LOG_WARNING, "ADC: channel %d clipped %u/%u VREF %d\n", mux.kind, reg, 0x3ff, vref);
 		reg = 0x3ff;
 	}
 	reg <<= shift;
@@ -155,7 +155,7 @@ static void avr_adc_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, voi
 	if (!aden && avr_regbit_get(avr, p->aden)) {
 		// first conversion
 		p->first = 1;
-		printf("ADC Start AREF %d AVCC %d\n", avr->aref, avr->avcc);
+		AVR_LOG(avr, LOG_TRACE, "ADC: Start AREF %d AVCC %d\n", avr->aref, avr->avcc);
 	}
 	if (aden && !avr_regbit_get(avr, p->aden)) {
 		// stop ADC
@@ -178,7 +178,7 @@ static void avr_adc_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, voi
 
 		div = avr->frequency >> div;
 		if (p->first)
-			printf("ADC starting at %uKHz\n", div / 13 / 100);
+			AVR_LOG(avr, LOG_TRACE, "ADC: starting at %uKHz\n", div / 13 / 100);
 		div /= p->first ? 25 : 13;	// first cycle is longer
 
 		avr_cycle_timer_register(avr,
