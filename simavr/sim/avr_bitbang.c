@@ -189,8 +189,8 @@ void avr_bitbang_reset(avr_t *avr, avr_bitbang_t * p)
 	p->data = 0;
 
 	if ( p->buffer_size < 1 || p->buffer_size > 32 ) {
-		fprintf(stderr,
-			"Error: bitbang buffer size should be between 1 and 32. set value: %d\n", p->buffer_size);
+		AVR_LOG(avr, LOG_ERROR,
+				"Error: bitbang buffer size should be between 1 and 32. set value: %d\n", p->buffer_size);
 		abort();
 	}
 
