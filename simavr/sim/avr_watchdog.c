@@ -28,11 +28,11 @@ static avr_cycle_count_t avr_watchdog_timer(struct avr_t * avr, avr_cycle_count_
 {
 	avr_watchdog_t * p = (avr_watchdog_t *)param;
 
-	printf("WATCHDOG timer fired.\n");
+	AVR_LOG(avr, LOG_TRACE, "WATCHDOG: timer fired.\n");
 	avr_raise_interrupt(avr, &p->watchdog);
 
 	if (!avr_regbit_get(avr, p->watchdog.enable)) {
-		printf("WATCHDOG timer fired and interrupt is not enabled. Quitting\n");
+		AVR_LOG(avr, LOG_ERROR, "WATCHDOG: timer fired and interrupt is not enabled. Quitting\n");
 		avr_sadly_crashed(avr, 10);
 	}
 
@@ -71,10 +71,11 @@ static void avr_watchdog_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void 
 		p->cycle_count = 2048 << wdp;
 		p->cycle_count = (p->cycle_count * avr->frequency) / 128000;
 		if (avr_regbit_get(avr, p->wde)) {
-			printf("Watchdog reset to %d cycles @ 128kz (* %d) = %d CPU cycles)\n", 2048 << wdp, 1 << wdp, (int)p->cycle_count);
+			AVR_LOG(avr, LOG_TRACE, "WATCHDOG: reset to %d cycles @ 128kz (* %d) = %d CPU cycles)\n",
+					2048 << wdp, 1 << wdp, (int)p->cycle_count);
 			avr_cycle_timer_register(avr, p->cycle_count, avr_watchdog_timer, p);
 		} else {
-			printf("Watchdog disabled\n");
+			AVR_LOG(avr, LOG_TRACE, "WATCHDOG: disabled\n");
 			avr_cycle_timer_cancel(avr, avr_watchdog_timer, p);
 		}
 	} else {
