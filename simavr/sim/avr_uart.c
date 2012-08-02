@@ -137,11 +137,11 @@ static void avr_uart_baud_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 	int sb = 1 + avr_regbit_get(avr, p->usbs);
 	int word_size = 1 /* start */ + db /* data bits */ + 1 /* parity */ + sb /* stops */;
 
-	printf("UART-%c configured to %04x = %d bps (x%d), %d data %d stop\n",
+	AVR_LOG(avr, LOG_TRACE, "UART: %c configured to %04x = %d bps (x%d), %d data %d stop\n",
 			p->name, val, baud, avr_regbit_get(avr, p->u2x)?2:1, db, sb);
 	// TODO: Use the divider value and calculate the straight number of cycles
 	p->usec_per_byte = 1000000 / (baud / word_size);
-	printf("Roughly %d usec per bytes\n", (int)p->usec_per_byte);
+	AVR_LOG(avr, LOG_TRACE, "UART: Roughly %d usec per bytes\n", (int)p->usec_per_byte);
 }
 
 static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
