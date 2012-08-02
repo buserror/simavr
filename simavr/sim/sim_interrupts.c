@@ -56,7 +56,7 @@ avr_register_vector(
 		printf("%s register vector %d (enabled %04x:%d)\n", __FUNCTION__, vector->vector, vector->enable.reg, vector->enable.bit);
 
 	if (!vector->enable.reg)
-		printf("avr_register_vector: No 'enable' bit on vector %d !\n", vector->vector);
+		AVR_LOG(avr, LOG_WARNING, "INT: avr_register_vector: No 'enable' bit on vector %d !\n", vector->vector);
 }
 
 int
