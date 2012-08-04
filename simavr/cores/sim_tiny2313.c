@@ -38,7 +38,7 @@ static void reset(struct avr_t * avr);
 /*
  * This is a template for all of the tinyx5 devices, hopefully
  */
-const static struct mcu_t {
+static const struct mcu_t {
 	avr_t core;
 	avr_eeprom_t 	eeprom;
 	avr_watchdog_t	watchdog;

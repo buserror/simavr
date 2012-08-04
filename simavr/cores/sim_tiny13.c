@@ -37,7 +37,7 @@ static void init(struct avr_t * avr);
 static void reset(struct avr_t * avr);
 
 
-const static struct mcu_t {
+static const struct mcu_t {
 	avr_t core;
 	avr_eeprom_t 	eeprom;
 	avr_watchdog_t	watchdog;
