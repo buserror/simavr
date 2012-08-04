@@ -797,6 +797,8 @@ void m1280_init(struct avr_t * avr)
 
 	avr_uart_init(avr, &mcu->uart0);
 	avr_uart_init(avr, &mcu->uart1);
+	avr_uart_init(avr, &mcu->uart2);
+	avr_uart_init(avr, &mcu->uart3);
 	avr_adc_init(avr, &mcu->adc);
 	avr_timer_init(avr, &mcu->timer0);
 	avr_timer_init(avr, &mcu->timer1);
