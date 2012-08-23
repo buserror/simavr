@@ -173,9 +173,11 @@ static void avr_timer_tcnt_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t
 //	printf("%s-%c %d/%d -- cycles %d/%d\n", __FUNCTION__, p->name, tcnt, p->tov_top, (uint32_t)cycles, (uint32_t)p->tov_cycles);
 
 	// this reset the timers bases to the new base
-	p->tov_base = 0;
-	avr_cycle_timer_register(avr, p->tov_cycles - cycles, avr_timer_tov, p);
-	avr_timer_tov(avr, avr->cycle - cycles, p);
+	if (p->tov_cycles > 1) {
+		avr_cycle_timer_register(avr, p->tov_cycles - cycles, avr_timer_tov, p);
+		p->tov_base = 0;
+		avr_timer_tov(avr, avr->cycle - cycles, p);
+	}
 
 //	tcnt = ((avr->cycle - p->tov_base) * p->tov_top) / p->tov_cycles;
 //	printf("%s-%c new tnt derive to %d\n", __FUNCTION__, p->name, tcnt);	
