@@ -101,8 +101,8 @@ static void avr_vcd_flush_log(avr_vcd_t * vcd)
 		avr_vcd_log_t *l = &vcd->log[li];
 		uint64_t base = avr_cycles_to_nsec(vcd->avr, l->when - vcd->start);	// 1ns base
 
-		// if that trace was seen in this usec already, we fudge the base time
-		// to make sure the new value is offset by one usec, to make sure we get
+		// if that trace was seen in this nsec already, we fudge the base time
+		// to make sure the new value is offset by one nsec, to make sure we get
 		// at least a small pulse on the waveform
 		// This is a bit of a fudge, but it is the only way to represent very 
 		// short"pulses" that are still visible on the waveform.
