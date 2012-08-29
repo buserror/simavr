@@ -61,7 +61,8 @@ static void avr_ioport_pin_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t
 
 /*
  * This is a the callback for the DDR register. There is nothing much to do here, apart
- * from triggering an IRQ in case any 'client' code is interested in the information.
+ * from triggering an IRQ in case any 'client' code is interested in the information,
+ * and restoring all PIN bits marked as output to PORT values.
  */
 static void avr_ioport_ddr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
@@ -69,6 +70,14 @@ static void avr_ioport_ddr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t
 
 	avr_raise_irq(p->io.irq + IOPORT_IRQ_DIRECTION_ALL, v);
 	avr_core_watch_write(avr, addr, v);
+
+	const uint8_t oldpin = avr->data[p->r_pin];
+	const uint8_t pin = (oldpin & ~v) | (avr->data[p->r_port] & v);
+	avr_core_watch_write(avr, p->r_pin, pin);
+	for (int i = 0; i < 8; i++)
+		if (((oldpin ^ pin) >> i) & 1)
+			avr_raise_irq(p->io.irq + i, (pin >> i) & 1);
+	avr_raise_irq(p->io.irq + IOPORT_IRQ_PIN_ALL, pin);
 }
 
 /*
