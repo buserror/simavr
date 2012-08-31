@@ -40,7 +40,6 @@ extern "C" {
  */
 
 #define AVR_VCD_MAX_SIGNALS 32
-#define AVR_VCD_LOG_SIZE	5120
 
 typedef struct avr_vcd_signal_t {
 	avr_irq_t 	irq;		// receiving IRQ
@@ -53,7 +52,9 @@ typedef struct avr_vcd_log_t {
 	uint64_t 	when;
 	avr_vcd_signal_t * signal;
 	uint32_t value;
-} avr_vcd_log_t;
+} avr_vcd_log_t, *avr_vcd_log_p;
+
+#define AVR_VCD_LOG_CHUNK_SIZE	(4096 / sizeof(avr_vcd_signal_t))
 
 typedef struct avr_vcd_t {
 	struct avr_t *	avr;	// AVR we are attaching timers to..
@@ -67,8 +68,9 @@ typedef struct avr_vcd_t {
 	uint64_t period;
 	uint64_t start;
 
+	size_t			logsize;
 	uint32_t		logindex;
-	avr_vcd_log_t	log[AVR_VCD_LOG_SIZE];
+	avr_vcd_log_p	log;
 } avr_vcd_t;
 
 // initializes a new VCD trace file, and returns zero if all is well

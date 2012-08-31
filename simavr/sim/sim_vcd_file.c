@@ -24,6 +24,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "sim_vcd_file.h"
 #include "sim_avr.h"
 #include "sim_time.h"
@@ -55,11 +56,28 @@ void _avr_vcd_notify(struct avr_irq_t * irq, uint32_t value, void * param)
 	avr_vcd_t * vcd = (avr_vcd_t *)param;
 	if (!vcd->output)
 		return;
-	avr_vcd_signal_t * s = (avr_vcd_signal_t*)irq;
-	if (vcd->logindex == AVR_VCD_LOG_SIZE) {
-		printf("_avr_vcd_notify %s overrun value buffer %d\n", s->name, AVR_VCD_LOG_SIZE);
-		return;
+
+	/*
+	 * buffer starts empty, the first trace will resize it to AVR_VCD_LOG_CHUNK_SIZE,
+	 * further growth will resize it accordingly. There's a bit of
+	 */
+	if (vcd->logindex >= vcd->logsize) {
+		vcd->logsize += AVR_VCD_LOG_CHUNK_SIZE;
+		vcd->log = (avr_vcd_log_p)realloc(vcd->log, vcd->logsize * sizeof(vcd->log[0]));
+		AVR_LOG(vcd->avr, LOG_TRACE, "%s trace buffer resized to %d\n",
+				__func__, (int)vcd->logsize);
+		if ((vcd->logsize / AVR_VCD_LOG_CHUNK_SIZE) == 5) {
+			AVR_LOG(vcd->avr, LOG_WARNING, "%s log size runnaway (%d) flush problem?\n",
+					__func__, (int)vcd->logsize);
+		}
+		if (!vcd->log) {
+			AVR_LOG(vcd->avr, LOG_ERROR, "%s log resizing, out of memory (%d)!\n",
+					__func__, (int)vcd->logsize);
+			vcd->logsize = 0;
+			return;
+		}
 	}
+	avr_vcd_signal_t * s = (avr_vcd_signal_t*)irq;
 	avr_vcd_log_t *l = &vcd->log[vcd->logindex++];
 	l->signal = s;
 	l->when = vcd->avr->cycle;
@@ -152,7 +170,7 @@ int avr_vcd_start(avr_vcd_t * vcd)
 		perror(vcd->filename);
 		return -1;
 	}
-		
+
 	fprintf(vcd->output, "$timescale 1ns $end\n");	// 1ns base
 	fprintf(vcd->output, "$scope module logic $end\n");
 
