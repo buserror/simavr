@@ -82,6 +82,7 @@ clean: clean-${OBJ}
 	rm -rf ${target} *.a *.so
 
 DESTDIR = /usr/local
+PREFIX = ${DESTDIR}
 
 install : all
 	$(MKDIR) $(DESTDIR)/include/simavr/avr
@@ -91,7 +92,7 @@ install : all
 	$(MKDIR) $(DESTDIR)/lib
 	$(INSTALL) ${OBJ}/libsimavr.a $(DESTDIR)/lib/
 	$(MKDIR) $(DESTDIR)/lib/pkgconfig/
-	sed -e "s|PREFIX|${DESTDIR}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
+	sed -e "s|PREFIX|${PREFIX}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
 		simavr.pc >$(DESTDIR)/lib/pkgconfig/simavr.pc
 ifeq (${shell uname}, Linux)
 	$(INSTALL) ${OBJ}/libsimavr.so.1 $(DESTDIR)/lib/
