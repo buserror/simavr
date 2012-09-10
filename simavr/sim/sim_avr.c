@@ -29,7 +29,7 @@
 #include "sim_gdb.h"
 #include "avr_uart.h"
 #include "sim_vcd_file.h"
-#include "avr_mcu_section.h"
+#include "avr/avr_mcu_section.h"
 
 #define AVR_KIND_DECL
 #include "sim_core_decl.h"

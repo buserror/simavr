@@ -40,7 +40,6 @@ VPATH	+= sim
 IPATH	= sim
 IPATH	+= .
 IPATH	+= ../../shared
-IPATH	+= ../include
     
 #
 # Static library
@@ -88,7 +87,7 @@ install : all
 	$(MKDIR) $(DESTDIR)/include/simavr/avr
 	$(INSTALL) -m644 sim/*.h $(DESTDIR)/include/simavr/
 	$(INSTALL) -m644 sim_core_*.h $(DESTDIR)/include/simavr/
-	$(INSTALL) -m644 ../include/*.h $(DESTDIR)/include/simavr/avr/
+	$(INSTALL) -m644 sim/avr/*.h $(DESTDIR)/include/simavr/avr/
 	$(MKDIR) $(DESTDIR)/lib
 	$(INSTALL) ${OBJ}/libsimavr.a $(DESTDIR)/lib/
 	$(MKDIR) $(DESTDIR)/lib/pkgconfig/

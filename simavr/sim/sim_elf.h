@@ -22,7 +22,7 @@
 #ifndef __SIM_ELF_H__
 #define __SIM_ELF_H__
 
-#include "avr_mcu_section.h"
+#include "avr/avr_mcu_section.h"
 
 #ifdef __cplusplus
 extern "C" {
