@@ -39,6 +39,8 @@ enum avr_gdb_watch_type {
 
 int avr_gdb_init(avr_t * avr);
 
+void avr_deinit_gdb(avr_t * avr);
+
 // call from the main AVR decoder thread
 int avr_gdb_processor(avr_t * avr, int sleep);
 

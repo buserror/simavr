@@ -64,6 +64,10 @@ void avr_terminate(avr_t * avr)
 {
 	if (avr->special_deinit)
 		avr->special_deinit(avr);
+	if (avr->gdb) {
+		avr_deinit_gdb(avr);
+		avr->gdb = NULL;
+	}
 	if (avr->vcd) {
 		avr_vcd_close(avr->vcd);
 		avr->vcd = NULL;

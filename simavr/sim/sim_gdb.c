@@ -566,3 +566,12 @@ int avr_gdb_init(avr_t * avr)
 	
 	return 0;
 }
+
+void avr_deinit_gdb(avr_t * avr)
+{
+	if (avr->gdb->listen != -1)
+	   close(avr->gdb->listen);
+	if (avr->gdb->s != -1)
+	   close(avr->gdb->s);
+	free(avr->gdb);
+}
