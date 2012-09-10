@@ -6,5 +6,5 @@ libdir=${exec_prefix}/lib
 Name: simavr
 Description: Atmel(tm) AVR 8 bits simulator
 Version: VERSION
-Cflags: -I${includedir}
+Cflags: -I${includedir}/simavr
 Libs: -L${libdir} -lsimavr -lelf
