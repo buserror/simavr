@@ -1,0 +1,98 @@
+\chapter{Setup Guide} \label{chapter:setup}
+
+This section provides instructions on how to retrieve, compile and install
+\simavr on the GNU/Linux operating system.
+
+\section{\simavr} \label{section:setup_simavr}
+
+\subsection{Getting the source code}
+
+The official home of \simavr is \url{https://github.com/buserror-uk/simavr}.
+Stable releases are published as git repository tags (direct downloads are
+available at \url{https://github.com/buserror-uk/simavr/tags}). To clone a local
+copy of the repository, run
+
+\begin{verbatim}
+git clone git://github.com/buserror-uk/simavr.git
+\end{verbatim}
+
+\subsection{Software Dependencies}
+
+\emph{elfutils} is the only hard dependency at run-time. The name of this
+package may differ from distro to distro. For example, in Ubuntu the required
+package is called \emph{libelf-dev}.
+
+At compile-time, \simavr additionally requires \emph{avr-libc} to complete its
+built-in AVR core definitions. It is assumed that further standard
+utilities (\emph{git}, \emph{gcc} or \emph{clang}, \emph{make}, etc \ldots) are
+already present.
+
+\simavr has been tested with the following software versions:
+
+\begin{itemize}
+\item Arch Linux x86\_64 and i686
+\item elfutils 0.154
+\item avr-libc 1.8.0
+\item gcc 4.7.1
+\item make 3.82
+\end{itemize}
+
+Furthermore, the board\_usb example depends on libusb\_vhci and vhci\_hcd. For
+further details, see \emph{examples/board\_usb/README}. Note however that these
+are not required for a fully working \simavr build.
+
+\subsection{Compilation and Installation}
+
+\simavr's build system relies on standard makefiles. The simplest compilation
+boils down to the usual
+
+\begin{verbatim}
+make
+make install
+\end{verbatim}
+
+As usual, there are several variables to allow configuration of the build
+procedure. The most important ones are described in the following section:
+
+\begin{itemize}
+\item AVR\_ROOT
+
+The path to the system's \emph{avr-libc} installation.
+
+While the default value
+should be correct for many systems, it may need to be set manually if the
+message 'WARNING \ldots did not compile, check your avr-gcc
+toolchain' appears during the build. For example, if iomxx0\_1.h is located at
+/usr/avr/include/avr/iomxx0\_1.h, AVR\_ROOT must be set to /usr/avr.
+
+\item CFLAGS
+
+The standard compiler flags variable.
+
+It may be useful to modify CFLAGS for easier debugging (in which case
+optimizations should be disabled and debugging information enabled: -O0 -g).
+Additionally adding -DCONFIG\_SIMAVR\_TRACE=1 enables extra verbose output and
+extended execution tracing.
+\end{itemize}
+
+These variables may be set either directly in Makefile.common, or alternatively
+can be passed to the make invocation (make AVR\_ROOT=/usr/avr DESTDIR=/usr
+install).
+
+Installation is managed through the usual
+\begin{verbatim}
+make install
+\end{verbatim}
+
+The DESTDIR variable can be used in association with the PREFIX variable to create a \simavr package. DESTDIR=/dest/dir
+PREFIX=/usr installs to /dest/dir but keeps the package configured to the standard prefix
+(/usr).
+
+For development, we built and installed \simavr with the following procedure:
+
+\begin{verbatim}
+make clean
+make AVR_ROOT=/usr/avr CFLAGS="-O0 -Wall -Wextra -g -fPIC \
+  -std=gnu99 -Wno-sign-compare -Wno-unused-parameter"
+make DESTDIR="/usr" install
+\end{verbatim}
