@@ -1,4 +1,4 @@
-
+.PHONY: doc
 
 all:	build-simavr build-tests build-examples
 
@@ -14,8 +14,12 @@ build-examples: build-simavr
 install:
 	$(MAKE) -C simavr install
 
+doc:
+	$(MAKE) -C doc
+
 clean:
 	$(MAKE) -C simavr clean
 	$(MAKE) -C tests clean
 	$(MAKE) -C examples clean
+	$(MAKE) -C doc clean
 
