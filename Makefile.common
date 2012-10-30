@@ -27,7 +27,7 @@
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
 # simavr directory
-SIMAVR		?= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && echo $$p/simavr; done}
+SIMAVR		:= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && echo $$p/simavr; done}
 
 # You can override the build settings with local changes in this file
 # for example:
@@ -79,8 +79,14 @@ LDFLAGS 	+= -L${LIBDIR} -lsimavr
 LDFLAGS 	+= -lelf 
 
 ifeq (${shell uname}, Linux)
+ifeq ($(RELEASE),1)
+# allow the shared library to be found in the build directory
+# only for linking, the install time location is used at runtime
+LFLAGS		+= -Wl,-rpath-link,${LIBDIR}
+else
 # allow the shared library to be found in the build directory
 LFLAGS		+= -Wl,-rpath,${LIBDIR}
+endif
 endif
 
 # The code is compiled "optimized" to the max.
