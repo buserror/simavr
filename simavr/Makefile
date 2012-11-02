@@ -83,6 +83,7 @@ ${target}	: ${OBJ}/${target}.elf
  
 clean: clean-${OBJ}
 	rm -rf ${target} *.a *.so
+	rm -f sim_core_*.h
 
 DESTDIR = /usr/local
 PREFIX = ${DESTDIR}
