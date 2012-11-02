@@ -46,4 +46,4 @@ ${target}: ${board}
 	@echo $@ done
 
 clean: clean-${OBJ}
-	rm -rf *.a *.axf ${target} *.vcd
+	rm -rf *.a *.axf ${target} *.vcd *.hex
