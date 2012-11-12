@@ -60,4 +60,4 @@ run_tests: all
 	echo "Tests run: $$num_run  Successes: $$(($$num_run-$$num_failed))  Failures: $$num_failed"
 
 clean: clean-${OBJ}
-	rm -f *.axf
+	rm -f *.axf *.vcd
