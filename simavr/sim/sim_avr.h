@@ -286,7 +286,7 @@ typedef struct avr_t {
 // this is a static constructor for each of the AVR devices
 typedef struct avr_kind_t {
 	const char * names[4];	// name aliases
-	avr_t * (*make)();
+	avr_t * (*make)(void);
 } avr_kind_t;
 
 // a symbol loaded from the .elf file
