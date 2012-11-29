@@ -119,6 +119,7 @@ const struct mcu_t SIM_CORENAME = {
 		.name = '0',
 		.r_udr = UDR0,
 
+		.u2x = AVR_IO_REGBIT(UCSR0A, U2X0),
 		.txen = AVR_IO_REGBIT(UCSR0B, TXEN0),
 		.rxen = AVR_IO_REGBIT(UCSR0B, RXEN0),
 		.ucsz = AVR_IO_REGBITS(UCSR0C, UCSZ00, 0x3), // 2 bits
@@ -150,6 +151,7 @@ const struct mcu_t SIM_CORENAME = {
 		.name = '1',
 		.r_udr = UDR1,
 
+		.u2x = AVR_IO_REGBIT(UCSR1A, U2X1),
 		.txen = AVR_IO_REGBIT(UCSR1B, TXEN1),
 		.rxen = AVR_IO_REGBIT(UCSR1B, RXEN1),
 		.ucsz = AVR_IO_REGBITS(UCSR1C, UCSZ10, 0x3), // 2 bits
