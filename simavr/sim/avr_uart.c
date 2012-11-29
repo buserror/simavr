@@ -231,6 +231,9 @@ void avr_uart_reset(struct avr_io_t *io)
 	avr_cycle_timer_cancel(avr, avr_uart_txc_raise, p);
 	uart_fifo_reset(&p->input);
 
+        avr_regbit_set(avr, p->ucsz);
+        avr_regbit_clear(avr, p->ucsz2);
+
 	// DEBUG allow printf without fiddling with enabling the uart
 	avr_regbit_set(avr, p->txen);
 	p->usec_per_byte = 100;
