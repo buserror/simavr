@@ -14,17 +14,28 @@ avr_cycle_count_t tests_cycle_count = 0;
 int tests_disable_stdout = 1;
 
 static char *test_name = "(uninitialized test)";
-static FILE *orig_stderr = NULL;
 static int finished = 0;
 
+#ifdef __MINGW32__
+#define restore_stderr()	{}
+#define map_stderr()		{}
+#else
+static FILE *orig_stderr = NULL;
+#define restore_stderr()	{ if (orig_stderr) stderr = orig_stderr; }
+#define map_stderr()		{ if (tests_disable_stdout) { \
+								orig_stderr = stderr;	\
+								fclose(stdout);			\
+								stderr = stdout;		\
+							} }
+#endif
+		
 static void atexit_handler(void) {
 	if (!finished)
 		_fail(NULL, 0, "Test exit without indicating success.");
 }
 
 void tests_success(void) {
-	if (orig_stderr)
-		stderr = orig_stderr;
+	restore_stderr();
 	fprintf(stderr, "OK: %s\n", test_name);
 	finished = 1;
 }
@@ -96,11 +107,8 @@ static int my_avr_run(avr_t * avr)
 
 avr_t *tests_init_avr(const char *elfname) {
 	tests_cycle_count = 0;
-	if (tests_disable_stdout) {
-		orig_stderr = stderr;
-		fclose(stdout);
-		stderr = stdout;
-	}
+	map_stderr();
+	
 	elf_firmware_t fw;
 	if (elf_read_firmware(elfname, &fw))
 		fail("Failed to read ELF firmware \"%s\"", elfname);
@@ -229,8 +237,7 @@ void tests_assert_cycles_between(unsigned long min, unsigned long max) {
 }
 
 void _fail(const char *filename, int linenum, const char *fmt, ...) {
-	if (orig_stderr)
-		stderr = orig_stderr;
+	restore_stderr();
 
 	if (filename)
 		fprintf(stderr, "%s:%d: ", filename, linenum);

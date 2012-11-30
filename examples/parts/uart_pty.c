@@ -19,7 +19,7 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <sys/select.h>
+#include "sim_network.h"
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>

@@ -1,0 +1,78 @@
+ENVIRONMENT
+===========
+
+Microsoft SDK
+-------------
+Make sure that you have installed the ws2_32.lib, which is part of the Microsoft SDK.
+
+MinGW
+-----
+http://www.mingw.org/
+goto Downloads
+download and install mingw_get_inst-?????
+Select
+	C Compiler
+	C++ Compiler
+	MSYS Basic System
+
+Set the MINGW_HOME environment variable.
+Add %MINGW_HOME%\msys\1.0\bin;%MINGW_HOME%\bin; to your PATH
+Open a command shell and make sure that gcc is working: gcc –v
+
+LibELF
+------
+Build and install libelf with mingw, or download the pre-compiled patch and copy it into your mingw root folder.
+https://gitorious.org/mingw-libs-for-simavr/mingw-libs-for-simavr/trees/master
+
+FreeGLUT
+--------
+Build and install freeglut with mingw, or download the pre-compiled patch and copy it into your mingw root folder.
+https://gitorious.org/mingw-libs-for-simavr/mingw-libs-for-simavr/trees/master
+
+
+WinAVR
+-----------
+If you have not already, download and install WinAVR.
+http://winavr.sourceforge.net/
+(This tutorial assumes you are using WinAVR-20100110.)
+Make sure that AVR32_HOME is set correctly and pointing do your WinAVR installation directory.
+%AVR32_HOME%\bin\gcc –v
+In the output you see that the target is avr, while the target of the host gcc is mingw32.
+
+
+INSTALL simavr
+===============
+
+get simavr Sources
+-------------------
+Download the patched simavr sources of the mingw branch from:
+	https://github.com/the-real-orca/simavr/tree/mingw
+	and extract the sources to your development directory
+- or - clone the GIT repository
+	https://github.com/the-real-orca/simavr.git 
+	and switch to the mingw branch
+
+
+compile simavr
+---------------
+
+Open a command window and change to your simavr directory:
+      make all
+- or -
+      make –r all	(this is a bit faster)
+
+TEST
+====
+
+make –C tests run_tests
+
+
+INSTALL
+=======
+
+make install DESTDIR=C:\path-to-your-development-directory
+
+It will create the following sub-directories and put the according simavr files into them.
+ - bin
+ - lib
+ - include

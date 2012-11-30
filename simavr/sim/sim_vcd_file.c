@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include<inttypes.h>
 #include "sim_vcd_file.h"
 #include "sim_avr.h"
 #include "sim_time.h"
@@ -129,7 +130,7 @@ static void avr_vcd_flush_log(avr_vcd_t * vcd)
 			
 		if (base > oldbase || li == 0) {
 			seen = 0;
-			fprintf(vcd->output, "#%llu\n", (long long unsigned int)base);
+			fprintf(vcd->output, "#%" PRIu64  "\n", base);
 			oldbase = base;
 		}
 		seen |= (1 << l->signal->irq.irq);	// mark this trace as seen for this timestamp
