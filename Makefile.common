@@ -41,6 +41,7 @@ ARCH 		= ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
 
 CFLAGS		+= -O2 -Wall
 CFLAGS		+= -g
+CORE_CFLAGS	= -nostdinc
 
 ifeq (${shell uname}, Darwin)
 # gcc 4.2 from MacOS is really not up to scratch anymore 
@@ -119,11 +120,11 @@ endif
 # this rule has precedence
 ${OBJ}/sim_%.o : cores/sim_%.c
 ifeq ($(V),1)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD \
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(CORE_CFLAGS) -MMD \
 		${AVR_CPPFLAGS} \
 		$<  -c -o $@
 else
-	@$(CC) $(CPPFLAGS) $(CFLAGS) $(CFLAGS) -MMD \
+	@$(CC) $(CPPFLAGS) $(CFLAGS) $(CFLAGS) $(CORE_CFLAGS) -MMD \
 		${AVR_CPPFLAGS} \
 		$<  -c -o $@
 	@echo CORE $<
