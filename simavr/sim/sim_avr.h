@@ -19,6 +19,10 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+	PATCH 20130523; bsekisser - patched for core version 3
+*/
+
 #ifndef __SIM_AVR_H__
 #define __SIM_AVR_H__
 
@@ -248,6 +252,12 @@ typedef struct avr_t {
 
 	// flash memory (initialized to 0xff, and code loaded into it)
 	uint8_t *	flash;
+
+#if CONFIG_SIMAVR_CORE_V3
+	/* uflash buffer for core version 3, cleared on reset, loaded on demand */
+	uint32_t*	uflash;
+#endif
+
 	// this is the general purpose registers, IO registers, and SRAM
 	uint8_t *	data;
 

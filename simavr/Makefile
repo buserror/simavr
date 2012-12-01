@@ -16,6 +16,8 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
+# PATCH 20130523; bsekisser - patched for core versions 2 and 3
+
 SHELL 			:= ${shell which bash}
 SIMAVR_VERSION	:= ${shell \
 	{ git log -1 --tags --simplify-by-decoration --pretty="format:%d"|\
@@ -29,6 +31,14 @@ CFLAGS	+= -Werror
 # tracing is useful especialy if you develop simavr core.
 # it otherwise eat quite a bit of few cycles, even disabled
 #CFLAGS	+= -DCONFIG_SIMAVR_TRACE=1
+
+# flags to enable core versions 2 and 3
+# shipped disabled till deemed kosher.
+#
+# version 2 is an interpreter with opcode digester.
+# version 3 is a digested opcode interpreter.
+CFLAGS += -DCONFIG_SIMAVR_CORE_V2
+CFLAGS += -DCONFIG_SIMAVR_CORE_V3
 
 all:	obj config libsimavr ${target}
 

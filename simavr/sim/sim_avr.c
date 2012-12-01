@@ -19,6 +19,10 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+	PATCH 20130523; bsekisser - patched for core versions 2 and 3.
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -36,6 +40,11 @@
 
 int avr_init(avr_t * avr)
 {
+#if CONFIG_SIMAVR_CORE_V3
+	/* gets cleared on each reset...  just to be sure! */
+	avr->uflash = malloc((avr->flashend + 1) << 1);
+#endif
+
 	avr->flash = malloc(avr->flashend + 1);
 	memset(avr->flash, 0xff, avr->flashend + 1);
 	avr->data = malloc(avr->ramend + 1);
@@ -86,6 +95,11 @@ void avr_reset(avr_t * avr)
 	printf("%s reset\n", avr->mmcu);
 
 	memset(avr->data, 0x0, avr->ramend + 1);
+
+#if CONFIG_SIMAVR_CORE_v3
+	memset(avr->uflash, 0, (avr->flashend + 1) << 1);
+#endif
+
 	_avr_sp_set(avr, avr->ramend);
 	avr->pc = 0;
 	for (int i = 0; i < 8; i++)
@@ -273,7 +287,14 @@ void avr_callback_run_raw(avr_t * avr)
 	avr_flashaddr_t new_pc = avr->pc;
 
 	if (avr->state == cpu_Running) {
+#if CONFIG_SIMAVR_CORE_V3
+		new_pc = avr_run_one_v3(avr);
+#elif CONFIG_SIMAVR_CORE_V2
+		new_pc = avr_run_one_v2(avr);
+#else
 		new_pc = avr_run_one(avr);
+#endif
+
 #if CONFIG_SIMAVR_TRACE
 		avr_dump_state(avr);
 #endif
