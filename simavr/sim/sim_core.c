@@ -918,7 +918,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 						case 0x9007: {	// ELPM Extended Load Program Memory 1001 000d dddd 01oo
 							if (!avr->rampz)
 								_avr_invalid_opcode(avr);
-							uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8) | (avr->data[avr->rampz] << 16);
+							uint32_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8) | (avr->data[avr->rampz] << 16);
 							uint8_t r = (opcode >> 4) & 0x1f;
 							int op = opcode & 3;
 							STATE("elpm %s, (Z[%02x:%04x]%s)\n", avr_regname(r), z >> 16, z&0xffff, opcode?"+":"");
