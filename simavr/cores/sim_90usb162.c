@@ -19,7 +19,6 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
 #include "sim_avr.h"
 #include "sim_core_declare.h"
 #include "avr_eeprom.h"

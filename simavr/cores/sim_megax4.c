@@ -18,7 +18,7 @@
 	You should have received a copy of the GNU General Public License
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <stdio.h>
+
 #include "sim_avr.h"
 
 #include "sim_megax4.h"
@@ -26,8 +26,6 @@
 void mx4_init(struct avr_t * avr)
 {
 	struct mcu_t * mcu = (struct mcu_t*)avr;
-
-	printf("%s init\n", avr->mmcu);
 	
 	avr_eeprom_init(avr, &mcu->eeprom);
 	avr_flash_init(avr, &mcu->selfprog);

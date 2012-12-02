@@ -79,10 +79,14 @@ endif
 ${OBJ}/${target}.elf	: ${OBJ}/${target}.o
 
 ${target}	: ${OBJ}/${target}.elf
+ifeq (${shell uname -o}, Msys)
+	ln -sf $< $@.exe
+else
 	ln -sf $< $@
+endif
  
 clean: clean-${OBJ}
-	rm -rf ${target} *.a *.so
+	rm -rf ${target} *.a *.so *.exe
 	rm -f sim_core_*.h
 
 DESTDIR = /usr/local

@@ -32,14 +32,6 @@
 // SREG bit names
 const char * _sreg_bit_name = "cznvshti";
 
-#ifdef NO_COLOR
-	#define FONT_RED		
-	#define FONT_DEFAULT	
-#else
-	#define FONT_RED		"\e[31m"
-	#define FONT_DEFAULT	"\e[0m"
-#endif
-
 /*
  * Handle "touching" registers, marking them changed.
  * This is used only for debugging purposes to be able to

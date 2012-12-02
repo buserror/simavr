@@ -19,17 +19,13 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
+#include "sim_network.h"
 #include <sys/time.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <poll.h>
 #include <pthread.h>
 #include "sim_avr.h"
 #include "sim_core.h" // for SET_SREG_FROM, READ_SREG_INTO
@@ -536,13 +532,18 @@ int avr_gdb_init(avr_t * avr)
 
 	avr->gdb = NULL;
 
+	if ( network_init() ) {
+		AVR_LOG(avr, LOG_ERROR, "GDB: Can't initialize network");
+		return -1;
+	}
+	
 	if ((g->listen = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
 		AVR_LOG(avr, LOG_ERROR, "GDB: Can't create socket: %s", strerror(errno));
 		return -1;
 	}
 
-	int i = 1;
-	setsockopt(g->listen, SOL_SOCKET, SO_REUSEADDR, &i, sizeof(i));
+	int optval = 1;
+	setsockopt(g->listen, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 
 	struct sockaddr_in address = { 0 };
 	address.sin_family = AF_INET;
@@ -574,4 +575,6 @@ void avr_deinit_gdb(avr_t * avr)
 	if (avr->gdb->s != -1)
 	   close(avr->gdb->s);
 	free(avr->gdb);
+
+	network_release();
 }
