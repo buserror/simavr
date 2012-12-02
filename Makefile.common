@@ -41,6 +41,7 @@ ARCH 		= ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
 
 CFLAGS		+= -O2 -Wall
 CFLAGS		+= -g
+CORE_CFLAGS	= -nostdinc
 
 ifeq (${shell uname}, Darwin)
 # gcc 4.2 from MacOS is really not up to scratch anymore 
@@ -57,7 +58,17 @@ else
 AVR_ROOT 	:= /usr/lib/avr
 AVR_INC 	:= ${AVR_ROOT}
 AVR 		:= avr-
+ifeq (${shell uname -o}, Msys)
+AVR_ROOT    := ${shell echo "${AVR32_HOME}" | tr '\\' '/'}
+AVR_INC     := ${AVR_ROOT}/avr
+AVR         := ${AVR_ROOT}/bin/avr-
+IPATH       += ${PREFIX}/include
+CFLAGS      += -I${PREFIX}/include
+LDFLAGS		+= -L/lib -L/local/lib
+CFLAGS 		+= -DNO_COLOR
+else
 CFLAGS 		+= -fPIC
+endif
 endif
 
 CPPFLAGS	+= --std=gnu99 -Wall
@@ -77,6 +88,10 @@ LIBDIR		= ${shell pwd}/${SIMAVR}/${OBJ}
 LDFLAGS 	+= -L${LIBDIR} -lsimavr 
 
 LDFLAGS 	+= -lelf 
+
+ifeq (${shell uname -o}, Msys)
+LDFLAGS      += -lws2_32
+endif
 
 ifeq (${shell uname}, Linux)
 ifeq ($(RELEASE),1)
@@ -119,11 +134,11 @@ endif
 # this rule has precedence
 ${OBJ}/sim_%.o : cores/sim_%.c
 ifeq ($(V),1)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD \
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(CORE_CFLAGS) -MMD \
 		${AVR_CPPFLAGS} \
 		$<  -c -o $@
 else
-	@$(CC) $(CPPFLAGS) $(CFLAGS) $(CFLAGS) -MMD \
+	@$(CC) $(CPPFLAGS) $(CFLAGS) $(CFLAGS) $(CORE_CFLAGS) -MMD \
 		${AVR_CPPFLAGS} \
 		$<  -c -o $@
 	@echo CORE $<

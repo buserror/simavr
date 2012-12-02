@@ -43,7 +43,7 @@ enum {
 
 struct avr_io_usb {
 	uint8_t pipe;	//[in]
-	size_t  sz;		//[in/out]
+	uint32_t  sz;		//[in/out]
 	uint8_t * buf;	//[in/out]
 };
 #define AVR_IOCTL_USB_NAK -2

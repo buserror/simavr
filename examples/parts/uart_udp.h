@@ -23,7 +23,7 @@
 #ifndef __UART_UDP_H___
 #define __UART_UDP_H___
 
-#include <netinet/in.h>
+#include "sim_network.h"
 #include "sim_irq.h"
 #include "fifo_declare.h"
 

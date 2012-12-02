@@ -43,6 +43,8 @@ int avr_init(avr_t * avr)
 #ifdef CONFIG_SIMAVR_TRACE
 	avr->trace_data = calloc(1, sizeof(struct avr_trace_data_t));
 #endif
+	
+	printf("%s init\n", avr->mmcu);
 
 	// cpu is in limbo before init is finished.
 	avr->state = cpu_Limbo;
@@ -81,6 +83,8 @@ void avr_terminate(avr_t * avr)
 
 void avr_reset(avr_t * avr)
 {
+	printf("%s reset\n", avr->mmcu);
+
 	memset(avr->data, 0x0, avr->ramend + 1);
 	_avr_sp_set(avr, avr->ramend);
 	avr->pc = 0;
