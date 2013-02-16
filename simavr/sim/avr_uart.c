@@ -164,7 +164,7 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 			p->stdio_out[p->stdio_len] = 0;
 			if (v == '\n' || p->stdio_len == maxsize) {
 				p->stdio_len = 0;
-				printf( FONT_GREEN "%s\n" FONT_DEFAULT, p->stdio_out);
+				GLOBAL_LOG( LOG_TRACE, FONT_GREEN "%s\n" FONT_DEFAULT, p->stdio_out);
 			}
 		}
 		TRACE(printf("UDR%c(%02x) = %02x\n", p->name, addr, v);)

@@ -70,10 +70,18 @@ enum {
 	LOG_WARNING,
 	LOG_TRACE,
 };
+typedef void (*logger_t)(const int level, const char * format, ... );
+extern logger_t global_logger;
+#ifndef GLOBAL_LOG
+#define GLOBAL_LOG(level, ...) \
+	do { \
+		global_logger( level, __VA_ARGS__); \
+	} while(0)
+#endif
 #define AVR_LOG(avr, level, ...) \
 	do { \
 		if (avr->log >= level) \
-			fprintf(stdout, __VA_ARGS__); \
+			GLOBAL_LOG( level, __VA_ARGS__); \
 	} while(0)
 
 /*
