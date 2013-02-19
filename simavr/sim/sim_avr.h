@@ -72,17 +72,13 @@ enum {
 };
 typedef void (*logger_t)(const int level, const char * format, ... );
 extern logger_t global_logger;
-#ifndef GLOBAL_LOG
-#define GLOBAL_LOG(level, ...) \
-	do { \
-		global_logger( level, __VA_ARGS__); \
-	} while(0)
-#endif
+#ifndef AVR_LOG
 #define AVR_LOG(avr, level, ...) \
 	do { \
-		if (avr->log >= level) \
-			GLOBAL_LOG( level, __VA_ARGS__); \
+		if (!avr || avr->log >= level) \
+			global_logger( level, __VA_ARGS__); \
 	} while(0)
+#endif
 
 /*
  * Core states.
