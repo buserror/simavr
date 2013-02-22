@@ -35,7 +35,7 @@
 #define AVR_KIND_DECL
 #include "sim_core_decl.h"
 
-void std_logger(const int level, const char * format, ... );
+void std_logger(avr_t* avr, const int level, const char * format, ... );
 logger_t global_logger = std_logger;
 
 int avr_init(avr_t * avr)
@@ -352,11 +352,14 @@ avr_make_mcu_by_name(
 	return avr;	
 }
 
-void std_logger(const int level, const char * format, ... ) {
-    va_list args;
-    va_start(args, format);
-    vfprintf((level > LOG_ERROR) ?  stdout : stderr , format, args);
-    va_end(args);
+void std_logger(avr_t* avr, const int level, const char * format, ... ) {
+    if (!avr || avr->log >= level)
+    {
+        va_list args;
+        va_start(args, format);
+        vfprintf((level > LOG_ERROR) ?  stdout : stderr , format, args);
+        va_end(args);
+    }
 }
 
 
