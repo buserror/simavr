@@ -53,6 +53,11 @@ Documentation And Further Information
 * Mailing List: http://groups.google.com/group/simavr
 * IRC: _#simavr_ on Freenode
 
+Contributing
+------------
+
+Patches are always welcome! Please submit your changes via Github pull requests.
+
 VCD Support -- built in logic analyzer 
 -----------
 _simavr_ can output most of its pins, firmware variables, interrupts and a few other
