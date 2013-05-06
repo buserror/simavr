@@ -45,8 +45,13 @@ graphically as “waveforms” with tools like _gtkwave_ (see below).
 * There are a few examples of real life firmwares running on simavr, including OpenGL rendering of the display…
 * There is support for _Arduino_, but no IDE integration
 
-*Note:* a mailing list/google group now exists
-You can also join *#simavr* on Freenode for a very quiet IRC channel.
+Documentation And Further Information
+-------------------------------------
+
+* Manual / Developer Guide: https://github.com/buserror-uk/simavr/blob/master/doc/manual/manual.pdf?raw=true
+* Examples: https://github.com/buserror-uk/simavr/tree/master/examples
+* Mailing List: http://groups.google.com/group/simavr
+* IRC: _#simavr_ on Freenode
 
 VCD Support -- built in logic analyzer 
 -----------
