@@ -43,7 +43,9 @@ ARCH 		= ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
 # the -O3 and -fomit-frame-pointer do wonders for improving core speed
 #   if enabling, be sure to disable next line enabling -O2 as that will undo the -O3 option
 CFLAGS		+= -O3 -Wall -fomit-frame-pointer
+CFLAGS		+= -march=native
 
+#CFLAGS		+= -m32 -mfpmath=sse
 
 # disable this line if using the line above as last option sticks.
 #CFLAGS		+= -O2 -Wall
