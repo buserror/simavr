@@ -170,8 +170,8 @@ static INLINE uint64_t get_dtime(void) {
 	dsec=t.tv_sec;
 	dusec=t.tv_usec;
 
-//	return(((dsec*1000*1000)+dusec)*1000000);
-	return(dusec);
+	return(((dsec*1000*1000)+dusec));
+//	return(dusec);
 }
 #endif
 
@@ -496,11 +496,6 @@ typedef struct fignition_thread_t {
 	avr_t*			avr;
 	pthread_t		thread;
 	avr_cycle_count_t	last_cycle;
-	uint64_t		last_dtime;
-	uint64_t		avg_cycle_dtime;
-	uint64_t		shortest_dtime;
-	uint64_t		longest_dtime;
-/**/
 	uint64_t		elapsed_dtime;
 }fignition_thread_t;
 
@@ -511,7 +506,7 @@ void* avr_run_thread(void* param) {
 	avr_t*			avr;
 	uint64_t		prev_dtime, now_dtime;
 	avr_cycle_count_t	last_cycle;
-	avr_cycle_count_t	cycles;
+//	avr_cycle_count_t	cycles;
 
 	avr=p->avr;
 
@@ -519,7 +514,7 @@ void* avr_run_thread(void* param) {
 	while(1) {
 #else
 	last_cycle=p->last_cycle;
-	cycles=last_cycle-avr->cycle;
+//	cycles=last_cycle-avr->cycle;
 
 	prev_dtime=get_dtime();
 	while(last_cycle>avr->cycle) {
@@ -529,18 +524,9 @@ void* avr_run_thread(void* param) {
 	now_dtime=get_dtime();
 
 	if(now_dtime>prev_dtime)
-		p->last_dtime=now_dtime-prev_dtime;
+		p->elapsed_dtime+=now_dtime-prev_dtime;
 	else
-		p->last_dtime=prev_dtime-now_dtime;
-
-	p->elapsed_dtime+=p->last_dtime;
-	p->avg_cycle_dtime=(1000*p->last_dtime)/cycles;
-
-	if(p->avg_cycle_dtime < p->shortest_dtime)
-		p->shortest_dtime=p->avg_cycle_dtime;
-
-	if(p->avg_cycle_dtime > p->longest_dtime)
-		p->longest_dtime=p->avg_cycle_dtime;
+		p->elapsed_dtime+=prev_dtime-now_dtime;
 
 	return(0);
 }
@@ -574,8 +560,6 @@ void catch_sig(int sign)
 	printf("\n\n\n\nsignal caught, simavr terminating\n\n");
 
 	avr->state=cpu_Done;
-
-	printf("[main] sortest_dtime: %08llu longest_dtime: %08llu\n", fig_thread.shortest_dtime, fig_thread.longest_dtime);
 
 	if (avr)
 		avr_terminate(avr);
@@ -648,18 +632,7 @@ int main(int argc, char *argv[])
 
 	fig_thread.avr=avr;
 	fig_thread.last_cycle=avr->cycle+1ULL;
-
-	printf("[avr_run_thread] - last_dtime: %08llu avg_cycle_dtime: %08llu cycle: %08llu\n", fig_thread.last_dtime, fig_thread.avg_cycle_dtime, avr->cycle);
-	avr_run_thread(&fig_thread);
-	printf("[avr_run_thread] - last_dtime: %08llu avg_cycle_dtime: %08llu cycle: %08llu\n", fig_thread.last_dtime, fig_thread.avg_cycle_dtime, avr->cycle);
-
-	fig_thread.shortest_dtime=fig_thread.last_dtime;
-
-	fig_thread.last_cycle=avr->cycle+1ULL;
-	avr_run_thread(&fig_thread);
-	printf("[avr_run_thread] - last_dtime: %08llu avg_cycle_dtime: %08llu cycle: %08llu\n", fig_thread.last_dtime, fig_thread.avg_cycle_dtime, avr->cycle);
-
-	fig_thread.longest_dtime=fig_thread.shortest_dtime;
+	fig_thread.elapsed_dtime=0ULL;
 
 #ifdef USE_PTHREAD
 	pthread_create(&fig_thread.thread, NULL, avr_run_thread, &fig_thread);
@@ -678,8 +651,8 @@ int main(int argc, char *argv[])
 
 		if((nextRefresh<clock) || video_fignition.needRefresh) {
 			uint64_t eacdt=(1000*fig_thread.elapsed_dtime)/avr->cycle;
-			printf("[avr_run_thread] - last_dtime: %08llu avg_cycle_dtime: %08llu cycle: %010llu eacdt: %08llu\n", 
-				fig_thread.last_dtime, fig_thread.avg_cycle_dtime, avr->cycle, eacdt);
+			printf("[avr_run_thread] - cycle: %016llu ecdt: %016llu eacdt: %016llu 1/eacdt: %08.3f\n", 
+				avr->cycle, fig_thread.elapsed_dtime, eacdt, ((float)1/eacdt));
 
 			VideoScan(&video_fignition);
 			SDL_Flip(surface);
@@ -709,8 +682,6 @@ int main(int argc, char *argv[])
 #ifdef USE_VCD_FILE
 	avr_vcd_close(&vcd_file);
 #endif
-
-	printf("[main] sortest_dtime: %08llu longest_dtime: %08llu\n", fig_thread.shortest_dtime, fig_thread.longest_dtime);
 
 	avr_terminate(avr);
 	return(0);

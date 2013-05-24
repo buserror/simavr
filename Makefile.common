@@ -26,6 +26,8 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
+# PATCH 20130524; bsekisser - imporoved makefile optimization options
+
 # simavr directory
 SIMAVR		:= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && echo $$p/simavr; done}
 
@@ -45,7 +47,7 @@ ARCH 		= ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
 CFLAGS		+= -O3 -Wall -fomit-frame-pointer
 CFLAGS		+= -march=native
 
-#CFLAGS		+= -m32 -mfpmath=sse
+CFLAGS		+= -m32 -mfpmath=sse
 
 # disable this line if using the line above as last option sticks.
 #CFLAGS		+= -O2 -Wall

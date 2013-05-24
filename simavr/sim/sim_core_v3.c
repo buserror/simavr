@@ -20,6 +20,8 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#if CONFIG_SIMAVR_CORE_V3
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -274,4 +276,6 @@ avr_flashaddr_t avr_run_one_v3(avr_t* avr) {
 notFound: /* fall back to core version 2, we'll (most likely) get it on the next run. */
 	return(avr_run_one_v2(avr));
 }
+
+#endif
 

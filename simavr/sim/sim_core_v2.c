@@ -20,6 +20,8 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#if CONFIG_SIMAVR_CORE_V2 || CONFIG_SIMAVR_CORE_V3
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -539,4 +541,5 @@ avr_flashaddr_t avr_run_one_v2(avr_t* avr)
 	return new_pc;
 }
 
+#endif
 
