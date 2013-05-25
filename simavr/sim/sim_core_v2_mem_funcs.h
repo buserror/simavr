@@ -86,7 +86,7 @@ static inline void _avr_data_write16le(avr_t* avr, uint16_t addr, uint16_t data)
 }
 
 static inline void _avr_set_r16le(avr_t* avr, uint8_t addr, uint16_t data) {
-	_avr_data_write16(avr, addr, data);
+	_avr_data_write16le(avr, addr, data);
 }
 
 static inline uint16_t _avr_data_read16be(avr_t* avr, uint16_t addr) __attribute__ ((unused));

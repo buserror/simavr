@@ -1,5 +1,5 @@
 /*
-	sim_core.c
+	sim_core_v2.c
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 	Copyright 2013 Michel Hughes <squirmyworms@embarqmail.com>

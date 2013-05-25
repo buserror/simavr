@@ -16,8 +16,6 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
-# PATCH 20130523; bsekisser - patched for core versions 2 and 3
-
 SHELL 			:= ${shell which bash}
 SIMAVR_VERSION	:= ${shell \
 	{ git log -1 --tags --simplify-by-decoration --pretty="format:%d"|\

@@ -602,7 +602,7 @@ int main(int argc, char *argv[])
 
 	avr->cycle=0ULL;
 
-//	avr->sleep=fig_callback_sleep_override;
+	avr->sleep=fig_callback_sleep_override;
 //	avr->log=LOG_TRACE;
 
 #ifdef USE_AVR_GDB

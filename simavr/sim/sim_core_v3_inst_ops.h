@@ -32,11 +32,6 @@
 #define UINSTd5(name) \
 	UINSTarg(d5##name, const uint8_t d)
 
-#if 0
-#define UINSTbIO(name)  \
-	UINSTarg(bIO##name, const uint8_t a, const uint8_t b)
-#endif
-
 #define UINSTbIO(name)  \
 	UINSTarg(bIO##name, const uint8_t io, const uint8_t b)
 
@@ -93,9 +88,8 @@ UINSTd5r5(_add) {
 
 	_avr_set_r(avr, d, res);
 
-	avr->sreg[S_H] = get_add_carry(res, vd, vr, 3);
-	avr->sreg[S_V] = get_add_overflow(res, vd, vr);
-	avr->sreg[S_C] = get_add_carry(res, vd, vr, 7);
+	_avr_flags_add_carry(avr, res, vd, vr);
+	_avr_flags_add_overflow(avr, res, vd, vr);
 
 	_avr_flags_zns(avr, res);
 
@@ -134,9 +128,8 @@ UINSTd5r5(_adc) {
 
 	_avr_set_r(avr, d, res);
 
-	avr->sreg[S_H] = get_add_carry(res, vd, vr, 3);
-	avr->sreg[S_V] = get_add_overflow(res, vd, vr);
-	avr->sreg[S_C] = get_add_carry(res, vd, vr, 7);
+	_avr_flags_add_carry(avr, res, vd, vr);
+	_avr_flags_add_overflow(avr, res, vd, vr);
 
 	_avr_flags_zns(avr, res);
 
@@ -312,9 +305,8 @@ UINSTd5r5(_cp) {
 
 	STATE("cp %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 
-	avr->sreg[S_H] = get_compare_carry(res, vd, vr, 3);
-	avr->sreg[S_V] = get_compare_overflow(res, vd, vr);
-	avr->sreg[S_C] = get_compare_carry(res, vd, vr, 7);
+	_avr_flags_sub_carry(avr, res, vd, vr);
+	_avr_flags_sub_overflow(avr, res, vd, vr);
 
 	_avr_flags_zns(avr, res);
 
@@ -329,9 +321,8 @@ UINSTd5r5(_cpc) {
 
 	STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 
-	avr->sreg[S_H] = get_compare_carry(res, vd, vr, 3);
-	avr->sreg[S_V] = get_compare_overflow(res, vd, vr);
-	avr->sreg[S_C] = get_compare_carry(res, vd, vr, 7);
+	_avr_flags_sub_carry(avr, res, vd, vr);
+	_avr_flags_sub_overflow(avr, res, vd, vr);
 
 	_avr_flags_Zns(avr, res);
 
@@ -345,9 +336,8 @@ UINSTh4k8(_cpi) {
 
 	STATE("cpi %s[%02x], 0x%02x\n", avr_regname(r), vh, k);
 
-	avr->sreg[S_H] = get_compare_carry(res, vh, k, 3);
-	avr->sreg[S_V] = get_compare_overflow(res, vh, k);
-	avr->sreg[S_C] = get_compare_carry(res, vh, k, 7);
+	_avr_flags_sub_carry(avr, res, vh, k);
+	_avr_flags_sub_overflow(avr, res, vh, k);
 
 	_avr_flags_zns(avr, res);
 
@@ -716,9 +706,8 @@ UINSTd5r5(_sbc) {
 
 	_avr_set_r(avr, d, res);
 
-	avr->sreg[S_H] = get_sub_carry(res, vd, vr, 3);
-	avr->sreg[S_V] = get_sub_overflow(res, vd, vr);
-	avr->sreg[S_C] = get_sub_carry(res, vd, vr, 7);
+	_avr_flags_sub_carry(avr, res, vd, vr);
+	_avr_flags_sub_overflow(avr, res, vd, vr);
 
 	_avr_flags_Zns(avr, res);
 
@@ -891,9 +880,8 @@ UINSTd5r5(_sub) {
 
 	_avr_set_r(avr, d, res);
 
-	avr->sreg[S_H] = get_sub_carry(res, vd, vr, 3);
-	avr->sreg[S_V] = get_sub_overflow(res, vd, vr);
-	avr->sreg[S_C] = get_sub_carry(res, vd, vr, 7);
+	_avr_flags_sub_carry(avr, res, vd, vr);
+	_avr_flags_sub_overflow(avr, res, vd, vr);
 
 	_avr_flags_zns(avr, res);
 
@@ -924,3 +912,4 @@ UINSTd5(_swap) {
 
 	_avr_set_r(avr, d, res);
 }
+

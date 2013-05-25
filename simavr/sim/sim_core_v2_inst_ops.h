@@ -77,8 +77,7 @@ static inline uint8_t _OP_DECODE_a6(uint16_t o) {
 	return(32+(((o & 0x0600) >> 5)|_OP_DECODE_r4(o)));
 }
 
-#define OPCODE(opcode, r1, r2) ((r2<<16)|(r1<<8)|(opcode))
-#define OPCODE3(opcode, r1, r2, r3) ((r3<<24)|(r2<<16)|(r1<<8)|(opcode))
+#define OPCODE(opcode, r1, r2, r3) ((r3<<24)|(r2<<16)|(r1<<8)|(opcode))
 
 #define __INST(name) \
 	static inline void _avr_inst##name(avr_t* avr, avr_flashaddr_t* new_pc, int* cycle, uint16_t opcode)
@@ -87,14 +86,14 @@ static inline uint8_t _OP_DECODE_a6(uint16_t o) {
 	static inline void _avr_inst##name(avr_t* avr, avr_flashaddr_t* new_pc, int* cycle, uint16_t opcode, ##args)
 
 #define INST(name) __INST(name) { \
-		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst##name, 0, 0)); \
+		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst##name, 0, 0, 0)); \
 		_avr_uinst##name(avr, new_pc, cycle); \
 	}
 
 #define INSTb3(name) __INST(_b3##name) { \
 		const uint8_t b3 = _OP_DECODE_d4(opcode) & 0x7; \
  \
-		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_b3##name, b3, 0)); \
+		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_b3##name, b3, 0, 0)); \
 		_avr_uinst_b3##name(avr, new_pc, cycle, b3); \
 	}
 
@@ -102,7 +101,7 @@ static inline uint8_t _OP_DECODE_a6(uint16_t o) {
 		const uint8_t a = 32 + ((opcode & 0x00f8) >> 3); \
 		const uint8_t b = (opcode & 0x0007); \
  \
-		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_bIO##name, a, b)); \
+		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_bIO##name, a, b, 0)); \
 		_avr_uinst_bIO##name(avr, new_pc, cycle, a, b); \
 	}
 
@@ -111,14 +110,14 @@ static inline uint8_t _OP_DECODE_a6(uint16_t o) {
 		const uint8_t d4 = _OP_DECODE_d4(opcode) << 1; \
 		const uint8_t r4 = _OP_DECODE_r4(opcode) << 1; \
  \
-		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d4r4##name, d4, r4)); \
+		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d4r4##name, d4, r4, 0)); \
 		_avr_uinst_d4r4##name(avr, new_pc, cycle, d4, r4); \
 	}
 
 #define INSTd5(name) __INST(_d5##name) { \
 	const uint8_t d5 = _OP_DECODE_d5(opcode); \
  \
-	uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5##name, d5, 0)); \
+	uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5##name, d5, 0, 0)); \
 	_avr_uinst_d5##name(avr, new_pc, cycle, d5); \
 }
 
@@ -126,7 +125,7 @@ static inline uint8_t _OP_DECODE_a6(uint16_t o) {
 	const uint8_t d5 = _OP_DECODE_d5(opcode); \
 	const uint8_t a6 = _OP_DECODE_a6(opcode); \
  \
-	uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5a6##name, d5, a6)); \
+	uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5a6##name, d5, a6, 0)); \
 	_avr_uinst_d5a6##name(avr, new_pc, cycle, d5, a6); \
 }
 
@@ -134,7 +133,7 @@ static inline uint8_t _OP_DECODE_a6(uint16_t o) {
 	const uint8_t d5 = _OP_DECODE_d5(opcode); \
 	const uint8_t b3 = _OP_DECODE_b3(opcode); \
  \
-	uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5b3##name, d5, b3)); \
+	uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5b3##name, d5, b3, 0)); \
 	_avr_uinst_d5b3##name(avr, new_pc, cycle, d5, b3); \
 }
 
@@ -142,7 +141,7 @@ static inline uint8_t _OP_DECODE_a6(uint16_t o) {
 	const uint8_t d5 = _OP_DECODE_d5(opcode); \
 	const uint8_t r5 = _OP_DECODE_r5(opcode); \
  \
-	uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5r5##name, d5, r5)); \
+	uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5r5##name, d5, r5, 0)); \
 	_avr_uinst_d5r5##name(avr, new_pc, cycle, d5, r5); \
 }
 
@@ -150,7 +149,7 @@ static inline uint8_t _OP_DECODE_a6(uint16_t o) {
 		const uint8_t d5 = _OP_DECODE_d5(opcode); \
 		const uint8_t q = ((opcode & 0x2000) >> 8) | ((opcode & 0x0c00) >> 7) | (opcode & 0x7); \
  \
-		uFlashWrite(avr, avr->pc, OPCODE3(k_avr_uinst_d5rXYZq6##name, d5, r, q)); \
+		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5rXYZq6##name, d5, r, q)); \
 		_avr_uinst_d5rXYZq6##name(avr, new_pc, cycle, d5, r, q); \
 	}
 
@@ -158,7 +157,7 @@ static inline uint8_t _OP_DECODE_a6(uint16_t o) {
 		const uint8_t d5 = _OP_DECODE_d5(opcode); \
 		const uint8_t opr = opcode & 0x003; \
  \
-		uFlashWrite(avr, avr->pc, OPCODE3(k_avr_uinst_d5rXYZop##name, d5, r, opr)); \
+		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5rXYZop##name, d5, r, opr)); \
 		_avr_uinst_d5rXYZop##name(avr, new_pc, cycle, d5, r, opr); \
 	}
 
@@ -166,7 +165,7 @@ static inline uint8_t _OP_DECODE_a6(uint16_t o) {
 		const uint8_t d16 = _OP_DECODE_d16(opcode); \
 		const uint8_t r16 = _OP_DECODE_r16(opcode); \
  \
-		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d16r16##name, d16, r16)); \
+		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d16r16##name, d16, r16, 0)); \
 		_avr_uinst_d16r16##name(avr, new_pc, cycle, d16, r16); \
 	}
 
@@ -174,7 +173,7 @@ static inline uint8_t _OP_DECODE_a6(uint16_t o) {
 		const uint8_t d5 = _OP_DECODE_d5(opcode); \
 		const uint16_t x16 = _avr_flash_read16le(avr, *new_pc); \
  \
-		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5x16##name, d5, x16)); \
+		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5x16##name, d5, x16, 0)); \
 		_avr_uinst_d5x16##name(avr, new_pc, cycle, d5, x16); \
 	}
 
@@ -182,7 +181,7 @@ static inline uint8_t _OP_DECODE_a6(uint16_t o) {
 		const uint8_t	h4=_OP_DECODE_h4(opcode); \
 		const uint8_t	k8=_OP_DECODE_k8(opcode); \
  \
-		uFlashWrite(avr, avr->pc,OPCODE(k_avr_uinst_h4k8##name, h4, k8)); \
+		uFlashWrite(avr, avr->pc,OPCODE(k_avr_uinst_h4k8##name, h4, k8, 0)); \
 		_avr_uinst_h4k8##name(avr, new_pc, cycle, h4, k8); \
 	}
 
@@ -190,14 +189,14 @@ static inline uint8_t _OP_DECODE_a6(uint16_t o) {
 		const uint8_t o7 = _OP_DECODE_o7(opcode); \
 		const uint8_t b3 = _OP_DECODE_b3(opcode); \
  \
-		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_o7b3##name, o7, b3)); \
+		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_o7b3##name, o7, b3, 0)); \
 		_avr_uinst_o7b3##name(avr, new_pc, cycle, o7, b3); \
 	}
 
 #define INSTo12(name) __INST(_o12##name) {\
 		const int16_t o12 = _OP_DECODE_o12(opcode); \
  \
-		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_o12##name, 0, o12)); \
+		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_o12##name, 0, o12, 0)); \
 		_avr_uinst_o12##name(avr, new_pc, cycle, o12); \
 	}
 
@@ -205,7 +204,7 @@ static inline uint8_t _OP_DECODE_a6(uint16_t o) {
 		const uint8_t p2 = _OP_DECODE_p2(opcode); \
 		const uint8_t k6 = _OP_DECODE_k6(opcode); \
  \
-		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_p2k6##name, p2, k6)); \
+		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_p2k6##name, p2, k6, 0)); \
 		_avr_uinst_p2k6##name(avr, new_pc, cycle, p2, k6); \
 	}
 
@@ -213,7 +212,7 @@ static inline uint8_t _OP_DECODE_a6(uint16_t o) {
 		const uint8_t x6 = ((_OP_DECODE_d5(opcode) << 1) | (opcode & 0x0001)); \
 		const uint16_t x16 = _avr_flash_read16le(avr, *new_pc); \
  \
-		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_x24##name, x6, x16)); \
+		uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_x24##name, x6, x16, 0)); \
 		_avr_uinst_x24##name(avr, new_pc, cycle, x6, x16); \
 	}
 
