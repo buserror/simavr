@@ -30,12 +30,7 @@ CFLAGS	+= -Werror
 # it otherwise eat quite a bit of few cycles, even disabled
 #CFLAGS	+= -DCONFIG_SIMAVR_TRACE=1
 
-# flags to enable core versions 2 and 3
-# shipped disabled till deemed kosher.
-#
-# version 2 is an interpreter with opcode digester.
-# version 3 is a digested opcode interpreter.
-CFLAGS += -DCONFIG_SIMAVR_CORE_V2
+# core 3 is a two part core for testing
 CFLAGS += -DCONFIG_SIMAVR_CORE_V3
 
 all:	obj config libsimavr ${target}

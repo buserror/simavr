@@ -289,8 +289,6 @@ void avr_callback_run_raw(avr_t * avr)
 	if (avr->state == cpu_Running) {
 #if CONFIG_SIMAVR_CORE_V3
 		new_pc = avr_run_one_v3(avr);
-#elif CONFIG_SIMAVR_CORE_V2
-		new_pc = avr_run_one_v2(avr);
 #else
 		new_pc = avr_run_one(avr);
 #endif
