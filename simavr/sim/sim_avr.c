@@ -19,10 +19,6 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
-	PATCH 20130523; bsekisser - patched for core versions 2 and 3.
-*/
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -85,6 +81,9 @@ void avr_terminate(avr_t * avr)
 	}
 	avr_deallocate_ios(avr);
 
+#if CONFIG_SIMAVR_CORE_V3
+	if (avr->uflash) free(avr->uflash);
+#endif
 	if (avr->flash) free(avr->flash);
 	if (avr->data) free(avr->data);
 	avr->flash = avr->data = NULL;
