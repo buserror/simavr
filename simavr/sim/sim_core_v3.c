@@ -1085,7 +1085,6 @@ UINSTo12(_rcall) {
 
 UINST(_ret) {
 	new_pc[0] = _avr_pop16(avr) << 1;
-	avr->sreg[S_I] = 1;
 	cycle[0] += 3;
 	STATE("ret\n");
 	TRACE_JUMP();
