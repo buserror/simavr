@@ -849,12 +849,12 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
 					if (e)
 						z |= avr->data[avr->eind] << 16;
-					STATE("%si%s Z[%04x]\n", e?"e":"", p?"call":"jmp", z);
+					STATE("%si%s Z[%04x]\n", e?"e":"", p?"call":"jmp", z << 1);
 					if (p) {
 						cycle++;
 						_avr_push16(avr, new_pc >> 1);
 					}
-					new_pc = z;
+					new_pc = z << 1;
 					cycle++;
 					TRACE_JUMP();
 				}	break;
