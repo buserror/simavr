@@ -1986,12 +1986,12 @@ avr_flashaddr_t avr_decode_one(avr_t* avr)
 					uint16_t z = _avr_data_read16le(avr, R_ZL);
 					if (e)
 						z |= avr->data[avr->eind] << 16;
-					STATE("%si%s Z[%04x]\n", e?"e":"", p?"call":"jmp", z << 1);
+					STATE("%si%s Z[%04x]\n", e?"e":"", p?"call":"jmp", z);
 					if (p) {
 						cycle++;
 						_avr_push16(avr, new_pc >> 1);
 					}
-					new_pc = z << 1;
+					new_pc = z;
 					cycle++;
 					TRACE_JUMP();
 				}	break;
