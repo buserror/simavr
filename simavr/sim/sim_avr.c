@@ -96,7 +96,7 @@ void avr_reset(avr_t * avr)
 
 	memset(avr->data, 0x0, avr->ramend + 1);
 
-#if CONFIG_SIMAVR_CORE_v3
+#if CONFIG_SIMAVR_CORE_V3
 	memset(avr->uflash, 0, (avr->flashend + 1) << 1);
 #endif
 
