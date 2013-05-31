@@ -268,8 +268,7 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 
 					// type of symbol
 					if (sym.st_value & 0xfff00000) {
-						printf("sym.st_value > 0xfff00000 -- ");
-
+//						printf("sym.st_value > 0xfff00000 -- ");
 					} else {
 						s->symbol = strdup(name);
 						s->addr = sym.st_value;
