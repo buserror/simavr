@@ -158,8 +158,11 @@ avr_irq_t *
 avr_iomem_getirq(
 		avr_t * avr,
 		avr_io_addr_t addr,
+		const char * name,
 		int index)
 {
+	if (index > 8)
+		return NULL;
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
 	if (avr->io[a].irq == NULL) {
 		/*
@@ -182,7 +185,15 @@ avr_iomem_getirq(
 		for (int i = 0; i < 8; i++)
 			avr->io[a].irq[i].flags |= IRQ_FLAG_FILTERED;
 	}
-	return index < 9 ? avr->io[a].irq + index : NULL;
+	// if given a name, replace the default one...
+	if (name) {
+		int l = strlen(name);
+		char n[l + 10];
+		sprintf(n, "avr.io.%s", name);
+		free((void*)avr->io[a].irq[index].name);
+		avr->io[a].irq[index].name = strdup(n);
+	}
+	return avr->io[a].irq + index;
 }
 
 avr_irq_t *

@@ -113,6 +113,7 @@ avr_irq_t *
 avr_iomem_getirq(
 		avr_t * avr,
 		avr_io_addr_t addr,
+		const char * name /* Optional, if NULL, "ioXXXX" will be used */ ,
 		int index);
 
 // Terminates all IOs and remove from them from the io chain

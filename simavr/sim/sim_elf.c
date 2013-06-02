@@ -79,7 +79,10 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 	for (int ti = 0; ti < firmware->tracecount; ti++) {
 		if (firmware->trace[ti].mask == 0xff || firmware->trace[ti].mask == 0) {
 			// easy one
-			avr_irq_t * all = avr_iomem_getirq(avr, firmware->trace[ti].addr, AVR_IOMEM_IRQ_ALL);
+			avr_irq_t * all = avr_iomem_getirq(avr,
+					firmware->trace[ti].addr,
+					firmware->trace[ti].name,
+					AVR_IOMEM_IRQ_ALL);
 			if (!all) {
 				AVR_LOG(avr, LOG_ERROR, "ELF: %s: unable to attach trace to address %04x\n",
 					__FUNCTION__, firmware->trace[ti].addr);
@@ -93,7 +96,10 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 					count++;
 			for (int bi = 0; bi < 8; bi++)
 				if (firmware->trace[ti].mask & (1 << bi)) {
-					avr_irq_t * bit = avr_iomem_getirq(avr, firmware->trace[ti].addr, bi);
+					avr_irq_t * bit = avr_iomem_getirq(avr,
+							firmware->trace[ti].addr,
+							firmware->trace[ti].name,
+							bi);
 					if (!bit) {
 						AVR_LOG(avr, LOG_ERROR, "ELF: %s: unable to attach trace to address %04x\n",
 							__FUNCTION__, firmware->trace[ti].addr);
