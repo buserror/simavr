@@ -76,6 +76,9 @@ avr_init_irq(
 			_avr_irq_pool_add(pool, &irq[i]);
 		if (names && names[i])
 			irq[i].name = strdup(names[i]);
+		else {
+			printf("WARNING %s() with NULL name for irq %d.\n", __func__, irq[i].irq);
+		}
 	}
 }
 
