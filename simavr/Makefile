@@ -79,11 +79,13 @@ endif
 ${OBJ}/${target}.elf	: ${OBJ}/${target}.o
 
 ${target}	: ${OBJ}/${target}.elf
-ifeq (${shell uname -o}, Msys)
-	ln -sf $< $@.exe
-else
+
+# FIXME uname -o doesn't work on BSD
+#ifeq (${shell uname -o}, Msys)
+#	ln -sf $< $@.exe
+#else
 	ln -sf $< $@
-endif
+#endif
  
 clean: clean-${OBJ}
 	rm -rf ${target} *.a *.so *.exe

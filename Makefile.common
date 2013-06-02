@@ -58,7 +58,11 @@ else
 AVR_ROOT 	:= /usr/lib/avr
 AVR_INC 	:= ${AVR_ROOT}
 AVR 		:= avr-
-ifeq (${shell uname -o}, Msys)
+
+# FIXME uname -o doesn't work on bsd derivatives
+#WIN := ${shell uname -o}
+
+ifeq (${WIN}, Msys)
 AVR_ROOT    := ${shell echo "${AVR32_HOME}" | tr '\\' '/'}
 AVR_INC     := ${AVR_ROOT}/avr
 AVR         := ${AVR_ROOT}/bin/avr-
@@ -89,7 +93,7 @@ LDFLAGS 	+= -L${LIBDIR} -lsimavr
 
 LDFLAGS 	+= -lelf 
 
-ifeq (${shell uname -o}, Msys)
+ifeq (${WIN}, Msys)
 LDFLAGS      += -lws2_32
 endif
 
