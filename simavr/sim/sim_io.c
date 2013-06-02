@@ -162,7 +162,22 @@ avr_iomem_getirq(
 {
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
 	if (avr->io[a].irq == NULL) {
-		avr->io[a].irq = avr_alloc_irq(&avr->irq_pool, 0, 9, NULL);
+		/*
+		 * Prepare an array of names for the io IRQs. Ideally we'd love to have
+		 * a proper name for these, but it's not possible at this time.
+		 */
+		char names[9 * 20];
+		char * d = names;
+		const char * namep[9];
+		for (int ni = 0; ni < 9; ni++) {
+			if (ni < 8)
+				sprintf(d, "=avr.io%04x.%d", addr, ni);
+			else
+				sprintf(d, "8=avr.io%04x.all", addr);
+			namep[ni] = d;
+			d += strlen(d) + 1;
+		}
+		avr->io[a].irq = avr_alloc_irq(&avr->irq_pool, 0, 9, namep);
 		// mark the pin ones as filtered, so they only are raised when changing
 		for (int i = 0; i < 8; i++)
 			avr->io[a].irq[i].flags |= IRQ_FLAG_FILTERED;
