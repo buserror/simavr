@@ -196,6 +196,8 @@ avr_io_setirqs(
 				char * dst = buf;
 				// copy the 'flags' of the name out
 				const char * kind = io->irq_names[i];
+				while (isdigit(*kind))
+					*dst++ = *kind++;
 				while (!isalpha(*kind))
 					*dst++ = *kind++;
 				// add avr name

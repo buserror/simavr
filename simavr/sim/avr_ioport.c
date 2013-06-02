@@ -172,8 +172,8 @@ static const char * irq_names[IOPORT_IRQ_COUNT] = {
 	[IOPORT_IRQ_PIN5] = "=pin5",
 	[IOPORT_IRQ_PIN6] = "=pin6",
 	[IOPORT_IRQ_PIN7] = "=pin7",
-	[IOPORT_IRQ_PIN_ALL] = "=all",
-	[IOPORT_IRQ_DIRECTION_ALL] = ">ddr",
+	[IOPORT_IRQ_PIN_ALL] = "8=all",
+	[IOPORT_IRQ_DIRECTION_ALL] = "8>ddr",
 };
 
 static	avr_io_t	_io = {
