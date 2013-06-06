@@ -97,9 +97,16 @@ enum {
 	cpu_Crashed,    // avr software crashed (watchdog fired)
 };
 
+// a symbol loaded from the .elf file
+typedef struct avr_symbol_t {
+	const char *	symbol;
+	avr_flashaddr_t	addr;
+} avr_symbol_t;
+
 // this is only ever used if CONFIG_SIMAVR_TRACE is defined
 struct avr_trace_data_t {
-	struct avr_symbol_t ** codeline;
+	avr_symbol_t 		(*codeline)[];
+	uint32_t		codesize;
 
 	/* DEBUG ONLY
 	 * this keeps track of "jumps" ie, call,jmp,ret,reti and so on
@@ -299,11 +306,17 @@ typedef struct avr_kind_t {
 	avr_t * (*make)();
 } avr_kind_t;
 
-// a symbol loaded from the .elf file
-typedef struct avr_symbol_t {
-	const char * symbol;
-	uint32_t	addr;
-} avr_symbol_t;
+static inline avr_symbol_t* avr_symbol_for_address(avr_t* avr, avr_flashaddr_t addr) {
+	uint32_t	index;
+
+	for(index = 0; index < avr->trace_data->codesize; index++) {
+		avr_symbol_t* symbol = &(*avr->trace_data->codeline)[index];
+		if(addr == symbol->addr)
+			return(symbol);
+	}
+
+	return(0);
+}
 
 // locate the maker for mcu "name" and allocates a new avr instance
 avr_t *

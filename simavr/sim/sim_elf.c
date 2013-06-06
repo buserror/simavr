@@ -50,7 +50,9 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 		avr->avcc = firmware->avcc;
 	if (firmware->aref)
 		avr->aref = firmware->aref;
+
 #if CONFIG_SIMAVR_TRACE
+	avr->trace_data->codesize = firmware->codesize;
 	avr->trace_data->codeline = firmware->codeline;
 #endif
 
@@ -192,12 +194,9 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 		*data_ee = NULL;                /* Data Descriptor */
 
 	memset(firmware, 0, sizeof(*firmware));
+
 #if ELF_SYMBOLS
-	//int bitesize = ((avr->flashend+1) >> 1) * sizeof(avr_symbol_t);
-	firmware->codesize = 32768;
-	int bitesize = firmware->codesize * sizeof(avr_symbol_t);
-	firmware->codeline = malloc(bitesize);
-	memset(firmware->codeline,0, bitesize);
+	firmware->codeline=NULL;
 #endif
 
 	/* this is actually mandatory !! otherwise elf_begin() fails */
@@ -241,6 +240,16 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 			// the section divided by the entry size
 			int symbol_count = shdr.sh_size / shdr.sh_entsize;
 
+			firmware->codesize = symbol_count;
+
+			// use the symbol_count to allocate for that many symbols.
+			uint32_t bitesize = (symbol_count + 1) * sizeof(avr_symbol_t);
+			firmware->codeline = malloc(bitesize);
+			memset(firmware->codeline,0, bitesize);
+
+//			printf("0x%08x 0x%08x 0x%08x 0x%08x\n", symbol_count, bitesize,
+//				 (uint32_t)firmware->codeline, (uint32_t)&(*firmware->codeline)[symbol_count]);
+
 			// loop through to grab all symbols
 			for (int i = 0; i < symbol_count; i++) {
 				GElf_Sym sym;			/* Symbol */
@@ -253,32 +262,27 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 						ELF32_ST_TYPE(sym.st_info) == STT_FUNC || 
 						ELF32_ST_TYPE(sym.st_info) == STT_OBJECT) {
 					const char * name = elf_strptr(elf, shdr.sh_link, sym.st_name);
+					avr_symbol_t * s = &(*firmware->codeline)[i];
+
+//					printf("0x%08x -- ", (uint32_t)s);
 
 					// type of symbol
 					if (sym.st_value & 0xfff00000) {
+						printf("sym.st_value > 0xfff00000 -- ");
 
 					} else {
-						// code
-						if (firmware->codeline[sym.st_value >> 1] == NULL) {
-							avr_symbol_t * s = firmware->codeline[sym.st_value >> 1] = malloc(sizeof(avr_symbol_t));
-							s->symbol = strdup(name);
-							s->addr = sym.st_value;
-						}
+						s->symbol = strdup(name);
+						s->addr = sym.st_value;
+
+//						printf("[0x%04x] = ", i);
 					}
+//					printf("{ 0x%08llx, %s }\n", (unsigned long long)sym.st_value, name);
 				}
 			}
 		}
 #endif
 	}
-#if ELF_SYMBOLS
-	avr_symbol_t * last = NULL;
-	for (int i = 0; i < firmware->codesize; i++) {
-		if (!firmware->codeline[i])
-			firmware->codeline[i] = last;
-		else
-			last = firmware->codeline[i];
-	}
-#endif
+
 	uint32_t offset = 0;
 	firmware->flashsize =
 			(data_text ? data_text->d_size : 0) +

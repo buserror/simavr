@@ -64,8 +64,9 @@ int donttrace = 0;
 
 #define STATE(_f, args...) { \
 	if (avr->trace) {\
-		if (avr->trace_data->codeline && avr->trace_data->codeline[avr->pc>>1]) {\
-			const char * symn = avr->trace_data->codeline[avr->pc>>1]->symbol; \
+		avr_symbol_t*	symbol = avr_symbol_for_address(avr, avr->pc >> 1); \
+		if (symbol) {\
+			const char * symn = symbol->symbol; \
 			int dont = 0 && dont_trace(symn);\
 			if (dont!=donttrace) { \
 				donttrace = dont;\
@@ -279,9 +280,17 @@ const char * avr_regname(uint8_t reg)
  */
 static void _avr_invalid_opcode(avr_t * avr)
 {
+	avr_symbol_t*	symbol = avr_symbol_for_address(avr, avr->pc >> 1);
+	const char*		symbol_text;
+
+	if(symbol)
+		symbol_text=symbol->symbol;
+	else
+		symbol_text="";
+
 #if CONFIG_SIMAVR_TRACE
 	printf( FONT_RED "*** %04x: %-25s Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
-			avr->pc, avr->trace_data->codeline[avr->pc>>1]->symbol, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
+			avr->pc, symbol_text, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
 #else
 	AVR_LOG(avr, LOG_ERROR, FONT_RED "CORE: *** %04x: Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
 			avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
