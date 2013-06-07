@@ -296,16 +296,20 @@ typedef struct avr_kind_t {
 	avr_t * (*make)();
 } avr_kind_t;
 
-static inline avr_symbol_t* avr_symbol_for_address(avr_t* avr, avr_flashaddr_t addr) {
-	uint32_t	index;
-
-	for(index = 0; index < avr->trace_data->codesize; index++) {
-		avr_symbol_t* symbol = &(*avr->trace_data->codeline)[index];
+static inline avr_symbol_t *avr_symbol_for_address(avr_t *avr, avr_flashaddr_t addr) {
+	for(int index = 0; index < avr->trace_data->codesize; index++) {
+		avr_symbol_t *symbol = &(*avr->trace_data->codeline)[index];
 		if(addr == symbol->addr)
 			return(symbol);
 	}
 
 	return(0);
+}
+
+static inline const char *avr_symbol_name_for_address(avr_t *avr, avr_flashaddr_t addr) {
+	avr_symbol_t *symbol = avr_symbol_for_address(avr, addr);
+
+	return((0 != symbol) ? symbol->symbol : 0);
 }
 
 // locate the maker for mcu "name" and allocates a new avr instance

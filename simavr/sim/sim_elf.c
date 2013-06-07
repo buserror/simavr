@@ -247,9 +247,6 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 			firmware->codeline = malloc(bitesize);
 			memset(firmware->codeline,0, bitesize);
 
-//			printf("0x%08x 0x%08x 0x%08x 0x%08x\n", symbol_count, bitesize,
-//				 (uint32_t)firmware->codeline, (uint32_t)&(*firmware->codeline)[symbol_count]);
-
 			// loop through to grab all symbols
 			for (int i = 0; i < symbol_count; i++) {
 				GElf_Sym sym;			/* Symbol */
@@ -264,18 +261,12 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 					const char * name = elf_strptr(elf, shdr.sh_link, sym.st_name);
 					avr_symbol_t * s = &(*firmware->codeline)[i];
 
-//					printf("0x%08x -- ", (uint32_t)s);
-
 					// type of symbol
 					if (sym.st_value & 0xfff00000) {
-//						printf("sym.st_value > 0xfff00000 -- ");
 					} else {
 						s->symbol = strdup(name);
 						s->addr = sym.st_value;
-
-//						printf("[0x%04x] = ", i);
 					}
-//					printf("{ 0x%08llx, %s }\n", (unsigned long long)sym.st_value, name);
 				}
 			}
 		}

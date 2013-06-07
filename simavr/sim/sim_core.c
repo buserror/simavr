@@ -281,16 +281,9 @@ const char * avr_regname(uint8_t reg)
 static void _avr_invalid_opcode(avr_t * avr)
 {
 #if CONFIG_SIMAVR_TRACE
-	avr_symbol_t*	symbol = avr_symbol_for_address(avr, avr->pc >> 1);
-	const char*		symbol_text;
-
-	if(symbol)
-		symbol_text=symbol->symbol;
-	else
-		symbol_text="";
-
 	printf( FONT_RED "*** %04x: %-25s Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
-			avr->pc, symbol_text, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
+			avr->pc, avr_symbol_name_for_address(avr, avr->pc >> 1),
+			_avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
 #else
 	AVR_LOG(avr, LOG_ERROR, FONT_RED "CORE: *** %04x: Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
 			avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
