@@ -186,7 +186,7 @@ void avr_set_console_register(avr_t * avr, avr_io_addr_t addr)
 
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, avr_flashaddr_t address)
 {
-	if (size > avr->flashend+1) {
+	if ((address + size) > avr->flashend+1) {
 		fprintf(stderr, "avr_loadcode(): Attempted to load code of size %d but flash size is only %d.\n",
 			size, avr->flashend+1);
 		abort();
