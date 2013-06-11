@@ -495,7 +495,7 @@ void SDLInit(int argc, char* argv[], SDL_Surface** surface) {
 typedef struct fignition_thread_t {
 	avr_t*			avr;
 	pthread_t		thread;
-	avr_cycle_count_t	last_cycle;
+	avr_cycle_count_t	run_cycles;
 	uint64_t		elapsed_dtime;
 }fignition_thread_t;
 
@@ -503,30 +503,31 @@ fignition_thread_t fig_thread;
 
 void* avr_run_thread(void* param) {
 	fignition_thread_t*	p=(fignition_thread_t*)param;
-	avr_t*			avr;
+	avr_t*			avr=p->avr;
 	uint64_t		prev_dtime, now_dtime;
-	avr_cycle_count_t	last_cycle;
-//	avr_cycle_count_t	cycles;
-
-	avr=p->avr;
+	avr_cycle_count_t	run_cycles=p->run_cycles;
+	avr_cycle_count_t	last_cycle=avr->cycle+run_cycles;
 
 #ifdef USE_PTHREAD
-	while(1) {
-#else
-	last_cycle=p->last_cycle;
-//	cycles=last_cycle-avr->cycle;
-
-	prev_dtime=get_dtime();
-	while(last_cycle>avr->cycle) {
+thread_loop:
 #endif
+	prev_dtime=get_dtime();
+
+	while(last_cycle>avr->cycle) {
 		avr_run(avr);
 	}
+
 	now_dtime=get_dtime();
 
 	if(now_dtime>prev_dtime)
 		p->elapsed_dtime+=now_dtime-prev_dtime;
 	else
 		p->elapsed_dtime+=prev_dtime-now_dtime;
+
+#ifdef USE_PTHREAD
+	last_cycle+=run_cycles;
+	goto thread_loop;
+#endif
 
 	return(0);
 }
@@ -567,6 +568,8 @@ void catch_sig(int sign)
 	exit(0);
 }
 
+extern void avr_core_run_many(avr_t* avr);
+
 int main(int argc, char *argv[])
 {
 	elf_firmware_t	f;
@@ -575,8 +578,6 @@ int main(int argc, char *argv[])
 	uint32_t	clock;
 	uint16_t	scancode;
 	uint32_t	nextRefresh;
-
-	avr_cycle_count_t startCycle;
 
 	SDL_Surface* surface;
 	SDL_Event event;
@@ -602,6 +603,7 @@ int main(int argc, char *argv[])
 
 	avr->cycle=0ULL;
 
+	avr->run=avr_core_run_many;
 	avr->sleep=fig_callback_sleep_override;
 //	avr->log=LOG_TRACE;
 
@@ -631,7 +633,7 @@ int main(int argc, char *argv[])
 	state=cpu_Running;
 
 	fig_thread.avr=avr;
-	fig_thread.last_cycle=avr->cycle+1ULL;
+	fig_thread.run_cycles=kRefreshCycles;
 	fig_thread.elapsed_dtime=0ULL;
 
 #ifdef USE_PTHREAD
@@ -644,19 +646,21 @@ int main(int argc, char *argv[])
 	while((state!=cpu_Done)&&(state!=cpu_Crashed)) {
 		clock++;
 #ifndef USE_PTHREAD
-		startCycle=avr->cycle;
-		fig_thread.last_cycle=startCycle+((avr_cycle_count_t)kRefreshCycles);
 		avr_run_thread(&fig_thread);
 #endif
 
 		if((nextRefresh<clock) || video_fignition.needRefresh) {
-			uint64_t eacdt=(1000*fig_thread.elapsed_dtime)/avr->cycle;
+			uint64_t eacdt=(1000*fig_thread.elapsed_dtime)/(1+avr->cycle);
 			printf("[avr_run_thread] - cycle: %016llu ecdt: %016llu eacdt: %016llu 1/eacdt: %08.3f\n", 
 				avr->cycle, fig_thread.elapsed_dtime, eacdt, ((float)1/eacdt));
 
 			VideoScan(&video_fignition);
 			SDL_Flip(surface);
-			nextRefresh=clock+15;
+#ifndef USE_PTHREAD
+			nextRefresh+=kRefreshCycles;
+#else
+			nextRefresh=fig_thread.runCycles;
+#endif
 		}
 
 		SDL_PollEvent(&event);

@@ -30,8 +30,11 @@ CFLAGS	+= -Werror
 # it otherwise eat quite a bit of few cycles, even disabled
 #CFLAGS	+= -DCONFIG_SIMAVR_TRACE=1
 
-# core 3 is a two part core for testing
-CFLAGS += -DCONFIG_SIMAVR_CORE_V3
+# fast_core is a two part core for testing
+CFLAGS += -DCONFIG_SIMAVR_FAST_CORE
+
+# possible bugfix - will incurr speed penalty.
+CFLAGS += -DCONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
 
 all:	obj config libsimavr ${target}
 

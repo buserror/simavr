@@ -255,6 +255,13 @@ typedef struct avr_t {
 
 	// flash memory (initialized to 0xff, and code loaded into it)
 	uint8_t *	flash;
+
+#ifdef CONFIG_SIMAVR_FAST_CORE
+#ifndef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
+	uint32_t *	uflash;
+#endif
+#endif
+
 	// this is the general purpose registers, IO registers, and SRAM
 	uint8_t *	data;
 

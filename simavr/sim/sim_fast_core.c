@@ -2,6 +2,7 @@
 #include <ctype.h>	// toupper
 #include <arpa/inet.h> 	// byteorder macros
 #include <stdlib.h>	// abort
+#include <endian.h>
 
 #include "sim_avr.h"
 #include "sim_core.h"
@@ -74,7 +75,7 @@ static inline void _avr_data_write(avr_t* avr, uint16_t addr, uint8_t data) {
 }
 
 
-#if 1
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 static inline uint16_t _avr_bswap16le(uint16_t v) {
 	return(v);
 }
@@ -93,38 +94,50 @@ static inline uint16_t _avr_bswap16be(uint16_t v) {
 #endif
 
 static inline uint16_t _avr_fetch16(void* p, uint16_t addr) {
-#ifdef FAST_CORE_AGGRESSIVE_CHECKS
-	if((addr + 1) > avr->ramend) {
-		printf("%s: access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-		abort();
-	}
-#endif
 	return(*((uint16_t*)&((uint8_t *)p)[addr]));
 }
 
 static inline void _avr_store16(void*p, uint16_t addr, uint16_t data) {
+	*((uint16_t*)&((uint8_t *)p)[addr])=data;
+}
+
+static inline uint16_t _avr_data_read16(avr_t* avr, uint16_t addr) {
 #ifdef FAST_CORE_AGGRESSIVE_CHECKS
 	if((addr + 1) > avr->ramend) {
 		printf("%s: access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
 		abort();
 	}
 #endif
-	*((uint16_t*)&((uint8_t *)p)[addr])=data;
-}
-
-static inline uint16_t _avr_data_read16(avr_t* avr, uint16_t addr) {
 	return(_avr_fetch16(avr->data, addr));
 }
 
 static inline void _avr_data_write16(avr_t* avr, uint16_t addr, uint16_t data) {
+#ifdef FAST_CORE_AGGRESSIVE_CHECKS
+	if((addr + 1) > avr->ramend) {
+		printf("%s: access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+		abort();
+	}
+#endif
 	_avr_store16(avr->data, addr, data);
 }
 
 static inline uint16_t _avr_data_read16le(avr_t* avr, uint16_t addr) {
+#ifdef FAST_CORE_AGGRESSIVE_CHECKS
+	if((addr + 1) > avr->ramend) {
+		printf("%s: access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+		abort();
+	}
+#endif
 	return(_avr_bswap16le(_avr_fetch16(avr->data, addr)));
 }
 
 static inline void _avr_data_write16le(avr_t* avr, uint16_t addr, uint16_t data) {
+#ifdef FAST_CORE_AGGRESSIVE_CHECKS
+	if((addr + 1) > avr->ramend) {
+		printf("%s: access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+		abort();
+	}
+#endif
 	_avr_store16(avr->data, addr, _avr_bswap16le(data));
 }
 
@@ -1447,7 +1460,13 @@ static inline void uFlashWrite(avr_t* avr, avr_flashaddr_t addr, uint32_t data) 
 		abort();
 	}
 #endif
-	avr->uflash[addr]=data;
+
+#ifndef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
+	avr->uflash[addr >> 1]=data;
+#else
+	uint32_t	*uflash=((uint32_t*)&((uint8_t *)avr->flash)[avr->flashend+1]);
+	uflash[addr >> 1]=data;
+#endif
 }
 
 static inline uint32_t uFlashRead(avr_t* avr, avr_flashaddr_t addr) {
@@ -1457,7 +1476,13 @@ static inline uint32_t uFlashRead(avr_t* avr, avr_flashaddr_t addr) {
 		abort();
 	}
 #endif
-	return(avr->uflash[addr]);
+
+#ifndef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
+	return(avr->uflash[(addr >> 1)]);
+#else
+	uint32_t	*uflash=((uint32_t*)&((uint8_t *)avr->flash)[avr->flashend+1]);
+	return(uflash[addr >> 1]);
+#endif
 }
 
 /*
@@ -1800,7 +1825,7 @@ INSTd5(_swap)
  * The number of cycles taken by instruction has been added, but might not be
  * entirely accurate.
  */
-avr_flashaddr_t avr_decode_one(avr_t* avr)
+extern inline avr_flashaddr_t avr_decode_one(avr_t* avr)
 {
 	avr_flashaddr_t		new_pc = avr->pc + 2;	// future "default" pc
 	int 			cycle = 1;
@@ -1820,7 +1845,8 @@ avr_flashaddr_t avr_decode_one(avr_t* avr)
 	uint16_t		opcode = _avr_flash_read16le(avr, avr->pc);
 
 #ifdef FAST_CORE_DECODE_TRAP
-	if(uint32_t uop = OPCODEop(uFlashRead(avr, avr->pc))) {
+	uint32_t uop = OPCODEop(uFlashRead(avr, avr->pc));
+	if(uop) {
 		xSTATE("opcode trap, not handled: 0x%08x [0x%04x]", uop, opcode);
 	}
 #endif
@@ -2258,7 +2284,7 @@ avr_flashaddr_t avr_decode_one(avr_t* avr)
 	return new_pc;
 }
 
-avr_flashaddr_t avr_fast_core_run_one(avr_t* avr) {
+extern inline avr_flashaddr_t avr_fast_core_run_one(avr_t* avr) {
 	avr_flashaddr_t		new_pc = avr->pc + 2;
 	int			cycle = 1;
 
@@ -2494,11 +2520,21 @@ notFound: /* run it through the decoder(which also runs the instruction), we'll 
 }
 
 void avr_core_run_many(avr_t* avr) {
-	avr_cycle_count_t run;
+	avr_cycle_count_t	nextTimerCycle;
+	avr_flashaddr_t		new_pc = avr->pc;
 
-checkSleep:
+runAgain:
+	if(avr->state == cpu_Running)
+		new_pc = avr_fast_core_run_one(avr);
+
+	if(avr->sreg[S_I] && !avr->i_shadow)
+			avr->interrupts.pending_wait++;
+	avr->i_shadow=avr->sreg[S_I];
+
 	nextTimerCycle = avr_cycle_timer_process(avr);
 
+	avr->pc = new_pc;
+	
 	if (avr->state == cpu_Sleeping) {
 		if (!avr->sreg[S_I]) {
 			if (avr->log)
@@ -2509,26 +2545,21 @@ checkSleep:
 		/*
 		 * try to sleep for as long as we can (?)
 		 */
-		avr->sleep(avr, sleep);
-		avr->cycle += 1 + sleep;
+		avr->sleep(avr, nextTimerCycle);
+		avr->cycle += 1 + nextTimerCycle;
+		return;
 	}
-	
-
-	
-runLoop:
-	new_pc = avr_fast_core_run_one(avr);
 
 	if(avr->sreg[S_I]) {
 		if(1 < avr->interrupts.pending_wait) {
 			avr->interrupts.pending_wait--;
-		} if(avr_has_pending_interrupts(avr)) {
+		} else if(avr_has_pending_interrupts(avr)) {
 			avr_service_interrupts(avr);
+			return;
 		}
 	}
-
-	if((avr->state == cpu_Running) && (avr->cycle < runCycles))
-		goto runLoop:
-	else
-		goto checkSleep:
 	
+	if(nextTimerCycle<avr->cycle)
+		goto runAgain;
 }
+

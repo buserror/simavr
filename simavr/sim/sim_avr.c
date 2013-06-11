@@ -36,12 +36,17 @@
 
 int avr_init(avr_t * avr)
 {
-#if CONFIG_SIMAVR_CORE_V3
+#ifdef CONFIG_SIMAVR_FAST_CORE
 	/* gets cleared on each reset...  just to be sure! */
-	avr->uflash = malloc((avr->flashend + 1) << 1);
-#endif
+#ifdef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
+	/* due to a possible bug, piggyback onto existing flash buffer */
+	avr->flash = malloc((avr->flashend +1) << 3);
+#else
+	avr->uflash = malloc((avr->flashend +1) << 2);
 
 	avr->flash = malloc(avr->flashend + 1);
+#endif
+#endif
 	memset(avr->flash, 0xff, avr->flashend + 1);
 	avr->data = malloc(avr->ramend + 1);
 	memset(avr->data, 0, avr->ramend + 1);
@@ -81,8 +86,10 @@ void avr_terminate(avr_t * avr)
 	}
 	avr_deallocate_ios(avr);
 
-#if CONFIG_SIMAVR_CORE_V3
+#ifdef CONFIG_SIMAVR_FAST_CORE
+#ifndef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
 	if (avr->uflash) free(avr->uflash);
+#endif
 #endif
 	if (avr->flash) free(avr->flash);
 	if (avr->data) free(avr->data);
@@ -95,8 +102,13 @@ void avr_reset(avr_t * avr)
 
 	memset(avr->data, 0x0, avr->ramend + 1);
 
-#if CONFIG_SIMAVR_CORE_V3
-	memset(avr->uflash, 0, (avr->flashend + 1) << 1);
+#ifdef CONFIG_SIMAVR_FAST_CORE
+	uint32_t flashsize = (avr->flashend +1);
+#ifdef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
+	memset(avr->flash + flashsize, 0, flashsize << 2);
+#else
+	memset(avr->uflash, 0, flashsize << 2);
+#endif
 #endif
 
 	_avr_sp_set(avr, avr->ramend);
@@ -281,13 +293,15 @@ void avr_callback_sleep_raw(avr_t * avr, avr_cycle_count_t howLong)
 	}
 }
 
+extern avr_flashaddr_t avr_fast_core_run_one(avr_t* avr);
+
 void avr_callback_run_raw(avr_t * avr)
 {
 	avr_flashaddr_t new_pc = avr->pc;
 
 	if (avr->state == cpu_Running) {
-#if CONFIG_SIMAVR_CORE_V3
-		new_pc = avr_run_one_v3(avr);
+#ifdef CONFIG_SIMAVR_FAST_CORE
+		new_pc = avr_fast_core_run_one(avr);
 #else
 		new_pc = avr_run_one(avr);
 #endif

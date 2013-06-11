@@ -56,3 +56,4 @@ run: ${OBJ}/${target}.elf
 
 clean: clean-${OBJ}
 	rm -rf *.a *.axf ${target} *.vcd
+
