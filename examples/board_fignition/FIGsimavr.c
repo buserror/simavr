@@ -657,7 +657,7 @@ int main(int argc, char *argv[])
 			VideoScan(&video_fignition);
 			SDL_Flip(surface);
 #ifndef USE_PTHREAD
-			nextRefresh+=kRefreshCycles;
+			nextRefresh+=30;
 #else
 			nextRefresh=fig_thread.runCycles;
 #endif
