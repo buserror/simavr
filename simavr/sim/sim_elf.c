@@ -75,7 +75,7 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 		avr->vcd,
 		firmware->traceperiod >= 1000 ? firmware->traceperiod : 1000);
 	
-	AVR_LOG(avr, LOG_TRACE, "Creating VCD trace file '%s'\n", avr->vcd->filename);
+	printf("Creating VCD trace file '%s'\n", avr->vcd->filename);
 	for (int ti = 0; ti < firmware->tracecount; ti++) {
 		if (firmware->trace[ti].mask == 0xff || firmware->trace[ti].mask == 0) {
 			// easy one
@@ -153,7 +153,7 @@ static void elf_parse_mmcu_section(elf_firmware_t * firmware, uint8_t * src, uin
 				uint8_t mask = src[0];
 				uint16_t addr = src[1] | (src[2] << 8);
 				char * name = (char*)src + 3;
-				AVR_LOG(NULL, LOG_TRACE, "AVR_MMCU_TAG_VCD_TRACE %04x:%02x - %s\n", addr, mask, name);
+				printf("AVR_MMCU_TAG_VCD_TRACE %04x:%02x - %s\n", addr, mask, name);
 				firmware->trace[firmware->tracecount].mask = mask;
 				firmware->trace[firmware->tracecount].addr = addr;
 				strncpy(firmware->trace[firmware->tracecount].name, name, 
@@ -187,7 +187,7 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 
 	if ((fd = open(file, O_RDONLY | O_BINARY)) == -1 ||
 			(read(fd, &elf_header, sizeof(elf_header))) < sizeof(elf_header)) {
-		AVR_LOG(NULL, LOG_ERROR, "could not read %s\n", file);
+		printf("could not read %s\n", file);
 		perror(file);
 		close(fd);
 		return -1;
@@ -296,12 +296,12 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 	//	hdump("code", data_text->d_buf, data_text->d_size);
 		memcpy(firmware->flash + offset, data_text->d_buf, data_text->d_size);
 		offset += data_text->d_size;
-		AVR_LOG(NULL, LOG_TRACE, "Loaded %u .text\n", (unsigned int)data_text->d_size);
+		printf("Loaded %u .text\n", (unsigned int)data_text->d_size);
 	}
 	if (data_data) {
 	//	hdump("data", data_data->d_buf, data_data->d_size);
 		memcpy(firmware->flash + offset, data_data->d_buf, data_data->d_size);
-		AVR_LOG(NULL, LOG_TRACE, "Loaded %u .data\n", (unsigned int)data_data->d_size);
+		printf("Loaded %u .data\n", (unsigned int)data_data->d_size);
 		offset += data_data->d_size;
 		firmware->datasize = data_data->d_size;
 	}
@@ -309,7 +309,7 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 	//	hdump("eeprom", data_ee->d_buf, data_ee->d_size);
 		firmware->eeprom = malloc(data_ee->d_size);
 		memcpy(firmware->eeprom, data_ee->d_buf, data_ee->d_size);
-		AVR_LOG(NULL, LOG_TRACE, "Loaded %u .eeprom\n", (unsigned int)data_ee->d_size);
+		printf("Loaded %u .eeprom\n", (unsigned int)data_ee->d_size);
 		firmware->eesize = data_ee->d_size;
 	}
 //	hdump("flash", avr->flash, offset);

@@ -61,6 +61,20 @@ enum {
 #define AVR_DATA_TO_IO(v) ((v) - 32)
 #define AVR_IO_TO_DATA(v) ((v) + 32)
 
+/**
+ * Logging macros and associated log levels.
+ * The current log level is kept in avr->log.
+ */
+enum {
+	LOG_ERROR = 1,
+	LOG_WARNING,
+	LOG_TRACE,
+};
+#define AVR_LOG(avr, level, ...) \
+	do { \
+		if (avr->log >= level) \
+			fprintf(stdout, __VA_ARGS__); \
+	} while(0)
 
 /*
  * Core states.
@@ -360,24 +374,6 @@ void avr_callback_sleep_gdb(avr_t * avr, avr_cycle_count_t howLong);
 void avr_callback_run_gdb(avr_t * avr);
 void avr_callback_sleep_raw(avr_t * avr, avr_cycle_count_t howLong);
 void avr_callback_run_raw(avr_t * avr);
-
-/**
- * Logging macros and associated log levels.
- * The current log level is kept in avr->log.
- */
-enum {
-    LOG_ERROR = 1,
-    LOG_WARNING,
-    LOG_TRACE,
-};
-typedef void (*logger_t)(avr_t* avr, const int level, const char * format, ... );
-extern logger_t global_logger;
-#ifndef AVR_LOG
-#define AVR_LOG(avr, level, ...) \
-    do { \
-            global_logger( avr, level, __VA_ARGS__); \
-    } while(0)
-#endif
 
 #ifdef __cplusplus
 };
