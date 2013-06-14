@@ -1,3 +1,5 @@
+#ifdef CONFIG_SIMAVR_FAST_CORE
+
 #include <stdio.h>	// printf
 #include <ctype.h>	// toupper
 #include <arpa/inet.h> 	// byteorder macros
@@ -10,11 +12,13 @@
 #include "avr_flash.h"
 #include "avr_watchdog.h"
 
+#define FAST_CORE_COMBINING
+
 #define FAST_CORE_DECODE_TRAP
 #define FAST_CORE_AGGRESSIVE_CHECKS
 
-#define FAST_CORE_LOCAL_TRACE
-#define FAST_CORE_ITRACE
+//#define FAST_CORE_LOCAL_TRACE
+//#define FAST_CORE_ITRACE
 
 #define _avr_sp_get _avr_sp_get_v2
 #define _avr_sp_set _avr_sp_set_v2
@@ -341,8 +345,9 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 		 * SREG is special it's reconstructed when read
 		 * while the core itself uses the "shortcut" array
 		 */
-		uint8_t sreg = _avr_data_read(avr, R_SREG);
+		uint8_t sreg;
 		READ_SREG_INTO(avr, sreg);
+		_avr_data_write(avr, addr, sreg);
 	} else if (addr > 31 && addr < 256) {
 		uint8_t io = AVR_DATA_TO_IO(addr);
 		
@@ -362,7 +367,7 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 /*
  * Stack push accessors. Push/pop 8 and 16 bits
  */
-static inline void _avr_push8(avr_t * avr, uint16_t v)
+static inline void _avr_push8(avr_t * avr, uint8_t v)
 {
 	uint16_t sp = _avr_sp_get(avr);
 	_avr_set_ram(avr, sp, v);
@@ -421,18 +426,12 @@ static inline void _avr_flags_zns(avr_t* avr, const uint8_t res) {
 	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-#if 1
-static inline void _avr_flags_Zns(avr_t* avr, const uint8_t res) {
+static inline void _avr_flags_Rzns(avr_t* avr, const uint8_t res) {
 	if (res)
 		avr->sreg[S_Z] = 0;
 	avr->sreg[S_N] = (res >> 7) & 1;
 	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
-#else
-static inline void _avr_flags_Zns(avr_t* avr, const uint8_t res) {
-	_avr_flags_zns(avr, res);
-}
-#endif
 
 static inline void _avr_flags_zns16(avr_t* avr, const uint16_t res) {
 	avr->sreg[S_Z] = (res & 0xffff) == 0;
@@ -440,109 +439,61 @@ static inline void _avr_flags_zns16(avr_t* avr, const uint16_t res) {
 	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
+static inline void _avr_flags_Rzns16(avr_t* avr, const uint16_t res) {
+	if (res)
+		avr->sreg[S_Z] = 0;
+	avr->sreg[S_N] = (res >> 15) & 1;
+	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+}
+
 static inline void _avr_flags_znv0s(avr_t* avr, const uint8_t res) {
 	avr->sreg[S_V] = 0;
-#if 0
-	avr->sreg[S_Z] = res == 0;
-	avr->sreg[S_N] = (res >> 7) & 1;
-	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
-#else
 	_avr_flags_zns(avr, res);
-#endif
 }
 
-#if 0
-static inline void _avr_flags_add_carry(avr_t* avr, const uint8_t res, const uint8_t rd, const uint8_t rr) {
-	uint8_t result = ((rd & rr) | (rr & ~res) | (~res & rd));
-
-	avr->sreg[S_H] = ((result & 0x04) >> 3);
-	avr->sreg[S_C] = ((result & 0x80) >> 7);
-}
-
-static inline void _avr_flags_add_overflow(avr_t* avr, const uint8_t res, const uint8_t rd, const uint8_t rr) {
-	uint8_t result = (rd & rr & res) | (~rd & ~rr & res);
-
-	avr->sreg[S_V] = (result & 0x80) >> 7;
-}
-#else
-static inline void _avr_flags_add_carry(avr_t* avr, const uint8_t res, const uint8_t rd, const uint8_t rr) {
+static inline void _avr_flags_add(avr_t* avr, const uint8_t res, const uint8_t rd, const uint8_t rr) {
 	uint8_t	result_rd_rr = (rd & rr);
 
 	uint8_t result_carry = (result_rd_rr | (rr & ~res) | (~res & rd));
-	avr->sreg[S_H] = ((result_carry & 0x04) >> 3);
+	avr->sreg[S_H] = ((result_carry & 0x08) >> 3);
 	avr->sreg[S_C] = ((result_carry & 0x80) >> 7);
 
 	uint8_t result_overflow = ((result_rd_rr & res) | (~result_rd_rr & res));
 	avr->sreg[S_V] = (result_overflow & 0x80) >> 7;
-	
 }
-static inline void _avr_flags_add_overflow(avr_t* avr, const uint8_t res, const uint8_t rd, const uint8_t rr) {
-}
-#endif
 
-static inline void _avr_flags_add16_carry(avr_t* avr, const uint16_t res, const uint16_t rd, const uint16_t rr) {
+static inline void _avr_flags_add16(avr_t* avr, const uint16_t res, const uint16_t rd, const uint16_t rr) {
 	uint16_t result_rd_rr = (rd & rr);
 
 	uint16_t result_carry = (result_rd_rr | (rr & ~res) | (~res & rd));
-	avr->sreg[S_H] = ((result_carry & 0x0400) >> 11);
+	avr->sreg[S_H] = ((result_carry & 0x0800) >> 11);
 	avr->sreg[S_C] = ((result_carry & 0x8000) >> 15);
 
 	uint16_t result_overflow = ((result_rd_rr & res) | (~result_rd_rr & res));
 	avr->sreg[S_V] = (result_overflow & 0x8000) >> 15;
-	
-}
-static inline void _avr_flags_add16_overflow(avr_t* avr, const uint16_t res, const uint16_t rd, const uint16_t rr) {
 }
 
-static inline uint8_t _get_sub_carry(const uint8_t res, const uint8_t rd, const uint8_t rr) {
-	return((~rd & rr) | (rr & res) | (res & ~rd));
-}
-static inline uint8_t _get_sub_overflow(const uint8_t res, const uint8_t rd, const uint8_t rr) {
-	return((rd & ~rr & ~res) | (~rd & rr & res));
-}
-
-
-#if 0
-static inline void _avr_flags_sub_carry(avr_t* avr, const uint8_t res, const uint8_t rd, const uint8_t rr) {
-	uint8_t result = _get_sub_carry(res, rd, rr);
-
-	avr->sreg[S_H] = ((result & 0x04) >> 3);
-	avr->sreg[S_C] = ((result & 0x80) >> 7);
-}
-
-static inline void _avr_flags_sub_overflow(avr_t* avr, const uint8_t res, const uint8_t rd, const uint8_t rr) {
-	uint8_t result = _get_sub_overflow(res, rd, rr);
-
-	avr->sreg[S_V] = (result & 0x80) >> 7;
-}
-#else
-static inline void _avr_flags_sub_carry(avr_t* avr, const uint8_t res, const uint8_t rd, const uint8_t rr) {
+static inline void _avr_flags_sub(avr_t* avr, const uint8_t res, const uint8_t rd, const uint8_t rr) {
 	uint8_t	result_rr_res = (rr & res);
 
 	uint8_t result_carry = ((~rd & rr) | result_rr_res | (res & ~rd));
-	avr->sreg[S_H] = ((result_carry & 0x04) >> 3);
+	avr->sreg[S_H] = ((result_carry & 0x08) >> 3);
 	avr->sreg[S_C] = ((result_carry & 0x80) >> 7);
 
 	uint8_t	result_overflow = ((rd & ~result_rr_res) | (~rd & result_rr_res));
 	avr->sreg[S_V] = (result_overflow & 0x80) >> 7;
 }
-static inline void _avr_flags_sub_overflow(avr_t* avr, const uint8_t res, const uint8_t rd, const uint8_t rr) {
-}
-#endif
 
-static inline void _avr_flags_sub16_carry(avr_t* avr, const uint16_t res, const uint16_t rd, const uint16_t rr) {
+static inline void _avr_flags_sub16(avr_t* avr, const uint16_t res, const uint16_t rd, const uint16_t rr) {
 	uint16_t result_rr_res = (rr & res);
 
 	uint16_t result_carry = ((~rd & rr) | result_rr_res | (res & ~rd));
-	avr->sreg[S_H] = ((result_carry & 0x0400) >> 11);
+	avr->sreg[S_H] = ((result_carry & 0x0800) >> 11);
 	avr->sreg[S_C] = ((result_carry & 0x8000) >> 15);
 
 	uint16_t	result_overflow = ((rd & ~result_rr_res) | (~rd & result_rr_res));
 	avr->sreg[S_V] = (result_overflow & 0x8000) >> 15;
 }
-static inline void _avr_flags_sub16_overflow(avr_t* avr, const uint16_t res, const uint16_t rd, const uint16_t rr) {
-}
-
 
 static inline uint8_t OPCODEop(uint32_t opcode) {
 	return(opcode&0x000000ff);
@@ -565,10 +516,10 @@ static inline int16_t OPCODEx16(uint32_t opcode) {
 }
 
 #define UINST(name) \
-	static inline void _avr_uinst##name(avr_t* avr, avr_flashaddr_t* new_pc, int* cycle)
+	extern inline void _avr_uinst##name(avr_t* avr, avr_flashaddr_t* new_pc, int* cycle)
 
 #define UINSTarg(name, args...) \
-	static inline void _avr_uinst_##name(avr_t* avr, avr_flashaddr_t* new_pc, int* cycle, ##args)
+	extern inline void _avr_uinst_##name(avr_t* avr, avr_flashaddr_t* new_pc, int* cycle, ##args)
 
 #define UINSTb3(name) \
 	UINSTarg(b3##name, const uint8_t b)
@@ -643,34 +594,8 @@ UINSTd5r5(_add) {
 
 	_avr_set_r(avr, d, res);
 
-	_avr_flags_add_carry(avr, res, vd, vr);
-	_avr_flags_add_overflow(avr, res, vd, vr);
-
+	_avr_flags_add(avr, res, vd, vr);
 	_avr_flags_zns(avr, res);
-
-	SREG();
-}
-
-UINSTd5Wr5W(_add) {
-	const uint16_t vd = _avr_get_r16le(avr, d);
-	const uint16_t vr = _avr_get_r16le(avr, r);
-	const uint16_t res = vd + vr;
-
-	if (r == d) {
-		STATE("lsl.w %s[%04x] = %04x\n", avr_regname(d), vd, res & 0xff);
-	} else {
-		STATE("add.w %s:%s[%04x], %s:%s[%04x] = %04x\n", avr_regname(d), avr_regname(d+1), vd, 
-			avr_regname(r), avr_regname(r+1), vr, res);
-	}
-
-	_avr_set_r16le(avr, d, res);
-
-	_avr_flags_add16_carry(avr, res, vd, vr);
-	_avr_flags_add16_overflow(avr, res, vd, vr);
-
-	_avr_flags_zns16(avr, res);
-
-	new_pc[0] += 2; cycle[0] ++;
 
 	SREG();
 }
@@ -707,12 +632,32 @@ UINSTd5r5(_adc) {
 
 	_avr_set_r(avr, d, res);
 
-	_avr_flags_add_carry(avr, res, vd, vr);
-	_avr_flags_add_overflow(avr, res, vd, vr);
-
+	_avr_flags_add(avr, res, vd, vr);
 	_avr_flags_zns(avr, res);
 
 	SREG();
+}
+
+UINSTd5Wr5W(_add_adc) {
+#ifdef FAST_CORE_COMBINING
+	const uint16_t vd = _avr_get_r16le(avr, d);
+	const uint16_t vr = _avr_get_r16le(avr, r);
+	const uint16_t res = vd + vr;
+
+	STATE("add.adc %s:%s[%04x], %s:%s[%04x] = %04x\n", avr_regname(d), avr_regname(d + 1), vd, 
+		avr_regname(r), avr_regname(r + 1), vr, res);
+
+	_avr_set_r16le(avr, d, res);
+
+	_avr_flags_add16(avr, res, vd, vr);
+	_avr_flags_zns16(avr, res);
+
+	SREG();
+
+	new_pc[0] += 2; cycle[0] ++;
+#else
+	_avr_uinst_d5r5_add(avr, new_pc, cycle, d, r);
+#endif
 }
 
 UINSTd5r5(_and) {
@@ -767,7 +712,7 @@ UINSTd5(_asr) {
 
 UINSTb3(_bclr) {
 	avr->sreg[b]=0;
-	STATE("bclr %c\n", _sreg_bit_name[b]);
+	STATE("cl%c\n", _sreg_bit_name[b]);
 	SREG();
 }
 
@@ -790,9 +735,9 @@ UINSTo7b3(_brxc) {
 	};
 
 	if (names[b]) {
-		STATE("%s .%d [%04x]\t; Will%s branch\n", names[b], o, branch_pc, branch ? "":" not");
+		STATE("%s .%d [%04x]\t; Will%s branch\n", names[b], o >> 1, branch_pc, branch ? "":" not");
 	} else {
-		STATE("%s%c .%d [%04x]\t; Will%s branch\n", 0 ? "brbs" : "brbc", _sreg_bit_name[b], o, branch_pc, branch ? "":" not");
+		STATE("%s%c .%d [%04x]\t; Will%s branch\n", 0 ? "brbs" : "brbc", _sreg_bit_name[b], o >> 1, branch_pc, branch ? "":" not");
 	}
 	if (branch) {
 		cycle[0]++; // 2 cycles if taken, 1 otherwise
@@ -808,9 +753,9 @@ UINSTo7b3(_brxs) {
 		"brcs", "breq", "brmi", "brvs", NULL, "brhs", "brts", "brie"
 	};
 	if (names[b]) {
-		STATE("%s .%d [%04x]\t; Will%s branch\n", names[b], o, branch_pc, branch ? "":" not");
+		STATE("%s .%d [%04x]\t; Will%s branch\n", names[b], o >> 1, branch_pc, branch ? "":" not");
 	} else {
-		STATE("%s%c .%d [%04x]\t; Will%s branch\n", 1 ? "brbs" : "brbc", _sreg_bit_name[b], o, branch_pc, branch ? "":" not");
+		STATE("%s%c .%d [%04x]\t; Will%s branch\n", 1 ? "brbs" : "brbc", _sreg_bit_name[b], o >> 1, branch_pc, branch ? "":" not");
 	}
 	if (branch) {
 		cycle[0]++; // 2 cycles if taken, 1 otherwise
@@ -820,7 +765,7 @@ UINSTo7b3(_brxs) {
 
 UINSTb3(_bset) {
 	avr->sreg[b]=1;
-	STATE("bset %c\n", _sreg_bit_name[b]);
+	STATE("se%c\n", _sreg_bit_name[b]);
 	SREG();
 }
 
@@ -884,31 +829,30 @@ UINSTd5r5(_cp) {
 
 	STATE("cp %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 
-	_avr_flags_sub_carry(avr, res, vd, vr);
-	_avr_flags_sub_overflow(avr, res, vd, vr);
-
+	_avr_flags_sub(avr, res, vd, vr);
 	_avr_flags_zns(avr, res);
 
 	SREG();
 }
 
-UINSTd5Wr5W(_cp) {
+UINSTd5Wr5W(_cp_cpc) {
+#ifdef FAST_CORE_COMBINING
 	uint16_t vd = _avr_get_r16le(avr, d);
 	uint16_t vr = _avr_get_r16le(avr, r);
-
 	uint16_t res = vd - vr;
 
-	STATE("cp.w %s:%s[%04x], %s:%s[%04x] = %04x\n", avr_regname(d), avr_regname(d+1), vd, 
-		avr_regname(r), avr_regname(r+1), vr, res);
+	STATE("cp.cpc %s:%s[%04x], %s:%s[%04x] = %04x\n", avr_regname(d), avr_regname(d + 1), vd, 
+		avr_regname(r), avr_regname(r + 1), vr, res);
 
-	_avr_flags_sub16_carry(avr, res, vd, vr);
-	_avr_flags_sub16_overflow(avr, res, vd, vr);
-
+	_avr_flags_sub16(avr, res, vd, vr);
 	_avr_flags_zns16(avr, res);
 
-	new_pc[0] += 2; cycle[0] ++;
-
 	SREG();
+
+	new_pc[0] += 2; cycle[0] ++;
+#else
+	_avr_uinst_d5r5_cp(avr, new_pc, cycle, d, r);
+#endif
 }
 
 UINSTd5r5(_cpc) {
@@ -919,52 +863,49 @@ UINSTd5r5(_cpc) {
 
 	STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 
-	_avr_flags_sub_carry(avr, res, vd, vr);
-	_avr_flags_sub_overflow(avr, res, vd, vr);
-
-	_avr_flags_Zns(avr, res);
+	_avr_flags_sub(avr, res, vd, vr);
+	_avr_flags_Rzns(avr, res);
 
 	SREG();
 }
 
 UINSTh4k8(_cpi) {
 	uint8_t vh = _avr_get_r(avr, h);
-
 	uint8_t res = vh - k;
 
-	STATE("cpi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), vh, k, res);
+	STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
 
-	_avr_flags_sub_carry(avr, res, vh, k);
-	_avr_flags_sub_overflow(avr, res, vh, k);
-
+	_avr_flags_sub(avr, res, vh, k);
 	_avr_flags_zns(avr, res);
 
 	SREG();
 }
 
-UINSTh4r5k8(_cpi) {
+UINSTh4r5k8(_cpi_cpc) {
+#ifdef FAST_CORE_COMBINING
 	uint16_t vh = _avr_get_r16le(avr, h);
-	uint16_t vr = (_avr_get_r(avr,r) << 8) | k;
-	uint16_t res = vh - vr;
+	uint8_t vr =_avr_get_r(avr,r);
+	uint16_t vrk = (vr << 8) | k;
+	uint16_t res = vh - vrk;
 
-	STATE("cpi.w %s:%s[%04x], 0x%04x = 0x%04x\n", avr_regname(h), avr_regname(h+1), vh, vr, res);
-	
-	_avr_flags_sub16_carry(avr, res, vh, vr);
-	_avr_flags_sub16_overflow(avr, res, vh, vr);
+	STATE("cpi.cpc %s:%s[%04x], 0x%04x = %04x\n", avr_regname(h), avr_regname(h+1), vh, 
+		vrk, res);
 
-	/* if we are performing a 16 bit comparison (cpi followed by an cpc, follow flags accord to cpc */
+	_avr_flags_sub16(avr, res, vh, vr);
 	_avr_flags_zns16(avr, res);
 
-	new_pc[0] += 2; cycle[0] ++;
-
 	SREG();
+
+	new_pc[0] += 2; cycle[0] ++;
+#else
+	_avr_uinst_h4k8_cpi(avr, new_pc, cycle, h, k);
+#endif
 }
 
 
 UINSTd5r5(_cpse) {
 	uint8_t vd = _avr_get_r(avr, d);
 	uint8_t vr = _avr_get_r(avr, r);
-
 	uint16_t res = vd == vr;
 
 	STATE("cpse %s[%02x], %s[%02x]\t; Will%s skip\n", avr_regname(d), vd, avr_regname(r), vr, res ? "":" not");
@@ -999,7 +940,6 @@ UINSTd5(_dec) {
 UINSTd5r5(_eor) {
 	uint8_t vd = _avr_get_r(avr, d);
 	uint8_t vr = _avr_get_r(avr, r);
-
 	uint8_t res = vd ^ vr;
 
 	if (r==d) {
@@ -1017,24 +957,23 @@ UINSTd5r5(_eor) {
 
 UINSTd5a6(_in) {
 	uint8_t	va = _avr_get_ram(avr, a);
+	_avr_set_r(avr, d, va);
 
 	STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-
-	_avr_set_r(avr, d, va);
 }
 
 UINSTd5a6b3(_in_sbrs) {
+#ifdef FAST_CORE_COMBINING
 	uint8_t	va = _avr_get_ram(avr, a);
-
-	STATE("in %s, %s[%02x]; ", avr_regname(d), avr_regname(a), va);
 
 	_avr_set_r(avr, d, va);
 
-	new_pc[0] += 2; cycle[0]++;
-
 	int	branch = (0 != (va & (1 << b)));
 
-	STATE("%s %s[%02x], 0x%02x\t; Will%s branch\n", 1 ? "sbrs" : "sbrc", avr_regname(d), va, 1 << b, branch ? "":" not");
+	STATE("sbrs (in %s, %s[%02x]),  0x%02x; Will%s branch\n", avr_regname(d), avr_regname(a), 
+		va, 1 << b, branch ? "":" not");
+
+	new_pc[0] += 2; cycle[0]++;
 
 	if (branch) {
 		if (_avr_is_instruction_32_bits(avr, new_pc[0])) {
@@ -1043,7 +982,9 @@ UINSTd5a6b3(_in_sbrs) {
 			new_pc[0] += 2; cycle[0] ++;
 		}
 	}
-
+#else
+	_avr_uinst_d5a6_in(avr, new_pc, cycle, d, a);
+#endif
 }
 
 UINSTd5(_inc) {
@@ -1103,12 +1044,16 @@ UINSTh4k8(_ldi) {
 	_avr_set_r(avr, h, k);
 }
 
-UINSTh4k16(_ldi) {
-	STATE("ldi.w %s, 0x%04x\n", avr_regname(h), k);
-
+UINSTh4k16(_ldi_ldi) {
+#ifdef FAST_CORE_COMBINING
 	_avr_set_r16le(avr, h, k);
 
+	STATE("ldi.w %s, 0x%04x\n", avr_regname(h), k);
+
 	new_pc[0] += 2; cycle[0]++;
+#else
+	_avr_uinst_h4k8_ldi(avr, new_pc, cycle, h, k & 0x0ff);
+#endif
 }
 
 UINSTd5x16(_lds) {
@@ -1132,21 +1077,15 @@ UINSTd5(_lpm_z0) {
 }
 
 UINSTd5rXYZop(_lpm_z0_st) {
+#ifdef FAST_CORE_COMBINING
 	uint16_t z = _avr_get_r16le(avr, R_ZL);
 	uint8_t vd = avr->flash[z];
 
-	STATE("lpm %s, (Z[%04x]); ", avr_regname(d), z);
-
 	_avr_set_r(avr, d, vd);
 	
-	new_pc[0] +=2; cycle[0] += 2; // 3 cycles
+	cycle[0] += 2; // 3 cycles
 
 	uint16_t vr = _avr_get_r16le(avr, r);
-
-	STATE("st %s%s:%s[%04x]%s, %s[%02x] \n", op == 2 ? "--" : "", avr_regname(r), avr_regname(r+1), vr, \
-		op == 1 ? "++" : "", avr_regname(d), vd);
-
-	cycle[0]++; // 2 cycles, except tinyavr
 
 	if (op == 2) vr--;
 	_avr_set_ram(avr, vr, vd);
@@ -1154,6 +1093,15 @@ UINSTd5rXYZop(_lpm_z0_st) {
 
 	if(op)
 		_avr_set_r16le(avr, r, vr);
+
+	STATE("st %s%c[%04x]%s, (lpm %s, (Z[%04x])[0x%02x]\n", op == 2 ? "--" : "", *avr_regname(r), vr,
+		op == 1 ? "++" : "", avr_regname(d), z, vd);
+	
+	cycle[0]++; // 2 cycles, except tinyavr
+	new_pc[0]+=2;
+#else
+	_avr_uinst_d5_lpm_z0(avr, new_pc, cycle, d);
+#endif
 }
 
 UINSTd5(_lpm_z1) {
@@ -1170,7 +1118,6 @@ UINSTd5(_lpm_z1) {
 
 UINSTd5(_lsr) {
 	uint8_t vd = _avr_get_r(avr, d);
-
 	uint8_t res = vd >> 1;
 
 	STATE("lsr %s[%02x]\n", avr_regname(d), vd);
@@ -1184,7 +1131,6 @@ UINSTd5(_lsr) {
 
 UINSTd5r5(_mov) {
 	uint8_t vr = _avr_get_r(avr, r);
-
 	uint8_t res = vr;
 
 	STATE("mov %s, %s[%02x] = %02x\n", avr_regname(d), avr_regname(r), vr, res);
@@ -1203,7 +1149,6 @@ UINSTd4r4(_movw) {
 UINSTd5r5(_mul) {
 	uint8_t vd = _avr_get_r(avr, d);
 	uint8_t vr = _avr_get_r(avr, r);
-
 	uint16_t res = vd * vr;
 
 	STATE("mul %s[%02x], %s[%02x] = %04x\n", avr_regname(d), vd, avr_regname(r), vr, res);
@@ -1220,7 +1165,6 @@ UINSTd5r5(_mul) {
 UINSTd16r16(_muls) {
 	int8_t vd = _avr_get_r(avr, d);
 	int8_t vr = _avr_get_r(avr, r);
-
 	int16_t res = vr * vd;
 
 	STATE("muls %s[%d], %s[%02x] = %d\n", avr_regname(d), vd, avr_regname(r), vr, res);
@@ -1234,7 +1178,6 @@ UINSTd16r16(_muls) {
 
 UINSTd5(_neg) {
 	uint8_t vd = _avr_get_r(avr, d);
-
 	uint8_t res = 0x00 - vd;
 
 	STATE("neg %s[%02x] = %02x\n", avr_regname(d), vd, res);
@@ -1257,7 +1200,6 @@ UINST(_nop) {
 UINSTd5r5(_or) {
 	uint8_t vd = _avr_get_r(avr, d);
 	uint8_t vr = _avr_get_r(avr, r);
-
 	uint8_t res = vd | vr;
 
 	STATE("or %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
@@ -1271,7 +1213,6 @@ UINSTd5r5(_or) {
 
 UINSTh4k8(_ori) {
 	uint8_t vh = _avr_get_r(avr, h);
-
 	uint8_t res = vh | k;
 
 	STATE("ori %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
@@ -1285,15 +1226,14 @@ UINSTh4k8(_ori) {
 
 UINSTd5a6(_out) {
 	uint8_t vd = _avr_get_r(avr, d);
+	_avr_set_ram(avr, a, vd);
 
 	STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), vd);
-
-	_avr_set_ram(avr, a, vd);
 }
 
 UINSTd5(_pop) {
-	uint8_t	vd;
-	_avr_set_r(avr, d, vd=_avr_pop8(avr));
+	uint8_t	vd = _avr_pop8(avr);
+	_avr_set_r(avr, d, vd);
 
 	T(uint16_t sp = _avr_sp_get(avr);)
 	STATE("pop %s (@%04x)[%02x]\n", avr_regname(d), sp, vd);
@@ -1303,7 +1243,6 @@ UINSTd5(_pop) {
 
 UINSTd5(_push) {
 	uint8_t	vd = _avr_get_r(avr, d);
-
 	_avr_push8(avr, vd);
 
 	T(uint16_t sp = _avr_sp_get(avr);)
@@ -1315,7 +1254,7 @@ UINSTd5(_push) {
 UINSTo12(_rcall) {
 	avr_flashaddr_t branch_pc = new_pc[0] + o;
 
-	STATE("rcall .%d [%04x]\n", o, branch_pc);
+	STATE("rcall .%d [%04x]\n", o >> 1, branch_pc);
 
 	_avr_push16(avr, new_pc[0] >> 1);
 
@@ -1348,7 +1287,7 @@ UINST(_reti) {
 UINSTo12(_rjmp) {
 	avr_flashaddr_t	branch_pc = new_pc[0] + o;
 
-	STATE("rjmp .%d [%04x]\n", o, branch_pc);
+	STATE("rjmp .%d [%04x]\n", o >> 1, branch_pc);
 
 	new_pc[0] = branch_pc;
 	cycle[0]++;
@@ -1357,7 +1296,6 @@ UINSTo12(_rjmp) {
 
 UINSTd5(_ror) {
 	uint8_t vd = _avr_get_r(avr, d);
-
 	uint8_t res = (avr->sreg[S_C] ? 0x80 : 0) | vd >> 1;
 
 	STATE("ror %s[%02x]\n", avr_regname(d), vd);
@@ -1372,17 +1310,14 @@ UINSTd5(_ror) {
 UINSTd5r5(_sbc) {
 	uint8_t vd = _avr_get_r(avr, d);
 	uint8_t vr = _avr_get_r(avr, r);
-
 	uint8_t res = vd - vr - avr->sreg[S_C];
 
 	STATE("sbc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 
 	_avr_set_r(avr, d, res);
 
-	_avr_flags_sub_carry(avr, res, vd, vr);
-	_avr_flags_sub_overflow(avr, res, vd, vr);
-
-	_avr_flags_Zns(avr, res);
+	_avr_flags_sub(avr, res, vd, vr);
+	_avr_flags_Rzns(avr, res);
 
 	SREG();
 }
@@ -1438,7 +1373,6 @@ UINSTp2k6(_sbiw) {
 
 	avr->sreg[S_V] = ((vp & (~res)) & 0x8000) >> 15;
 	avr->sreg[S_C] = ((res & (~vp)) & 0x8000) >> 15;
-
 	_avr_flags_zns16(avr, res);
 
 	SREG();
@@ -1448,16 +1382,16 @@ UINSTp2k6(_sbiw) {
 
 UINSTh4k8(_sbci) {
 	uint8_t vh = _avr_get_r(avr, h);
-
 	uint8_t res = vh - k - avr->sreg[S_C];
 
 	STATE("sbci %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
 
 	_avr_set_r(avr, h, res);
 
+	avr->sreg[S_H] = ((k + avr->sreg[S_C]) & 0x07) > (vh & 0x07);
 	avr->sreg[S_C] = (k + avr->sreg[S_C]) > vh;
 
-	_avr_flags_Zns(avr, res);
+	_avr_flags_Rzns(avr, res);
 
 	SREG();
 }
@@ -1508,7 +1442,7 @@ UINSTd5rXYZop(_st) {
 	uint8_t vd = _avr_get_r(avr, d);
 	uint16_t vr = _avr_get_r16le(avr, r);
 
-	STATE("st %s%s:%s[%04x]%s, %s[%02x] \n", op == 2 ? "--" : "", avr_regname(r), avr_regname(r+1), vr, \
+	STATE("st %s%c[%04x]%s, %s[%02x] \n", op == 2 ? "--" : "", *avr_regname(r), vr, \
 		op == 1 ? "++" : "", avr_regname(d), vd);
 
 	cycle[0]++; // 2 cycles, except tinyavr
@@ -1547,16 +1481,13 @@ UINSTd5x16(_sts) {
 UINSTd5r5(_sub) {
 	uint8_t vd = _avr_get_r(avr, d);
 	uint8_t vr = _avr_get_r(avr, r);
-
 	uint8_t res = vd - vr;
 
 	STATE("sub %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 
 	_avr_set_r(avr, d, res);
 
-	_avr_flags_sub_carry(avr, res, vd, vr);
-	_avr_flags_sub_overflow(avr, res, vd, vr);
-
+	_avr_flags_sub(avr, res, vd, vr);
 	_avr_flags_zns(avr, res);
 
 	SREG();
@@ -1564,36 +1495,38 @@ UINSTd5r5(_sub) {
 
 UINSTh4k8(_subi) {
 	uint8_t vh = _avr_get_r(avr, h);
-
 	uint8_t res = vh - k;
 
 	STATE("subi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
 
 	_avr_set_r(avr, h, res);
 
-	avr->sreg[S_C] = k > vh;
-
+	
+	_avr_flags_sub(avr, res, vh, k);
 	_avr_flags_zns(avr, res);
 
 	SREG();
 }
 
-UINSTh4k16(_subi) {
+UINSTh4k16(_subi_sbci) {
+#ifdef FAST_CORE_COMBINING
 	uint16_t vh = _avr_get_r16le(avr, h);
-
 	uint16_t res = vh - k;
-
-	STATE("subi.w %s:%s[%04x], 0x%04x = %04x\n", avr_regname(h), avr_regname(h+1), vh, k, res);
 
 	_avr_set_r16le(avr, h, res);
 
-	avr->sreg[S_C] = k > vh;
+	STATE("subi.sbci %s:%s[%04x], 0x%04x = %04x\n", avr_regname(h), avr_regname(h + 1), vh, k, res);
 
+
+	_avr_flags_sub16(avr, res, vh, k);
 	_avr_flags_zns16(avr, res);
 	
-	new_pc[0] += 2; cycle[0] ++;
-
 	SREG();
+
+	new_pc[0] += 2; cycle[0] ++;
+#else
+	_avr_uinst_h4k8_subi(avr, new_pc, cycle, h, k & 0xff);
+#endif
 }
 
 UINSTd5(_swap) {
@@ -1627,14 +1560,14 @@ enum {
 	k_avr_uinst_d5_swap,
 	k_avr_uinst_x24_call=0x20,
 	k_avr_uinst_x24_jmp,
-	k_avr_uinst_h4k16_ldi,
+	k_avr_uinst_h4k16_ldi_ldi,
 	k_avr_uinst_d5x16_lds,
 	k_avr_uinst_o12_rcall,
 	k_avr_uinst_o12_rjmp,
 	k_avr_uinst_d5x16_sts,
-	k_avr_uinst_h4k16_subi,
+	k_avr_uinst_h4k16_subi_sbci,
 	k_avr_uinst_d5r5_add=0x80,
-	k_avr_uinst_d5Wr5W_add,
+	k_avr_uinst_d5Wr5W_add_adc,
 	k_avr_uinst_d5r5_adc,
 	k_avr_uinst_p2k6_adiw,
 	k_avr_uinst_d5r5_and,
@@ -1645,10 +1578,10 @@ enum {
 	k_avr_uinst_d5b3_bst,
 	k_avr_uinst_bIO_cbi,
 	k_avr_uinst_d5r5_cp,
-	k_avr_uinst_d5Wr5W_cp,
+	k_avr_uinst_d5Wr5W_cp_cpc,
 	k_avr_uinst_d5r5_cpc,
 	k_avr_uinst_h4k8_cpi,
-	k_avr_uinst_h4r5k8_cpi,
+	k_avr_uinst_h4r5k8_cpi_cpc,
 	k_avr_uinst_d5r5_cpse,
 	k_avr_uinst_d5r5_eor,
 	k_avr_uinst_d5a6_in,
@@ -1845,12 +1778,13 @@ static inline uint8_t _OP_DECODE_a6(const uint16_t o) {
 	\
 		const uint8_t d5b = _OP_DECODE_d5(next_opcode); \
 	\
-		if( ((0x9004 /* LPM */ == (0xfe0e & opcode)) && ( 0x920c /* ST */ == ( 0xfe0e & next_opcode))) \
-				&& (d5 == d5b)) { \
+		if( (0x9004 /* LPM_Z0 */ == (0xfe0e & opcode)) \
+				&& (0x920c /* ST */ == (0xfe0e & next_opcode)) \
+				&& (d5 == d5b) ) { \
 			const int regs[4] = {R_ZL, 0x00, R_YL, R_XL}; \
 			const uint8_t r = regs[(next_opcode & 0x000c)>>2]; \
 			const uint8_t opr = next_opcode & 0x0003; \
-			uFlashWrite(avr, avr->pc, OPCODE(CONCAT(k_avr_uinst_d5rXYZop##name, _st), d5, r, opr)); \
+			uFlashWrite(avr, avr->pc, OPCODE(CONCAT(k_avr_uinst_d5rXYZop, _lpm_z0_st), d5, r, opr)); \
 		} else { \
 			uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5##name, d5, 0, 0)); \
 		} ITRACE; \
@@ -1874,10 +1808,11 @@ static inline uint8_t _OP_DECODE_a6(const uint16_t o) {
 	\
 		const uint8_t d5b = _OP_DECODE_d5(next_opcode); \
 	\
-		if((0xb000 /* IN */ == (opcode & 0xf800)) && (0xfe00 /* SBRS */ == (next_opcode & 0xfe00)) \
-				&& (d5 == d5b)) {\
+		if( (0xb000 /* IN */ == (opcode & 0xf800)) \
+				&& (0xfe00 /* SBRS */ == (next_opcode & 0xfe00)) \
+				&& (d5 == d5b) ) {\
 			const uint8_t b3 = _OP_DECODE_b3(next_opcode); \
-			uFlashWrite(avr, avr->pc, OPCODE(CONCAT(k_avr_uinst_d5a6b3##name,_sbrs), d5, a6, b3)); \
+			uFlashWrite(avr, avr->pc, OPCODE(CONCAT(k_avr_uinst_d5a6b3,_in_sbrs), d5, a6, b3)); \
 		} else  \
 			uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5a6##name, d5, a6, 0)); \
 		ITRACE; \
@@ -1910,10 +1845,14 @@ static inline uint8_t _OP_DECODE_a6(const uint16_t o) {
 	\
 		const uint8_t d5b = _OP_DECODE_d5(next_opcode); \
 		const uint8_t r5b = _OP_DECODE_r5(next_opcode); \
-		if((((0x0c00 /* ADD */ == (opcode & 0xfc00)) && (0x1c00 /* ADDC */ == (next_opcode & 0xfc00))) \
-				|| ((0x1400 /* CP */ == (opcode & 0xfc00)) && (0x0400 /* CPC */ == (next_opcode & 0xfc00)))) \
-				&& (((1 + d5) == d5b) && ((1 + r5) == r5b))) { \
-			uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5Wr5W##name, d5, r5, 0)); \
+		if( (0x0c00 /* ADD */ == (opcode & 0xfc00))  \
+				&& (0x1c00 /* ADDC */ == (next_opcode & 0xfc00)) \
+				&& ((1 + d5) == d5b) && ((1 + r5) == r5b) ) {\
+			uFlashWrite(avr, avr->pc, OPCODE(CONCAT(k_avr_uinst_d5Wr5W, _add_adc), d5, r5, 0)); \
+		} else if( (0x1400 /* CP */ == (opcode & 0xfc00)) \
+				&& (0x0400 /* CPC */ == (next_opcode & 0xfc00)) \
+				&& ((1 + d5) == d5b) && ((1 + r5) == r5b) ) { \
+			uFlashWrite(avr, avr->pc, OPCODE(CONCAT(k_avr_uinst_d5Wr5W, _cp_cpc), d5, r5, 0)); \
 		} else { \
 			uFlashWrite(avr, avr->pc, OPCODE(k_avr_uinst_d5r5##name, d5, r5, 0)); \
 		} \
@@ -1974,11 +1913,16 @@ static inline uint8_t _OP_DECODE_a6(const uint16_t o) {
 	\
 		const uint8_t	h4b = _OP_DECODE_h4(next_opcode); \
 	\
-		if((((0x5000 /* SUBI.l */ == (opcode & 0xf000 )) && (0x4000 /* SBCI.h */ == (next_opcode & 0xf000))) \
-			 	|| ((0xe000 /* LDI.l */ == (opcode & 0xf000 )) && (0xe000 /* LDI.h */== (next_opcode & 0xf000)))) \
-				&& ((1 + h4) == h4b)) { \
+		if( (0x5000 /* SUBI.l */ == (opcode & 0xf000)) \
+				&& (0x4000 /* SBCI.h */ == (next_opcode & 0xf000)) \
+				&& ((1 + h4) == h4b) ) { \
 			const uint8_t	k8b = _OP_DECODE_k8(next_opcode); \
-			uFlashWrite(avr, avr->pc,OPCODE(k_avr_uinst_h4k16##name, h4, k8, k8b)); \
+			uFlashWrite(avr, avr->pc,OPCODE(CONCAT(k_avr_uinst_h4k16, _subi_sbci), h4, k8, k8b)); \
+		} else if( (0xe000 /* LDI.l */ == (opcode & 0xf000)) \
+				&& (0xe000 /* LDI.h */== (next_opcode & 0xf000)) \
+				&& ((1 + h4) == h4b) ) { \
+			const uint8_t	k8b = _OP_DECODE_k8(next_opcode); \
+			uFlashWrite(avr, avr->pc,OPCODE(CONCAT(k_avr_uinst_h4k16, _ldi_ldi), h4, k8, k8b)); \
 		} else { \
 			uFlashWrite(avr, avr->pc,OPCODE(k_avr_uinst_h4k8##name, h4, k8, 0)); \
 		} \
@@ -1994,10 +1938,11 @@ static inline uint8_t _OP_DECODE_a6(const uint16_t o) {
 	\
 		const uint8_t	d5 = _OP_DECODE_d5(next_opcode); \
 	\
-		if(((0x3000 /* CPI.l */ == (opcode & 0xf000)) && (0x0400 /* CPC.h */ == (next_opcode & 0xfc00))) \
-				&& ((1 + h4) == d5)) { \
+		if( (0x3000 /* CPI.l */ == (opcode & 0xf000)) \
+				&& (0x0400 /* CPC.h */ == (next_opcode & 0xfc00)) \
+				&& ((1 + h4) == d5) ){ \
 			const uint8_t	r5 = _OP_DECODE_r5(next_opcode); \
-			uFlashWrite(avr, avr->pc,OPCODE(k_avr_uinst_h4r5k8##name, h4, r5, k8)); \
+			uFlashWrite(avr, avr->pc,OPCODE(CONCAT(k_avr_uinst_h4r5k8##name, _cpc), h4, r5, k8)); \
 		} else { \
 			uFlashWrite(avr, avr->pc,OPCODE(k_avr_uinst_h4k8##name, h4, k8, 0)); \
 		} \
@@ -2641,8 +2586,8 @@ extern inline avr_flashaddr_t avr_fast_core_run_one(avr_t* avr) {
 			case	k_avr_uinst_d5r5_add:
 				_avr_uinst_d5r5_add(avr, &new_pc, &cycle, r1, r2);
 				break;
-			case	k_avr_uinst_d5Wr5W_add:
-				_avr_uinst_d5Wr5W_add(avr, &new_pc, &cycle, r1, r2);
+			case	k_avr_uinst_d5Wr5W_add_adc:
+				_avr_uinst_d5Wr5W_add_adc(avr, &new_pc, &cycle, r1, r2);
 				break;
 			case	k_avr_uinst_d5r5_adc:
 				_avr_uinst_d5r5_adc(avr, &new_pc, &cycle, r1, r2);
@@ -2674,8 +2619,8 @@ extern inline avr_flashaddr_t avr_fast_core_run_one(avr_t* avr) {
 			case	k_avr_uinst_d5r5_cp:
 				_avr_uinst_d5r5_cp(avr, &new_pc, &cycle, r1, r2);
 				break;
-			case	k_avr_uinst_d5Wr5W_cp:
-				_avr_uinst_d5Wr5W_cp(avr, &new_pc, &cycle, r1, r2);
+			case	k_avr_uinst_d5Wr5W_cp_cpc:
+				_avr_uinst_d5Wr5W_cp_cpc(avr, &new_pc, &cycle, r1, r2);
 				break;
 			case	k_avr_uinst_d5r5_cpc:
 				_avr_uinst_d5r5_cpc(avr, &new_pc, &cycle, r1, r2);
@@ -2749,8 +2694,8 @@ extern inline avr_flashaddr_t avr_fast_core_run_one(avr_t* avr) {
 			default: {
 				uint8_t	r3 = OPCODEr3(opcode);
 				switch(soc) {
-					case	k_avr_uinst_h4r5k8_cpi:
-						_avr_uinst_h4r5k8_cpi(avr, &new_pc, &cycle, r1, r2, r3);
+					case	k_avr_uinst_h4r5k8_cpi_cpc:
+						_avr_uinst_h4r5k8_cpi_cpc(avr, &new_pc, &cycle, r1, r2, r3);
 						break;
 					case	k_avr_uinst_d5a6b3_in_sbrs:
 						_avr_uinst_d5a6b3_in_sbrs(avr, &new_pc, &cycle, r1, r2, r3);
@@ -2786,8 +2731,8 @@ extern inline avr_flashaddr_t avr_fast_core_run_one(avr_t* avr) {
 			case	k_avr_uinst_x24_jmp:
 				_avr_uinst_x24_jmp(avr, &new_pc, &cycle, r1, x16);
 				break;
-			case	k_avr_uinst_h4k16_ldi:
-				_avr_uinst_h4k16_ldi(avr, &new_pc, &cycle, r1, x16);
+			case	k_avr_uinst_h4k16_ldi_ldi:
+				_avr_uinst_h4k16_ldi_ldi(avr, &new_pc, &cycle, r1, x16);
 				break;
 			case	k_avr_uinst_d5x16_lds:
 				_avr_uinst_d5x16_lds(avr, &new_pc, &cycle, r1, x16);
@@ -2801,8 +2746,8 @@ extern inline avr_flashaddr_t avr_fast_core_run_one(avr_t* avr) {
 			case	k_avr_uinst_d5x16_sts:
 				_avr_uinst_d5x16_sts(avr, &new_pc, &cycle, r1, x16);
 				break;
-			case	k_avr_uinst_h4k16_subi:
-				_avr_uinst_h4k16_subi(avr, &new_pc, &cycle, r1, x16);
+			case	k_avr_uinst_h4k16_subi_sbci:
+				_avr_uinst_h4k16_subi_sbci(avr, &new_pc, &cycle, r1, x16);
 				break;
 			default:
 				goto notFound;
@@ -2926,4 +2871,6 @@ runAgain:
 	if(nextTimerCycle<avr->cycle)
 		goto runAgain;
 }
+
+#endif
 

@@ -45,7 +45,7 @@ ARCH 		= ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
 CFLAGS		+= -O3 -Wall -fomit-frame-pointer
 CFLAGS		+= -march=native
 
-CFLAGS		+= -m32 -mfpmath=sse
+CFLAGS		+= -m32 -mfpmath=sse -mmmx -msse
 
 #CFLAGS		+= -O0 -Wall -fno-inline-functions
 

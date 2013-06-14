@@ -36,18 +36,20 @@
 
 int avr_init(avr_t * avr)
 {
+	uint32_t flashsize = (avr->flashend + 1);
 #ifdef CONFIG_SIMAVR_FAST_CORE
 	/* gets cleared on each reset...  just to be sure! */
 #ifdef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
 	/* due to a possible bug, piggyback onto existing flash buffer */
-	avr->flash = malloc((avr->flashend +1) << 3);
+	flashsize += flashsize << 1;
 #else
-	avr->uflash = malloc((avr->flashend +1) << 2);
+	avr->uflash = malloc(flashsize << 1);
+	avr->flash = malloc(flashsize);
+#endif
+#endif
+	avr->flash = malloc(flashsize);
 
-	avr->flash = malloc(avr->flashend + 1);
-#endif
-#endif
-	memset(avr->flash, 0xff, avr->flashend + 1);
+	memset(avr->flash, 0xff, flashsize);
 	avr->data = malloc(avr->ramend + 1);
 	memset(avr->data, 0, avr->ramend + 1);
 #ifdef CONFIG_SIMAVR_TRACE
@@ -103,11 +105,11 @@ void avr_reset(avr_t * avr)
 	memset(avr->data, 0x0, avr->ramend + 1);
 
 #ifdef CONFIG_SIMAVR_FAST_CORE
-	uint32_t flashsize = (avr->flashend +1);
+	const uint32_t flashsize = (avr->flashend +1);
 #ifdef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
-	memset(avr->flash + flashsize, 0, flashsize << 2);
+	memset(avr->flash + flashsize, 0, flashsize << 1);
 #else
-	memset(avr->uflash, 0, flashsize << 2);
+	memset(avr->uflash, 0, flashsize << 1);
 #endif
 #endif
 
