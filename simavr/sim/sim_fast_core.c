@@ -15,7 +15,7 @@
 #define FAST_CORE_COMBINING
 
 #define FAST_CORE_DECODE_TRAP
-#define FAST_CORE_AGGRESSIVE_CHECKS
+//#define FAST_CORE_AGGRESSIVE_CHECKS
 
 //#define FAST_CORE_LOCAL_TRACE
 //#define FAST_CORE_ITRACE
@@ -129,6 +129,16 @@ static inline void _avr_data_write16(avr_t* avr, uint16_t addr, uint16_t data) {
 	_avr_store16(avr->data, addr, data);
 }
 
+static inline uint16_t _avr_data_read16be(avr_t* avr, uint16_t addr) {
+#ifdef FAST_CORE_AGGRESSIVE_CHECKS
+	if((addr + 1) > avr->ramend) {
+		printf("%s: access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+		abort();
+	}
+#endif
+	return(_avr_bswap16be(_avr_fetch16(avr->data, addr)));
+}
+
 static inline uint16_t _avr_data_read16le(avr_t* avr, uint16_t addr) {
 #ifdef FAST_CORE_AGGRESSIVE_CHECKS
 	if((addr + 1) > avr->ramend) {
@@ -137,6 +147,16 @@ static inline uint16_t _avr_data_read16le(avr_t* avr, uint16_t addr) {
 	}
 #endif
 	return(_avr_bswap16le(_avr_fetch16(avr->data, addr)));
+}
+
+static inline void _avr_data_write16be(avr_t* avr, uint16_t addr, uint16_t data) {
+#ifdef FAST_CORE_AGGRESSIVE_CHECKS
+	if((addr + 1) > avr->ramend) {
+		printf("%s: access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+		abort();
+	}
+#endif
+	_avr_store16(avr->data, addr, _avr_bswap16be(data));
 }
 
 static inline void _avr_data_write16le(avr_t* avr, uint16_t addr, uint16_t data) {
@@ -380,6 +400,7 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 static inline void _avr_push8(avr_t * avr, uint8_t v)
 {
 	uint16_t sp = _avr_sp_get(avr);
+	T(printf("%s @0x%04x[0x%04x]\n", __FUNCTION__, sp, v));
 	_avr_set_ram(avr, sp, v);
 	_avr_sp_set(avr, sp-1);
 }
@@ -388,21 +409,41 @@ static inline uint8_t _avr_pop8(avr_t * avr)
 {
 	uint16_t sp = _avr_sp_get(avr) + 1;
 	uint8_t res = _avr_get_ram(avr, sp);
+	T(printf("%s @0x%04x[0x%04x]\n", __FUNCTION__, sp, res));
 	_avr_sp_set(avr, sp);
 	return res;
 }
 
 static inline void _avr_push16(avr_t * avr, uint16_t v)
 {
-	_avr_push8(avr, v);
-	_avr_push8(avr, v >> 8);
+	T(printf("%s", __FUNCTION__));
+	uint16_t sp=_avr_sp_get(avr);
+	if ((256 < sp) && (sp <= avr->ramend)) {
+		T(printf("@0x%04x:0x%04x[0x%04x]\n", sp-1, sp, v));
+		_avr_data_write16be(avr, sp -1, v);
+		_avr_sp_set(avr, sp - 2);
+	} else {
+		_avr_push8(avr, v);
+		_avr_push8(avr, v >> 8);
+	}
 }
 
 static inline uint16_t _avr_pop16(avr_t * avr)
 {
-	uint16_t res = _avr_pop8(avr) << 8;
-	res |= _avr_pop8(avr);
-	return res;
+	uint16_t sp = _avr_sp_get(avr)+2;
+	uint16_t data;
+
+	T(printf("%s", __FUNCTION__));
+
+	if((256 < sp) && (sp <= avr->ramend)) {
+		data = _avr_data_read16be(avr, sp - 1);
+		T(printf("@0x%04x:0x%04x[0x%04x]\n", sp-1, sp, data));
+		_avr_sp_set(avr, sp);
+	} else {
+		data = (_avr_pop8(avr) << 8) | _avr_pop8(avr);
+	}
+
+	return(data);
 }
 
 static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
@@ -1511,7 +1552,6 @@ UINSTh4k8(_subi) {
 
 	_avr_set_r(avr, h, res);
 
-	
 	_avr_flags_sub(avr, res, vh, k);
 	_avr_flags_zns(avr, res);
 
@@ -1526,7 +1566,6 @@ UINSTh4k16(_subi_sbci) {
 	_avr_set_r16le(avr, h, res);
 
 	STATE("subi.sbci %s:%s[%04x], 0x%04x = %04x\n", avr_regname(h), avr_regname(h + 1), vh, k, res);
-
 
 	_avr_flags_sub16(avr, res, vh, k);
 	_avr_flags_zns16(avr, res);
@@ -2209,9 +2248,7 @@ extern inline avr_flashaddr_t avr_decode_one(avr_t* avr)
 									}
 									cycle++;
 									STATE("%s %s[%d], %s[%02x] = %d\n", name, avr_regname(d), ((int8_t)avr->data[d]), avr_regname(r), ((int8_t)avr->data[r]), res);
-//									_avr_set_r(avr, 0, res);
-//									_avr_set_r(avr, 1, res >> 8);
-									_avr_data_write16le(avr, 0, res);
+									_avr_set_r16le(avr, 0, res);
 									avr->sreg[S_C] = c;
 									avr->sreg[S_Z] = res == 0;
 									SREG();
@@ -2341,8 +2378,7 @@ extern inline avr_flashaddr_t avr_decode_one(avr_t* avr)
 					int p = opcode & 0x100;
 					if (e && !avr->eind)
 						_avr_invalid_opcode(avr);
-//					uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
-					uint16_t z = _avr_data_read16le(avr, R_ZL);
+					uint16_t z = _avr_get_r16le(avr, R_ZL);
 					if (e)
 						z |= avr->data[avr->eind] << 16;
 					STATE("%si%s Z[%04x]\n", e?"e":"", p?"call":"jmp", z << 1);
@@ -2361,16 +2397,7 @@ extern inline avr_flashaddr_t avr_decode_one(avr_t* avr)
 					_avr_inst_ret(avr, &new_pc, &cycle, opcode);
 				}	break;
 				case 0x95c8: {	// LPM Load Program Memory R0 <- (Z) 1001 0101 1100 1000
-#if 1
 					_avr_inst_d5_lpm_z0(avr, &new_pc, &cycle, opcode&0x9004);
-#else
-//					uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
-					uint16_t z = _avr_data_read16le(avr, R_ZL);
-					STATE("lpm %s, (Z[%04x])\n", avr_regname(0), z);
-					cycle += 2; // 3 cycles
-//					_avr_set_r(avr, 0, avr->flash[z]);
-					_avr_data_write(avr, 0, avr->flash[z]);
-#endif
 				}	break;
 				case 0x9408:case 0x9418:case 0x9428:case 0x9438:case 0x9448:case 0x9458:case 0x9468:
 				case 0x9478: // BSET 1001 0100 0ddd 1000
@@ -2396,21 +2423,16 @@ extern inline avr_flashaddr_t avr_decode_one(avr_t* avr)
 						case 0x9007: {	// ELPM Extended Load Program Memory 1001 000d dddd 01oo
 							if (!avr->rampz)
 								_avr_invalid_opcode(avr);
-//							uint32_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8) | (avr->data[avr->rampz] << 16);
-							uint32_t z = _avr_data_read16le(avr, R_ZL) | (avr->data[avr->rampz] << 16);
+							uint32_t z = _avr_get_r16le(avr, R_ZL) | (avr->data[avr->rampz] << 16);
 
 							uint8_t r = (opcode >> 4) & 0x1f;
 							int op = opcode & 3;
 							STATE("elpm %s, (Z[%02x:%04x]%s)\n", avr_regname(r), z >> 16, z&0xffff, opcode?"+":"");
-//							_avr_set_r(avr, r, avr->flash[z]);
-							_avr_data_write(avr, r, avr->flash[z]);
+							_avr_set_r(avr, r, avr->flash[z]);
 							if (op == 3) {
 								z++;
-//								_avr_set_r(avr, avr->rampz, z >> 16);
-								_avr_set_ram(avr, avr->rampz, z >> 16);
-//								_avr_set_r(avr, R_ZH, z >> 8);
-//								_avr_set_r(avr, R_ZL, z);
-								_avr_data_write16le(avr, R_ZL, (z&0xffff));
+								_avr_set_r(avr, avr->rampz, z >> 16);
+								_avr_set_r16le(avr, R_ZL, (z&0xffff));
 							}
 							cycle += 2; // 3 cycles
 						}	break;
