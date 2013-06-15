@@ -292,54 +292,50 @@ extern inline uint32_t uFlashRead(avr_t* avr, avr_flashaddr_t addr);
 #endif
 #endif
 
+void _avr_reg_io_write(avr_t * avr, uint16_t addr, uint8_t v) {
+	if(addr > avr->ramend) {
+		printf("%s: access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+		abort();
+	}
+
+	REG_TOUCH(avr, addr);
+
+	if (addr == R_SREG) {
+		// unsplit the SREG
+		SET_SREG_FROM(avr, v);
+		SREG();
+	} else if (addr > 31) {
+		uint8_t io = AVR_DATA_TO_IO(addr);
+		if (avr->io[io].w.c)
+			avr->io[io].w.c(avr, addr, v, avr->io[io].w.param);
+		else
+			_avr_data_write(avr, addr, v);
+		if (avr->io[io].irq) {
+			avr_raise_irq(avr->io[io].irq + AVR_IOMEM_IRQ_ALL, v);
+			for (int i = 0; i < 8; i++)
+				avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);				
+		}
+	} else
+		_avr_data_write(avr, addr, v);
+}
+
 /*
  * Set any address to a value; split between registers and SRAM
  */
 static inline void _avr_set_ram(avr_t * avr, uint16_t addr, uint8_t v)
 {
-#ifdef FAST_CORE_AGGRESSIVE_CHECKS
-	if(addr > avr->ramend) {
-		printf("%s: access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-		abort();
-	}
-#endif
-	if (addr < 256) {
-		REG_TOUCH(avr, addr);
-
-		if (addr == R_SREG) {
-			_avr_data_write(avr, addr, v);
-			// unsplit the SREG
-			SET_SREG_FROM(avr, v);
-			SREG();
-		}
-		if (addr > 31) {
-			uint8_t io = AVR_DATA_TO_IO(addr);
-			if (avr->io[io].w.c)
-				avr->io[io].w.c(avr, addr, v, avr->io[io].w.param);
-			else
-				_avr_data_write(avr, addr, v);
-			if (avr->io[io].irq) {
-				avr_raise_irq(avr->io[io].irq + AVR_IOMEM_IRQ_ALL, v);
-				for (int i = 0; i < 8; i++)
-					avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);				
-			}
-		} else
-			_avr_data_write(avr, addr, v);
+	if (addr >= 256 && addr <= avr->ramend) {
+		_avr_data_write(avr, addr, v);
 	} else
-		avr_core_watch_write(avr, addr, v);
+		_avr_reg_io_write(avr, addr, v);
 }
 
-/*
- * Get a value from SRAM.
- */
-static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
-{
-#ifdef FAST_CORE_AGGRESSIVE_CHECKS
+uint8_t _avr_reg_io_read(avr_t * avr, uint16_t addr) {
 	if(addr > avr->ramend) {
 		printf("%s: access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
 		abort();
 	}
-#endif
+
 	if (addr == R_SREG) {
 		/*
 		 * SREG is special it's reconstructed when read
@@ -348,9 +344,10 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 		uint8_t sreg;
 		READ_SREG_INTO(avr, sreg);
 		_avr_data_write(avr, addr, sreg);
-	} else if (addr > 31 && addr < 256) {
+		return(sreg);
+	} else if (addr > 31) {
 		uint8_t io = AVR_DATA_TO_IO(addr);
-		
+	
 		if (avr->io[io].r.c)
 			_avr_data_write(avr, addr, avr->io[io].r.c(avr, addr, avr->io[io].r.param));
 
@@ -361,7 +358,20 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 				avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);				
 		}
 	}
-	return avr_core_watch_read(avr, addr);
+	
+	return(_avr_data_read(avr, addr));
+}
+
+
+/*
+ * Get a value from SRAM.
+ */
+static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
+{
+	if (addr >= 256 && addr <= avr->ramend)
+		return(_avr_data_read(avr, addr));
+
+	return(_avr_reg_io_read(avr, addr));
 }
 
 /*
