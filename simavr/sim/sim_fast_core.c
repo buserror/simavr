@@ -847,12 +847,12 @@ UINSTx24(_call) {
 }
 
 UINSTbIO(_cbi) {
-	uint8_t vio = _avr_get_ram(avr, io);
+	uint8_t vio = _avr_reg_io_read(avr, io);
 	uint8_t res = vio & ~(1 << b);
 
 	STATE("cbi %s[%04x], 0x%02x = %02x\n", avr_regname(io), vio, 1<<b, res);
 
-	_avr_set_ram(avr, io, res);
+	_avr_reg_io_write(avr, io, res);
 
 	cycle[0]++;
 }
@@ -1418,18 +1418,18 @@ UINSTd5r5(_sbc) {
 }
 
 UINSTbIO(_sbi) {
-	uint8_t vio =_avr_get_ram(avr, io);
+	uint8_t vio =_avr_reg_io_read(avr, io);
 	uint8_t res = vio | (1 << b);
 
 	STATE("sbi %s[%04x], 0x%02x = %02x\n", avr_regname(io), vio, 1<<b, res);
 
-	_avr_set_ram(avr, io, res);
+	_avr_reg_io_write(avr, io, res);
 
 	cycle[0]++;
 }
 
 UINSTbIO(_sbic) {
-	uint8_t vio = _avr_get_ram(avr, io);
+	uint8_t vio = _avr_reg_io_read(avr, io);
 	uint8_t res = vio & (1 << b);
 
 	STATE("sbic %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), vio, 1<<b, !res?"":" not");
@@ -1444,7 +1444,7 @@ UINSTbIO(_sbic) {
 }
 
 UINSTbIO(_sbis) {
-	uint8_t vio = _avr_get_ram(avr, io);
+	uint8_t vio = _avr_reg_io_read(avr, io);
 	uint8_t res = vio & (1 << b);
 
 	STATE("sbis %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), vio, 1<<b, res?"":" not");
