@@ -12,7 +12,7 @@
 #include "avr_flash.h"
 #include "avr_watchdog.h"
 
-#define FAST_CORE_COMBINING
+//#define FAST_CORE_COMBINING
 
 #define FAST_CORE_DECODE_TRAP
 //#define FAST_CORE_AGGRESSIVE_CHECKS
@@ -1319,7 +1319,7 @@ UINSTd5(_pop_pop) {
 	 * however, we are passed the low reg expecting to do 16 bit fetch/store
 	 * (though not the case, we handle we handle consecutive push/pops as 16 bit operations)
 	 */
-	_avr_uinst_d5_pop(avr, new_pc, cycle, d5 + 1);
+	_avr_uinst_d5_pop(avr, new_pc, cycle, d + 1);
 #endif
 }
 
@@ -1342,7 +1342,7 @@ UINSTd5(_push_push) {
 	cycle[0]++;
 	new_pc[0] += 2; cycle[0] += 2;
 #else
-	_avr_uinst_d5_push(avr, new_pc, cycle, d5);
+	_avr_uinst_d5_push(avr, new_pc, cycle, d);
 #endif
 }
 
