@@ -36,7 +36,7 @@
 #include "sim_core_decl.h"
 
 static void std_logger(avr_t * avr, const int level, const char * format, ...);
-logger_t global_logger = std_logger;
+avr_logger_p avr_global_logger = std_logger;
 
 int avr_init(avr_t * avr)
 {
@@ -157,8 +157,7 @@ static void _avr_io_console_write(struct avr_t * avr, avr_io_addr_t addr, uint8_
 
 	if (v == '\r' && buf) {
 		buf[len] = 0;
-		AVR_LOG(avr, LOG_TRACE, "O:" "%s" "" "\n", buf);
-		fflush(stdout);
+		AVR_LOG(avr, LOG_OUTPUT, "O:" "%s" "" "\n", buf);
 		len = 0;
 		return;
 	}

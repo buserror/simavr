@@ -79,7 +79,7 @@ _avr_twi_status_set(
 {
 	avr_regbit_setto_raw(p->io.avr, p->twsr, v);
 #if AVR_TWI_DEBUG
-	printf("_avr_twi_status_set %02x\n", v);
+	AVR_TRACE(avr, "%s %02x\n", __func__, v);
 #endif
 	avr_raise_irq(p->io.irq + TWI_IRQ_STATUS, v);
 	if (interrupt)
@@ -139,7 +139,8 @@ avr_twi_write(
 
 	avr_core_watch_write(avr, addr, v);
 #if AVR_TWI_DEBUG
-	printf("avr_twi_write %02x START:%d STOP:%d ACK:%d INT:%d TWSR:%02x (state %02x)\n", v,
+	AVR_TRACE(avr, "%s %02x START:%d STOP:%d ACK:%d INT:%d TWSR:%02x (state %02x)\n", 
+			__func__, v,
 			avr_regbit_get(avr, p->twsta),
 			avr_regbit_get(avr, p->twsto),
 			avr_regbit_get(avr, p->twea),
@@ -158,9 +159,9 @@ avr_twi_write(
 			p->state = 0;
 			p->peer_addr = 0;
 		}
-		printf("TWEN: %d\n", twen);
+		AVR_TRACE(avr, "TWEN: %d\n", twen);
 		if (avr->data[p->r_twar]) {
-			printf("TWEN Slave: %02x & %02x\n", avr->data[p->r_twar], avr->data[p->r_twamr]);
+			AVR_TRACE(avr, "TWEN Slave: %02x & %02x\n", avr->data[p->r_twar], avr->data[p->r_twamr]);
 		}
 	}
 	if (!twen)
@@ -169,12 +170,12 @@ avr_twi_write(
 	uint8_t cleared = avr_regbit_get(avr, p->twi.raised);
 
 	/*int cleared = */avr_clear_interrupt_if(avr, &p->twi, twint);
-//	printf("cleared %d\n", cleared);
+//	AVR_TRACE(avr, "cleared %d\n", cleared);
 
 	if (!twsto && avr_regbit_get(avr, p->twsto)) {
 		// generate a stop condition
 #if AVR_TWI_DEBUG
-		printf("<<<<< I2C stop\n");
+		AVR_TRACE(avr, "<<<<< I2C stop\n");
 #endif
 		if (p->state) { // doing stuff
 			if (p->state & TWI_COND_START) {
@@ -186,7 +187,7 @@ avr_twi_write(
 	}
 	if (!twsta && avr_regbit_get(avr, p->twsta)) {
 #if AVR_TWI_DEBUG
-		printf(">>>>> I2C %sstart\n", p->state & TWI_COND_START ? "RE" : "");
+		AVR_TRACE(avr, ">>>>> I2C %sstart\n", p->state & TWI_COND_START ? "RE" : "");
 #endif
 		// generate a start condition
 		if (p->state & TWI_COND_START)
@@ -205,9 +206,9 @@ avr_twi_write(
 			int do_read = p->peer_addr & 1;
 #if AVR_TWI_DEBUG
 			if (do_read)
-				printf("I2C READ byte from %02x\n", p->peer_addr);
+				AVR_TRACE(avr, "I2C READ byte from %02x\n", p->peer_addr);
 			else
-				printf("I2C WRITE byte %02x to %02x\n", avr->data[p->r_twdr], p->peer_addr);
+				AVR_TRACE(avr, "I2C WRITE byte %02x to %02x\n", avr->data[p->r_twdr], p->peer_addr);
 #endif
 			// a normal data byte
 			uint8_t msgv = do_read ? TWI_COND_READ : TWI_COND_WRITE;
@@ -238,11 +239,11 @@ avr_twi_write(
 			}
 #if AVR_TWI_DEBUG
 			else
-				printf("I2C latch is not ready, do nothing\n");
+				AVR_TRACE(avr, "I2C latch is not ready, do nothing\n");
 #endif
 		} else {
 #if AVR_TWI_DEBUG
-			printf("I2C Master address %02x\n", avr->data[p->r_twdr]);
+			AVR_TRACE(avr, "I2C Master address %02x\n", avr->data[p->r_twdr]);
 #endif
 			// send the address
 			p->state |= TWI_COND_ADDR;
@@ -347,7 +348,7 @@ avr_twi_irq_input(
 		p->peer_addr = 0;
 		if (msg.u.twi.msg & TWI_COND_ADDR) {
 			uint8_t mask = ~avr->data[p->r_twamr] >> 1;
-			printf("I2C slave start %2x (want %02x&%02x)\n",
+			AVR_TRACE(avr, "I2C slave start %2x (want %02x&%02x)\n",
 				msg.u.twi.addr, avr->data[p->r_twar] >> 1, mask);
 			p->peer_addr = msg.u.twi.addr & mask;
 			if (p->peer_addr == ((avr->data[p->r_twar] >> 1) & mask)) {
@@ -359,7 +360,7 @@ avr_twi_irq_input(
 			}
 		} else {
 			// "general call" address
-			printf("I2C slave start without address?\n");
+			AVR_TRACE(avr, "I2C slave start without address?\n");
 			if (avr->data[p->r_twar] & 1) {
 			}
 		}
@@ -372,7 +373,7 @@ avr_twi_irq_input(
 	// receiving an acknowledge bit
 	if (msg.u.twi.msg & TWI_COND_ACK) {
 #if AVR_TWI_DEBUG
-		printf("I2C received ACK:%d\n", msg.u.twi.data & 1);
+		AVR_TRACE(avr, "I2C received ACK:%d\n", msg.u.twi.data & 1);
 #endif
 		if (msg.u.twi.data & 1)
 			p->state |= TWI_COND_ACK;
@@ -382,7 +383,7 @@ avr_twi_irq_input(
 	// receive a data byte from a slave
 	if (msg.u.twi.msg & TWI_COND_READ) {
 #if AVR_TWI_DEBUG
-		printf("I2C received %02x\n", msg.u.twi.data);
+		AVR_TRACE(avr, "I2C received %02x\n", msg.u.twi.data);
 #endif
 		avr->data[p->r_twdr] = msg.u.twi.data;
 	}

@@ -66,18 +66,22 @@ enum {
  * The current log level is kept in avr->log.
  */
 enum {
-	LOG_ERROR = 1,
+	LOG_OUTPUT = 0,
+	LOG_ERROR,
 	LOG_WARNING,
 	LOG_TRACE,
 };
-typedef void (*logger_t)(struct avr_t* avr, const int level, const char * format, ... );
-extern logger_t global_logger;
+
+typedef void (*avr_logger_p)(struct avr_t* avr, const int level, const char * format, ... );
+extern avr_logger_p avr_global_logger;
 #ifndef AVR_LOG
 #define AVR_LOG(avr, level, ...) \
 	do { \
-		global_logger(avr, level, __VA_ARGS__); \
+		avr_global_logger(avr, level, __VA_ARGS__); \
 	} while(0)
 #endif
+#define AVR_TRACE(avr, ... ) \
+	AVR_LOG(avr, LOG_TRACE, __VA_ARGS__)
 
 /*
  * Core states.
@@ -265,7 +269,7 @@ typedef struct avr_t {
 	// DEBUG ONLY -- value ignored if CONFIG_SIMAVR_TRACE = 0
 	uint8_t	trace : 1,
 			log : 2; // log level, default to 1
-
+	
 	// Only used if CONFIG_SIMAVR_TRACE is defined
 	struct avr_trace_data_t *trace_data;
 
