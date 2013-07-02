@@ -44,6 +44,8 @@ enum {
 	TWI_COND_ACK = (1 << 3),
 	TWI_COND_WRITE = (1 << 4),
 	TWI_COND_READ = (1 << 5),
+	// internal state, do not use in irq messages
+	TWI_COND_SLAVE	= (1 << 6),
 };
 
 typedef struct avr_twi_msg_t {

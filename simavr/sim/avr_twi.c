@@ -159,6 +159,9 @@ avr_twi_write(
 			p->peer_addr = 0;
 		}
 		printf("TWEN: %d\n", twen);
+		if (avr->data[p->r_twar]) {
+			printf("TWEN Slave: %02x & %02x\n", avr->data[p->r_twar], avr->data[p->r_twamr]);
+		}
 	}
 	if (!twen)
 		return;
@@ -338,6 +341,34 @@ avr_twi_irq_input(
 	avr_twi_msg_irq_t msg;
 	msg.u.v = value;
 
+	// receiving an attempt at waking a slave
+	if (msg.u.twi.msg & TWI_COND_START) {
+		p->state = 0;
+		p->peer_addr = 0;
+		if (msg.u.twi.msg & TWI_COND_ADDR) {
+			uint8_t mask = ~avr->data[p->r_twamr] >> 1;
+			printf("I2C slave start %2x (want %02x&%02x)\n",
+				msg.u.twi.addr, avr->data[p->r_twar] >> 1, mask);
+			p->peer_addr = msg.u.twi.addr & mask;
+			if (p->peer_addr == ((avr->data[p->r_twar] >> 1) & mask)) {
+				// address match, we're talking
+				p->state = TWI_COND_ADDR | TWI_COND_SLAVE;
+				_avr_twi_delay_state(p, 9, 
+					msg.u.twi.msg & TWI_COND_WRITE ?
+						TWI_SRX_ADR_ACK : TWI_STX_ADR_ACK );
+			}
+		} else {
+			// "general call" address
+			printf("I2C slave start without address?\n");
+			if (avr->data[p->r_twar] & 1) {
+			}
+		}
+	}
+	if (msg.u.twi.msg & TWI_COND_STOP) {
+		_avr_twi_delay_state(p, 9, 
+			msg.u.twi.msg & TWI_COND_WRITE ?
+				TWI_SRX_ADR_ACK : TWI_STX_ADR_ACK );
+	}
 	// receiving an acknowledge bit
 	if (msg.u.twi.msg & TWI_COND_ACK) {
 #if AVR_TWI_DEBUG
@@ -361,6 +392,7 @@ void avr_twi_reset(struct avr_io_t *io)
 {
 	avr_twi_t * p = (avr_twi_t *)io;
 	avr_irq_register_notify(p->io.irq + TWI_IRQ_MISO, avr_twi_irq_input, p);
+	p->state = p->peer_addr = 0;
 }
 
 static const char * irq_names[TWI_IRQ_COUNT] = {
