@@ -38,11 +38,9 @@ int avr_vcd_init(struct avr_t * avr, const char * filename, avr_vcd_t * vcd, uin
 	vcd->avr = avr;
 	strncpy(vcd->filename, filename, sizeof(vcd->filename));
 	vcd->period = avr_usec_to_cycles(vcd->avr, period);
-	
-	for (int i = 0; i < AVR_VCD_MAX_SIGNALS; i++) {
-		avr_init_irq(&avr->irq_pool, &vcd->signal[i].irq, i, 1, NULL /* TODO IRQ name */);
-		avr_irq_register_notify(&vcd->signal[i].irq, _avr_vcd_notify, vcd);
-	}
+
+	// No longer initializes the IRQs here, they can be initialized on the
+	// fly when traces are added
 	
 	return 0;
 }
@@ -153,10 +151,24 @@ int avr_vcd_add_signal(avr_vcd_t * vcd,
 {
 	if (vcd->signal_count == AVR_VCD_MAX_SIGNALS)
 		return -1;
-	avr_vcd_signal_t * s = &vcd->signal[vcd->signal_count++];
+	int index = vcd->signal_count++;
+	avr_vcd_signal_t * s = &vcd->signal[index];
 	strncpy(s->name, name, sizeof(s->name));
 	s->size = signal_bit_size;
 	s->alias = ' ' + vcd->signal_count ;
+
+	/* manufacture a nice IRQ name */
+	int l = strlen(name);
+	char iname[10 + l + 1];
+	if (signal_bit_size > 1)
+		sprintf(iname, "%d>vcd.%s", signal_bit_size, name);
+	else
+		sprintf(iname, ">vcd.%s", name);
+
+	const char * names[1] = { iname };
+	avr_init_irq(&vcd->avr->irq_pool, &s->irq, index, 1, names);
+	avr_irq_register_notify(&s->irq, _avr_vcd_notify, vcd);
+
 	avr_connect_irq(signal_irq, &s->irq);
 	return 0;
 }

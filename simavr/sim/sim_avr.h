@@ -70,11 +70,14 @@ enum {
 	LOG_WARNING,
 	LOG_TRACE,
 };
+typedef void (*logger_t)(struct avr_t* avr, const int level, const char * format, ... );
+extern logger_t global_logger;
+#ifndef AVR_LOG
 #define AVR_LOG(avr, level, ...) \
 	do { \
-		if (avr->log >= level) \
-			fprintf(stdout, __VA_ARGS__); \
+		global_logger(avr, level, __VA_ARGS__); \
 	} while(0)
+#endif
 
 /*
  * Core states.
