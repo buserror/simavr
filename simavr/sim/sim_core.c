@@ -846,7 +846,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					int p = opcode & 0x100;
 					if (e && !avr->eind)
 						_avr_invalid_opcode(avr);
-					uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
+					uint32_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
 					if (e)
 						z |= avr->data[avr->eind] << 16;
 					STATE("%si%s Z[%04x]\n", e?"e":"", p?"call":"jmp", z << 1);
