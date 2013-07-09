@@ -2807,7 +2807,7 @@ UINSTd5(push_push16le) {
 CALL_UINSTd5(push_push16le)
 
 UINSTo12(rcall) {
-	avr_flashaddr_t branch_pc = new_pc[0] + o;
+	avr_flashaddr_t branch_pc = new_pc[0] + (int16_t)o;
 
 	STATE("rcall .%d [%04x]\n", o >> 1, branch_pc);
 
