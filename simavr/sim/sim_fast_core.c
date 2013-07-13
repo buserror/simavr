@@ -440,6 +440,8 @@ static inline void CLI(avr_t * avr) {
 }
 
 void _avr_reg_io_write(avr_t * avr, int* cycle, uint_fast16_t addr, uint_fast8_t v) {
+//	uint_fast8_t rix=0;
+	
 	if(unlikely(addr > avr->ramend)) {
 		printf("%s: access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
 		abort();
@@ -464,12 +466,13 @@ void _avr_reg_io_write(avr_t * avr, int* cycle, uint_fast16_t addr, uint_fast8_t
 			avr->io[io].w.c(avr, addr, v, avr->io[io].w.param);
 		else
 			_avr_data_write(avr, addr, v);
+
 		if (avr->io[io].irq) {
 			avr_raise_irq(avr->io[io].irq + AVR_IOMEM_IRQ_ALL, v);
 			for (int i = 0; i < 8; i++)
 				avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);				
 		}
-
+		
 		avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
 		if(pool->count) {
 			avr_cycle_timer_slot_t  timer = pool->timer[pool->count-1];
@@ -546,7 +549,7 @@ uint_fast8_t _avr_reg_io_read(avr_t * avr, int* cycle, uint_fast16_t addr) {
 			}
 		}
 	}
-	
+
 	return(_avr_data_read(avr, addr));
 }
 
@@ -815,6 +818,8 @@ enum {
 	k_avr_uinst_d5r5_and,
 	k_avr_uinst_h4k8_andi,
 	k_avr_uinst_h4k16_andi_andi,
+	k_avr_uinst_h4r5k8_andi_or,
+	k_avr_uinst_h4k8k8_andi_ori,
 	k_avr_uinst_d5_asr,
 	k_avr_uinst_b3_bclr,
 	k_avr_uinst_d5b3_bld,
@@ -850,6 +855,7 @@ enum {
 	k_avr_uinst_d5rXYZq6_ldd_ldd,
 	k_avr_uinst_h4k8_ldi,
 	k_avr_uinst_h4k16_ldi_ldi,
+	k_avr_uinst_h4k8a6_ldi_out,
 	k_avr_uinst_d5x16_lds,
 	k_avr_uinst_d5x16_lds_lds,
 	k_avr_uinst_d5x16_lds_tst,
@@ -999,7 +1005,7 @@ static inline uint_fast8_t INST_DECODE_R4(const uint_fast16_t o) {
 #endif
 
 #define UINST(name) \
-	extern inline void _avr_uinst_##name(avr_t* avr, avr_flashaddr_t* new_pc, int* cycle, uint_fast32_t opcode)
+	static inline void _avr_uinst_##name(avr_t* avr, avr_flashaddr_t* new_pc, int* cycle, uint_fast32_t opcode)
 #define U_DO_UINST(name) \
 	_avr_uinst_##name(avr, new_pc, cycle, opcode)
 #define DO_UINST(name) \
@@ -1013,7 +1019,7 @@ static inline uint_fast8_t INST_DECODE_R4(const uint_fast16_t o) {
 	}
 
 #define UINSTarg(name, args...) \
-	extern inline void _avr_uinst_##name(avr_t* avr, avr_flashaddr_t* new_pc, int* cycle, uint_fast32_t opcode, ##args)
+	static inline void _avr_uinst_##name(avr_t* avr, avr_flashaddr_t* new_pc, int* cycle, uint_fast32_t opcode, ##args)
 #define DO_UINSTarg(name, args...) \
 	_avr_uinst_##name(avr, new_pc, cycle, opcode, ##args)
 
@@ -1362,7 +1368,24 @@ static inline uint_fast8_t INST_DECODE_R4(const uint_fast16_t o) {
 	\
 		uint_fast32_t u_opcode = OPCODE(h4k8_##name, h4, k8, 0); \
 		BEGIN_COMBINING
-
+#define UINSTh4k8a6(name) \
+	UINSTarg(h4k8a6_##name, const uint_fast8_t h, const uint_fast8_t k, const uint_fast8_t a)
+#define CALL_UINSTh4k8a6(name)\
+	UINST(call_h4k8a6_##name) { \
+		UINST_GET_R1(h4); \
+		UINST_GET_R2(k8); \
+		UINST_GET_R3(a6); \
+		DO_UINSTarg(h4k8a6_##name, h4, k8, a6); \
+	}
+#define UINSTh4k8k8(name) \
+	UINSTarg(h4k8k8_##name, const uint_fast8_t h, const uint_fast8_t k1, const uint_fast8_t k2)
+#define CALL_UINSTh4k8k8(name)\
+	UINST(call_h4k8k8_##name) { \
+		UINST_GET_R1(h4); \
+		UINST_GET_R2(k8a); \
+		UINST_GET_R3(k8b); \
+		DO_UINSTarg(h4k8k8_##name, h4, k8a, k8b); \
+	}
 #define UINSTh4r5k8(name) \
 	UINSTarg(h4r5k8_##name, const uint_fast8_t h, const uint_fast8_t r, const uint_fast8_t k)
 #define CALL_UINSTh4r5k8(name)\
@@ -1621,7 +1644,11 @@ UINSTh4k8(andi) {
 	RMW(UINST_RMW_VH());
 	uint_fast8_t res = vh & k;
 
+#ifdef CORE_FAST_CORE_DIFF_TRACE
 	STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
+#else
+	STATE("andi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), vh, k, res);
+#endif
 
 	NO_RMW(_avr_set_r(avr, h, res));
 	RMW(_avr_set_rmw(pvh, res));
@@ -1633,12 +1660,22 @@ UINSTh4k8(andi) {
 CALL_UINSTh4k8(andi)
 COMBINING_INSTh4k8(andi)
 	INST_GET_H4(h4b, next_opcode);
-
-	if( ((opcode & 0xf000) == (next_opcode & 0xfc00))
+	INST_GET_D5(d5, next_opcode);
+	
+	if( (0x7000 == (opcode & 0xf000)) && ( 0x7000 == (next_opcode & 0xf000))
 			&& ((h4 + 1) == h4b) ) {
 		INST_GET_K8(k8b, next_opcode);
 		u_opcode = OPCODE(h4k16_andi_andi, h4, k8, k8b);
+	} else if( (0x7000 /* ANDI */ == (opcode & 0xf000)) && ( 0x2800 == (next_opcode /* OR */ & 0xfc00))
+			&& (h4 == d5) ) {
+		INST_GET_R5(r5, next_opcode);
+		u_opcode = OPCODE(h4r5k8_andi_or, h4, r5, k8);
+	} else if( (0x7000 /* ANDI */ == (opcode & 0xf000)) && ( 0x6000 == (next_opcode /* ORI */ & 0xf000))
+			&& (h4 == h4b) ) {
+		INST_GET_K8(k8b, next_opcode);
+		u_opcode = OPCODE(h4k8k8_andi_ori, h4, k8, k8b);
 	} else
+
 		combining = 0;
 END_COMBINING
 
@@ -1659,6 +1696,73 @@ UINSTh4k16(andi_andi) {
 	new_pc[0] += 2; cycle[0]++;
 }
 CALL_UINSTh4k16(andi_andi)
+
+UINSTh4r5k8(andi_or) {
+	NO_RMW(UINST_GET_VH());
+	RMW(UINST_RMW_VH());
+	uint_fast8_t andi_res = vh & k;
+
+#ifdef CORE_FAST_CORE_DIFF_TRACE
+	STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
+#else
+	STATE("/ andi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), vh, k, andi_res);
+#endif
+
+	T(_avr_flags_znv0s(avr, andi_res));
+	SREG();
+
+	new_pc[0] += 2; cycle[0] ++;
+
+	UINST_GET_VR();
+	uint_fast8_t res = andi_res | vr;
+
+#ifdef CORE_FAST_CORE_DIFF_TRACE
+	STATE("or %s[%02x], %s[%02x] = %02x\n", avr_regname(h), andi_res, avr_regname(r), vr, res);
+#else
+	STATE("\\ or %s[%02x], %s[%02x] = %02x\n", avr_regname(h), andi_res, avr_regname(r), vr, res);
+#endif
+
+	NO_RMW(_avr_set_r(avr, h, res));
+	RMW(_avr_set_rmw(pvh, res));
+
+	_avr_flags_znv0s(avr, res);
+
+	SREG();
+}
+CALL_UINSTh4r5k8(andi_or)
+
+UINSTh4k8k8(andi_ori) {
+	NO_RMW(UINST_GET_VH());
+	RMW(UINST_RMW_VH());
+	uint_fast8_t andi_res = vh & k1;
+
+#ifdef CORE_FAST_CORE_DIFF_TRACE
+	STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), vh, k1);
+#else
+	STATE("/ andi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), vh, k1, andi_res);
+#endif
+
+	T(_avr_flags_znv0s(avr, andi_res));
+	SREG();
+
+	new_pc[0] += 2; cycle[0] ++;
+
+	uint_fast8_t res = andi_res | k2;
+
+#ifdef CORE_FAST_CORE_DIFF_TRACE
+	STATE("ori %s[%02x], 0x%02x\n", avr_regname(h), andi_res, k2);
+#else
+	STATE("\\ ori %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), andi_res, k2, res);
+#endif
+
+	NO_RMW(_avr_set_r(avr, h, res));
+	RMW(_avr_set_rmw(pvh, res));
+
+	_avr_flags_znv0s(avr, res);
+
+	SREG();
+}
+CALL_UINSTh4k8k8(andi_ori)
 
 UINSTd5(asr) {
 	NO_RMW(UINST_GET_VD());
@@ -2111,10 +2215,8 @@ UINSTd5r5(eor) {
 }
 CALL_UINSTd5r5(eor)
 COMPLEX_INSTd5r5(eor)
-#if 1
 	if(d5 == r5)
 		u_opcode = OPCODE(d5_clr, d5, 0, 0);
-#endif
 END_COMPLEX
 
 UINST(icall) {
@@ -2199,7 +2301,8 @@ UINSTd5a6m8(in_sbrs) {
 	UINST_GET_VA();
 	_avr_set_r(avr, d, va);
 
-	int	branch = (0 != (va & (mask)));
+//	int	branch = (0 != (va & (mask)));
+	int	branch = va & (mask);
 
 	STATE("sbrs (in %s, %s[%02x]),  0x%02x; Will%s branch\n", avr_regname(d), avr_regname(a), 
 		va, mask, branch ? "":" not");
@@ -2265,7 +2368,7 @@ UINSTd5rXYZop(ld) {
 	if (op == 2) vr--;
 	_avr_set_r(avr, d, ivr = _avr_get_ram(avr, cycle, vr));
 	if (op == 1) vr++;
-
+	
 	STATE("ld %s, %s%s[%04x]%s\n", avr_regname(d), op == 2 ? "--" : "", avr_regname(r), vr, op == 1 ? "++" : "");
 
 	if(op)
@@ -2344,7 +2447,8 @@ UINSTh4k8(ldi) {
 CALL_UINSTh4k8(ldi)
 COMBINING_INSTh4k8(ldi)
 	INST_GET_H4(h4b, next_opcode);
-
+	INST_GET_D5(d5, next_opcode);
+	
 	if( (0xe000 /* LDI.l */ == (opcode & 0xf000)) && (0xe000 /* LDI.h */== (next_opcode & 0xf000))
 			&& ((h4 + 1) == h4b) ) {
 		INST_GET_K8(k8b, next_opcode);
@@ -2353,7 +2457,12 @@ COMBINING_INSTh4k8(ldi)
 			&& (h4 == (h4b + 1)) ) {
 		INST_GET_K8(k8b, next_opcode);
 		u_opcode = OPCODE(h4k16_ldi_ldi, h4b, k8b, k8);
+	} else if( (0xe000 /* LDI */ == (opcode & 0xf000)) && (0xb800 /* OUT */== (next_opcode & 0xf800))
+			&& (h4 == d5) ) {
+		INST_GET_A6(a6, next_opcode);
+		u_opcode = OPCODE(h4k8a6_ldi_out, h4, k8, a6);
 	} else
+
 		combining = 0;
 END_COMBINING
 
@@ -2365,6 +2474,19 @@ UINSTh4k16(ldi_ldi) {
 	new_pc[0] += 2; cycle[0]++;
 }
 CALL_UINSTh4k16(ldi_ldi)
+
+UINSTh4k8a6(ldi_out) {
+	STATE("ldi %s, 0x%02x\n", avr_regname(h), k);
+
+	_avr_set_r(avr, h, k);
+
+	new_pc[0] += 2; cycle[0] ++;
+
+	STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(h), k);
+
+	_avr_reg_io_write(avr, cycle, a, k);
+}
+CALL_UINSTh4k8a6(ldi_out)
 
 UINSTd5x16(lds) {
 	STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_get_r(avr, d), x);
@@ -2471,7 +2593,7 @@ UINSTd5rXYZop(lpm_z0_st) {
 	if (op == 2) vr--;
 	_avr_set_ram(avr, cycle, vr, vd);
 	if (op == 1) vr++;
-
+	
 	if(op)
 		_avr_set_r16le(avr, r, vr);
 
@@ -3794,6 +3916,8 @@ static inline void _avr_fast_core_run_one(avr_t* avr, avr_flashaddr_t* new_pc, i
 		UINST_ESAC(d5r5_and);
 		UINST_ESAC(h4k8_andi);
 		UINST_ESAC(h4k16_andi_andi);
+		UINST_ESAC(h4r5k8_andi_or);
+		UINST_ESAC(h4k8k8_andi_ori);
 		UINST_ESAC(d5_asr);
 		UINST_ESAC(b3_bclr);
 		UINST_ESAC(d5b3_bld);
@@ -3829,6 +3953,7 @@ static inline void _avr_fast_core_run_one(avr_t* avr, avr_flashaddr_t* new_pc, i
 		UINST_ESAC(d5rXYZq6_ldd_ldd);
 		UINST_ESAC(h4k8_ldi);
 		UINST_ESAC(h4k16_ldi_ldi);
+		UINST_ESAC(h4k8a6_ldi_out);
 		UINST_ESAC(d5x16_lds);
 		UINST_ESAC(d5x16_lds_lds);
 		UINST_ESAC(d5x16_lds_tst);
@@ -3903,7 +4028,7 @@ avr_flashaddr_t avr_fast_core_run_one(avr_t* avr) {
 void avr_core_run_many(avr_t* avr) {
 	avr_cycle_count_t	nextTimerCycle;
 	avr_flashaddr_t		new_pc = avr->pc;
-	int			cycle;
+	int			cycle = 0;
 
 	nextTimerCycle = avr_cycle_timer_process(avr);
 
@@ -3913,11 +4038,8 @@ void avr_core_run_many(avr_t* avr) {
 			avr->pc = new_pc;
 		} else
 			goto leaveCore;
-
-		if(0 == cycle) {
-			goto leaveCore;
-		}
-	} while(nextTimerCycle--);
+		nextTimerCycle = ((nextTimerCycle - 1) * (0 != cycle));
+	} while(nextTimerCycle);
 
 leaveCore:
 	nextTimerCycle = avr_cycle_timer_process(avr);
