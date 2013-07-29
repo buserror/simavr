@@ -40,19 +40,23 @@ logger_t global_logger = std_logger;
 
 int avr_init(avr_t * avr)
 {
-	uint32_t flashsize = (avr->flashend + 1);
+	uint32_t flashsize = avr->flashend + 1;
 #ifdef CONFIG_SIMAVR_FAST_CORE
 	/* gets cleared on each reset...  just to be sure! */
+	/*	avr addresses program memory by words...
+		simavr uses byte addressing...
+		fast core uses long word addressing (uint32_t)...
+		we trade off extra space to trim off a few cycles.
+	*/
+	uint32_t uflashsize = flashsize << 2;
 #ifdef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
 	/* due to a possible bug, piggyback onto existing flash buffer */
-	flashsize += flashsize << 1;
+	flashsize += uflashsize;
 #else
-	avr->uflash = malloc(flashsize << 1);
-	avr->flash = malloc(flashsize);
+	avr->uflash = malloc(uflashsize);
 #endif
 #endif
 	avr->flash = malloc(flashsize);
-
 	memset(avr->flash, 0xff, flashsize);
 	avr->data = malloc(avr->ramend + 1);
 	memset(avr->data, 0, avr->ramend + 1);
@@ -92,10 +96,8 @@ void avr_terminate(avr_t * avr)
 	}
 	avr_deallocate_ios(avr);
 
-#ifdef CONFIG_SIMAVR_FAST_CORE
-#ifndef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
-	if (avr->uflash) free(avr->uflash);
-#endif
+#if defined(CONFIG_SIMAVR_FAST_CORE) && !defined(CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED)
+	if (avr->uflash) free(avr->uflash)
 #endif
 	if (avr->flash) free(avr->flash);
 	if (avr->data) free(avr->data);
@@ -106,17 +108,22 @@ void avr_reset(avr_t * avr)
 {
 	AVR_LOG(avr, LOG_TRACE, "%s reset\n", avr->mmcu);
 
-	memset(avr->data, 0x0, avr->ramend + 1);
-
 #ifdef CONFIG_SIMAVR_FAST_CORE
-	const uint32_t flashsize = (avr->flashend +1);
+	uint32_t flashsize = avr->flashend + 1;
+	/* gets cleared on each reset...  just to be sure! */
+	/*	avr addresses program memory by words...
+		simavr uses byte addressing...
+		fast core uses long word addressing (uint32_t)...
+		we trade off extra space to trim off a few cycles.
+	*/
+	uint32_t uflashsize = flashsize << 2;
 #ifdef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
-	memset(avr->flash + flashsize, 0, flashsize << 1);
+	memset(avr->flash + flashsize, 0, uflashsize);
 #else
-	memset(avr->uflash, 0, flashsize << 1);
+	memset(avr->uflash, 0, uflashsize);
 #endif
 #endif
-
+	memset(avr->data, 0, avr->ramend + 1);
 	_avr_sp_set(avr, avr->ramend);
 	avr->pc = 0;
 	for (int i = 0; i < 8; i++)
