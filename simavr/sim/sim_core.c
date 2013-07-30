@@ -85,10 +85,24 @@ int donttrace = 0;
 	printf("\n");\
 }
 #else
+#if 1
+#define T(w) w
+#define REG_TOUCH(a, r)
+#define STATE(_f, args...) { \
+	printf("%06x: " _f, avr->pc, ## args);\
+	}
+#define SREG() {\
+	printf("%06x: \t\t\t\t\t\t\t\t\tSREG = ", avr->pc); \
+	for (int _sbi = 0; _sbi < 8; _sbi++)\
+		printf("%c", avr->sreg[_sbi] ? toupper(_sreg_bit_name[_sbi]) : '.');\
+	printf("\n");\
+}
+#else
 #define T(w)
 #define REG_TOUCH(a, r)
 #define STATE(_f, args...)
 #define SREG()
+#endif
 #endif
 
 void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)

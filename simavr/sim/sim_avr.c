@@ -19,8 +19,9 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>
+#include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include "sim_avr.h"
@@ -34,27 +35,36 @@
 #define AVR_KIND_DECL
 #include "sim_core_decl.h"
 
+static void std_logger(avr_t * avr, const int level, const char * format, ...);
+logger_t global_logger = std_logger;
+
 int avr_init(avr_t * avr)
 {
+	uint32_t flashsize = avr->flashend + 1;
 #ifdef CONFIG_SIMAVR_FAST_CORE
 	/* gets cleared on each reset...  just to be sure! */
+	/*	avr addresses program memory by words...
+		simavr uses byte addressing...
+		fast core uses long word addressing (uint32_t)...
+		we trade off extra space to trim off a few cycles.
+	*/
+	uint32_t uflashsize = flashsize << 2;
 #ifdef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
 	/* due to a possible bug, piggyback onto existing flash buffer */
-	avr->flash = malloc((avr->flashend +1) << 3);
+	flashsize += uflashsize;
 #else
-	avr->uflash = malloc((avr->flashend +1) << 2);
-
-	avr->flash = malloc(avr->flashend + 1);
+	avr->uflash = malloc(uflashsize);
 #endif
 #endif
-	memset(avr->flash, 0xff, avr->flashend + 1);
+	avr->flash = malloc(flashsize);
+	memset(avr->flash, 0xff, flashsize);
 	avr->data = malloc(avr->ramend + 1);
 	memset(avr->data, 0, avr->ramend + 1);
 #ifdef CONFIG_SIMAVR_TRACE
 	avr->trace_data = calloc(1, sizeof(struct avr_trace_data_t));
 #endif
 	
-	printf("%s init\n", avr->mmcu);
+	AVR_LOG(avr, LOG_TRACE, "%s init\n", avr->mmcu);
 
 	// cpu is in limbo before init is finished.
 	avr->state = cpu_Limbo;
@@ -86,10 +96,8 @@ void avr_terminate(avr_t * avr)
 	}
 	avr_deallocate_ios(avr);
 
-#ifdef CONFIG_SIMAVR_FAST_CORE
-#ifndef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
-	if (avr->uflash) free(avr->uflash);
-#endif
+#if defined(CONFIG_SIMAVR_FAST_CORE) && !defined(CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED)
+	if (avr->uflash) free(avr->uflash)
 #endif
 	if (avr->flash) free(avr->flash);
 	if (avr->data) free(avr->data);
@@ -98,19 +106,24 @@ void avr_terminate(avr_t * avr)
 
 void avr_reset(avr_t * avr)
 {
-	printf("%s reset\n", avr->mmcu);
-
-	memset(avr->data, 0x0, avr->ramend + 1);
+	AVR_LOG(avr, LOG_TRACE, "%s reset\n", avr->mmcu);
 
 #ifdef CONFIG_SIMAVR_FAST_CORE
-	uint32_t flashsize = (avr->flashend +1);
+	uint32_t flashsize = avr->flashend + 1;
+	/* gets cleared on each reset...  just to be sure! */
+	/*	avr addresses program memory by words...
+		simavr uses byte addressing...
+		fast core uses long word addressing (uint32_t)...
+		we trade off extra space to trim off a few cycles.
+	*/
+	uint32_t uflashsize = flashsize << 2;
 #ifdef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
-	memset(avr->flash + flashsize, 0, flashsize << 2);
+	memset(avr->flash + flashsize, 0, uflashsize);
 #else
-	memset(avr->uflash, 0, flashsize << 2);
+	memset(avr->uflash, 0, uflashsize);
 #endif
 #endif
-
+	memset(avr->data, 0, avr->ramend + 1);
 	_avr_sp_set(avr, avr->ramend);
 	avr->pc = 0;
 	for (int i = 0; i < 8; i++)
@@ -129,7 +142,7 @@ void avr_reset(avr_t * avr)
 
 void avr_sadly_crashed(avr_t *avr, uint8_t signal)
 {
-	printf("%s\n", __FUNCTION__);
+	AVR_LOG(avr, LOG_ERROR, "%s\n", __FUNCTION__);
 	avr->state = cpu_Stopped;
 	if (avr->gdb_port) {
 		// enable gdb server, and wait
@@ -142,7 +155,7 @@ void avr_sadly_crashed(avr_t *avr, uint8_t signal)
 
 static void _avr_io_command_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
-	printf("%s %02x\n", __FUNCTION__, v);
+	AVR_LOG(avr, LOG_TRACE, "%s %02x\n", __FUNCTION__, v);
 	switch (v) {
 		case SIMAVR_CMD_VCD_START_TRACE:
 			if (avr->vcd)
@@ -156,7 +169,8 @@ static void _avr_io_command_write(struct avr_t * avr, avr_io_addr_t addr, uint8_
 			avr_irq_t * src = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_OUTPUT);
 			avr_irq_t * dst = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_INPUT);
 			if (src && dst) {
-				printf("%s activating uart local echo IRQ src %p dst %p\n", __FUNCTION__, src, dst);
+				AVR_LOG(avr, LOG_TRACE, "%s activating uart local echo IRQ src %p dst %p\n",
+						__FUNCTION__, src, dst);
 				avr_connect_irq(src, dst);
 			}
 		}	break;
@@ -177,7 +191,7 @@ static void _avr_io_console_write(struct avr_t * avr, avr_io_addr_t addr, uint8_
 
 	if (v == '\r' && buf) {
 		buf[len] = 0;
-		printf("O:" "%s" "" "\n", buf);
+		AVR_LOG(avr, LOG_TRACE, "O:" "%s" "" "\n", buf);
 		fflush(stdout);
 		len = 0;
 		return;
@@ -199,8 +213,8 @@ void avr_set_console_register(avr_t * avr, avr_io_addr_t addr)
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, avr_flashaddr_t address)
 {
 	if ((address + size) > avr->flashend+1) {
-		fprintf(stderr, "avr_loadcode(): Attempted to load code of size %d but flash size is only %d.\n",
-			size, avr->flashend+1);
+		AVR_LOG(avr, LOG_ERROR, "avr_loadcode(): Attempted to load code of size %d but flash size is only %d.\n",
+			size, avr->flashend + 1);
 		abort();
 	}
 	memcpy(avr->flash + address, code, size);
@@ -265,7 +279,7 @@ void avr_callback_run_gdb(avr_t * avr)
 	if (avr->state == cpu_Sleeping) {
 		if (!avr->sreg[S_I]) {
 			if (avr->log)
-				printf("simavr: sleeping with interrupts off, quitting gracefully\n");
+				AVR_LOG(avr, LOG_TRACE, "simavr: sleeping with interrupts off, quitting gracefully\n");
 			avr->state = cpu_Done;
 			return;
 		}
@@ -326,7 +340,7 @@ void avr_callback_run_raw(avr_t * avr)
 	if (avr->state == cpu_Sleeping) {
 		if (!avr->sreg[S_I]) {
 			if (avr->log)
-				printf("simavr: sleeping with interrupts off, quitting gracefully\n");
+				AVR_LOG(avr, LOG_TRACE, "simavr: sleeping with interrupts off, quitting gracefully\n");
 			avr->state = cpu_Done;
 			return;
 		}
@@ -371,12 +385,23 @@ avr_make_mcu_by_name(
 			}
 	}
 	if (!maker) {
-		fprintf(stderr, "%s: AVR '%s' not known\n", __FUNCTION__, name);
+		AVR_LOG(((avr_t*)0), LOG_ERROR, "%s: AVR '%s' not known\n", __FUNCTION__, name);
 		return NULL;
 	}
 
 	avr_t * avr = maker->make();
-	printf("Starting %s - flashend %04x ramend %04x e2end %04x\n", avr->mmcu, avr->flashend, avr->ramend, avr->e2end);
-	return avr;	
+	AVR_LOG(avr, LOG_TRACE, "Starting %s - flashend %04x ramend %04x e2end %04x\n",
+			avr->mmcu, avr->flashend, avr->ramend, avr->e2end);
+	return avr;
+}
+
+static void std_logger(avr_t* avr, const int level, const char * format, ...)
+{
+	if (!avr || avr->log >= level) {
+		va_list args;
+		va_start(args, format);
+		vfprintf((level > LOG_ERROR) ?  stdout : stderr , format, args);
+		va_end(args);
+	}
 }
 
