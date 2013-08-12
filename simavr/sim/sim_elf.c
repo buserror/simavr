@@ -50,8 +50,23 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 		avr->avcc = firmware->avcc;
 	if (firmware->aref)
 		avr->aref = firmware->aref;
-#if CONFIG_SIMAVR_TRACE
-	avr->trace_data->codeline = firmware->codeline;
+#if CONFIG_SIMAVR_TRACE && ELF_SYMBOLS
+	int scount = firmware->flashsize >> 1;
+	avr->trace_data->codeline = malloc(scount * sizeof(avr_symbol_t*));
+	memset(avr->trace_data->codeline, 0, scount * sizeof(avr_symbol_t*));
+
+	for (int i = 0; i < firmware->symbolcount; i++)
+		if (!(firmware->symbol[i]->addr >> 20))	// code address
+			avr->trace_data->codeline[firmware->symbol[i]->addr >> 1] = 
+				firmware->symbol[i];
+	// "spread" the pointers for known symbols forward
+	avr_symbol_t * last = NULL;
+	for (int i = 0; i < scount; i++) {
+		if (!avr->trace_data->codeline[i])
+			avr->trace_data->codeline[i] = last;
+		else
+			last = avr->trace_data->codeline[i];
+	}
 #endif
 
 	avr_loadcode(avr, firmware->flash, firmware->flashsize, firmware->flashbase);
@@ -199,11 +214,8 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 
 	memset(firmware, 0, sizeof(*firmware));
 #if ELF_SYMBOLS
-	//int bitesize = ((avr->flashend+1) >> 1) * sizeof(avr_symbol_t);
-	firmware->codesize = 32768;
-	int bitesize = firmware->codesize * sizeof(avr_symbol_t);
-	firmware->codeline = malloc(bitesize);
-	memset(firmware->codeline,0, bitesize);
+	firmware->symbolcount = 0;
+	firmware->symbol = NULL;
 #endif
 
 	/* this is actually mandatory !! otherwise elf_begin() fails */
@@ -254,37 +266,37 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 				gelf_getsym(edata, i, &sym);
 
 				// print out the value and size
-			//	printf("%08x %08d ", sym.st_value, sym.st_size);
 				if (ELF32_ST_BIND(sym.st_info) == STB_GLOBAL || 
 						ELF32_ST_TYPE(sym.st_info) == STT_FUNC || 
 						ELF32_ST_TYPE(sym.st_info) == STT_OBJECT) {
 					const char * name = elf_strptr(elf, shdr.sh_link, sym.st_name);
 
-					// type of symbol
-					if (sym.st_value & 0xfff00000) {
-
-					} else {
-						// code
-						if (firmware->codeline[sym.st_value >> 1] == NULL) {
-							avr_symbol_t * s = firmware->codeline[sym.st_value >> 1] = malloc(sizeof(avr_symbol_t));
-							s->symbol = strdup(name);
-							s->addr = sym.st_value;
-						}
-					}
+					avr_symbol_t * s = malloc(sizeof(avr_symbol_t) + strlen(name) + 1);
+					strcpy((char*)s->symbol, name);
+					s->addr = sym.st_value;
+					if (!(firmware->symbolcount % 8))
+						firmware->symbol = realloc(
+							firmware->symbol, 
+							(firmware->symbolcount + 8) * sizeof(firmware->symbol[0]));
+					
+					// insert new element, keep the array sorted
+					int insert = -1;
+					for (int si = 0; si < firmware->symbolcount && insert == -1; si++)
+						if (firmware->symbol[si]->addr >= s->addr)
+							insert = si;
+					if (insert == -1)
+						insert = firmware->symbolcount;
+					else
+						memmove(firmware->symbol + insert + 1, 
+								firmware->symbol + insert,
+								(firmware->symbolcount - insert) * sizeof(firmware->symbol[0]));
+					firmware->symbol[insert] = s;					
+					firmware->symbolcount++;
 				}
 			}
 		}
 #endif
 	}
-#if ELF_SYMBOLS
-	avr_symbol_t * last = NULL;
-	for (int i = 0; i < firmware->codesize; i++) {
-		if (!firmware->codeline[i])
-			firmware->codeline[i] = last;
-		else
-			last = firmware->codeline[i];
-	}
-#endif
 	uint32_t offset = 0;
 	firmware->flashsize =
 			(data_text ? data_text->d_size : 0) +

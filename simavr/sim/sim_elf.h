@@ -68,8 +68,8 @@ typedef struct elf_firmware_t {
 	uint32_t 	eesize;
 
 #if ELF_SYMBOLS
-	avr_symbol_t **  codeline;
-	uint32_t		codesize;	// in elements
+	avr_symbol_t **  symbol;
+	uint32_t		symbolcount;
 #endif
 } elf_firmware_t ;
 

@@ -298,8 +298,8 @@ typedef struct avr_kind_t {
 
 // a symbol loaded from the .elf file
 typedef struct avr_symbol_t {
-	const char * symbol;
 	uint32_t	addr;
+	const char  symbol[0];
 } avr_symbol_t;
 
 // locate the maker for mcu "name" and allocates a new avr instance
