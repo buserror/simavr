@@ -69,7 +69,7 @@
 #define TWI_NO_STATE               0xF8  // No relevant state information available; TWINT = �0�
 #define TWI_BUS_ERROR              0x00  // Bus error due to an illegal START or STOP condition
 
-#define AVR_TWI_DEBUG 0
+#define AVR_TWI_DEBUG 1
 
 static inline void
 _avr_twi_status_set(
@@ -79,7 +79,7 @@ _avr_twi_status_set(
 {
 	avr_regbit_setto_raw(p->io.avr, p->twsr, v);
 #if AVR_TWI_DEBUG
-	AVR_TRACE(avr, "%s %02x\n", __func__, v);
+	AVR_TRACE(p->io.avr, "%s %02x\n", __func__, v);
 #endif
 	avr_raise_irq(p->io.irq + TWI_IRQ_STATUS, v);
 	if (interrupt)
@@ -161,7 +161,8 @@ avr_twi_write(
 		}
 		AVR_TRACE(avr, "TWEN: %d\n", twen);
 		if (avr->data[p->r_twar]) {
-			AVR_TRACE(avr, "TWEN Slave: %02x & %02x\n", avr->data[p->r_twar], avr->data[p->r_twamr]);
+			AVR_TRACE(avr, "TWEN Slave: %02x&%02x\n", avr->data[p->r_twar] >> 1, avr->data[p->r_twamr] >> 1);
+			p->state |= TWI_COND_SLAVE;
 		}
 	}
 	if (!twen)
@@ -179,7 +180,7 @@ avr_twi_write(
 #endif
 		if (p->state) { // doing stuff
 			if (p->state & TWI_COND_START) {
-				avr_raise_irq(p->io.irq + TWI_IRQ_MOSI,
+				avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
 						avr_twi_irq_msg(TWI_COND_STOP, p->peer_addr, 1));
 			}
 		}
@@ -198,12 +199,53 @@ avr_twi_write(
 		p->state = TWI_COND_START;
 	}
 
-	if (cleared &&
+	int data = cleared &&
 			!avr_regbit_get(avr, p->twsta) &&
-			!avr_regbit_get(avr, p->twsto)) {
+			!avr_regbit_get(avr, p->twsto);
+	
+	if (!data)
+		return;
+
+	int do_read = p->peer_addr & 1;
+	int do_ack = avr_regbit_get(avr, p->twea) != 0;
+	
+	if (p->state & TWI_COND_SLAVE) {
 		// writing or reading a byte
 		if (p->state & TWI_COND_ADDR) {
-			int do_read = p->peer_addr & 1;
+#if AVR_TWI_DEBUG
+			if (do_read)
+				AVR_TRACE(avr, "I2C slave READ byte\n");
+			else
+				AVR_TRACE(avr, "I2C slave WRITE byte\n");
+#endif
+			if (do_read) {
+				if (p->state & TWI_COND_WRITE)	{
+					avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
+						avr_twi_irq_msg(TWI_COND_READ | TWI_COND_ACK, p->peer_addr, avr->data[p->r_twdr]));
+				}
+#if AVR_TWI_DEBUG
+				else
+					AVR_TRACE(avr, "I2C latch is not ready, do nothing\n");
+#endif
+			} else {
+				avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
+					avr_twi_irq_msg(TWI_COND_ACK, p->peer_addr, 0));
+			}
+			avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
+					avr_twi_irq_msg(TWI_COND_ADDR + (do_ack ? TWI_COND_ACK : 0), p->peer_addr, avr->data[p->r_twdr]));
+		} else {	// address, acknowledge it
+			p->state |= TWI_COND_ADDR;
+			avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
+					avr_twi_irq_msg(
+						TWI_COND_ADDR | 
+							(do_ack ? TWI_COND_ACK : 0) |
+							(p->state & TWI_COND_WRITE ? TWI_COND_READ : 0), 
+						p->peer_addr, avr->data[p->r_twdr]));
+		}
+	} else {
+	
+		// writing or reading a byte
+		if (p->state & TWI_COND_ADDR) {
 #if AVR_TWI_DEBUG
 			if (do_read)
 				AVR_TRACE(avr, "I2C READ byte from %02x\n", p->peer_addr);
@@ -213,18 +255,19 @@ avr_twi_write(
 			// a normal data byte
 			uint8_t msgv = do_read ? TWI_COND_READ : TWI_COND_WRITE;
 
-			if (avr_regbit_get(avr, p->twea))
+			if (do_ack)
 				msgv |= TWI_COND_ACK;
 
 			p->state &= ~TWI_COND_ACK;	// clear ACK bit
 
+			AVR_TRACE(avr, "state %02x want %02x\n", p->state, msgv);
 			// if the latch is ready... as set by writing/reading the TWDR
-			if ((p->state & msgv)) {
+			if (p->state & msgv) {
 
 				// we send an IRQ and we /expect/ a slave to reply
 				// immediately via an IRQ to set the COND_ACK bit
 				// otherwise it's assumed it's been nacked...
-				avr_raise_irq(p->io.irq + TWI_IRQ_MOSI,
+				avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
 						avr_twi_irq_msg(msgv, p->peer_addr, avr->data[p->r_twdr]));
 
 				if (do_read) { // read ?
@@ -253,7 +296,7 @@ avr_twi_write(
 			// we send an IRQ and we /expect/ a slave to reply
 			// immediately via an IRQ tp set the COND_ACK bit
 			// otherwise it's assumed it's been nacked...
-			avr_raise_irq(p->io.irq + TWI_IRQ_MOSI,
+			avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
 					avr_twi_irq_msg(TWI_COND_START, p->peer_addr, 0));
 
 			if (p->peer_addr & 1) { // read ?
@@ -342,6 +385,8 @@ avr_twi_irq_input(
 	avr_twi_msg_irq_t msg;
 	msg.u.v = value;
 
+	AVR_TRACE(avr, "%s %08x\n", __func__, value);
+
 	// receiving an attempt at waking a slave
 	if (msg.u.twi.msg & TWI_COND_START) {
 		p->state = 0;
@@ -353,7 +398,10 @@ avr_twi_irq_input(
 			p->peer_addr = msg.u.twi.addr & mask;
 			if (p->peer_addr == ((avr->data[p->r_twar] >> 1) & mask)) {
 				// address match, we're talking
-				p->state = TWI_COND_ADDR | TWI_COND_SLAVE;
+				p->state = TWI_COND_SLAVE;
+				// INVERSE logic here
+				if (!(msg.u.twi.msg & TWI_COND_WRITE))
+					p->peer_addr |= 1;
 				_avr_twi_delay_state(p, 9, 
 					msg.u.twi.msg & TWI_COND_WRITE ?
 						TWI_SRX_ADR_ACK : TWI_STX_ADR_ACK );
@@ -362,6 +410,7 @@ avr_twi_irq_input(
 			// "general call" address
 			AVR_TRACE(avr, "I2C slave start without address?\n");
 			if (avr->data[p->r_twar] & 1) {
+				// TODO
 			}
 		}
 	}
@@ -380,25 +429,32 @@ avr_twi_irq_input(
 		else
 			p->state &= ~TWI_COND_ACK;
 	}
-	// receive a data byte from a slave
-	if (msg.u.twi.msg & TWI_COND_READ) {
+	if (p->state & TWI_COND_SLAVE) {
+		if (msg.u.twi.msg & TWI_COND_WRITE) {
+			avr->data[p->r_twdr] = msg.u.twi.data;
+			_avr_twi_delay_state(p, 9, TWI_SRX_ADR_DATA_ACK );
+		}
+	} else {
+		// receive a data byte from a slave
+		if (msg.u.twi.msg & TWI_COND_READ) {
 #if AVR_TWI_DEBUG
-		AVR_TRACE(avr, "I2C received %02x\n", msg.u.twi.data);
+			AVR_TRACE(avr, "I2C received %02x\n", msg.u.twi.data);
 #endif
-		avr->data[p->r_twdr] = msg.u.twi.data;
+			avr->data[p->r_twdr] = msg.u.twi.data;
+		}
 	}
 }
 
 void avr_twi_reset(struct avr_io_t *io)
 {
 	avr_twi_t * p = (avr_twi_t *)io;
-	avr_irq_register_notify(p->io.irq + TWI_IRQ_MISO, avr_twi_irq_input, p);
+	avr_irq_register_notify(p->io.irq + TWI_IRQ_INPUT, avr_twi_irq_input, p);
 	p->state = p->peer_addr = 0;
 }
 
 static const char * irq_names[TWI_IRQ_COUNT] = {
-	[TWI_IRQ_MISO] = "8<miso",
-	[TWI_IRQ_MOSI] = "32>mosi",
+	[TWI_IRQ_INPUT] = "8<input",
+	[TWI_IRQ_OUTPUT] = "32>output",
 	[TWI_IRQ_STATUS] = "8>status",
 };
 

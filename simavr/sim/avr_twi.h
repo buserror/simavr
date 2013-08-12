@@ -31,8 +31,8 @@ extern "C" {
 //#include "sim_twi.h"
 
 enum {
-	TWI_IRQ_MISO = 0,
-	TWI_IRQ_MOSI,
+	TWI_IRQ_INPUT = 0,
+	TWI_IRQ_OUTPUT,
 	TWI_IRQ_STATUS,
 	TWI_IRQ_COUNT
 };
