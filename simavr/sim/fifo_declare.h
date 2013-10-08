@@ -1,25 +1,21 @@
 /*
-	fifo_declare.h
+	fido_declare.h
+	Copyright (C) 2003-2012 Michel Pollet <buserror@gmail.com>
 
-	Copyright 2008, 2012 Michel Pollet <buserror@gmail.com>
+	This library is free software; you can redistribute it and/or
+	modify it under the terms of the GNU Lesser General Public
+	License as published by the Free Software Foundation; either
+	version 2.1 of the License, or (at your option) any later version.
 
- 	This file is part of simavr.
-
-	simavr is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-
-	simavr is distributed in the hope that it will be useful,
+	This library is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	Lesser General Public License for more details.
 
-	You should have received a copy of the GNU General Public License
-	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-/* Licensed to Vidiactive by Michel Pollet under the terms of the VECL */
+	You should have received a copy of the GNU Lesser General Public
+	License along with this library; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+*/
 
 /*
  * FIFO helpers, aka circular buffers
@@ -57,7 +53,7 @@ extern "C" {
 		void myfifo_write_at(myfifo_t *c, uint16_t o, uint8_t b);
 
 	In your .c you need to 'implement' the fifo:
-	DEFINE_FIFO(uint8_t, myfifo)
+	DEFINE_FIFO(uint8_t, myfifo, 128)
 
 	To use the fifo, you must declare at least one :
 	myfifo_t fifo = FIFO_NULL;
@@ -75,7 +71,9 @@ extern "C" {
 #define FIFO_CURSOR_TYPE	uint8_t
 #define FIFO_BOOL_TYPE	char
 #define FIFO_INLINE
+#define FIFO_SYNC
 #endif
+
 #ifndef	FIFO_CURSOR_TYPE
 #define FIFO_CURSOR_TYPE	uint16_t
 #endif
@@ -84,6 +82,13 @@ extern "C" {
 #endif
 #ifndef	FIFO_INLINE
 #define FIFO_INLINE	inline
+#endif
+
+#ifndef FIFO_VOLATILE
+#define FIFO_VOLATILE	volatile
+#endif
+#ifndef FIFO_SYNC
+#define FIFO_SYNC __sync_synchronize()
 #endif
 
 #ifndef FIFO_ZERO_INIT
@@ -96,9 +101,9 @@ enum { __name##_overflow_f = (1 << 0) }; \
 enum { __name##_fifo_size = (__size) }; \
 typedef struct __name##_t {			\
 	__type		buffer[__name##_fifo_size];		\
-	volatile FIFO_CURSOR_TYPE	read;		\
-	volatile FIFO_CURSOR_TYPE	write;		\
-	volatile uint8_t	flags;		\
+	FIFO_VOLATILE FIFO_CURSOR_TYPE	read;		\
+	FIFO_VOLATILE FIFO_CURSOR_TYPE	write;		\
+	FIFO_VOLATILE uint8_t	flags;		\
 } __name##_t
 
 #define DEFINE_FIFO(__type, __name) \
@@ -108,6 +113,7 @@ static FIFO_INLINE FIFO_BOOL_TYPE __name##_write(__name##_t * c, __type b)\
 	FIFO_CURSOR_TYPE next = (now + 1) & (__name##_fifo_size-1);\
 	if (c->read != next) {	\
 		c->buffer[now] = b;\
+		FIFO_SYNC; \
 		c->write = next;\
 		return 1;\
 	}\
@@ -128,13 +134,18 @@ static FIFO_INLINE __type __name##_read(__name##_t * c)\
 	if (c->read == c->write)\
 		return res;\
 	FIFO_CURSOR_TYPE read = c->read;\
+	FIFO_SYNC; \
 	res = c->buffer[read];\
 	c->read = (read + 1) & (__name##_fifo_size-1);\
 	return res;\
 }\
 static FIFO_INLINE FIFO_CURSOR_TYPE __name##_get_read_size(__name##_t *c)\
 {\
-	return c->write > c->read ? c->write - c->read : __name##_fifo_size - 1 - c->read + c->write;\
+	return ((c->write + __name##_fifo_size) - c->read) & (__name##_fifo_size-1);\
+}\
+static FIFO_INLINE FIFO_CURSOR_TYPE __name##_get_write_size(__name##_t *c)\
+{\
+	return __name##_fifo_size - __name##_get_read_size(c);\
 }\
 static FIFO_INLINE void __name##_read_offset(__name##_t *c, FIFO_CURSOR_TYPE o)\
 {\
@@ -150,6 +161,7 @@ static FIFO_INLINE void __name##_write_at(__name##_t *c, FIFO_CURSOR_TYPE o, __t
 }\
 static FIFO_INLINE void __name##_write_offset(__name##_t *c, FIFO_CURSOR_TYPE o)\
 {\
+	FIFO_SYNC; \
 	c->write = (c->write + o) & (__name##_fifo_size-1);\
 }\
 static FIFO_INLINE void __name##_reset(__name##_t *c)\
