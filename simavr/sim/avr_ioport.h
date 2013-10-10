@@ -38,6 +38,7 @@ enum {
 };
 
 #define AVR_IOPORT_OUTPUT 0x100
+#define AVR_IOPORT_NORMAL_INPUT  0x200
 
 // add port name (uppercase) to get the real IRQ
 #define AVR_IOCTL_IOPORT_GETIRQ(_name) AVR_IOCTL_DEF('i','o','g',(_name))
@@ -88,6 +89,7 @@ typedef struct avr_ioport_t {
 	avr_io_addr_t r_port;
 	avr_io_addr_t r_ddr;
 	avr_io_addr_t r_pin;
+  avr_io_addr_t r_pin_controlled; // If pin value is controlled from "outside". 
 
 	avr_int_vector_t pcint;	// PCINT vector
 	avr_io_addr_t r_pcint;		// pcint 8 pins mask
