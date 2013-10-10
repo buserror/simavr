@@ -29,7 +29,7 @@
 #define __ASSEMBLER__
 #include "avr/iom8.h"
 // instantiate the new core
-#include "sim_megax.h"
+#include "sim_mega8.h"
 
 static avr_t * make()
 {
@@ -41,3 +41,27 @@ avr_kind_t mega8 = {
 	.make = make
 };
 
+void m8_init(struct avr_t * avr)
+{
+	struct mcu_t * mcu = (struct mcu_t*)avr;
+
+	avr_eeprom_init(avr, &mcu->eeprom);
+	avr_flash_init(avr, &mcu->selfprog);
+	avr_watchdog_init(avr, &mcu->watchdog);
+	avr_extint_init(avr, &mcu->extint);
+	avr_ioport_init(avr, &mcu->portb);
+	avr_ioport_init(avr, &mcu->portc);
+	avr_ioport_init(avr, &mcu->portd);
+	avr_uart_init(avr, &mcu->uart);
+	avr_adc_init(avr, &mcu->adc);
+	avr_timer_init(avr, &mcu->timer0);
+	avr_timer_init(avr, &mcu->timer1);
+	avr_timer_init(avr, &mcu->timer2);
+	avr_spi_init(avr, &mcu->spi);
+	avr_twi_init(avr, &mcu->twi);
+}
+
+void m8_reset(struct avr_t * avr)
+{
+//	struct mcu_t * mcu = (struct mcu_t*)avr;
+}

@@ -32,6 +32,7 @@ void mx_init(struct avr_t * avr)
 	avr_flash_init(avr, &mcu->selfprog);
 	avr_watchdog_init(avr, &mcu->watchdog);
 	avr_extint_init(avr, &mcu->extint);
+	avr_ioport_init(avr, &mcu->porta);
 	avr_ioport_init(avr, &mcu->portb);
 	avr_ioport_init(avr, &mcu->portc);
 	avr_ioport_init(avr, &mcu->portd);

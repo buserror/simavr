@@ -1,5 +1,5 @@
 /*
-	sim_megax.h
+	sim_mega128.c
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
@@ -19,8 +19,8 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __SIM_MEGAX_H__
-#define __SIM_MEGAX_H__
+#ifndef __SIM_MEGA8_H__
+#define __SIM_MEGA8_H__
 
 #include "sim_core_declare.h"
 #include "avr_eeprom.h"
@@ -46,7 +46,7 @@ struct mcu_t {
 	avr_flash_t 	selfprog;
 	avr_watchdog_t	watchdog;
 	avr_extint_t	extint;
-	avr_ioport_t	porta, portb, portc, portd;
+	avr_ioport_t	portb, portc, portd;
 	avr_uart_t		uart;
 	avr_adc_t		adc;
 	avr_timer_t		timer0,timer1,timer2;
@@ -84,9 +84,6 @@ const struct mcu_t SIM_CORENAME = {
 	.extint = {
 		AVR_EXTINT_DECLARE(0, 'D', PD2),
 		AVR_EXTINT_DECLARE(1, 'D', PD3),
-	},
-	.porta = {
-		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
 	},
 	.portb = {
 		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
@@ -326,4 +323,4 @@ const struct mcu_t SIM_CORENAME = {
 
 #endif /* SIM_CORENAME */
 
-#endif /* __SIM_MEGAX_H__ */
+#endif /* __SIM_MEGA8_H__ */
