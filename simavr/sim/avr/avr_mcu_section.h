@@ -1,7 +1,7 @@
 /*
 	avr_mcu_section.h
 
-	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Copyright 2008-2013 Michel Pollet <buserror@gmail.com>
 
  	This file is part of simavr.
 
@@ -58,8 +58,9 @@ enum {
 	AVR_MMCU_TAG_SIMAVR_COMMAND,
 	AVR_MMCU_TAG_SIMAVR_CONSOLE,
 	AVR_MMCU_TAG_VCD_FILENAME,
-	AVR_MMCU_TAG_VCD_PERIOD,	
+	AVR_MMCU_TAG_VCD_PERIOD,
 	AVR_MMCU_TAG_VCD_TRACE,
+	AVR_MMCU_TAG_PORT_EXTERNAL_PULL,
 };
 
 enum {
@@ -75,13 +76,13 @@ enum {
 struct avr_mmcu_long_t {
 	uint8_t tag;
 	uint8_t len;
-	uint32_t val; 
+	uint32_t val;
 } __attribute__((__packed__));
 
 struct avr_mmcu_string_t {
 	uint8_t tag;
 	uint8_t len;
-	char string[]; 
+	char string[];
 } __attribute__((__packed__));
 
 struct avr_mmcu_addr_t {
@@ -95,7 +96,7 @@ struct avr_mmcu_vcd_trace_t {
 	uint8_t len;
 	uint8_t mask;
 	void * what;
-	char name[]; 
+	char name[];
 } __attribute__((__packed__));
 
 #define AVR_MCU_STRING(_tag, _str) \
@@ -169,6 +170,19 @@ struct avr_mmcu_vcd_trace_t {
 		.len = sizeof(void *),\
 		.what = (void*)_register, \
 	}
+/*!
+ * Allows the firmware to hint simavr as to wether there are external
+ * pullups/down on PORT pins. It helps if the firmware uses "open drain"
+ * pins by toggling the DDR pins to switch between an output state and
+ * a "default" state.
+ * The value passed here will be output on the PORT IRQ when the DDR
+ * pin is set to input again
+ */
+#define AVR_MCU_EXTERNAL_PORT_PULL(_port, _mask, _val) \
+	AVR_MCU_LONG(AVR_MMCU_TAG_PORT_EXTERNAL_PULL, \
+		(((unsigned long)(_port) << 16) | \
+		((unsigned long)(_mask) << 8) | \
+		(_val)));
 
 /*!
  * This tag allows you to specify the voltages used by your board
