@@ -44,7 +44,7 @@ static void avr_ioport_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, 
 
 	// raise the internal IRQ callbacks
 	for (int i = 0; i < 8; i++)
-		avr_raise_irq(p->io.irq + i, (v >> i) & 1);
+    avr_raise_irq(p->io.irq + i, AVR_IOPORT_NORMAL_INPUT | ((v >> i) & 1));
 	avr_raise_irq(p->io.irq + IOPORT_IRQ_PIN_ALL, v);
 }
 
@@ -91,12 +91,20 @@ void avr_ioport_irq_notify(struct avr_irq_t * irq, uint32_t value, void * param)
 	avr_t * avr = p->io.avr;
 
 	int output = value & AVR_IOPORT_OUTPUT;
+	int normal_input = value & AVR_IOPORT_NORMAL_INPUT;
 	value &= 0xff;
 	uint8_t mask = 1 << irq->irq;
-		// set the real PIN bit. ddr doesn't matter here as it's masked when read.
-	avr->data[p->r_pin] &= ~mask;
-	if (value)
-		avr->data[p->r_pin] |= mask;
+	if (!(mask & p->r_pin_controlled) | !normal_input)
+    {
+  		// set the real PIN bit. ddr doesn't matter here as it's masked when read.
+     avr->data[p->r_pin] &= ~mask;
+     if (value)
+       avr->data[p->r_pin] |= mask;
+    }
+  // if pin is input and value not coming throught ioport_write
+  if (!(avr->data[p->r_ddr] & mask) && !normal_input) {
+    p->r_pin_controlled |= mask;
+  }
 
 	if (output)	// if the IRQ was marked as Output, also do the IO write
 		avr_ioport_write(avr, p->r_port, (avr->data[p->r_port] & ~mask) | (value ? mask : 0), p);
