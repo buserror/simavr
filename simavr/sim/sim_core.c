@@ -1118,7 +1118,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							_avr_set_r(avr, r, res);
 							avr->sreg[S_Z] = res == 0;
 							avr->sreg[S_C] = vr & 1;
-							avr->sreg[S_N] = 0;
+							avr->sreg[S_N] = res >> 7;
 							avr->sreg[S_V] = avr->sreg[S_N] ^ avr->sreg[S_C];
 							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 							SREG();
