@@ -1336,7 +1336,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 				case 0xf900: {	// BLD – Bit Store from T into a Bit in Register 1111 100r rrrr 0bbb
 					uint8_t r = (opcode >> 4) & 0x1f; // register index
 					uint8_t s = opcode & 7;
-					uint8_t v = avr->data[r] | (avr->sreg[S_T] ? (1 << s) : 0);
+					uint8_t v = (avr->data[r] & ~(1 << s)) | (avr->sreg[S_T] ? (1 << s) : 0);
 					STATE("bld %s[%02x], 0x%02x = %02x\n", avr_regname(r), avr->data[r], 1 << s, v);
 					_avr_set_r(avr, r, v);
 				}	break;
