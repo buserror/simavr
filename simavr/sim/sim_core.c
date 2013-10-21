@@ -538,6 +538,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 									_avr_set_r(avr, 1, res >> 8);
 									avr->sreg[S_C] = (res >> 15) & 1;
 									avr->sreg[S_Z] = res == 0;
+									cycle++;
 									SREG();
 								}	break;
 								case 0x0300: {	// MUL Multiply 0000 0011 fddd frrr
