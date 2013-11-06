@@ -25,19 +25,12 @@
 #include <ctype.h>
 #include "sim_avr.h"
 #include "sim_core.h"
+#include "sim_gdb.h"
 #include "avr_flash.h"
 #include "avr_watchdog.h"
 
 // SREG bit names
 const char * _sreg_bit_name = "cznvshti";
-
-#ifdef NO_COLOR
-	#define FONT_RED		
-	#define FONT_DEFAULT	
-#else
-	#define FONT_RED		"\e[31m"
-	#define FONT_DEFAULT	"\e[0m"
-#endif
 
 /*
  * Handle "touching" registers, marking them changed.
@@ -52,8 +45,8 @@ const char * _sreg_bit_name = "cznvshti";
 #define REG_ISTOUCHED(a, r) ((a)->trace_data->touched[(r) >> 5] & (1 << ((r) & 0x1f)))
 
 /*
- * This allows a "special case" to skip indtruction tracing when in these
- * symbols. since printf() is useful to have, but generates a lot of cycles
+ * This allows a "special case" to skip instruction tracing when in these
+ * symbols since printf() is useful to have, but generates a lot of cycles.
  */
 int dont_trace(const char * name)
 {
@@ -100,12 +93,12 @@ int donttrace = 0;
 void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 {
 	if (addr > avr->ramend) {
-		printf("*** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x out of ram\n",
+		AVR_LOG(avr, LOG_ERROR, "CORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x out of ram\n",
 				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, v);
 		CRASH();
 	}
 	if (addr < 32) {
-		printf("*** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x low registers\n",
+		AVR_LOG(avr, LOG_ERROR, "CORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x low registers\n",
 				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, v);
 		CRASH();
 	}
@@ -119,22 +112,32 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 		printf( FONT_RED "%04x : munching stack SP %04x, A=%04x <= %02x\n" FONT_DEFAULT, avr->pc, _avr_sp_get(avr), addr, v);
 	}
 #endif
+
+	if (avr->gdb) {
+		avr_gdb_handle_watchpoints(avr, addr, AVR_GDB_WATCH_WRITE);
+	}
+
 	avr->data[addr] = v;
 }
 
 uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 {
 	if (addr > avr->ramend) {
-		printf( FONT_RED "*** Invalid read address PC=%04x SP=%04x O=%04x Address %04x out of ram (%04x)\n" FONT_DEFAULT,
+		AVR_LOG(avr, LOG_ERROR, FONT_RED "CORE: *** Invalid read address PC=%04x SP=%04x O=%04x Address %04x out of ram (%04x)\n" FONT_DEFAULT,
 				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, avr->ramend);
 		CRASH();
 	}
+
+	if (avr->gdb) {
+		avr_gdb_handle_watchpoints(avr, addr, AVR_GDB_WATCH_READ);
+	}
+
 	return avr->data[addr];
 }
 
 /*
  * Set a register (r < 256)
- * if it's an IO regisrer (> 31) also (try to) call any callback that was
+ * if it's an IO register (> 31) also (try to) call any callback that was
  * registered to track changes to that register.
  */
 static inline void _avr_set_r(avr_t * avr, uint8_t r, uint8_t v)
@@ -144,8 +147,7 @@ static inline void _avr_set_r(avr_t * avr, uint8_t r, uint8_t v)
 	if (r == R_SREG) {
 		avr->data[R_SREG] = v;
 		// unsplit the SREG
-		for (int i = 0; i < 8; i++)
-			avr->sreg[i] = (v & (1 << i)) != 0;
+		SET_SREG_FROM(avr, v);
 		SREG();
 	}
 	if (r > 31) {
@@ -198,13 +200,7 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 		 * SREG is special it's reconstructed when read
 		 * while the core itself uses the "shortcut" array
 		 */
-		avr->data[R_SREG] = 0;
-		for (int i = 0; i < 8; i++)
-			if (avr->sreg[i] > 1) {
-				printf("** Invalid SREG!!\n");
-				CRASH();
-			} else if (avr->sreg[i])
-				avr->data[R_SREG] |= (1 << i);
+		READ_SREG_INTO(avr, avr->data[R_SREG]);
 		
 	} else if (addr > 31 && addr < 256) {
 		uint8_t io = AVR_DATA_TO_IO(addr);
@@ -287,7 +283,7 @@ static void _avr_invalid_opcode(avr_t * avr)
 	printf( FONT_RED "*** %04x: %-25s Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
 			avr->pc, avr->trace_data->codeline[avr->pc>>1]->symbol, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
 #else
-	printf( FONT_RED "*** %04x: Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
+	AVR_LOG(avr, LOG_ERROR, FONT_RED "CORE: *** %04x: Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
 			avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
 #endif
 }
@@ -451,7 +447,7 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
  * + It also doesn't check whether the core it's
  *   emulating is supposed to have the fancy instructions, like multiply and such.
  * 
- * The nunber of cycles taken by instruction has been added, but might not be
+ * The number of cycles taken by instruction has been added, but might not be
  * entirely accurate.
  */
 avr_flashaddr_t avr_run_one(avr_t * avr)
@@ -542,6 +538,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 									_avr_set_r(avr, 1, res >> 8);
 									avr->sreg[S_C] = (res >> 15) & 1;
 									avr->sreg[S_Z] = res == 0;
+									cycle++;
 									SREG();
 								}	break;
 								case 0x0300: {	// MUL Multiply 0000 0011 fddd frrr
@@ -816,7 +813,12 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 			} else switch (opcode) {
 				case 0x9588: { // SLEEP
 					STATE("sleep\n");
-					avr->state = cpu_Sleeping;
+					/* Don't sleep if there are interrupts about to be serviced.
+					 * Without this check, it was possible to incorrectly enter a state
+					 * in which the cpu was sleeping and interrupts were disabled. For more
+					 * details, see the commit message. */
+					if (!avr_has_pending_interrupts(avr) || !avr->sreg[S_I])
+						avr->state = cpu_Sleeping;
 				}	break;
 				case 0x9598: { // BREAK
 					STATE("break\n");
@@ -845,7 +847,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					int p = opcode & 0x100;
 					if (e && !avr->eind)
 						_avr_invalid_opcode(avr);
-					uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
+					uint32_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
 					if (e)
 						z |= avr->data[avr->eind] << 16;
 					STATE("%si%s Z[%04x]\n", e?"e":"", p?"call":"jmp", z << 1);
@@ -917,7 +919,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 						case 0x9007: {	// ELPM Extended Load Program Memory 1001 000d dddd 01oo
 							if (!avr->rampz)
 								_avr_invalid_opcode(avr);
-							uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8) | (avr->data[avr->rampz] << 16);
+							uint32_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8) | (avr->data[avr->rampz] << 16);
 							uint8_t r = (opcode >> 4) & 0x1f;
 							int op = opcode & 3;
 							STATE("elpm %s, (Z[%02x:%04x]%s)\n", avr_regname(r), z >> 16, z&0xffff, opcode?"+":"");
@@ -1079,7 +1081,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							_avr_set_r(avr, r, res);
 							avr->sreg[S_Z] = res == 0;
 							avr->sreg[S_N] = res >> 7;
-							avr->sreg[S_V] = res == 0x7f;
+							avr->sreg[S_V] = res == 0x80;
 							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 							SREG();
 						}	break;
@@ -1117,7 +1119,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							_avr_set_r(avr, r, res);
 							avr->sreg[S_Z] = res == 0;
 							avr->sreg[S_C] = vr & 1;
-							avr->sreg[S_N] = 0;
+							avr->sreg[S_N] = res >> 7;
 							avr->sreg[S_V] = avr->sreg[S_N] ^ avr->sreg[S_C];
 							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 							SREG();
@@ -1129,7 +1131,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							_avr_set_r(avr, r, res);
 							avr->sreg[S_Z] = res == 0;
 							avr->sreg[S_N] = res >> 7;
-							avr->sreg[S_V] = res == 0x80;
+							avr->sreg[S_V] = res == 0x7f;
 							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 							SREG();
 						}	break;
@@ -1335,7 +1337,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 				case 0xf900: {	// BLD – Bit Store from T into a Bit in Register 1111 100r rrrr 0bbb
 					uint8_t r = (opcode >> 4) & 0x1f; // register index
 					uint8_t s = opcode & 7;
-					uint8_t v = avr->data[r] | (avr->sreg[S_T] ? (1 << s) : 0);
+					uint8_t v = (avr->data[r] & ~(1 << s)) | (avr->sreg[S_T] ? (1 << s) : 0);
 					STATE("bld %s[%02x], 0x%02x = %02x\n", avr_regname(r), avr->data[r], 1 << s, v);
 					_avr_set_r(avr, r, v);
 				}	break;

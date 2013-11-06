@@ -19,8 +19,12 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef AVR_TIMER_H_
-#define AVR_TIMER_H_
+#ifndef __AVR_TIMER_H__
+#define __AVR_TIMER_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "sim_avr.h"
 
@@ -43,7 +47,7 @@ enum {
 // Get the internal IRQ corresponding to the INT
 #define AVR_IOCTL_TIMER_GETIRQ(_name) AVR_IOCTL_DEF('t','m','r',(_name))
 
-// Waweform generation modes
+// Waveform generation modes
 enum {
 	avr_timer_wgm_none = 0,	// invalid mode
 	avr_timer_wgm_normal,
@@ -88,7 +92,6 @@ typedef struct avr_timer_wgm_t {
 typedef struct avr_timer_t {
 	avr_io_t	io;
 	char name;
-	uint16_t		trace_flags;
 
 	avr_regbit_t	disabled;	// bit in the PRR
 
@@ -124,4 +127,8 @@ typedef struct avr_timer_t {
 
 void avr_timer_init(avr_t * avr, avr_timer_t * port);
 
-#endif /* AVR_TIMER_H_ */
+#ifdef __cplusplus
+};
+#endif
+
+#endif /*__AVR_TIMER_H__*/

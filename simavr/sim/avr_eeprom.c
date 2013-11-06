@@ -88,18 +88,18 @@ static int avr_eeprom_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_para
 		case AVR_IOCTL_EEPROM_SET: {
 			avr_eeprom_desc_t * desc = (avr_eeprom_desc_t*)io_param;
 			if (!desc || !desc->size || !desc->ee || (desc->offset + desc->size) > p->size) {
-				printf("%s: AVR_IOCTL_EEPROM_SET Invalid argument\n",
+				AVR_LOG(port->avr, LOG_WARNING, "EEPROM: %s: AVR_IOCTL_EEPROM_SET Invalid argument\n",
 						__FUNCTION__);
 				return -2;
 			}
 			memcpy(p->eeprom + desc->offset, desc->ee, desc->size);
-			printf("%s: AVR_IOCTL_EEPROM_SET Loaded %d at offset %d\n",
+			AVR_LOG(port->avr, LOG_TRACE, "EEPROM: %s: AVR_IOCTL_EEPROM_SET Loaded %d at offset %d\n",
 					__FUNCTION__, desc->size, desc->offset);
 		}	break;
 		case AVR_IOCTL_EEPROM_GET: {
 			avr_eeprom_desc_t * desc = (avr_eeprom_desc_t*)io_param;
 			if (!desc || (desc->offset + desc->size) > p->size) {
-				printf("%s: AVR_IOCTL_EEPROM_GET Invalid argument\n",
+				AVR_LOG(port->avr, LOG_WARNING, "EEPROM: %s: AVR_IOCTL_EEPROM_GET Invalid argument\n",
 						__FUNCTION__);
 				return -2;
 			}

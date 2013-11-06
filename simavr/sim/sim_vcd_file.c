@@ -24,6 +24,8 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include<inttypes.h>
 #include "sim_vcd_file.h"
 #include "sim_avr.h"
 #include "sim_time.h"
@@ -36,11 +38,9 @@ int avr_vcd_init(struct avr_t * avr, const char * filename, avr_vcd_t * vcd, uin
 	vcd->avr = avr;
 	strncpy(vcd->filename, filename, sizeof(vcd->filename));
 	vcd->period = avr_usec_to_cycles(vcd->avr, period);
-	
-	for (int i = 0; i < AVR_VCD_MAX_SIGNALS; i++) {
-		avr_init_irq(&avr->irq_pool, &vcd->signal[i].irq, i, 1, NULL /* TODO IRQ name */);
-		avr_irq_register_notify(&vcd->signal[i].irq, _avr_vcd_notify, vcd);
-	}
+
+	// No longer initializes the IRQs here, they can be initialized on the
+	// fly when traces are added
 	
 	return 0;
 }
@@ -55,11 +55,28 @@ void _avr_vcd_notify(struct avr_irq_t * irq, uint32_t value, void * param)
 	avr_vcd_t * vcd = (avr_vcd_t *)param;
 	if (!vcd->output)
 		return;
-	avr_vcd_signal_t * s = (avr_vcd_signal_t*)irq;
-	if (vcd->logindex == AVR_VCD_LOG_SIZE) {
-		printf("_avr_vcd_notify %s overrun value buffer %d\n", s->name, AVR_VCD_LOG_SIZE);
-		return;
+
+	/*
+	 * buffer starts empty, the first trace will resize it to AVR_VCD_LOG_CHUNK_SIZE,
+	 * further growth will resize it accordingly. There's a bit of
+	 */
+	if (vcd->logindex >= vcd->logsize) {
+		vcd->logsize += AVR_VCD_LOG_CHUNK_SIZE;
+		vcd->log = (avr_vcd_log_p)realloc(vcd->log, vcd->logsize * sizeof(vcd->log[0]));
+		AVR_LOG(vcd->avr, LOG_TRACE, "%s trace buffer resized to %d\n",
+				__func__, (int)vcd->logsize);
+		if ((vcd->logsize / AVR_VCD_LOG_CHUNK_SIZE) == 5) {
+			AVR_LOG(vcd->avr, LOG_WARNING, "%s log size runnaway (%d) flush problem?\n",
+					__func__, (int)vcd->logsize);
+		}
+		if (!vcd->log) {
+			AVR_LOG(vcd->avr, LOG_ERROR, "%s log resizing, out of memory (%d)!\n",
+					__func__, (int)vcd->logsize);
+			vcd->logsize = 0;
+			return;
+		}
 	}
+	avr_vcd_signal_t * s = (avr_vcd_signal_t*)irq;
 	avr_vcd_log_t *l = &vcd->log[vcd->logindex++];
 	l->signal = s;
 	l->when = vcd->avr->cycle;
@@ -101,8 +118,8 @@ static void avr_vcd_flush_log(avr_vcd_t * vcd)
 		avr_vcd_log_t *l = &vcd->log[li];
 		uint64_t base = avr_cycles_to_nsec(vcd->avr, l->when - vcd->start);	// 1ns base
 
-		// if that trace was seen in this usec already, we fudge the base time
-		// to make sure the new value is offset by one usec, to make sure we get
+		// if that trace was seen in this nsec already, we fudge the base time
+		// to make sure the new value is offset by one nsec, to make sure we get
 		// at least a small pulse on the waveform
 		// This is a bit of a fudge, but it is the only way to represent very 
 		// short"pulses" that are still visible on the waveform.
@@ -111,7 +128,7 @@ static void avr_vcd_flush_log(avr_vcd_t * vcd)
 			
 		if (base > oldbase || li == 0) {
 			seen = 0;
-			fprintf(vcd->output, "#%llu\n", (long long unsigned int)base);
+			fprintf(vcd->output, "#%" PRIu64  "\n", base);
 			oldbase = base;
 		}
 		seen |= (1 << l->signal->irq.irq);	// mark this trace as seen for this timestamp
@@ -134,10 +151,24 @@ int avr_vcd_add_signal(avr_vcd_t * vcd,
 {
 	if (vcd->signal_count == AVR_VCD_MAX_SIGNALS)
 		return -1;
-	avr_vcd_signal_t * s = &vcd->signal[vcd->signal_count++];
+	int index = vcd->signal_count++;
+	avr_vcd_signal_t * s = &vcd->signal[index];
 	strncpy(s->name, name, sizeof(s->name));
 	s->size = signal_bit_size;
 	s->alias = ' ' + vcd->signal_count ;
+
+	/* manufacture a nice IRQ name */
+	int l = strlen(name);
+	char iname[10 + l + 1];
+	if (signal_bit_size > 1)
+		sprintf(iname, "%d>vcd.%s", signal_bit_size, name);
+	else
+		sprintf(iname, ">vcd.%s", name);
+
+	const char * names[1] = { iname };
+	avr_init_irq(&vcd->avr->irq_pool, &s->irq, index, 1, names);
+	avr_irq_register_notify(&s->irq, _avr_vcd_notify, vcd);
+
 	avr_connect_irq(signal_irq, &s->irq);
 	return 0;
 }
@@ -152,7 +183,7 @@ int avr_vcd_start(avr_vcd_t * vcd)
 		perror(vcd->filename);
 		return -1;
 	}
-		
+
 	fprintf(vcd->output, "$timescale 1ns $end\n");	// 1ns base
 	fprintf(vcd->output, "$scope module logic $end\n");
 

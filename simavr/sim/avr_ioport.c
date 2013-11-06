@@ -35,22 +35,35 @@ static uint8_t avr_ioport_read(struct avr_t * avr, avr_io_addr_t addr, void * pa
 	return v;
 }
 
+static void avr_ioport_update_irqs(avr_ioport_t * p)
+{
+	avr_t * avr = p->io.avr;
+	uint8_t ddr = avr->data[p->r_ddr];
+	// Set the PORT value if the pin is marked as output
+	// otherwise, if there is an 'external' pullup, set it
+	// otherwise, if the PORT pin was 1 to indicate an
+	// internal pullup, set that.
+	for (int i = 0; i < 8; i++) {
+		if (ddr & (1 << i))
+			avr_raise_irq(p->io.irq + i, (avr->data[p->r_port] >> i) & 1);
+		else if (p->external.pull_mask & (1 << i))
+			avr_raise_irq(p->io.irq + i, (p->external.pull_value >> i) & 1);
+		else if ((avr->data[p->r_port] >> i) & 1)
+			avr_raise_irq(p->io.irq + i, 1);
+	}
+	uint8_t pin = (avr->data[p->r_pin] & ~ddr) | (avr->data[p->r_port] & ddr);
+	pin = (pin & ~p->external.pull_mask) | p->external.pull_value;
+	avr_raise_irq(p->io.irq + IOPORT_IRQ_PIN_ALL, pin);
+}
+
 static void avr_ioport_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_ioport_t * p = (avr_ioport_t *)param;
-	uint8_t oldv = avr->data[addr];
 
 	avr_core_watch_write(avr, addr, v);
-	if (v != oldv) {
-		//	printf("PORT%c(%02x) = %02x (was %02x)\n", p->name, addr, v, oldv);
-		int mask = v ^ oldv;
+	//	printf("PORT%c(%02x) = %02x (was %02x)\n", p->name, addr, v, oldv);
 
-		// raise the internal IRQ callbacks
-		for (int i = 0; i < 8; i++)
-			if (mask & (1 << i))
-				avr_raise_irq(p->io.irq + i, (v >> i) & 1);
-		avr_raise_irq(p->io.irq + IOPORT_IRQ_PIN_ALL, v);
-	}
+	avr_ioport_update_irqs(p);
 }
 
 /*
@@ -66,7 +79,8 @@ static void avr_ioport_pin_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t
 
 /*
  * This is a the callback for the DDR register. There is nothing much to do here, apart
- * from triggering an IRQ in case any 'client' code is interested in the information.
+ * from triggering an IRQ in case any 'client' code is interested in the information,
+ * and restoring all PIN bits marked as output to PORT values.
  */
 static void avr_ioport_ddr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
@@ -74,6 +88,8 @@ static void avr_ioport_ddr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t
 
 	avr_raise_irq(p->io.irq + IOPORT_IRQ_DIRECTION_ALL, v);
 	avr_core_watch_write(avr, addr, v);
+
+	avr_ioport_update_irqs(p);
 }
 
 /*
@@ -108,7 +124,7 @@ void avr_ioport_irq_notify(struct avr_irq_t * irq, uint32_t value, void * param)
 static void avr_ioport_reset(avr_io_t * port)
 {
 	avr_ioport_t * p = (avr_ioport_t *)port;
-	for (int i = 0; i < IOPORT_IRQ_PIN_ALL; i++) 
+	for (int i = 0; i < IOPORT_IRQ_PIN_ALL; i++)
 		avr_irq_register_notify(p->io.irq + i, avr_ioport_irq_notify, p);
 }
 
@@ -128,7 +144,7 @@ static int avr_ioport_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_para
 				if (r->bit.mask == 0xff)
 					r->irq[o++] = &p->io.irq[IOPORT_IRQ_PIN_ALL];
 				else {
-					// otherwise fil up the ones needed
+					// otherwise fill up the ones needed
 					for (int bi = 0; bi < 8; bi++)
 						if (r->bit.mask & (1 << bi))
 							r->irq[o++] = &p->io.irq[r->bit.bit + bi];
@@ -153,6 +169,15 @@ static int avr_ioport_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_para
 					*((avr_ioport_state_t*)io_param) = state;
 				res = 0;
 			}
+			/*
+			 * Set the default IRQ values when pin is set as input
+			 */
+			if (ctl == AVR_IOCTL_IOPORT_SET_EXTERNAL(p->name)) {
+				avr_ioport_external_t * m = (avr_ioport_external_t*)io_param;
+				p->external.pull_mask = m->mask;
+				p->external.pull_value = m->value;
+				res = 0;
+			}
 		}
 	}
 
@@ -168,8 +193,8 @@ static const char * irq_names[IOPORT_IRQ_COUNT] = {
 	[IOPORT_IRQ_PIN5] = "=pin5",
 	[IOPORT_IRQ_PIN6] = "=pin6",
 	[IOPORT_IRQ_PIN7] = "=pin7",
-	[IOPORT_IRQ_PIN_ALL] = "=all",
-	[IOPORT_IRQ_DIRECTION_ALL] = ">ddr",
+	[IOPORT_IRQ_PIN_ALL] = "8=all",
+	[IOPORT_IRQ_DIRECTION_ALL] = "8>ddr",
 };
 
 static	avr_io_t	_io = {
@@ -186,11 +211,14 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 //		p->name, p->r_pin,
 //		p->name, p->r_ddr,
 //		p->name, p->r_port);
-	
+
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->pcint);
 	// allocate this module's IRQ
 	avr_io_setirqs(&p->io, AVR_IOCTL_IOPORT_GETIRQ(p->name), IOPORT_IRQ_COUNT, NULL);
+
+	for (int i = 0; i < IOPORT_IRQ_COUNT; i++)
+		p->io.irq[i].flags |= IRQ_FLAG_FILTERED;
 
 	avr_register_io_write(avr, p->r_port, avr_ioport_write, p);
 	avr_register_io_read(avr, p->r_pin, avr_ioport_read, p);

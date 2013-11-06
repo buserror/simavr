@@ -19,7 +19,6 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
 #include "sim_avr.h"
 #include "sim_core_declare.h"
 #include "avr_eeprom.h"
@@ -69,14 +68,14 @@ const struct mcu_t {
 	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
 	AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
 	.extint = {
-		AVR_EXTINT_DECLARE(0, 'D', PD0),
-		AVR_EXTINT_DECLARE(1, 'D', PD1),
-		AVR_EXTINT_DECLARE(2, 'D', PD2),
-		AVR_EXTINT_DECLARE(3, 'D', PD3),
-		AVR_EXTINT_DECLARE(4, 'E', PE4),
-		AVR_EXTINT_DECLARE(5, 'E', PE5),
-		AVR_EXTINT_DECLARE(6, 'E', PE6),
-		AVR_EXTINT_DECLARE(7, 'E', PE7),
+		AVR_EXTINT_MEGA_DECLARE(0, 'D', PD0, A),
+		AVR_EXTINT_MEGA_DECLARE(1, 'D', PD1, A),
+		AVR_EXTINT_MEGA_DECLARE(2, 'D', PD2, A),
+		AVR_EXTINT_MEGA_DECLARE(3, 'D', PD3, A),
+		AVR_EXTINT_MEGA_DECLARE(4, 'E', PE4, B),
+		AVR_EXTINT_MEGA_DECLARE(5, 'E', PE5, B),
+		AVR_EXTINT_MEGA_DECLARE(6, 'E', PE6, B),
+		AVR_EXTINT_MEGA_DECLARE(7, 'E', PE7, B),
 	},
 	.porta = {
 		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
@@ -501,6 +500,7 @@ const struct mcu_t {
 		.twi = {
 			.enable = AVR_IO_REGBIT(TWCR, TWIE),
 			.raised = AVR_IO_REGBIT(TWCR, TWINT),
+			.raise_sticky = 1,
 			.vector = TWI_vect,
 		},
 	},
@@ -520,8 +520,6 @@ avr_kind_t mega1281 = {
 void m1281_init(struct avr_t * avr)
 {
 	struct mcu_t * mcu = (struct mcu_t*)avr;
-
-	printf("%s init\n", avr->mmcu);
 	
 	avr_eeprom_init(avr, &mcu->eeprom);
 	avr_flash_init(avr, &mcu->selfprog);

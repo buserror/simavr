@@ -19,11 +19,21 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SIM_CORE_H_
-#define SIM_CORE_H_
+#ifndef __SIM_CORE_H__
+#define __SIM_CORE_H__
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifdef NO_COLOR
+	#define FONT_GREEN
+	#define FONT_RED		
+	#define FONT_DEFAULT	
+#else
+	#define FONT_GREEN		"\e[32m"
+	#define FONT_RED		"\e[31m"
+	#define FONT_DEFAULT	"\e[0m"
 #endif
 
 /*
@@ -47,7 +57,7 @@ const char * avr_regname(uint8_t reg);
 
 /* 
  * DEBUG bits follow 
- * These will diseapear when gdb arrives
+ * These will disappear when gdb arrives
  */
 void avr_dump_state(avr_t * avr);
 
@@ -64,7 +74,7 @@ void avr_dump_state(avr_t * avr);
 #define DUMP_STACK() \
 		for (int i = avr->trace_data->stack_frame_index; i; i--) {\
 			int pci = i-1;\
-			printf("\e[31m*** %04x: %-25s sp %04x\e[0m\n",\
+			printf(FONT_RED "*** %04x: %-25s sp %04x\n" FONT_DEFAULT,\
 					avr->trace_data->stack_frame[pci].pc, \
 					avr->trace_data->codeline ? avr->trace_data->codeline[avr->trace_data->stack_frame[pci].pc>>1]->symbol : "unknown", \
 							avr->trace_data->stack_frame[pci].sp);\
@@ -78,7 +88,7 @@ void avr_dump_state(avr_t * avr);
 		printf("*** CYCLE %" PRI_avr_cycle_count "PC %04x\n", avr->cycle, avr->pc);\
 		for (int i = OLD_PC_SIZE-1; i > 0; i--) {\
 			int pci = (avr->trace_data->old_pci + i) & 0xf;\
-			printf("\e[31m*** %04x: %-25s RESET -%d; sp %04x\e[0m\n",\
+			printf(FONT_RED "*** %04x: %-25s RESET -%d; sp %04x\n" FONT_DEFAULT,\
 					avr->trace_data->old[pci].pc, avr->trace_data->codeline ? avr->trace_data->codeline[avr->trace_data->old[pci].pc>>1]->symbol : "unknown", OLD_PC_SIZE-i, avr->trace_data->old[pci].sp);\
 		}\
 		printf("Stack Ptr %04x/%04x = %d \n", _avr_sp_get(avr), avr->ramend, avr->ramend - _avr_sp_get(avr));\
@@ -95,8 +105,28 @@ void avr_dump_state(avr_t * avr);
 
 #endif 
 
+/**
+ * Reconstructs the SREG value from avr->sreg into dst.
+ */
+#define READ_SREG_INTO(avr, dst) { \
+			dst = 0; \
+			for (int i = 0; i < 8; i++) \
+				if (avr->sreg[i] > 1) { \
+					printf("** Invalid SREG!!\n"); \
+				} else if (avr->sreg[i]) \
+					dst |= (1 << i); \
+		}
+
+/**
+ * Splits the SREG value from src into the avr->sreg array.
+ */
+#define SET_SREG_FROM(avr, src) { \
+			for (int i = 0; i < 8; i++) \
+				avr->sreg[i] = (src & (1 << i)) != 0; \
+		}
+
 #ifdef __cplusplus
 };
 #endif
 
-#endif /* SIM_CORE_H_ */
+#endif /*__SIM_CORE_H__*/

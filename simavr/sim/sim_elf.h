@@ -19,10 +19,10 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ELF_H_
-#define ELF_H_
+#ifndef __SIM_ELF_H__
+#define __SIM_ELF_H__
 
-#include "avr_mcu_section.h"
+#include "avr/avr_mcu_section.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,8 +32,8 @@ extern "C" {
 #define ELF_SYMBOLS 1
 #endif
 
-/* these are the addresses the gnu linker uses to 
- * "fake" a non-harward addressign space for the AVR
+/* these are the addresses the gnu linker uses to
+ * "fake" a non-Harvard addressing space for the AVR
  */
 #define AVR_SEGMENT_OFFSET_FLASH 0
 #define AVR_SEGMENT_OFFSET_EEPROM 0x00810000
@@ -53,7 +53,12 @@ typedef struct elf_firmware_t {
 		uint16_t addr;
 		char	name[64];
 	} trace[32];
-	
+
+	struct {
+		char port;
+		uint8_t mask, value;
+	} external_state[8];
+
 	// register to listen to for commands from the firmware
 	uint16_t	command_register_addr;
 	uint16_t	console_register_addr;
@@ -68,8 +73,8 @@ typedef struct elf_firmware_t {
 	uint32_t 	eesize;
 
 #if ELF_SYMBOLS
-	avr_symbol_t **  codeline;
-	uint32_t		codesize;	// in elements
+	avr_symbol_t **  symbol;
+	uint32_t		symbolcount;
 #endif
 } elf_firmware_t ;
 
@@ -81,4 +86,4 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware);
 };
 #endif
 
-#endif /* ELF_H_ */
+#endif /*__SIM_ELF_H__*/

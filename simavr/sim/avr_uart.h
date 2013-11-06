@@ -19,8 +19,12 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef AVR_UART_H_
-#define AVR_UART_H_
+#ifndef __AVR_UART_H__
+#define __AVR_UART_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "sim_avr.h"
 
@@ -30,7 +34,7 @@ DECLARE_FIFO(uint8_t, uart_fifo, 64);
 
 /*
  * The method of "connecting" the the UART from external code is to use 4 IRQS.
- * The easy one is UART->YOU, where you will be called with the byte everytime
+ * The easy one is UART->YOU, where you will be called with the byte every time
  * the AVR firmware sends one. Do whatever you like with it.
  *
  * The slightly more tricky one is the INPUT part. Since the AVR is quite a bit
@@ -117,4 +121,8 @@ typedef struct avr_uart_t {
 
 void avr_uart_init(avr_t * avr, avr_uart_t * port);
 
-#endif /* AVR_UART_H_ */
+#ifdef __cplusplus
+};
+#endif
+
+#endif /*__AVR_UART_H__*/

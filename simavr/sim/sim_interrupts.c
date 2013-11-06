@@ -56,7 +56,7 @@ avr_register_vector(
 		printf("%s register vector %d (enabled %04x:%d)\n", __FUNCTION__, vector->vector, vector->enable.reg, vector->enable.bit);
 
 	if (!vector->enable.reg)
-		printf("avr_register_vector: No 'enable' bit on vector %d !\n", vector->vector);
+		AVR_LOG(avr, LOG_WARNING, "INT: avr_register_vector: No 'enable' bit on vector %d !\n", vector->vector);
 }
 
 int
@@ -98,7 +98,7 @@ avr_raise_interrupt(
 		return 0;
 	}
 	// always mark the 'raised' flag to one, even if the interrupt is disabled
-	// this allow "pooling" for the "raised" flag, like for non-interrupt
+	// this allow "polling" for the "raised" flag, like for non-interrupt
 	// driven UART and so so. These flags are often "write one to clear"
 	if (vector->raised.reg)
 		avr_regbit_set(avr, vector->raised);
@@ -117,7 +117,7 @@ avr_raise_interrupt(
 
 		if (!table->pending_wait)
 			table->pending_wait = 1;		// latency on interrupts ??
-		if (avr->state != cpu_Running) {
+		if (avr->state == cpu_Sleeping) {
 			if (vector->trace)
 				printf("Waking CPU due to interrupt\n");
 			avr->state = cpu_Running;	// in case we were sleeping
@@ -138,7 +138,7 @@ avr_clear_interrupt(
 		printf("%s cleared %d\n", __FUNCTION__, vector->vector);
 	vector->pending = 0;
 	avr_raise_irq(&vector->irq, 0);
-	if (vector->raised.reg)
+	if (vector->raised.reg && !vector->raise_sticky)
 		avr_regbit_clear(avr, vector->raised);
 }
 
@@ -150,7 +150,6 @@ avr_clear_interrupt_if(
 {
 	if (avr_regbit_get(avr, vector->raised)) {
 		avr_clear_interrupt(avr, vector);
-		avr_regbit_clear(avr, vector->raised);
 		return 1;
 	}
 	avr_regbit_setto(avr, vector->raised, old);

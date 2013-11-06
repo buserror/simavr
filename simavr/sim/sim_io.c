@@ -63,10 +63,8 @@ avr_register_io_read(
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
 	if (avr->io[a].r.param || avr->io[a].r.c) {
 		if (avr->io[a].r.param != param || avr->io[a].r.c != readp) {
-			fprintf(stderr,
-					"Error: avr_register_io_read(): Already registered, refusing to override.\n");
-			fprintf(stderr,
-					"Error: avr_register_io_read(%04x : %p/%p): %p/%p\n", a,
+			AVR_LOG(avr, LOG_ERROR, "IO: avr_register_io_read(): Already registered, refusing to override.\n");
+			AVR_LOG(avr, LOG_ERROR, "IO: avr_register_io_read(%04x : %p/%p): %p/%p\n", a,
 					avr->io[a].r.c, avr->io[a].r.param, readp, param);
 			abort();
 		}
@@ -100,8 +98,7 @@ avr_register_io_write(
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
 
 	if (a >= MAX_IOs) {
-		fprintf(stderr,
-				"Error: avr_register_io_write(): IO address 0x%04x out of range (max 0x%04x).\n",
+		AVR_LOG(avr, LOG_ERROR, "IO: avr_register_io_write(): IO address 0x%04x out of range (max 0x%04x).\n",
 					a, MAX_IOs);
 		abort();
 	}
@@ -116,12 +113,10 @@ avr_register_io_write(
 			if (avr->io[a].w.c != _avr_io_mux_write) {
 				int no = avr->io_shared_io_count++;
 				if (avr->io_shared_io_count > 4) {
-					fprintf(stderr,
-							"Error: avr_register_io_write(): Too many shared IO registers.\n");
+					AVR_LOG(avr, LOG_ERROR, "IO: avr_register_io_write(): Too many shared IO registers.\n");
 					abort();
 				}
-				fprintf(stderr,
-						"Note: avr_register_io_write(%04x): Installing muxer on register.\n", addr);
+				AVR_LOG(avr, LOG_TRACE, "IO: avr_register_io_write(%04x): Installing muxer on register.\n", addr);
 				avr->io_shared_io[no].used = 1;
 				avr->io_shared_io[no].io[0].param = avr->io[a].w.param;
 				avr->io_shared_io[no].io[0].c = avr->io[a].w.c;
@@ -131,8 +126,7 @@ avr_register_io_write(
 			int no = (intptr_t)avr->io[a].w.param;
 			int d = avr->io_shared_io[no].used++;
 			if (avr->io_shared_io[no].used > 4) {
-				fprintf(stderr,
-						"Error: avr_register_io_write(): Too many callbacks on %04x.\n", addr);
+				AVR_LOG(avr, LOG_ERROR, "IO: avr_register_io_write(): Too many callbacks on %04x.\n", addr);
 				abort();
 			}
 			avr->io_shared_io[no].io[d].param = param;
@@ -164,16 +158,42 @@ avr_irq_t *
 avr_iomem_getirq(
 		avr_t * avr,
 		avr_io_addr_t addr,
+		const char * name,
 		int index)
 {
+	if (index > 8)
+		return NULL;
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
 	if (avr->io[a].irq == NULL) {
-		avr->io[a].irq = avr_alloc_irq(&avr->irq_pool, 0, 9, NULL);
+		/*
+		 * Prepare an array of names for the io IRQs. Ideally we'd love to have
+		 * a proper name for these, but it's not possible at this time.
+		 */
+		char names[9 * 20];
+		char * d = names;
+		const char * namep[9];
+		for (int ni = 0; ni < 9; ni++) {
+			if (ni < 8)
+				sprintf(d, "=avr.io%04x.%d", addr, ni);
+			else
+				sprintf(d, "8=avr.io%04x.all", addr);
+			namep[ni] = d;
+			d += strlen(d) + 1;
+		}
+		avr->io[a].irq = avr_alloc_irq(&avr->irq_pool, 0, 9, namep);
 		// mark the pin ones as filtered, so they only are raised when changing
 		for (int i = 0; i < 8; i++)
 			avr->io[a].irq[i].flags |= IRQ_FLAG_FILTERED;
 	}
-	return index < 9 ? avr->io[a].irq + index : NULL;
+	// if given a name, replace the default one...
+	if (name) {
+		int l = strlen(name);
+		char n[l + 10];
+		sprintf(n, "avr.io.%s", name);
+		free((void*)avr->io[a].irq[index].name);
+		avr->io[a].irq[index].name = strdup(n);
+	}
+	return avr->io[a].irq + index;
 }
 
 avr_irq_t *
@@ -202,6 +222,8 @@ avr_io_setirqs(
 				char * dst = buf;
 				// copy the 'flags' of the name out
 				const char * kind = io->irq_names[i];
+				while (isdigit(*kind))
+					*dst++ = *kind++;
 				while (!isalpha(*kind))
 					*dst++ = *kind++;
 				// add avr name

@@ -1,0 +1,141 @@
+\documentclass[12pt,a4paper,oneside]{scrreprt}
+
+\usepackage{graphicx}                       % includegraphics-command
+\usepackage{fancyheadings}
+\usepackage[pdfborder={0 0 0}]{hyperref}
+\usepackage[english,germanb]{babel}
+\usepackage[latin1]{inputenc}               % Support direct writing of German Umlauts
+\usepackage{dcolumn}                        % Decimal column formatting
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{listings}
+\usepackage{acronym}
+\usepackage{fancyvrb}                       % Verbatim environment with samepage option
+\usepackage{xspace}                         % Better handling of spaces after custom commands
+\usepackage{chngcntr}                       % Footnote counter settings
+\usepackage[super]{nth}                     % 9th formatting
+\usepackage{booktabs}
+
+\counterwithout{footnote}{chapter}          % Do not reset footnote counter between chapters
+
+
+%%
+%% -------------------------listings configuration----------------------
+%%
+
+\definecolor{Brown}{cmyk}{0,0.81,1,0.60}
+\definecolor{OliveGreen}{cmyk}{0.64,0,0.95,0.40}
+\definecolor{CadetBlue}{cmyk}{0.62,0.57,0.23,0}
+\definecolor{gray}{gray}{0.5}
+
+\lstset{
+    language=C,                             % Code langugage
+    basicstyle=\ttfamily,                   % Code font, Examples:
+                                            % \footnotesize, \ttfamily
+    keywordstyle=\color{OliveGreen},        % Keywords font ('*' = uppercase)
+    commentstyle=\color{gray},              % Comments font
+    captionpos=b,                           % Caption-position = bottom
+    breaklines=true,                        % Automatic line breaking?
+    breakatwhitespace=false,                % Automatic breaks only at
+                                            % whitespace?
+    showspaces=false,                       % Dont make spaces visible
+    showtabs=false,                         % Dont make tabs visible
+    morekeywords={__attribute__},           % Specific keywords
+}
+
+%%
+%% -------------------------Custom commands-----------------------------
+%%
+
+\newcommand{\simavr}{\emph{simavr}\xspace}
+\newcommand{\qsimavr}{\emph{qsimavr}\xspace}
+
+%%
+%% ---------------------------------------------------------------------
+%%
+
+\sloppy
+
+\oddsidemargin 1cm \evensidemargin 1cm \topmargin 0pt
+
+\headsep 50pt \textheight 21.4cm \textwidth 14.1cm
+\setlength{\parskip}{5pt plus2pt minus2pt}
+
+\renewcommand{\floatpagefraction}{0.9}
+\renewcommand{\textfraction}{0.05}
+\renewcommand{\topfraction}{1.0}
+\renewcommand{\bottomfraction}{1.0}
+
+\setcounter{totalnumber}{5}
+\setcounter{bottomnumber}{5}
+\setcounter{topnumber}{5}
+
+\setcounter{tocdepth}{2}
+\addtolength{\abovecaptionskip}{-10pt}
+
+%%
+%% ---------------------------------------------------------------------
+%%
+
+\input{acronyms.tex}
+
+%%
+%% ---------------------------------------------------------------------
+%%
+
+\title{simavr Manual}
+\author{Jakob Gruber \\
+        jakob.gruber@gmail.com}
+
+%%
+%% ---------------------------------------------------------------------
+%%
+
+\begin{document}
+
+    \pagestyle{empty}
+    \maketitle
+    \cleardoublepage
+
+    \pagestyle{plain}
+    \pagenumbering{roman}
+    \setlength{\parskip}{5pt plus2pt minus2pt}
+
+    \setcounter{page}{1}
+
+    \selectlanguage{english}
+
+    \setlength{\parskip}{1mm}
+    \linespread{0.0}
+
+    \tableofcontents
+    \linespread{1}
+    \clearpage
+    \cleardoublepage
+    \setlength{\parskip}{5pt plus2pt minus2pt}
+
+    \pagestyle{fancy}
+    \renewcommand{\chaptermark}[1]{\markboth{\thechapter\ #1}{}}
+    \renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}{}}
+    \addtolength{\headheight}{2pt}
+
+    \acresetall
+
+    \pagenumbering{arabic}
+    \setcounter{page} {1}
+
+    \cleardoublepage
+    \include{introduction}
+    \cleardoublepage
+    \include{simavr}
+
+    \appendix
+
+    \cleardoublepage
+    \include{setupguide}
+    \cleardoublepage
+
+\end{document}
+
+%%
+%% = eof =====================================================================
+%%

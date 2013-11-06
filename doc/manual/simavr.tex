@@ -1,0 +1,1244 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{\simavr Internals} \label{chapter:simavr}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\simavr is a small cross-platform \ac{AVR} simulator written with simplicity, efficiency and
+hackability in mind\footnote{
+%
+For some more technical principles, \simavr also tries to avoid heap allocation
+at runtime and often relies on C99's struct set initialization.
+%
+}. It is supported on Linux and OS X, but should run on any
+platform with avr-libc support.
+
+In the following sections, we will take a tour through \simavr internals\footnote{
+Most, if not all of the code examined in this chapter is taken directly from \simavr.}.
+We will begin by examining short (but complete) demonstration application.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{\simavr Example Walkthrough} \label{section:simavr_example_walkthrough}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The following program is taken from the board\_i2ctest \simavr example. Minor
+modifications have been made to focus on the essential section. Error handling
+is mostly omitted in favor of readability.
+
+\begin{lstlisting}
+#include <stdlib.h>
+#include <stdio.h>
+#include <libgen.h>
+#include <pthread.h>
+
+#include "sim_avr.h"
+#include "avr_twi.h"
+#include "sim_elf.h"
+#include "sim_gdb.h"
+#include "sim_vcd_file.h"
+#include "i2c_eeprom.h"
+\end{lstlisting}
+
+The actual simulation of the external \ac{EEPROM} component is located in
+i2c\_eeprom.h. We will take a look at the implementation later on.
+
+\begin{lstlisting}
+avr_t * avr = NULL;
+avr_vcd_t vcd_file;
+
+i2c_eeprom_t ee;
+\end{lstlisting}
+
+\lstinline|avr| is the main data structure. It encapsulates the entire state of the
+core simulation, including register, \ac{SRAM} and flash contents, the \ac{CPU} state, the
+current cycle count, callbacks for various tasks, pending interrupts, and more.
+
+\lstinline|vcd_file| represents the file target for the \ac{VCD} module. It
+is used to dump the level changes of desired pins (or \acp{IRQ} in general) into a
+file which can be subsequently viewed using utilities such as \emph{gtkwave}.
+
+\lstinline|ee| contains the internal state of the simulated external \ac{EEPROM}.
+
+\begin{lstlisting}
+int main(int argc, char *argv[])
+{
+    elf_firmware_t f;
+    elf_read_firmware("atmega1280_i2ctest.axf", &f);
+\end{lstlisting}
+
+The firmware is loaded from the specified file. Note that exactly the same file
+can be executed on the \ac{AVR} hardware without changes. \ac{MCU} and frequency
+information have been embedded into the binary and are therefore available in
+\lstinline|elf_firmware_t|.
+
+\begin{lstlisting}
+    avr = avr_make_mcu_by_name(f.mmcu);
+    avr_init(avr);
+    avr_load_firmware(avr, &f);
+\end{lstlisting}
+
+The \lstinline|avr_t| instance is then constructed from the core file of the
+specified \ac{MCU} and initialized. \lstinline|avr_load_firmware| copies the
+firmware into program memory.
+
+\begin{lstlisting}
+    i2c_eeprom_init(avr, &ee, 0xa0, 0xfe, NULL, 1024);
+    i2c_eeprom_attach(avr, &ee, AVR_IOCTL_TWI_GETIRQ(0));
+\end{lstlisting}
+
+\lstinline|AVR_IOCTL_TWI_GETIRQ| is a macro to retrieve the internal \ac{IRQ} of the \ac{TWI}
+simulation. \acp{IRQ} are the main method of communication between \simavr and
+external components and are also used liberally throughout \simavr internals.
+Similar macros exist for other important \ac{AVR} parts such as the \ac{ADC}, \ac{IO} ports,
+timers, etc.
+
+\begin{lstlisting}
+    avr->gdb_port = 1234;
+    avr->state = cpu_Stopped;
+    avr_gdb_init(avr);
+\end{lstlisting}
+
+This section sets up \simavr's \ac{GDB} infrastructure to listen on port 1234. The
+\ac{CPU} is stopped to allow \ac{GDB} to attach before execution begins.
+
+\begin{lstlisting}
+    avr_vcd_init(avr, "gtkwave_output.vcd", &vcd_file, 100000 /* usec */);
+    avr_vcd_add_signal(
+        &vcd_file,
+        avr_io_getirq(avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_STATUS),
+        8 /* bits */,
+        "TWSR");
+\end{lstlisting}
+
+Next, a value change dump output is configured to track changes to the
+\lstinline|TWI_IRQ_STATUS| \ac{IRQ}. The file may then be viewed using the \emph{gtkwave}
+application.
+
+\begin{lstlisting}
+    int state = cpu_Running;
+    while ((state != cpu_Done) && (state != cpu_Crashed))
+        state = avr_run(avr);
+
+    return 0;
+}
+\end{lstlisting}
+
+Finally, we have reached the simple main loop. Each iteration executes one
+instruction, handles any pending interrupts and cycle timers, and sleeps if
+possible. As soon as execution completes or crashes, simulation stops and we
+exit the program.
+
+We will now examine the relevant parts of the \lstinline|i2c_eeprom| implementation.
+Details have been omitted and only communication with the \lstinline|avr_t| instance are
+shown.
+
+\begin{lstlisting}
+static const char * _ee_irq_names[2] = {
+		[TWI_IRQ_MISO] = "8>eeprom.out",
+		[TWI_IRQ_MOSI] = "32<eeprom.in",
+};
+
+void
+i2c_eeprom_init(
+		struct avr_t * avr,
+		i2c_eeprom_t * p,
+		uint8_t addr,
+		uint8_t mask,
+		uint8_t * data,
+		size_t size)
+{
+
+    /* [...] */
+
+	p->irq = avr_alloc_irq(&avr->irq_pool, 0, 2, _ee_irq_names);
+	avr_irq_register_notify(p->irq + TWI_IRQ_MOSI, i2c_eeprom_in_hook, p);
+
+    /* [...] */
+}
+\end{lstlisting}
+
+First, the \ac{EEPROM} allocates its own private \acp{IRQ}. The \ac{EEPROM} implementation
+does not know or care to which \simavr \acp{IRQ} they will be attached. It then
+attaches a callback function (\lstinline|i2c_eeprom_in_hook|) to the \ac{MOSI} \ac{IRQ}. This
+function will be called whenever a value is written to the \ac{IRQ}. The pointer to
+the \ac{EEPROM} state p is passed to each of these callback function calls.
+
+\begin{lstlisting}
+void
+i2c_eeprom_attach(
+		struct avr_t * avr,
+		i2c_eeprom_t * p,
+		uint32_t i2c_irq_base )
+{
+	avr_connect_irq(
+		p->irq + TWI_IRQ_MISO,
+		avr_io_getirq(avr, i2c_irq_base, TWI_IRQ_MISO));
+	avr_connect_irq(
+		avr_io_getirq(avr, i2c_irq_base, TWI_IRQ_MOSI),
+		p->irq + TWI_IRQ_MOSI );
+}
+\end{lstlisting}
+
+The private \acp{IRQ} are then attached to \simavr's internal \acp{IRQ}. This is called
+chaining - all messages raised are forwarded to all chained \acp{IRQ}.
+
+\begin{lstlisting}
+static void
+i2c_eeprom_in_hook(
+		struct avr_irq_t * irq,
+		uint32_t value,
+		void * param)
+{
+	i2c_eeprom_t * p = (i2c_eeprom_t*)param;
+
+    /* [...] */
+
+    avr_raise_irq(p->irq + TWI_IRQ_MISO,
+            avr_twi_irq_msg(TWI_COND_ACK, p->selected, 1));
+
+    /* [...] */
+}
+\end{lstlisting}
+
+Finally, we've reached the \ac{IRQ} callback function. It is responsible for
+simulating communications between \simavr (acting as the \ac{TWI} master) and the
+\ac{EEPROM} (as the \ac{TWI} slave). The \ac{EEPROM} state which was previously passed to
+\lstinline|avr_irq_register_notify| is contained in the \lstinline|param| variable and cast back to
+an \lstinline|i2c_eeprom_t| pointer for further use.
+
+Outgoing messages are sent by raising the internal \ac{IRQ}. This message is then
+forwarded to all chained \acp{IRQ}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The Main Loop} \label{section:mainloop}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+We will now take a closer look at the main loop implementation. Each call to
+\lstinline|avr_run| triggers the function stored in the run member of the \lstinline|avr_t| structure
+(\lstinline|avr->run|\footnote{Whenever \lstinline|avr| is mentioned in a code
+section, it is assumed to be the main \lstinline|avr_t| struct.}).
+The two standard implementations are \lstinline|avr_callback_run_raw| and
+\lstinline|avr_callback_run_gdb|, located in sim\_avr.c. The essence of both function is
+identical; since \lstinline|avr_callback_run_gdb| contains additional logic for \ac{GDB}
+handling (network protocol, stepping), we will examine it further and point out
+any differences to the the raw version. Several comments and irrelevant code
+sections have been removed.
+
+\begin{lstlisting}
+void avr_callback_run_gdb(avr_t * avr)
+{
+    avr_gdb_processor(avr, avr->state == cpu_Stopped);
+
+    if (avr->state == cpu_Stopped)
+        return ;
+
+    int step = avr->state == cpu_Step;
+    if (step)
+        avr->state = cpu_Running;
+\end{lstlisting}
+
+This initial section is \ac{GDB} specific. \lstinline|avr_gdb_processor| is responsible for
+handling \ac{GDB} network communication. It also checks if execution has reached a
+breakpoint or the end of a step and stops the \ac{CPU} if it did.
+
+If \ac{GDB} has transmitted a step command, we need to save the state during the
+main section of the loop (the \ac{CPU} ``runs'' for one instruction) and restore to
+the \lstinline|StepDone| state at on completion.
+
+In total, there are eight different states the \ac{CPU} can enter:
+
+\begin{lstlisting}
+enum {
+    cpu_Limbo = 0,
+    cpu_Stopped,
+    cpu_Running,
+    cpu_Sleeping,
+    cpu_Step,
+    cpu_StepDone,
+    cpu_Done,
+    cpu_Crashed,
+};
+\end{lstlisting}
+
+A CPU is \lstinline|Running| during normal execution. \lstinline|Stopped| occurs for example
+when hitting a \ac{GDB} breakpoint. \lstinline|Sleeping| is entered whenever the \lstinline|SLEEP|
+instruction is processed. As mentioned, \lstinline|Step| and \lstinline|StepDone|
+are related to the \ac{GDB} stepping process. Execution can terminate either with \lstinline|Done|
+or \lstinline|Crashed| on error. Upon initialization, the \ac{CPU} is in the \lstinline|Limbo| state.
+
+\begin{lstlisting}
+    avr_flashaddr_t new_pc = avr->pc;
+
+    if (avr->state == cpu_Running) {
+        new_pc = avr_run_one(avr);
+    }
+\end{lstlisting}
+
+We have now reached the actual execution of the current instruction. If the \ac{CPU}
+is currently running, \lstinline|avr_run_one| decodes the instruction located in flash memory
+(\lstinline|avr->flash|) and triggers all necessary actions. This can include setting the \ac{CPU}
+state (SLEEP), updating the status register \ac{SREG}, writing or reading from memory
+locations, altering the \ac{PC}, etc \ldots
+
+Finally, the cycle counter (\lstinline|avr->cycle|) is updated and the new
+program counter is returned.
+
+\begin{lstlisting}
+    if (avr->sreg[S_I] && !avr->i_shadow)
+        avr->interrupts.pending_wait++;
+    avr->i_shadow = avr->sreg[S_I];
+\end{lstlisting}
+
+This section ensures that interrupts are not triggered immediately when
+enabling the interrupt flag in the status register, but with an (additional)
+delay of one instruction.
+
+\begin{lstlisting}
+    avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
+    avr->pc = new_pc;
+\end{lstlisting}
+
+Next, all due cycle timers are processed. Cycle timers are one of the
+most important and heavily used mechanisms in \simavr. A timer allows scheduling
+execution of a callback function once a specific count of execution cycles have
+passed, thus simulating events which occur after a specific amount of time has
+passed. For example, the \lstinline|avr_timer| module uses cycle timers to schedule timer
+interrupts.
+
+The returned estimated sleep time is set to the next pending event cycle (or a
+hardcoded limit of 1000 cycles if none exist).
+
+\begin{lstlisting}
+    if (avr->state == cpu_Sleeping) {
+        if (!avr->sreg[S_I]) {
+            avr->state = cpu_Done;
+            return;
+        }
+        avr->sleep(avr, sleep);
+        avr->cycle += 1 + sleep;
+    }
+\end{lstlisting}
+
+If the \ac{CPU} is currently sleeping, the time spent is simulated using the callback
+stored in \lstinline|avr->sleep|. In \ac{GDB} mode, the time is used to listen for
+\ac{GDB} commands, while the raw version simply calls usleep.
+
+It is worth noting that
+we have improved the timing behavior by accumulating requested sleep cycles until
+a minimum of 200 usec has been reached. usleep cannot handle lower sleep times
+accurately, which caused an unrealistic execution slowdown.
+
+A special case occurs when the \ac{CPU} is sleeping while interrupts are turned off.
+In this scenario, there is way of ever waking up. Therefore, execution is halted
+gracefully.
+
+\begin{lstlisting}
+    if (avr->state == cpu_Running || avr->state == cpu_Sleeping)
+        avr_service_interrupts(avr);
+\end{lstlisting}
+
+Finally, any immediately pending interrupts are handled. The highest priority
+interrupt (this depends solely on the interrupt vector address) is removed from
+the pending queue, interrupts are disabled in the status register, and the
+program counter is set to the interrupt vector.
+
+If the \ac{CPU} is sleeping, interrupts can be raised by cycle timers.
+
+\begin{lstlisting}
+    if (step)
+        avr->state = cpu_StepDone;
+}
+\end{lstlisting}
+
+Wrapping up, if the current loop iteration was a \ac{GDB} step, the state is set
+such that the next iteration will inform \ac{GDB} and halt the \ac{CPU}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Initialization}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{\lstinline|avr_t| Initialization} \label{subsection:avr_t_initialization}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The \lstinline|avr_t| struct requires some initialization before it is
+ready to be used by the main loop as discussed in section \ref{section:mainloop}.
+
+\lstinline|avr_make_mcu_by_name| fills in all details specific to an \ac{MCU}. This
+includes settings such as memory sizes, register locations, available components,
+the default \ac{CPU} frequency, etc \ldots
+
+The \ac{MCU} definitions are located in the \verb|simavr/cores| subdirectory of the \simavr
+source tree and are compiled conditionally depending on the the local \emph{avr-libc}
+support. A complete list of locally supported cores is printed by running \simavr
+without any arguments.
+
+On successful completion, it returns a pointer to the \lstinline|avr_t| struct.
+
+If \ac{GDB} support is desired, \lstinline|avr->gdb_port| must be set, and
+\lstinline|avr_gdb_init| must be called to create the required data structures,
+set the \lstinline|avr->run| and \lstinline|avr->sleep| callbacks, and listen
+on the specified port. It is also recommended to initially stop the cpu
+(\lstinline|avr->state = cpu_Stopped|) to delay program execution until it
+is started manually by \ac{GDB}.
+
+Further settings can now be applied manually (typical candidates are logging and
+tracing levels).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Firmware} \label{subsection:initialization_firmware}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+We now have a fully initialized \lstinline|avr_t| struct and are ready to load
+code. This is accomplished using \lstinline|avr_read_firmware|, which uses
+elfutils to decode the \ac{ELF} file and read it into an \lstinline|elf_firmware_t|
+struct and \lstinline|avr_load_firmware| to load its contents into the
+\lstinline|avr_t| struct.
+
+Besides loading the program code into \lstinline|avr->flash| (and \ac{EEPROM} contents
+into \lstinline|avr->eeprom|, if available), there are several useful extended
+features which can be embedded directly into the \ac{ELF} file.
+
+The target \ac{MCU}, frequency and voltages can be specified in the \ac{ELF} file by using the
+\lstinline|AVR_MCU| and \lstinline|AVR_MCU_VOLTAGES| macros provided by
+\verb|avr_mcu_section.h|:
+
+\begin{lstlisting}
+#include "avr_mcu_section.h"
+AVR_MCU(16000000 /* Hz */, "atmega1280");
+AVR_MCU_VOLTAGES(3300 /* milliVolt */, 3300 /* milliVolt */, 3300 /* milliVolt */);
+\end{lstlisting}
+
+\ac{VCD} traces can be set up automatically. The following code will create an 8-bit
+trace on the UDR0 register, and a trace masked to display only the UDRE0 bit of
+the UCSR0A register.
+
+\begin{lstlisting}
+const struct avr_mmcu_vcd_trace_t _mytrace[]  _MMCU_ = {
+    { AVR_MCU_VCD_SYMBOL("UDR0"), .what = (void*)&UDR0, },
+    { AVR_MCU_VCD_SYMBOL("UDRE0"), .mask = (1 << UDRE0), .what = (void*)&UCSR0A, },
+};
+\end{lstlisting}
+
+Several predefined commands can be sent from the firmware to \simavr during program execution.
+At the time of writing, these include starting and stopping \ac{VCD} traces, and putting
+UART0 into loopback mode. An otherwise unused register must be specified
+to listen for command requests. During execution, writing a command to this
+register will trigger the associated action within \simavr.
+
+\begin{lstlisting}
+AVR_MCU_SIMAVR_COMMAND(&GPIOR0);
+
+int main() {
+    /* [...] */
+    GPIOR0 = SIMAVR_CMD_VCD_START_TRACE;
+    /* [...] */
+}
+\end{lstlisting}
+
+Likewise, a register can be specified for use as a debugging output. All bytes
+written to this register will be output to the console.
+
+\begin{lstlisting}
+AVR_MCU_SIMAVR_CONSOLE(&GPIOR0);
+
+int main() {
+    /* [...] */
+    const char *s = "Hello World\r";
+    for (const char *t = s; *t; t++)
+        GPIOR0 = *t;
+    /* [...] */
+}
+\end{lstlisting}
+
+Usually, UART0 is used for this purpose. The simplest debug output can be achieved
+by binding \lstinline|stdout| to \lstinline|UART0| as described by the avr-libc
+documentation \cite{libc}, and then using \lstinline|printf| and similar functions.
+This alternate console output is provided in case using UART0 is not possible or desired.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Instruction Processing} \label{section:instruction_processing}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+We have now covered \lstinline|avr_t| initialization, the main loop, and loading
+firmware files. But how are instructions actually decoded and executed? Let's
+take a look at \lstinline|avr_run_one|, located in sim\_core.
+
+The opcode is reconstructed by retrieving the two bytes located at
+\lstinline|avr->flash[avr->pc]|. \lstinline|avr->pc| points to the \ac{LSB}, and
+\lstinline|avr->pc + 1| to the \ac{MSB}. Thus, the full opcode is reconstructed with:
+
+\begin{lstlisting}
+uint32_t opcode = (avr->flash[avr->pc + 1] << 8) | avr->flash[avr->pc];
+\end{lstlisting}
+
+As we have seen, \lstinline|avr->pc| represents the byte address in flash memory.
+Therefore, the next instruction is located at \lstinline|avr->pc + 2|. This
+default new program counter may still be altered in the course of processing
+in case of jumps, branches, calls and larger opcodes such as STS\cite{instructionset}.
+
+Note also that the \ac{AVR} flash addresses are usually represented as word addresses
+(\lstinline|avr->pc >> 1|).
+
+Similar to the program counter, the spent cycles are set to a default value of 1.
+
+The instruction and its operands are then extracted from the opcode and processed
+in a large switch statement. The instructions themselves can be roughly categorized
+into arithmetic and logic instructions, branch instructions, data transfer
+instructions, bit and bit-test instructions, and \ac{MCU} control instructions.
+
+Processing these will involve a number of typical tasks:
+
+\begin{itemize}
+\item Status register modifications
+
+The status register is stored in \lstinline|avr->sreg| as a byte array.
+Most instructions alter the \ac{SREG} in some way, and convenience functions such as
+\lstinline|get_compare_carry| are used to ease this task. Note that whenever the
+firmware reads from \ac{SREG}, it must be reconstructed from \lstinline|avr->sreg|.
+
+\item Reading or writing memory
+
+\lstinline|_avr_set_ram| is used to write bytes to a specific address. Accessing
+an \ac{SREG} will trigger a reconstruction similar to what has been discussed above.
+\ac{IO} register accesses trigger any connected \ac{IO} callbacks and raise all associated
+\acp{IRQ}. If a \ac{GDB} watchpoint has been hit, the \ac{CPU} is stopped and a status report
+is sent to \ac{GDB}. Data watchpoint support has been added by the author.
+
+\item Modifying the program counter
+
+Jumps, skips, calls, returns and similar instructions alter the program counter.
+This is achieved by simply setting \lstinline|new_pc| to an appropriate value. Care must be
+taken to skip 32 bit instructions correctly.
+
+\item Altering \ac{MCU} state
+
+Instructions such as SLEEP and BREAK directly alter the state of the simulation.
+
+\item Stack operations
+
+Pushing and popping the stack involve altering the stack pointer in addition
+to the actual memory access.
+\end{itemize}
+
+Upon conclusion, \lstinline|avr->cycle| is updated with the actual instruction
+duration, and the new program counter is returned.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Interrupts}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+An interrupt is an asynchronous signal which causes the the \ac{CPU} to jump to
+the associated \ac{ISR} and continue execution there. In the \ac{AVR} architecture,
+the interrupt priority is ordered according to its place in the interrupt
+vector table. When an interrupt is serviced, interrupts are disabled globally.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Data Structures}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Let's take a look at how interrupts are represented in \simavr:
+
+\begin{lstlisting}
+typedef struct avr_int_vector_t {
+    uint8_t         vector;
+    avr_regbit_t    enable;
+    avr_regbit_t    raised;
+    avr_irq_t       irq;
+    uint8_t         pending : 1,
+                    trace : 1,
+                    raise_sticky : 1;
+} avr_int_vector_t;
+\end{lstlisting}
+
+Each interrupt vector has an \lstinline|avr_int_vector_t|. \lstinline|vector| is
+actual vector address, for example \lstinline|INT0_vect|. \lstinline|enable|
+and \lstinline|raised| specify the \ac{IO} register index for, respectively, the
+interrupt enable flag and the interrupt raised bit (again taking \lstinline|INT0|
+as an example, enable would point to the \lstinline|INT0| bit in \lstinline|EIMSK|,
+and raised to \lstinline|INTF0| in \lstinline|EIFR|. \lstinline|irq| is raised to
+1 when the interrupt is triggered, and to 0 when it is serviced. \lstinline|pending| equals
+1 whenever the interrupt is queued for servicing, and \lstinline|trace| is used
+for debugging purposes.
+
+Usually, raised flags are cleared automatically upon interrupt servicing. However,
+this does not count for all interrupts(notably, \lstinline|TWINT|).
+\lstinline|raise_sticky| was introduced by the author to handle this special case.
+
+Interrupt vector definitions are stored in an \lstinline|avr_int_table_t|,
+\lstinline|avr->interrupts|.
+
+\begin{lstlisting}
+typedef struct  avr_int_table_t {
+    avr_int_vector_t * vector[64];
+    uint8_t         vector_count;
+    uint8_t         pending_wait;
+    avr_int_vector_t * pending[64];
+    uint8_t         pending_w,
+                    pending_r;
+} avr_int_table_t, *avr_int_table_p;
+\end{lstlisting}
+
+\lstinline|pending_wait| stores the number of cycles to wait before servicing
+pending interrupts. This simulates the real interrupt delay that occurs between
+raising and servicing, and whenever interrupts are enabled
+(and previously disabled).
+
+\lstinline|pending| along with \lstinline|pending_w| and \lstinline|pending_r|
+represents a ringbuffer of pending interrupts. Note that servicing an
+interrupt removes the one with the highest priority.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Raising and Servicing Interrupts}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+When an interrupt \lstinline|vector| is raised, \lstinline|vector->pending| is
+set, \lstinline|vector| is added to the \lstinline|pending| \ac{FIFO} of
+\lstinline|avr->interrupts|, and a non-zero \lstinline|pending_wait| time is
+ensured. If the \ac{CPU} is currently sleeping, it is woken up.
+
+As we've already covered in section \ref{section:mainloop}, servicing interrupts is
+only attempted if the \ac{CPU} is either running or sleeping. Additionally,
+interrupts must be enabled globally in \ac{SREG}, and \lstinline|pending_wait|
+(which is decremented on each \lstinline|avr_service_interrupts| call) must have
+reached zero. The next pending vector with highest priority is then removed from
+the pending ringbuffer and serviced as follows:
+
+\begin{lstlisting}
+if (!avr_regbit_get(avr, vector->enable) || !vector->pending) {
+    vector->pending = 0;
+\end{lstlisting}
+
+If the specific interrupt is masked or has been cleared, no action occurs.
+
+\begin{lstlisting}
+} else {
+    _avr_push16(avr, avr->pc >> 1);
+    avr->sreg[S_I] = 0;
+    avr->pc = vector->vector * avr->vector_size;
+    avr_clear_interrupt(avr, vector);
+}
+\end{lstlisting}
+
+Otherwise, the current program counter is pushed onto the stack. This illustrates
+the difference between byte addresses (as used in \lstinline|avr->pc|) and
+word addresses (as expected by the \ac{AVR} processor).
+Interrupts are then disabled by clearing the I bit of the status register, and
+the program counter is set to the \ac{ISR} vector. Finally, if
+\lstinline|raise_sticky| is 0, the interrupt flag is cleared.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Cycle Timers} \label{section:cycle_timers}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Cycle timers allow scheduling an event after a certain amount of cycles have
+passed.
+
+\begin{lstlisting}
+typedef avr_cycle_count_t (*avr_cycle_timer_t)(
+        struct avr_t * avr,
+        avr_cycle_count_t when,
+        void * param);
+
+void
+avr_cycle_timer_register(
+        struct avr_t * avr,
+        avr_cycle_count_t when,
+        avr_cycle_timer_t timer,
+        void * param);
+\end{lstlisting}
+
+In \lstinline|avr_cycle_timer_register|,
+\lstinline|when| is the minimum count of cycles that must pass until the
+\lstinline|timer| callback is executed (\lstinline|param| and \lstinline|when|
+are passed back to \lstinline|timer|\footnote{
+\qsimavr exploits \lstinline|param| to implement
+callbacks to class instances by passing the \lstinline|this| pointer as
+\lstinline|param|.}).
+
+Once dispatched, the cycle timer is removed from the list of pending timers. If
+it returns a nonzero value, it is readded to occur \emph{at or after that cycle has
+been reached}. It is important to realize that it therefore differs from the
+\lstinline|when| argument of \lstinline|avr_cycle_timer_register|, which expects
+a relative cycle count (in contrast to the absolute cycle count returned by the
+callback itself)\footnote{
+%
+Treating the return value of \lstinline|avr_cycle_timer_t| as an absolute value
+and passing the actually scheduled cycle allows for precise handling of recurring
+timers without drift. A system based on relative cycle counts could not guarantee
+accuracy, because \simavr does not guarantee cycle timer execution exactly at the
+scheduled point in time.
+}.
+
+The cycle timer system is used during the main loop to determine sleep durations;
+if there are any pending timers, the sleep callback may sleep until the next timer
+is scheduled. Otherwise, a default value of 1000 cycles is returned.
+Besides achieving a runtime behavior similar to execution on a real \ac{AVR}
+processor, sleep is important for lowering \simavr \ac{CPU} usage whenever possible.
+
+\acp{IRQ} and interrupts caused by external events (for example, a ``touch'' event transmitted
+from the simulated touchscreen component) are and can \emph{not} be taken into
+account.
+This means that scheduled sleep times will always be simulated to completion by
+\lstinline|avr->sleep|, even if an external event causing \ac{CPU} wakeup is
+triggered immediately after going to sleep.
+Given a situation in which the next scheduled timer is many cycles in the future
+and the \ac{CPU} is currently sleeping, the simulation will become extremely
+unresponsive to external events.
+
+However, in real applications this situation is very unlikely, since
+manual events (which cannot be scheduled through cycle timers) occur very rarely,
+and most applications will have at least some cycle timers with a short period.
+
+It is worth remembering though, that cycle timers are the preferred and most
+accurate method of scheduling interrupts in \simavr.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{\acf{GDB} Support} \label{section:gdb_support}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+A debugger is incredibly useful during program development. Simple programming mistakes
+which can be discovered in minutes using \ac{GDB} can sometimes consume hours
+to find without it.
+
+We have covered how to enable \ac{GDB} support in section
+\ref{subsection:avr_t_initialization}, and when \ac{GDB} handler functions are
+called during the main loop in section \ref{section:mainloop}. In the following,
+we will explain further the methods \simavr employs to communicate with
+\ac{GDB} and how breakpoints and data watchpoints are implemented. For
+a short guide to debugging \ac{AVR} programs with \ac{GDB}, see section
+\ref{section:debugging}
+
+\simavr has a fully featured implementation of the \ac{GDB} Remote Serial Protocol,
+which allows it to communicate with \emph{avr-gdb}. A complete reference of
+the protocol can be obtained from the \ac{GDB} manual \cite{gdb}. Essentially,
+communication boils down to packets of the format \lstinline|$packet-data#checksum|.
+The packet data itself consists of a command and its arguments. The syntax of
+all commands supported by \simavr is as follows:
+
+\begin{Verbatim}[samepage=true]
+'?' Indicate the reason the target halted.
+'G XX...' Write general registers.
+'g' Read general registers.
+'p n' Read the value of register n.
+'P n...=r...' Write register n with value r.
+'m addr,length' Read length bytes of memory starting at address
+                addr.
+'M addr,length:XX...' Write length bytes of memory starting
+                      address addr. XX... is the data.
+'c' Continue.
+'s' Step.
+'r' Reset the entire system.
+'z type,addr,kind' Delete break and watchpoints.
+'Z type,addr,kind' Insert break and watchpoints.
+\end{Verbatim}
+
+Many of these commands expect a reply value. This could be a simple as sending
+\verb|"OK"| to confirm successful execution, or it could contain the requested
+data, such as the reply to the \verb|'m'| command. A single reply can chain
+several data fields. For example, whenever a watchpoint is hit, the reply contains
+the signal the program received (\lstinline|0x05| represents the ``trap'' signal),
+the \ac{SREG}, \ac{SP}, and \ac{PC} values, the type of watchpoint which was hit
+(either \verb|"awatch"|, \verb|"watch"|, or \verb|"rwatch"|), and the watchpoint
+address.
+
+The packets themselves are received and sent over an \lstinline|AF_INET| socket listening
+on the \lstinline|avr->gdb_port|.
+
+Both watchpoints and breakpoints are stored within an \lstinline|avr_gdb_watchpoints_t|
+struct in \lstinline|avr->gdb| and are limited to 32 active instances of each.
+Breakpoints are set at a particular location in flash memory. Whenever the \ac{PC}
+reaches that that point, execution is halted, a status report containing a summary
+of current register values is sent, and control is passed to \ac{GDB}. This
+range check takes place in \lstinline|avr_gdb_processor|, which is called
+first during each iteration of the \lstinline|avr_callback_run_gdb| function
+as we have already discussed in section \ref{section:mainloop}.
+
+Watchpoints\footnote{Watchpoint support has been added by the author.}
+on the other hand are used to notify the user of accesses to \ac{SRAM}.
+\ac{GDB} uses a fixed offset of \lstinline|0x800000| to reference locations in
+\ac{SRAM}; this offset must be masked out when receiving \ac{GDB} commands, and
+added when sending watchpoint status reports.
+Three types of watchpoints exist: Read watchpoints are triggered by data reads,
+write watchpoints by writes, and access watchpoints by both. Handling of these
+is integrated into the \lstinline|avr_core_watch_write| and
+\lstinline|avr_core_watch_read| functions. Whenever applicable watchpoints exist
+for a data access, execution is halted, and a status report is sent to \ac{GDB}.
+
+Finally, since program crashes often occur unexpectedly, \simavr helpfully
+provides \ac{GDB} passive mode, which
+opens a \ac{GDB} listening socket whenever an exception occurs if the \ac{GDB}
+port is specified. It is therefore always a good idea to initialize \lstinline|avr->gdb_port|, even
+if you have no intention of using \simavr's \ac{GDB} features!
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{\acfp{IRQ}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The \acf{IRQ}\footnote{
+%
+Despite the name, \acp{IRQ} have nothing in particular to do with interrupts;
+the interrupt system uses \acp{IRQ}, and \acp{IRQ} may trigger interrupts, but
+they are not strictly linked to each other. Many \ac{IRQ} usages will not involve
+interrupts at all.}
+%
+subsystem provides the message passing mechanism in \simavr. Let's begin
+by examining the main \ac{IRQ} data structures:
+
+\begin{lstlisting}
+typedef struct avr_irq_t {
+    struct avr_irq_pool_t * pool;
+    const char * name;
+    uint32_t            irq;
+    uint32_t            value;
+    uint8_t             flags;
+    struct avr_irq_hook_t * hook;
+} avr_irq_t;
+\end{lstlisting}
+
+An \ac{IRQ} consists of an associated \ac{IRQ} pool, a name (for debugging
+purposes), an \ac{ID}, its current value, flags, and a list of callback functions.
+The \ac{ID} (\lstinline|irq|) is when a callback function connected to several \acp{IRQ}
+needs to determine which specific \ac{IRQ} has been raised.
+
+The semantics of \lstinline|value| are not fixed and are specific to each \ac{IRQ};
+for example, \lstinline|ADC_IRQ_ADC0| treats \lstinline|value| as milliVolts,
+while \lstinline|IOPORT_IRQ_PIN0| expects it to equal either 1 (high) or 0 (low).
+\lstinline|flags| is a bitmask of several options\footnote{
+%
+\lstinline|IRQ_FLAG_ALLOC| and \lstinline|IRQ_FLAG_INIT| are of internal interest
+only and not mentioned further.
+%
+}.
+\lstinline|IRQ_FLAG_NOT| flips
+the polarity of the signal (raising an \ac{IRQ} with \lstinline|value| 1 results
+in a \lstinline|value| of 0 and vice versa).
+Setting \lstinline|IRQ_FLAG_FILTERED| instructs \simavr to ignore \ac{IRQ}
+raises with unchanged values.
+
+\lstinline|hook| contains a linked list of chained \acp{IRQ} and
+\lstinline|avr_irq_notify_t| callbacks.
+
+\begin{lstlisting}
+typedef void (*avr_irq_notify_t)(
+        struct avr_irq_t * irq,
+        uint32_t value,
+        void * param);
+
+void
+avr_irq_register_notify(
+        avr_irq_t * irq,
+        avr_irq_notify_t notify,
+        void * param);
+\end{lstlisting}
+
+Callbacks are executed whenever an \ac{IRQ} is raised (and is not filtered).
+Chained \acp{IRQ} are raised whenever the \ac{IRQ} they are connected to is raised.
+
+As briefly mentioned in section \ref{section:simavr_example_walkthrough}, module
+implementations usually structure communication with the \simavr core by
+allocating their own private \acp{IRQ}, which are then connected to the target
+\simavr \acp{IRQ}. Callbacks are registered on private \acp{IRQ};
+likewise, only private \acp{IRQ} are raised. This
+ensures maximum flexibility since \ac{IRQ} connections are defined in one single
+location. Relevant functions are:
+
+\begin{lstlisting}
+avr_irq_t *
+avr_alloc_irq(
+        avr_irq_pool_t * pool,
+        uint32_t base,
+        uint32_t count,
+        const char ** names /* optional */);
+
+void
+avr_irq_register_notify(
+        avr_irq_t * irq,
+        avr_irq_notify_t notify,
+        void * param);
+
+void
+avr_connect_irq(
+        avr_irq_t * src,
+        avr_irq_t * dst);
+
+void
+avr_raise_irq(
+        avr_irq_t * irq,
+        uint32_t value);
+\end{lstlisting}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{\acf{IO}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The \lstinline|IO| module consists of two separate, yet complementary parts: on the one hand,
+a systematic way of defining actions that take place when \lstinline|IO| registers
+are accessed, and on the other the \lstinline|avr_io_t| infrastructure, which
+provides unified access to module \acp{IRQ}, reset and deallocation callbacks,
+and a \ac{IOCTL} system.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{\acf{IO} Register Callbacks} \label{subsection:io_register_callbacks}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+We will examine the \ac{IO} register callback system first. Whenever the \simavr
+core reads or writes an \ac{IO} register during instruction processing (see section
+\ref{section:instruction_processing}), it first checks if a callback exists for
+that address. Assuming it does, a write access will result in a call to the
+write callback instead of setting \lstinline|avr->data| directly:
+
+\begin{lstlisting}
+static inline void _avr_set_r(avr_t * avr, uint8_t r, uint8_t v)
+{
+    /* [...] */
+    uint8_t io = AVR_DATA_TO_IO(r);
+    if (avr->io[io].w.c)
+        avr->io[io].w.c(avr, r, v, avr->io[io].w.param);
+    else
+        avr->data[r] = v;
+    if (avr->io[io].irq) {
+        avr_raise_irq(avr->io[io].irq + AVR_IOMEM_IRQ_ALL, v);
+        for (int i = 0; i < 8; i++)
+            avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);
+    }
+    /* [...] */
+}
+\end{lstlisting}
+
+This snippet contains several interesting bits; first of all, we are reminded that \ac{IO}
+addresses are offset by \lstinline|0x20| (these are added by \lstinline|AVR_DATA_TO_IO|).
+Next up, we see that write callbacks need to set the \lstinline|avr->data| value
+themselves if necessary. Notice also that a custom parameter is passed into the callback,
+like most other callback systems in \simavr. Finally, the associated \lstinline|IOMEM| \acp{IRQ} are
+raised; both bitwise and the byte \ac{IRQ} \lstinline|AVR_IOMEM_IRQ_ALL|.
+
+Read accesses are very similar, except that (somewhat counter-intuitively), the value returned
+by the callback is automatically written to \lstinline|avr->data|.
+
+Access callbacks plus associated \lstinline|IOMEM| \acp{IRQ} are stored
+in the \lstinline|avr->io| array. \lstinline|MAX_IOs| is currently set to
+\lstinline|279|, enough to handle all used \ac{IO} registers on \acp{AVR} like
+the \verb|atmega1280|, which go up to an address of \lstinline|0x136|\footnote{
+\lstinline|279| $=$ \lstinline|0x136| $-$ \lstinline|0x20| $+$ \lstinline|0x01|}.
+
+\begin{lstlisting}
+struct {
+    struct avr_irq_t * irq;
+    struct {
+        void * param;
+        avr_io_read_t c;
+    } r;
+    struct {
+        void * param;
+        avr_io_write_t c;
+    } w;
+} io[MAX_IOs];
+\end{lstlisting}
+
+Callbacks are registered using the function duo of \lstinline|avr_register_io_write|
+and \lstinline|avr_register_io_read|. \acp{IRQ} are created on-demand whenever
+the \lstinline|avr_iomem_getirq| function is called.
+
+The included \simavr modules (implemented in files beginning with the \verb|avr_| prefix)
+provide many practical examples of \ac{IO} callback usage; for example,
+the \verb|avr_timer| module uses \ac{IO} callbacks to start the timer when
+a clock source is enabled through the timer registers.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{The \lstinline|avr_io_t| Module} \label{subsection:avr_io_t}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The \lstinline|avr_io_t| infrastructure provides additional functionality to
+modules, including reset and deallocation callbacks, central \ac{IRQ} handling,
+and a \ac{IOCTL} function. The full struct reference is provided here for reference:
+
+\begin{lstlisting}
+typedef struct avr_io_t {
+    struct avr_io_t *   next;
+    avr_t *             avr;
+    const char *        kind;
+
+    const char ** irq_names;
+
+    uint32_t            irq_ioctl_get;
+    int                 irq_count;
+    struct avr_irq_t *  irq;
+
+    void (*reset)(struct avr_io_t *io);
+    int (*ioctl)(struct avr_io_t *io, uint32_t ctl, void *io_param);
+    void (*dealloc)(struct avr_io_t *io);
+} avr_io_t;
+\end{lstlisting}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Initialization in the \lstinline|avr_ioport| Module}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+For a typical way of initializing an \lstinline|avr_io_t| struct, let's look at
+the \verb|avr_ioport| module.
+
+\begin{lstlisting}
+static const char * irq_names[IOPORT_IRQ_COUNT] = {
+    [IOPORT_IRQ_PIN0] = "=pin0",
+    [IOPORT_IRQ_PIN1] = "=pin1",
+    /* [...] */
+    [IOPORT_IRQ_PIN7] = "=pin7",
+    [IOPORT_IRQ_PIN_ALL] = "=all",
+    [IOPORT_IRQ_DIRECTION_ALL] = ">ddr",
+};
+
+static  avr_io_t    _io = {
+    .kind = "port",
+    .reset = avr_ioport_reset,
+    .ioctl = avr_ioport_ioctl,
+    .irq_names = irq_names,
+};
+\end{lstlisting}
+
+Once again, struct set initialization is used to partially configure a module.
+Passed in are the reset and \ac{IOCTL} handlers, a module name (for debugging
+purposes), and a list of \ac{IRQ} names. The deallocation handler is not used
+by the \verb|avr_ioport| module.
+
+\begin{lstlisting}
+void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
+{
+    p->io = _io;
+
+    avr_register_io(avr, &p->io);
+    avr_register_vector(avr, &p->pcint);
+    avr_io_setirqs(&p->io, AVR_IOCTL_IOPORT_GETIRQ(p->name), IOPORT_IRQ_COUNT, NULL);
+
+    avr_register_io_write(avr, p->r_port, avr_ioport_write, p);
+    avr_register_io_read(avr, p->r_pin, avr_ioport_read, p);
+    avr_register_io_write(avr, p->r_pin, avr_ioport_pin_write, p);
+    avr_register_io_write(avr, p->r_ddr, avr_ioport_ddr_write, p);
+}
+\end{lstlisting}
+
+Moving on to \lstinline|avr_ioport_init|; the private, partially initialized
+\lstinline|avr_io_t| is copied to the \lstinline|avr_ioport_t|. \lstinline|io|
+is the first member of the module struct to facilitate easy simple conversion
+between \lstinline|avr_io_t| and \lstinline|avr_ioport_t| pointers (this is used
+in the \ac{IOCTL} function).
+
+\lstinline|avr_register_io| adds the \ac{IO} module
+to the linked list stored in the main \lstinline|avr_t| instance, which is iterated
+at \ac{AVR} reset and deallocation events; it is also used by the \ac{IOCTL} and
+to retrieve \acp{IRQ}.
+
+\lstinline|avr_io_setirqs| is then called to create the \lstinline|IOPORT| \acp{IRQ}.
+The \ac{ID} generated by \lstinline|AVR_IOCTL_IOPORT_GETIRQ| is stored for subsequent
+use during \ac{IRQ} retrieval.
+
+The remaining functions called by \lstinline|avr_ioport_init|
+have been left in to convey a complete picture of \verb|avr_ioport|
+initialization. \lstinline|avr_register_vector| registers the external interrupt vector,
+and the \lstinline|avr_register_io_*| functions create access handlers on \ac{IO}
+registers as discussed in section \ref{subsection:io_register_callbacks}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Implementation Overview}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\acp{IOCTL} provide a way to trigger arbitrary functionality\footnote{
+%
+For example, the \lstinline|avr_ioport|
+module uses the \ac{IOCTL} system to allow extracting the state of a particular port's
+\lstinline|PORT|, \lstinline|PIN|, and \lstinline|DDR| registers; \lstinline|avr_eeprom|
+allows getting and setting memory locations.
+%
+} in modules. Whenever
+a \ac{IOCTL} is triggered by calling \lstinline|avr_ioctl|, the \ac{IOCTL} handler
+of all modules registered in the \lstinline|avr->io_port| linked list is called
+in sequence until one responds to that particular command by returning a value
+other than \lstinline|-1|. This is then returned to the caller.
+
+The reset handler is called whenever \lstinline|avr_reset| is called, allowing
+the module to do react appropriately. In \qsimavr, a major reason for registering
+as a \lstinline|avr_io_t| module was to recreate cycle timers and restart \ac{VCD}
+traces.
+
+If a module allocates resources, these can be freed during the deallocation handler.
+
+Finally, \lstinline|avr_io_getirq| lets a module ``publish'' its \acp{IRQ} for
+use by other modules or applications built on top of \simavr. This function is
+used whenever a \qsimavr component is connected to \simavr modules:
+
+\begin{lstlisting}
+avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ(PORT), PIN), irq + IRQ_TEMP_DQ);
+\end{lstlisting}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{\acf{VCD} Files} \label{section:vcd_files}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\ac{VCD} is a simple file format for dumps of signal changes over time. Each file
+consists of a header containing general information (most importantly, the
+used timescale which is always 1ns in \simavr dumps), variable definitions
+(containing the name and size of each tracked signal), and finally the value
+changes themselves. The following example contains the header section, variable
+definitions, and initial value changes of a three signal \ac{VCD} file generated
+by \simavr:
+
+\begin{verbatim}
+$timescale 1ns $end
+$scope module logic $end
+$var wire 1 ! <temp.data $end
+$var wire 1 " >temp.data $end
+$var wire 1 # <temp.ddr $end
+$upscope $end
+$enddefinitions $end
+$dumpvars
+0!
+0"
+0#
+$end
+#36072750
+0!
+#36072875
+1"
+1!
+1#
+[...]
+\end{verbatim}
+
+
+\ac{VCD} files can be displayed and analyzed graphically by wave viewers. On Linux,
+\emph{gtkwave} is well suited for this task (see Figure \ref{fig:gtkwave}).
+
+\begin{figure}[ht]
+\includegraphics[width=\textwidth]{images/gtkwave}
+\caption{GTKWave}
+\label{fig:gtkwave}
+\end{figure}
+
+The \simavr \ac{VCD} implementation uses a combination of cycle timers
+and \acp{IRQ} to track signal\footnote{
+%
+In \simavr, each tracked signal is actually an \ac{IRQ}.
+%
+} changes. After initializing an \lstinline|avr_vcd_t|
+with \lstinline|avr_vcd_init|, tracked signals are configured by calling
+\lstinline|avr_vcd_add_signal|. This connects an internal \ac{IRQ}\footnote{
+Limited to 32 connections.} to the tracked signal, which has
+\lstinline|_avr_vcd_notify| registered as a callback function. The latter is
+called whenever a tracked signal changes, and registers the updated value, the
+current cycle, and the source \ac{IRQ} in its log.
+
+Accumulated log data is flushed periodically by a cycle timer, the period of
+which is specified on \lstinline|avr_vcd_t initialization|. When a large amount
+is produced on the tracked signals, it may be necessary to decrease the used
+period to avoid log overflows.
+
+Tracking can be started and stopped at any time during program execution by
+calling \lstinline|avr_vcd_start| and \lstinline|avr_vcd_stop|. As explained in
+section \ref{subsection:initialization_firmware}, this can even be triggered from the
+firmware itself.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Core Definitions}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The actual core definitions used by \simavr are located in the
+\verb|simavr/cores| subdirectory of the source tree. These definitions rely on
+\emph{avr-libc} headers to specify the internal structure of an \ac{MCU} needed
+for simulation.
+
+The core and all internal components (such as timers, \acp{UART}, \ac{IO} ports,
+\acp{ADC}, \acp{SPI}, etc \ldots) are defined in an internal struct using struct
+set initialization for a terse representation. The \lstinline|avr_t| initialization
+of the \verb|atmega1280| therefore clocks in at only a couple of lines:
+
+\begin{lstlisting}
+.core = {
+    .mmcu = "atmega1280",
+    DEFAULT_CORE(4),
+
+    .init = m1280_init,
+    .reset = m1280_reset,
+
+    .rampz = RAMPZ,
+},
+\end{lstlisting}
+
+\lstinline|DEFAULT_CORE|\footnote{
+%
+The argument specifies the vector size.
+%
+} initializes basic parameters included in \emph{avr-libc}
+headers for every \ac{MCU} such as \lstinline|RAMEND|, \lstinline|FLASHEND|,
+etc \ldots). The \lstinline|init| and \lstinline|reset| members point to callbacks
+which are used to (obviously) initialize and reset the \ac{MCU}.
+
+Internal components are connected to the \lstinline|avr_t| core in the
+\lstinline|init| function:
+
+\begin{lstlisting}
+void m1280_init(struct avr_t * avr)
+{
+    struct mcu_t * mcu = (struct mcu_t*)avr;
+
+    avr_eeprom_init(avr, &mcu->eeprom);
+    avr_flash_init(avr, &mcu->selfprog);
+    avr_extint_init(avr, &mcu->extint);
+    avr_watchdog_init(avr, &mcu->watchdog);
+    avr_ioport_init(avr, &mcu->porta);
+
+    /* [...] */
+}
+\end{lstlisting}
+
+A short excerpt of \verb|atmega1280|'s \lstinline|TIMER0| initialization should
+throw some light on how components are configured. Notice how all register and
+bit locations rely on \emph{avr-libc} definitions:
+
+\begin{lstlisting}
+.timer0 = {
+    .name = '0',
+    .wgm = { AVR_IO_REGBIT(TCCR0A, WGM00), AVR_IO_REGBIT(TCCR0A, WGM01), AVR_IO_REGBIT(TCCR0B, WGM02) },
+    .wgm_op = {
+        [0] = AVR_TIMER_WGM_NORMAL8(),
+        [2] = AVR_TIMER_WGM_CTC(),
+        [3] = AVR_TIMER_WGM_FASTPWM8(),
+        [7] = AVR_TIMER_WGM_OCPWM(),
+    },
+    .cs = { AVR_IO_REGBIT(TCCR0B, CS00), AVR_IO_REGBIT(TCCR0B, CS01), AVR_IO_REGBIT(TCCR0B, CS02) },
+    .cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ },
+
+    .r_tcnt = TCNT0,
+
+    .overflow = {
+        .enable = AVR_IO_REGBIT(TIMSK0, TOIE0),
+        .raised = AVR_IO_REGBIT(TIFR0, TOV0),
+        .vector = TIMER0_OVF_vect,
+    },
+    /* ... */
+}
+\end{lstlisting}
+
+Adding a new \ac{MCU} definition is a simple matter of creating a new \verb|sim_*.c|
+file in \verb|simavr/cores| and defining all included components with the help
+of \emph{avr-libc} and a datasheet.
+
+This concludes our tour of the \simavr core modules. You should now have a
+good idea of how \simavr internals work together and complement each
+other to create an \ac{AVR} simulation which is accurate, reliable, yet simple,
+efficient, and easy to extend. For an example of all of these concepts in practice,
+take a look at the modules included with \simavr. A good example is the \verb|avr_eeprom|
+module, which uses a combination of interrupts, an \lstinline|avr_io_t| module,
+and \ac{IO} access callbacks to achieve the desired functionality.
+
+%%
+%% = eof =====================================================================
+%%

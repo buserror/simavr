@@ -21,8 +21,12 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef AVR_EXTINT_H_
-#define AVR_EXTINT_H_
+#ifndef __AVR_EXTINT_H__
+#define __AVR_EXTINT_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "sim_avr.h"
 
@@ -61,12 +65,25 @@ void avr_extint_init(avr_t * avr, avr_extint_t * p);
 
 // Declares a typical INT into a avr_extint_t in a core.
 // this is a shortcut since INT declarations are pretty standard.
-// The Tinies are slightly different. see sim_tinyx5.h
+// The Tinies as well as the atmega1280 are slightly different.
+// See sim_tinyx5.h and sim_mega1280.h
 #define AVR_EXTINT_DECLARE(_index, _portname, _portpin) \
 		.eint[_index] = { \
 			.port_ioctl = AVR_IOCTL_IOPORT_GETIRQ(_portname), \
 			.port_pin = _portpin, \
 			.isc = { AVR_IO_REGBIT(EICRA, ISC##_index##0), AVR_IO_REGBIT(EICRA, ISC##_index##1) },\
+			.vector = { \
+				.enable = AVR_IO_REGBIT(EIMSK, INT##_index), \
+				.raised = AVR_IO_REGBIT(EIFR, INTF##_index), \
+				.vector = INT##_index##_vect, \
+			},\
+		}
+
+#define AVR_EXTINT_MEGA_DECLARE(_index, _portname, _portpin, _EICR) \
+		.eint[_index] = { \
+			.port_ioctl = AVR_IOCTL_IOPORT_GETIRQ(_portname), \
+			.port_pin = _portpin, \
+			.isc = { AVR_IO_REGBIT(EICR##_EICR, ISC##_index##0), AVR_IO_REGBIT(EICR##_EICR, ISC##_index##1) },\
 			.vector = { \
 				.enable = AVR_IO_REGBIT(EIMSK, INT##_index), \
 				.raised = AVR_IO_REGBIT(EIFR, INTF##_index), \
@@ -86,4 +103,8 @@ void avr_extint_init(avr_t * avr, avr_extint_t * p);
 			}, \
 		}
 
-#endif /* AVR_EXTINT_H_ */
+#ifdef __cplusplus
+};
+#endif
+
+#endif /*__AVR_EXTINT_H__*/

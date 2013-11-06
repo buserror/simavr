@@ -26,10 +26,26 @@
 extern "C" {
 #endif
 
+/* Watchpoint types.
+   See GDB User Manual, Appendix E.2 */
+enum avr_gdb_watch_type {
+	AVR_GDB_BREAK_SOFT   = 1 << 0,
+	AVR_GDB_BREAK_HARD   = 1 << 1,
+
+	AVR_GDB_WATCH_WRITE  = 1 << 2,
+	AVR_GDB_WATCH_READ   = 1 << 3,
+	AVR_GDB_WATCH_ACCESS = AVR_GDB_WATCH_WRITE | AVR_GDB_WATCH_READ,
+};
+
 int avr_gdb_init(avr_t * avr);
+
+void avr_deinit_gdb(avr_t * avr);
 
 // call from the main AVR decoder thread
 int avr_gdb_processor(avr_t * avr, int sleep);
+
+// Called from sim_core.c
+void avr_gdb_handle_watchpoints(avr_t * g, uint16_t addr, enum avr_gdb_watch_type type);
 
 #ifdef __cplusplus
 };

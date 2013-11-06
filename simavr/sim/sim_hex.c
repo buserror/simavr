@@ -121,7 +121,7 @@ uint8_t * read_ihex_file(const char * fname, uint32_t * dsize, uint32_t * start)
 		}
 		uint16_t addr = (bline[1] << 8) | bline[2];
 		if (base == ~0) {
-			base = addr;	// stadt address
+			base = addr;	// start address
 		}
 		if (addr != base + size) {
 			fprintf(stderr, "%s: %s, offset out of bounds %04x expected %04x\n", __FUNCTION__, fname, addr, base+size);

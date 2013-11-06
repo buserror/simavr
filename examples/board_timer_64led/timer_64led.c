@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
 
 	avr = avr_make_mcu_by_name(f.mmcu);
 	if (!avr) {
-		fprintf(stderr, "%s: AVR '%s' now known\n", argv[0], f.mmcu);
+		fprintf(stderr, "%s: AVR '%s' not known\n", argv[0], f.mmcu);
 		exit(1);
 	}
 	avr_init(avr);
@@ -320,9 +320,9 @@ int main(int argc, char *argv[])
 	printf( "Demo : This is a real world firmware, a 'stopwatch'\n"
 			"   timer that can count up to 99 days. It features a PWM control of the\n"
 			"   brightness, blinks the dots, displays the number of days spent and so on.\n\n"
-			"   Press '0' to press the 'start' button\n"
-			"   Press '1' to press the 'stop' button\n"
-			"   Press '2' to press the 'reset' button\n"
+			"   Press '1' to press the 'start' button\n"
+			"   Press '2' to press the 'stop' button\n"
+			"   Press '3' to press the 'reset' button\n"
 			"   Press 'q' to quit\n\n"
 			"   Press 'r' to start recording a 'wave' file - with a LOT of data\n"
 			"   Press 's' to stop recording\n"

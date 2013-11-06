@@ -1,7 +1,7 @@
 /*
 	avr_mcu_section.h
 
-	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Copyright 2008-2013 Michel Pollet <buserror@gmail.com>
 
  	This file is part of simavr.
 
@@ -58,8 +58,9 @@ enum {
 	AVR_MMCU_TAG_SIMAVR_COMMAND,
 	AVR_MMCU_TAG_SIMAVR_CONSOLE,
 	AVR_MMCU_TAG_VCD_FILENAME,
-	AVR_MMCU_TAG_VCD_PERIOD,	
+	AVR_MMCU_TAG_VCD_PERIOD,
 	AVR_MMCU_TAG_VCD_TRACE,
+	AVR_MMCU_TAG_PORT_EXTERNAL_PULL,
 };
 
 enum {
@@ -75,13 +76,13 @@ enum {
 struct avr_mmcu_long_t {
 	uint8_t tag;
 	uint8_t len;
-	uint32_t val; 
+	uint32_t val;
 } __attribute__((__packed__));
 
 struct avr_mmcu_string_t {
 	uint8_t tag;
 	uint8_t len;
-	char string[]; 
+	char string[];
 } __attribute__((__packed__));
 
 struct avr_mmcu_addr_t {
@@ -95,7 +96,7 @@ struct avr_mmcu_vcd_trace_t {
 	uint8_t len;
 	uint8_t mask;
 	void * what;
-	char name[]; 
+	char name[];
 } __attribute__((__packed__));
 
 #define AVR_MCU_STRING(_tag, _str) \
@@ -104,9 +105,16 @@ struct avr_mmcu_vcd_trace_t {
 		.len = sizeof(_str),\
 		.string = _str,\
 	}
+/*
+ * This trick allows contatenation of tokens. We need a macro redirection
+ * for it to work.
+ * The goal is to make unique variable names (they don't matter anyway)
+ */
+#define DO_CONCAT2(_a, _b) _a##_b
+#define DO_CONCAT(_a, _b) DO_CONCAT2(_a,_b)
 
 #define AVR_MCU_LONG(_tag, _val) \
-	const struct avr_mmcu_long_t _##_tag _MMCU_ = {\
+	const struct avr_mmcu_long_t DO_CONCAT(DO_CONCAT(_, _tag), __LINE__) _MMCU_ = {\
 		.tag = _tag,\
 		.len = sizeof(uint32_t),\
 		.val = _val,\
@@ -169,6 +177,19 @@ struct avr_mmcu_vcd_trace_t {
 		.len = sizeof(void *),\
 		.what = (void*)_register, \
 	}
+/*!
+ * Allows the firmware to hint simavr as to wether there are external
+ * pullups/down on PORT pins. It helps if the firmware uses "open drain"
+ * pins by toggling the DDR pins to switch between an output state and
+ * a "default" state.
+ * The value passed here will be output on the PORT IRQ when the DDR
+ * pin is set to input again
+ */
+#define AVR_MCU_EXTERNAL_PORT_PULL(_port, _mask, _val) \
+	AVR_MCU_LONG(AVR_MMCU_TAG_PORT_EXTERNAL_PULL, \
+		(((unsigned long)(_port) << 16) | \
+		((unsigned long)(_mask) << 8) | \
+		(_val)));
 
 /*!
  * This tag allows you to specify the voltages used by your board

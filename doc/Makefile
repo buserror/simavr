@@ -16,10 +16,13 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
-# you need Graphviz, ruby and exuberant ctags here. 
-# this is not generated in the normal code build
+# For the callgraph, you need Graphviz, ruby and exuberant ctags.
+# The manual requires latex including additional packages (acronym, graphicx, fancyvrb, ...).
+# This is not generated in the normal code build
 
-all:	simavr_callgraph.pdf
+.PHONY: manual
+
+all:	simavr_callgraph.pdf manual
 
 simavr_callgraph.pdf:
 	ctags -f .tags ../simavr/sim/sim_*.[ch] ../simavr/sim/run_*.[ch] 2>/dev/null && \
@@ -27,5 +30,9 @@ simavr_callgraph.pdf:
 			../simavr/sim/sim_*.c ../simavr/sim/run_*.c >.tags.dot && \
 				dot -Tpdf .tags.dot -o $@
 
+manual:
+	$(MAKE) -C manual
+
 clean:
 	rm -f .tags*
+	$(MAKE) -C manual clean

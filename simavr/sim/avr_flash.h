@@ -23,6 +23,10 @@
 #ifndef __AVR_FLASH_H___
 #define __AVR_FLASH_H___
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sim_avr.h"
 
 /*
@@ -60,5 +64,9 @@ void avr_flash_init(avr_t * avr, avr_flash_t * p);
 			.vector = _vector,\
 		},\
 	}
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __AVR_FLASH_H___ */

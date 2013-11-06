@@ -22,6 +22,10 @@
 #ifndef __AVR_ADC_H___
 #define __AVR_ADC_H___
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sim_avr.h"
 
 /*
@@ -59,7 +63,7 @@ enum {
 	ADC_MUX_NONE = 0,		// Nothing. return 0
 	ADC_MUX_NOISE,			// Nothing. return something random
 	ADC_MUX_SINGLE,			// Normal ADC pin reading
-	ADC_MUX_DIFF,			// differencial channels (src-diff)
+	ADC_MUX_DIFF,			// differential channels (src-diff)
 	ADC_MUX_TEMP,			// internal temp sensor
 	ADC_MUX_REF,			// reference voltage (in src * 100)
 	ADC_MUX_VCC4,			// VCC/4
@@ -141,5 +145,9 @@ void avr_adc_init(avr_t * avr, avr_adc_t * port);
 #define AVR_ADC_VCC4() { \
 		.kind = ADC_MUX_VCC4, \
 	}
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __AVR_ADC_H___ */

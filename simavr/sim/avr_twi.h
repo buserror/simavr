@@ -19,16 +19,20 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef AVR_TWI_H_
-#define AVR_TWI_H_
+#ifndef __AVR_TWI_H__
+#define __AVR_TWI_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "sim_avr.h"
 
 //#include "sim_twi.h"
 
 enum {
-	TWI_IRQ_MISO = 0,
-	TWI_IRQ_MOSI,
+	TWI_IRQ_INPUT = 0,
+	TWI_IRQ_OUTPUT,
 	TWI_IRQ_STATUS,
 	TWI_IRQ_COUNT
 };
@@ -40,6 +44,8 @@ enum {
 	TWI_COND_ACK = (1 << 3),
 	TWI_COND_WRITE = (1 << 4),
 	TWI_COND_READ = (1 << 5),
+	// internal state, do not use in irq messages
+	TWI_COND_SLAVE	= (1 << 6),
 };
 
 typedef struct avr_twi_msg_t {
@@ -94,21 +100,17 @@ avr_twi_init(
 		avr_twi_t * port);
 
 /*
- * Create a message value for twi incuding the 'msg' bitfield,
+ * Create a message value for twi including the 'msg' bitfield,
  * 'addr' and data. This value is what is sent as the IRQ value
  */
-static inline uint32_t
+uint32_t
 avr_twi_irq_msg(
 		uint8_t msg,
 		uint8_t addr,
-		uint8_t data)
-{
-	avr_twi_msg_irq_t _msg = {
-			.u.twi.msg = msg,
-			.u.twi.addr = addr,
-			.u.twi.data = data,
-	};
-	return _msg.u.v;
-}
+		uint8_t data);
 
-#endif /* AVR_TWI_H_ */
+#ifdef __cplusplus
+};
+#endif
+
+#endif /*__AVR_TWI_H__*/

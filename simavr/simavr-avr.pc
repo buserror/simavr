@@ -1,0 +1,13 @@
+prefix=PREFIX
+exec_prefix=${prefix}
+includedir=${prefix}/include
+libdir=${exec_prefix}/lib
+
+Name: simavr-avr
+Description: Atmel(tm) AVR 8 bits simulator - avr-gcc flags
+Version: VERSION
+Cflags: -I${includedir}/simavr/avr -ffunction-sections -fdata-sections \
+			-Wl,--relax,--gc-sections \
+			-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000
+Libs: 
+

@@ -23,6 +23,10 @@
 #ifndef __AVR_LIN_H__
 #define __AVR_LIN_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sim_avr.h"
 #include "avr_uart.h"
 
@@ -43,5 +47,9 @@ void
 avr_lin_init(
 		avr_t *avr,
 		avr_lin_t *port);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* __AVR_LIN_H__ */

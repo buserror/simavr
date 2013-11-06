@@ -396,7 +396,7 @@ avr_usb_udaddr_write(
         void * param)
 {
 	if (v & 0x80)
-		printf("Activate address %d\n", v & 0x7f);
+		AVR_LOG(avr, LOG_TRACE, "USB: Activate address %d\n", v & 0x7f);
 	avr_core_watch_write(avr, addr, v);
 }
 
@@ -469,7 +469,7 @@ avr_usb_ep_write_ueintx(
 	if (curstate->stalledi & !newstate->stalledi)
 		curstate->stalledi = 0;
 	if (curstate->rwal & !newstate->rwal)
-		printf("pointless change of ueintx.rwal\n");
+		AVR_LOG(avr, LOG_WARNING, "USB: Pointless change of ueintx.rwal\n");
 
 	if ((curstate->v & 0xdf) == 0)
 		avr->data[p->r_usbcon + ueint] &= 0xff ^ (1 << ep); // mark ep0 interrupt
@@ -630,7 +630,7 @@ avr_usb_ioctl(
 				return AVR_IOCTL_USB_STALL;
 			}
 			if (ep && !epstate->uecfg0x.epdir)
-				printf("Reading from IN endpoint from host??\n");
+				AVR_LOG(io->avr, LOG_WARNING, "USB: Reading from IN endpoint from host??\n");
 
 			ret = ep_fifo_usb_read(epstate, d->buf);
 			if (ret < 0) {
@@ -653,7 +653,7 @@ avr_usb_ioctl(
 			epstate = get_epstate(p, ep);
 
 			if (ep && epstate->uecfg0x.epdir)
-				printf("Writing to IN endpoint from host??\n");
+				AVR_LOG(io->avr, LOG_WARNING, "USB: Writing to IN endpoint from host??\n");
 
 			if (epstate->ueconx.stallrq) {
 				raise_ep_interrupt(io->avr, p, 0, stalledi);
@@ -673,7 +673,7 @@ avr_usb_ioctl(
 
 			epstate->ueconx.stallrq = 0;
 			// teensy actually depends on this (fails to ack rxouti on usb
-			// control read status stage) even if the datasheet clarely states
+			// control read status stage) even if the datasheet clearly states
 			// that one should do so.
 			epstate->ueintx.rxouti = 0;
 
@@ -684,7 +684,7 @@ avr_usb_ioctl(
 
 			return 0;
 		case AVR_IOCTL_USB_RESET:
-			printf("__USB_RESET__\n");
+			AVR_LOG(io->avr, LOG_TRACE, "USB: __USB_RESET__\n");
 			reset_endpoints(io->avr, p);
 			raise_usb_interrupt(p, eorsti);
 			if (0)
@@ -710,7 +710,7 @@ avr_usb_reset(
 	p->io.avr->data[p->r_usbcon] = 0x20;
 	p->io.avr->data[p->r_usbcon + udcon] = 1;
 
-	printf("%s\n", __FUNCTION__);
+	AVR_LOG(io->avr, LOG_TRACE, "USB: %s\n", __FUNCTION__);
 }
 
 static const char * irq_names[USB_IRQ_COUNT] = {

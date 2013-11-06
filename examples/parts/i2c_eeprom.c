@@ -63,7 +63,7 @@ i2c_eeprom_in_hook(
 		if ((p->addr_base & p->addr_mask) == (v.u.twi.addr & p->addr_mask)) {
 			// it's us !
 			p->selected = v.u.twi.addr;
-			avr_raise_irq(p->irq + TWI_IRQ_MISO,
+			avr_raise_irq(p->irq + TWI_IRQ_INPUT,
 					avr_twi_irq_msg(TWI_COND_ACK, p->selected, 1));
 		}
 	}
@@ -79,7 +79,7 @@ i2c_eeprom_in_hook(
 		 */
 		if (v.u.twi.msg & TWI_COND_WRITE) {
 			// address size is how many bytes we use for address register
-			avr_raise_irq(p->irq + TWI_IRQ_MISO,
+			avr_raise_irq(p->irq + TWI_IRQ_INPUT,
 					avr_twi_irq_msg(TWI_COND_ACK, p->selected, 1));
 			int addr_size = p->size > 256 ? 2 : 1;
 			if (p->index < addr_size) {
@@ -105,7 +105,7 @@ i2c_eeprom_in_hook(
 			if (p->verbose)
 				printf("eeprom READ data 0x%04x: %02x\n", p->reg_addr, p->ee[p->reg_addr]);
 			uint8_t data = p->ee[p->reg_addr++];
-			avr_raise_irq(p->irq + TWI_IRQ_MISO,
+			avr_raise_irq(p->irq + TWI_IRQ_INPUT,
 					avr_twi_irq_msg(TWI_COND_READ, p->selected, data));
 			p->reg_addr &= (p->size -1);
 			p->index++;
@@ -114,8 +114,8 @@ i2c_eeprom_in_hook(
 }
 
 static const char * _ee_irq_names[2] = {
-		[TWI_IRQ_MISO] = "8>eeprom.out",
-		[TWI_IRQ_MOSI] = "32<eeprom.in",
+		[TWI_IRQ_INPUT] = "8>eeprom.out",
+		[TWI_IRQ_OUTPUT] = "32<eeprom.in",
 };
 
 void
@@ -130,7 +130,7 @@ i2c_eeprom_init(
 	memset(p, 0, sizeof(*p));
 	memset(p->ee, 0xff, sizeof(p->ee));
 	p->irq = avr_alloc_irq(&avr->irq_pool, 0, 2, _ee_irq_names);
-	avr_irq_register_notify(p->irq + TWI_IRQ_MOSI, i2c_eeprom_in_hook, p);
+	avr_irq_register_notify(p->irq + TWI_IRQ_OUTPUT, i2c_eeprom_in_hook, p);
 
 	p->size = size > sizeof(p->ee) ? sizeof(p->ee) : size;
 	if (data)
@@ -145,9 +145,9 @@ i2c_eeprom_attach(
 {
 	// "connect" the IRQs of the eeprom to the TWI/i2c master of the AVR
 	avr_connect_irq(
-		p->irq + TWI_IRQ_MISO,
-		avr_io_getirq(avr, i2c_irq_base, TWI_IRQ_MISO));
+		p->irq + TWI_IRQ_INPUT,
+		avr_io_getirq(avr, i2c_irq_base, TWI_IRQ_INPUT));
 	avr_connect_irq(
-		avr_io_getirq(avr, i2c_irq_base, TWI_IRQ_MOSI),
-		p->irq + TWI_IRQ_MOSI );
+		avr_io_getirq(avr, i2c_irq_base, TWI_IRQ_OUTPUT),
+		p->irq + TWI_IRQ_OUTPUT );
 }

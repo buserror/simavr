@@ -55,11 +55,33 @@ enum {
 	R_SREG	= 32+0x3f,
 
 	// maximum number of IO registers, on normal AVRs
-	MAX_IOs	= 256,	// Bigger AVRs need more than 256-32 (mega1280)
+	MAX_IOs	= 279,	// Bigger AVRs need more than 256-32 (mega1280)
 };
 
 #define AVR_DATA_TO_IO(v) ((v) - 32)
 #define AVR_IO_TO_DATA(v) ((v) + 32)
+
+/**
+ * Logging macros and associated log levels.
+ * The current log level is kept in avr->log.
+ */
+enum {
+	LOG_OUTPUT = 0,
+	LOG_ERROR,
+	LOG_WARNING,
+	LOG_TRACE,
+};
+
+typedef void (*avr_logger_p)(struct avr_t* avr, const int level, const char * format, ... );
+extern avr_logger_p avr_global_logger;
+#ifndef AVR_LOG
+#define AVR_LOG(avr, level, ...) \
+	do { \
+		avr_global_logger(avr, level, __VA_ARGS__); \
+	} while(0)
+#endif
+#define AVR_TRACE(avr, ... ) \
+	AVR_LOG(avr, LOG_TRACE, __VA_ARGS__)
 
 /*
  * Core states.
@@ -139,12 +161,19 @@ typedef struct avr_t {
 	// not only to "cycles that runs" but also "cycles that might have run"
 	// like, sleeping.
 	avr_cycle_count_t	cycle;		// current cycle
+
+	/**
+	 * Sleep requests are accumulated in sleep_usec until the minimum sleep value
+	 * is reached, at which point sleep_usec is cleared and the sleep request
+	 * is passed on to the operating system.
+	 */
+	uint32_t sleep_usec;
 	
 	// called at init time
 	void (*init)(struct avr_t * avr);
 	// called at init time (for special purposes like using a memory mapped file as flash see: simduino)
 	void (*special_init)(struct avr_t * avr);
-	// called at termination time ( to clean special initalizations)
+	// called at termination time ( to clean special initializations)
 	void (*special_deinit)(struct avr_t * avr);
 	// called at reset time
 	void (*reset)(struct avr_t * avr);
@@ -172,7 +201,7 @@ typedef struct avr_t {
 
 	// Mirror of the SREG register, to facilitate the access to bits
 	// in the opcode decoder.
-	// This array is re-synthetized back/forth when SREG changes
+	// This array is re-synthesized back/forth when SREG changes
 	uint8_t		sreg[8];
 	uint8_t		i_shadow;	// used to detect edges on I flag
 
@@ -238,9 +267,9 @@ typedef struct avr_t {
 	avr_int_table_t	interrupts;
 
 	// DEBUG ONLY -- value ignored if CONFIG_SIMAVR_TRACE = 0
-	int		trace : 1,
+	uint8_t	trace : 1,
 			log : 2; // log level, default to 1
-
+	
 	// Only used if CONFIG_SIMAVR_TRACE is defined
 	struct avr_trace_data_t *trace_data;
 
@@ -269,8 +298,8 @@ typedef struct avr_kind_t {
 
 // a symbol loaded from the .elf file
 typedef struct avr_symbol_t {
-	const char * symbol;
 	uint32_t	addr;
+	const char  symbol[0];
 } avr_symbol_t;
 
 // locate the maker for mcu "name" and allocates a new avr instance
@@ -323,7 +352,7 @@ avr_loadcode(
 		avr_flashaddr_t address);
 
 /*
- * these are accessors for avr->data but allows watchpoints to be set for gdb
+ * These are accessors for avr->data but allows watchpoints to be set for gdb
  * IO modules use that to set values to registers, and the AVR core decoder uses
  * that to register "public" read by instructions.
  */
@@ -346,7 +375,7 @@ avr_sadly_crashed(
 
 
 /*
- * These are callbacks for the two 'main' bahaviour in simavr
+ * These are callbacks for the two 'main' behaviour in simavr
  */
 void avr_callback_sleep_gdb(avr_t * avr, avr_cycle_count_t howLong);
 void avr_callback_run_gdb(avr_t * avr);

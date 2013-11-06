@@ -104,7 +104,7 @@ struct avr_irq_t * avr_io_getirq(avr_t * avr, uint32_t ctl, int index);
 // get the IRQ for an absolute IO address
 // this allows any code to hook an IRQ in any io address, for example
 // tracing changes of values into a register
-// Note that the values do not "magicaly" change, they change only
+// Note that the values do not "magically" change, they change only
 // when the AVR code attempt to read and write at that address
 // 
 // the "index" is a bit number, or ALL bits if index == 8
@@ -113,6 +113,7 @@ avr_irq_t *
 avr_iomem_getirq(
 		avr_t * avr,
 		avr_io_addr_t addr,
+		const char * name /* Optional, if NULL, "ioXXXX" will be used */ ,
 		int index);
 
 // Terminates all IOs and remove from them from the io chain
