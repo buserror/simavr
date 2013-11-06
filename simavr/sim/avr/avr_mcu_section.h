@@ -105,9 +105,16 @@ struct avr_mmcu_vcd_trace_t {
 		.len = sizeof(_str),\
 		.string = _str,\
 	}
+/*
+ * This trick allows contatenation of tokens. We need a macro redirection
+ * for it to work.
+ * The goal is to make unique variable names (they don't matter anyway)
+ */
+#define DO_CONCAT2(_a, _b) _a##_b
+#define DO_CONCAT(_a, _b) DO_CONCAT2(_a,_b)
 
 #define AVR_MCU_LONG(_tag, _val) \
-	const struct avr_mmcu_long_t _##_tag _MMCU_ = {\
+	const struct avr_mmcu_long_t DO_CONCAT(DO_CONCAT(_, _tag), __LINE__) _MMCU_ = {\
 		.tag = _tag,\
 		.len = sizeof(uint32_t),\
 		.val = _val,\
