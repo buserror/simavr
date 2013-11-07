@@ -28,7 +28,7 @@
 i2c_eeprom_t ee;
 
 
-void cmp_simu_init(struct avr_t * avr)
+void simu_component_init(struct avr_t * avr)
 {
 	// initialize our 'peripheral'
 	i2c_eeprom_init(avr, &ee, 0xa0, 0xfe, NULL, 1024);
@@ -38,7 +38,7 @@ void cmp_simu_init(struct avr_t * avr)
 }
 
 
-void cmp_simu_fini(struct avr_t * avr)
+void simu_component_fini(struct avr_t * avr)
 {
 	(void)avr;
 }

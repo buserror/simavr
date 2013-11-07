@@ -295,7 +295,7 @@ void mpu_6050_init(struct avr_t * avr, uint8_t addr)
 }
 
 
-void cmp_simu_init(struct avr_t * avr)
+void simu_component_init(struct avr_t * avr)
 {
 	mpu_6050_init(avr, 0x34);
 
@@ -311,7 +311,7 @@ void cmp_simu_init(struct avr_t * avr)
 }
 
 
-void cmp_simu_fini(struct avr_t * avr)
+void simu_component_fini(struct avr_t * avr)
 {
 	free(mpu);
 }
