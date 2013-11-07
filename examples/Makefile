@@ -7,8 +7,11 @@ else
 boards=$(boards_base)
 endif
 
-all:
+all: _sim
 	for bi in ${boards}; do $(MAKE) -C $$bi; done
+
+_sim:
+	$(MAKE) -C sim
 
 clean:
 	for bi in ${boards}; do $(MAKE) -C $$bi clean; done
