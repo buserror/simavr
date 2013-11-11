@@ -17,7 +17,7 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
-targets = mpu6050.so eeprom_i2c.so
+targets = mpu6050.so eeprom_i2c.so sc18is600.so
 simavr = ../..
 
 IPATH = .
