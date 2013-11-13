@@ -30,12 +30,56 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
 #include "sim_avr.h"
 #include "avr_spi.h"
+#include "avr_ioport.h"		// AVR_IOCTL_IOPORT_GETSTATE()
+#include "sim_io.h"			// avr_ioctl()
 
 
 //--------------------------------------------------------------------
 // private defines
+//
+
+#define SC18_TX_BUF_SIZE	96
+#define SC18_RX_BUF_SIZE	96
+
+#define SC18_SPI_CONF_LSB	0x81
+#define SC18_SPI_CONF_MSB	0x42
+
+#define SC18_PWR_STEP_1		0x5a
+#define SC18_PWR_STEP_2		0xa5
+
+typedef enum {
+	SC18_WR_N = 0x00,
+	SC18_RD_N = 0x01,
+	SC18_WR_RD = 0x02,
+	SC18_RD_BUF = 0x06,
+	SC18_WR_WR = 0x03,
+	SC18_CONF = 0x18,
+	SC18_WR_REG = 0x20,
+	SC18_RD_REG = 0x21,
+	SC18_PWR = 0x30,
+} sc18_cmd_t;
+
+// internal register map
+typedef struct sc18_regs_t {
+        uint8_t IOconfig;
+        uint8_t IOstate;
+        uint8_t I2CClock;
+        uint8_t I2CTO;
+        uint8_t I2CStat;
+        uint8_t I2CAddr;
+} _sc18_regs_t;
+
+#define SC18_REGS_OFFSET_MIN	0
+#define SC18_REGS_OFFSET_MAX	(sizeof(struct sc18_regs_t) / sizeof(uint8_t))
+
+#define SC18_CS_PB0				0x01
+
+
+//--------------------------------------------------------------------
+// private constants
 //
 
 
@@ -47,20 +91,16 @@ typedef struct {
 	struct avr_t * avr;		// AVR access for time
 	avr_irq_t *	irq;		// irq list
 
-    struct {
-        uint8_t IOconfig;   	// internal register map
-        uint8_t IOstate;
-        uint8_t I2CClock;
-        uint8_t I2CTO;
-        uint8_t I2CStat;
-        uint8_t I2CAddr;
-    } regs;
+    struct sc18_regs_t regs;
+
+	int step;				// internal command step
+	sc18_cmd_t cmd;
+
+	uint8_t tx_buf[SC18_TX_BUF_SIZE];
+	uint8_t rx_buf[SC18_RX_BUF_SIZE];
+
+	uint8_t reg_offset;
 } sc18is600_t;
-
-
-//--------------------------------------------------------------------
-// private constants
-//
 
 
 //--------------------------------------------------------------------
@@ -74,102 +114,307 @@ static sc18is600_t * sc18;
 // private functions
 //
 
-
-
-// called on every I2C transaction
-static void sc18_in_hook(struct avr_irq_t * irq, uint32_t value, void * param)
+// check if SPI component is selected
+static int sc18_cs(sc18is600_t * sc18)
 {
-    static uint8_t ret_value = 0;
-	sc18is600_t * sc18 = (sc18is600_t*)param;
+	// check if the CS pin of AVR is zero
+	avr_ioport_state_t state;
+	avr_ioctl(sc18->avr, AVR_IOCTL_IOPORT_GETSTATE('B'), &state);
+	return ( state.pin & SC18_CS_PB0 ) ? 0 : 1;
+}
 
-    // ackwonledge it
-    printf("sc18is600[%3d]: rx 0x%02x", ret_value, value);
-    ret_value++;
-    avr_raise_irq(sc18->irq + SPI_IRQ_INPUT, ret_value);
-    printf(" tx 0x%02x\n", ret_value);
 
-    if ( ret_value == 0xff ) {
-        exit(1);
-    }
-#if 0
-	avr_twi_msg_irq_t v;
-
-	v.u.v = value;
-
-	// if the slave address is not self address
-	if ( ((mpu->self_addr << 1) && 0xfe) != (v.u.twi.addr && 0xfe) ) {
-		printf("MPU 6050 @ 0x%02x: bad address 0x%02x\n",  mpu->self_addr, v.u.twi.addr);
-		// ignore it
-		return;
-	}
-
-	// STOP received
-	if ( v.u.twi.msg & TWI_COND_STOP ) {
-		// it was us !
-		printf("]\n");
-		return;
-	}
-
-	// START received
-	if ( v.u.twi.msg & TWI_COND_START ) {
-		// ackwonledge it
-		avr_raise_irq(mpu->irq + TWI_IRQ_INPUT, avr_twi_irq_msg(TWI_COND_ACK, mpu->self_addr, 1));
-		printf("MPU 6050 (t=%5.3fs) @%02x [",  1. * mpu->avr->cycle / mpu->avr->frequency, mpu->self_addr);
-
-		// reset write sequence
-		mpu->write_step = 0;
-
-		// update simulation
-		simu_update(mpu->avr->cycle, mpu->avr->frequency, mpu->regs + 0x3b);
-
-		return;
-	}
-
-	// WRITE
-	if (v.u.twi.msg & TWI_COND_WRITE) {
-		// ackwonledge it
-		avr_raise_irq(mpu->irq + TWI_IRQ_INPUT, avr_twi_irq_msg(TWI_COND_ACK, mpu->self_addr, 1));
-
-		// if first write access since START
-		if ( mpu->write_step == 0 ) {
-			printf("%02x+", v.u.twi.data);
-
-			// set the register index
-			mpu->current_reg = v.u.twi.data;
-			mpu->write_step = 1;
+// write n bytes to I2C-bus slave device
+static uint8_t sc18_wr_n(uint8_t value, sc18is600_t * sc18)
+{
+	// step #0 is the command
+	if ( sc18->step != 0 ) {
+		// next steps up to limit are for writing the buffer
+		if ( sc18->step > SC18_TX_BUF_SIZE ) {
+			printf("sc18is600: write n bytes: too many data %d\n", sc18->step);
 		}
-		// else
 		else {
-			printf("%02x+", v.u.twi.data);
-
-			// write data at index
-			mpu->regs[mpu->current_reg] = v.u.twi.data;
-
-			// and points to next register
-			mpu->current_reg++;
+			// store the frame
+			sc18->tx_buf[sc18->step - 1] = value;
 		}
 	}
 
-	// READ
-	if (v.u.twi.msg & TWI_COND_READ) {
-		uint8_t data;
+	return 0xff;
+}
 
-		switch (mpu->current_reg) {
-		case 0x75:	// MPU6050_WHO_AM_I
-			data = 0x68;
+
+// read n bytes to I2C-bus slave device
+static uint8_t sc18_rd_n(uint8_t value, sc18is600_t * sc18)
+{
+	// step #0 is the command
+	if ( sc18->step != 0 ) {
+		// next steps up to limit are for writing the buffer
+		if ( sc18->step > SC18_TX_BUF_SIZE ) {
+			printf("sc18is600: read n bytes: too many data %d\n", sc18->step);
+		}
+		else {
+			// store the frame
+			sc18->tx_buf[sc18->step - 1] = value;
+		}
+	}
+
+	return 0xff;
+}
+
+
+// I2C-bus write then read (read after write)
+static uint8_t sc18_wr_rd(uint8_t value, sc18is600_t * sc18)
+{
+	// step #0 is the command
+	if ( sc18->step != 0 ) {
+		// next steps up to limit are for writing the buffer
+		if ( sc18->step > SC18_TX_BUF_SIZE ) {
+			printf("sc18is600: read after write: too many data %d\n", sc18->step);
+		}
+		else {
+			// store the frame
+			sc18->tx_buf[sc18->step - 1] = value;
+		}
+	}
+
+	return 0xff;
+}
+
+
+// read buffer
+static uint8_t sc18_rd_buf(uint8_t value, sc18is600_t * sc18)
+{
+	// step #0 is the command
+	if ( sc18->step != 0 ) {
+		// next steps up to limit are for reading the buffer
+		if ( sc18->step > SC18_RX_BUF_SIZE ) {
+			printf("sc18is600: read buffer: offset out of bound %d\n", sc18->step);
+		}
+		else {
+			// send the I2C received byte
+			return sc18->rx_buf[sc18->step - 1];
+		}
+	}
+
+	return 0xff;
+}
+
+
+// I2C-bus write after write
+static uint8_t sc18_wr_wr(uint8_t value, sc18is600_t * sc18)
+{
+	// step #0 is the command
+	if ( sc18->step != 0 ) {
+		// next steps up to limit are for writing the buffer
+		if ( sc18->step > SC18_TX_BUF_SIZE ) {
+			printf("sc18is600: write after write: too many data %d\n", sc18->step);
+		}
+		else {
+			// store the frame
+			sc18->tx_buf[sc18->step - 1] = value;
+		}
+	}
+
+	return 0xff;
+}
+
+
+// SPI configuration
+static uint8_t sc18_conf(uint8_t value, sc18is600_t * sc18)
+{
+	switch (sc18->step) {
+	case 0:
+		// command is received
+		break;
+
+	case 1:
+		// which configuration?
+		switch (value) {
+		case SC18_SPI_CONF_LSB:
+			printf("sc18is600: conf LSB first\n");
+			break;
+
+		case SC18_SPI_CONF_MSB:
+			printf("sc18is600: conf MSB first\n");
 			break;
 
 		default:
-			data = mpu->regs[mpu->current_reg];
+			printf("sc18is600: unknown conf 0x%02x\n", value);
 			break;
 		}
 
-		printf("%02x+", data);
-		avr_raise_irq(mpu->irq + TWI_IRQ_INPUT, avr_twi_irq_msg(TWI_COND_READ, mpu->self_addr, data));
+		break;
 
-		mpu->current_reg++;
+	default:
+		printf("sc18is600: conf invalid step %d\n", sc18->step);
+		break;
 	}
-#endif
+
+	return 0xff;
+}
+
+
+// write internal registers
+static uint8_t sc18_wr_reg(uint8_t value, sc18is600_t * sc18)
+{
+	switch (sc18->step) {
+	case 0:
+		// command is received
+		break;
+
+	case 1:
+		// register offset is received
+		if ( value < SC18_REGS_OFFSET_MIN && value > SC18_REGS_OFFSET_MAX ) {
+			printf("sc18is600: write register invalid offset %d\n", value);
+		}
+		else {
+			sc18->reg_offset = value;
+		}
+		break;
+
+	case 2:
+		// register value is received
+		*((uint8_t*)&sc18->regs + sc18->reg_offset) = value;
+		break;
+
+	default:
+		printf("sc18is600: wr_reg invalid step %d\n", sc18->step);
+		break;
+	}
+
+	return 0xff;
+}
+
+
+// power-down mode
+static uint8_t sc18_pwr(uint8_t value, sc18is600_t * sc18)
+{
+	// sequence 0x30 0x5a 0xa5
+	switch (sc18->step) {
+	case 0:
+		// command
+		break;
+
+	case 1:
+		if ( value != SC18_PWR_STEP_1 ) {
+			printf("sc18is600: invalid power-down step #1 0x%02x\n", value);
+		}
+		break;
+
+	case 2:
+		if ( value != SC18_PWR_STEP_2 ) {
+			printf("sc18is600: invalid power-down step #2 0x%02x\n", value);
+		}
+		break;
+
+	default:
+		printf("sc18is600: power-down invalid sequence %d\n", sc18->step);
+		break;
+	}
+
+	return 0xff;
+}
+
+
+// read internal registers
+static uint8_t sc18_rd_reg(uint8_t value, sc18is600_t * sc18)
+{
+	switch (sc18->step) {
+	case 0:
+		// command is received
+		break;
+
+	case 1:
+		// register offset is received
+		if ( value < SC18_REGS_OFFSET_MIN && value > SC18_REGS_OFFSET_MAX ) {
+			printf("sc18is600: read register invalid offset %d\n", value);
+		}
+		else {
+			sc18->reg_offset = value;
+		}
+		break;
+
+	case 2:
+		// register value is received
+		return *((uint8_t*)&sc18->regs + sc18->reg_offset);
+		break;
+
+	default:
+		printf("sc18is600: wr_reg invalid step %d\n", sc18->step);
+		break;
+	}
+
+	return 0xff;
+}
+
+
+// called on every SPI transaction
+static void sc18_in_hook(struct avr_irq_t * irq, uint32_t value, void * param)
+{
+	uint8_t resp;
+	sc18is600_t * sc18 = (sc18is600_t*)param;
+
+	// check if chip is selected
+	if ( sc18_cs(sc18) == 1 ) {
+		sc18->step = 0;
+		printf("sc18is600 CS is 1\n");
+		return;
+	}
+
+    // new char received
+    printf("sc18is600: rx <-- 0x%02x", value);
+
+	if ( sc18->step == 0 ) {
+		sc18->cmd = value;
+	}
+
+	// which command?
+	switch (sc18->cmd) {
+	case SC18_WR_N:
+		resp = sc18_wr_n(value, sc18);
+		break;
+
+	case SC18_RD_N:
+		resp = sc18_rd_n(value, sc18);
+		break;
+
+	case SC18_WR_RD:
+		resp = sc18_wr_rd(value, sc18);
+		break;
+
+	case SC18_RD_BUF:
+		resp = sc18_rd_buf(value, sc18);
+		break;
+
+	case SC18_WR_WR:
+		resp = sc18_wr_wr(value, sc18);
+		break;
+
+	case SC18_CONF:
+		resp = sc18_conf(value, sc18);
+		break;
+
+	case SC18_WR_REG:
+		resp = sc18_wr_reg(value, sc18);
+		break;
+
+	case SC18_RD_REG:
+		resp = sc18_rd_reg(value, sc18);
+		break;
+
+	case SC18_PWR:
+		resp = sc18_pwr(value, sc18);
+		break;
+
+	default:
+		printf("sc18is600: invalid command [0x%02x], ignoring it\n", sc18->cmd);
+		resp = 0xff;
+		break;
+	}
+
+	// send response
+    avr_raise_irq(sc18->irq + SPI_IRQ_INPUT, resp);
+    printf(" tx --> 0x%02x\n", resp);
 }
 
 static const char * spi_irq_names[SPI_IRQ_COUNT] = {
