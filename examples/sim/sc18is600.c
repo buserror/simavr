@@ -76,7 +76,15 @@ typedef struct sc18_regs_t {
 #define SC18_REGS_OFFSET_MAX	(sizeof(struct sc18_regs_t) / sizeof(uint8_t))
 
 #define SC18_CS_PB0				0x01
+#define SC18_CS_PORT			'B'
+#define SC18_CS_PIN				0x01
 
+typedef enum {
+	SC18_SPI_IRQ_IN,
+	SC18_SPI_IRQ_OUT,
+	SC18_CS_IRQ,
+   	SC18_IRQ_COUNT,
+} _sc18_irq_t;
 
 //--------------------------------------------------------------------
 // private constants
@@ -92,6 +100,8 @@ typedef struct {
 	avr_irq_t *	irq;		// irq list
 
     struct sc18_regs_t regs;
+
+	int cs;					// Chip Select
 
 	int step;				// internal command step
 	sc18_cmd_t cmd;
@@ -413,13 +423,23 @@ static void sc18_in_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 	}
 
 	// send response
-    avr_raise_irq(sc18->irq + SPI_IRQ_INPUT, resp);
+    avr_raise_irq(sc18->irq + SC18_SPI_IRQ_OUT, resp);
     printf(" tx --> 0x%02x\n", resp);
 }
 
-static const char * spi_irq_names[SPI_IRQ_COUNT] = {
-		[SPI_IRQ_INPUT] = "8<sc18is600.in",
-		[SPI_IRQ_OUTPUT] = "8>sc18is600.out",
+// called on every change on CS pin
+static void sc18_cs_hook(struct avr_irq_t * irq, uint32_t value, void * param)
+{
+	sc18is600_t * sc18 = (sc18is600_t*)param;
+
+	sc18->cs = value & SC18_CS_PIN;
+}
+
+
+static const char * spi_irq_names[SC18_IRQ_COUNT] = {
+		[SC18_SPI_IRQ_OUT] = "8<sc18is600.out",
+		[SC18_SPI_IRQ_IN] = "8>sc18is600.in",
+		[SC18_CS_IRQ] = "8>sc18is600.cs",
 };
 
 
@@ -433,10 +453,14 @@ void sc18is600_init(struct avr_t * avr)
     sc18->irq = avr_io_getirq(avr, AVR_IOCTL_SPI_GETIRQ(0), SPI_IRQ_INPUT);
 	avr_irq_register_notify(avr_io_getirq(avr, AVR_IOCTL_SPI_GETIRQ(0), SPI_IRQ_OUTPUT), sc18_in_hook, sc18);
 #else
-    sc18->irq = avr_alloc_irq(&avr->irq_pool, SPI_IRQ_INPUT, SPI_IRQ_COUNT, spi_irq_names);
-    avr_connect_irq(sc18->irq + SPI_IRQ_INPUT, avr_io_getirq(avr, AVR_IOCTL_SPI_GETIRQ(0), SPI_IRQ_INPUT));
-    avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_SPI_GETIRQ(0), SPI_IRQ_OUTPUT), sc18->irq + SPI_IRQ_OUTPUT);
-	avr_irq_register_notify(sc18->irq + SPI_IRQ_OUTPUT, sc18_in_hook, sc18);
+    sc18->irq = avr_alloc_irq(&avr->irq_pool, SC18_SPI_IRQ_IN, SC18_IRQ_COUNT, spi_irq_names);
+
+    avr_connect_irq(sc18->irq + SC18_SPI_IRQ_OUT, avr_io_getirq(avr, AVR_IOCTL_SPI_GETIRQ(0), SPI_IRQ_INPUT));
+    avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_SPI_GETIRQ(0), SPI_IRQ_OUTPUT), sc18->irq + SC18_SPI_IRQ_IN);
+	avr_irq_register_notify(sc18->irq + SC18_SPI_IRQ_IN, sc18_in_hook, sc18);
+
+    avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ(SC18_CS_PORT), SC18_CS_PIN), sc18->irq + SC18_CS_IRQ);
+	avr_irq_register_notify(sc18->irq + SC18_CS_IRQ, sc18_cs_hook, sc18);
 #endif
 }
 
