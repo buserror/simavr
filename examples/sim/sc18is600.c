@@ -77,7 +77,7 @@ typedef struct sc18_regs_t {
 
 #define SC18_CS_PB0				0x01
 #define SC18_CS_PORT			'B'
-#define SC18_CS_PIN				0x01
+#define SC18_CS_PIN				0
 
 typedef enum {
 	SC18_SPI_IRQ_IN,
@@ -124,19 +124,11 @@ static sc18is600_t * sc18;
 // private functions
 //
 
-// check if SPI component is selected
-static int sc18_cs(sc18is600_t * sc18)
-{
-	// check if the CS pin of AVR is zero
-	avr_ioport_state_t state;
-	avr_ioctl(sc18->avr, AVR_IOCTL_IOPORT_GETSTATE('B'), &state);
-	return ( state.pin & SC18_CS_PB0 ) ? 0 : 1;
-}
-
-
 // write n bytes to I2C-bus slave device
 static uint8_t sc18_wr_n(uint8_t value, sc18is600_t * sc18)
 {
+	printf("sc18_wr_n: step %d ", sc18->step);
+
 	// step #0 is the command
 	if ( sc18->step != 0 ) {
 		// next steps up to limit are for writing the buffer
@@ -156,6 +148,8 @@ static uint8_t sc18_wr_n(uint8_t value, sc18is600_t * sc18)
 // read n bytes to I2C-bus slave device
 static uint8_t sc18_rd_n(uint8_t value, sc18is600_t * sc18)
 {
+	printf("sc18_rd_n: step %d ", sc18->step);
+
 	// step #0 is the command
 	if ( sc18->step != 0 ) {
 		// next steps up to limit are for writing the buffer
@@ -175,6 +169,8 @@ static uint8_t sc18_rd_n(uint8_t value, sc18is600_t * sc18)
 // I2C-bus write then read (read after write)
 static uint8_t sc18_wr_rd(uint8_t value, sc18is600_t * sc18)
 {
+	printf("sc18_wr_rd: step %d ", sc18->step);
+
 	// step #0 is the command
 	if ( sc18->step != 0 ) {
 		// next steps up to limit are for writing the buffer
@@ -194,6 +190,8 @@ static uint8_t sc18_wr_rd(uint8_t value, sc18is600_t * sc18)
 // read buffer
 static uint8_t sc18_rd_buf(uint8_t value, sc18is600_t * sc18)
 {
+	printf("sc18_rd_buf: step %d ", sc18->step);
+
 	// step #0 is the command
 	if ( sc18->step != 0 ) {
 		// next steps up to limit are for reading the buffer
@@ -213,6 +211,8 @@ static uint8_t sc18_rd_buf(uint8_t value, sc18is600_t * sc18)
 // I2C-bus write after write
 static uint8_t sc18_wr_wr(uint8_t value, sc18is600_t * sc18)
 {
+	printf("sc18_wr_wr: step %d ", sc18->step);
+
 	// step #0 is the command
 	if ( sc18->step != 0 ) {
 		// next steps up to limit are for writing the buffer
@@ -232,6 +232,8 @@ static uint8_t sc18_wr_wr(uint8_t value, sc18is600_t * sc18)
 // SPI configuration
 static uint8_t sc18_conf(uint8_t value, sc18is600_t * sc18)
 {
+	printf("sc18_conf: step %d ", sc18->step);
+
 	switch (sc18->step) {
 	case 0:
 		// command is received
@@ -267,6 +269,8 @@ static uint8_t sc18_conf(uint8_t value, sc18is600_t * sc18)
 // write internal registers
 static uint8_t sc18_wr_reg(uint8_t value, sc18is600_t * sc18)
 {
+	printf("sc18_wr_reg: step %d ", sc18->step);
+
 	switch (sc18->step) {
 	case 0:
 		// command is received
@@ -299,6 +303,8 @@ static uint8_t sc18_wr_reg(uint8_t value, sc18is600_t * sc18)
 // power-down mode
 static uint8_t sc18_pwr(uint8_t value, sc18is600_t * sc18)
 {
+	printf("sc18_pwr: step %d ", sc18->step);
+
 	// sequence 0x30 0x5a 0xa5
 	switch (sc18->step) {
 	case 0:
@@ -329,6 +335,8 @@ static uint8_t sc18_pwr(uint8_t value, sc18is600_t * sc18)
 // read internal registers
 static uint8_t sc18_rd_reg(uint8_t value, sc18is600_t * sc18)
 {
+	printf("sc18_rd_reg: step %d ", sc18->step);
+
 	switch (sc18->step) {
 	case 0:
 		// command is received
@@ -365,14 +373,14 @@ static void sc18_in_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 	sc18is600_t * sc18 = (sc18is600_t*)param;
 
 	// check if chip is selected
-	if ( sc18_cs(sc18) == 1 ) {
+	if ( sc18->cs == 1 ) {
 		sc18->step = 0;
 		printf("sc18is600 CS is 1\n");
 		return;
 	}
 
     // new char received
-    printf("sc18is600: rx <-- 0x%02x", value);
+    printf("sc18is600: 0x%02x --> rx| ", value);
 
 	if ( sc18->step == 0 ) {
 		sc18->cmd = value;
@@ -417,14 +425,16 @@ static void sc18_in_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 		break;
 
 	default:
-		printf("sc18is600: invalid command [0x%02x], ignoring it\n", sc18->cmd);
+		printf("sc18is600: invalid command [0x%02x], ignoring it ", sc18->cmd);
 		resp = 0xff;
 		break;
 	}
 
+	sc18->step++;
+
 	// send response
     avr_raise_irq(sc18->irq + SC18_SPI_IRQ_OUT, resp);
-    printf(" tx --> 0x%02x\n", resp);
+    printf("|tx --> 0x%02x\n", resp);
 }
 
 // called on every change on CS pin
@@ -432,7 +442,13 @@ static void sc18_cs_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	sc18is600_t * sc18 = (sc18is600_t*)param;
 
-	sc18->cs = value & SC18_CS_PIN;
+	sc18->cs = value & SC18_CS_PB0;
+	printf("sc18is600: cs = %d\n", sc18->cs);
+
+	// reset step when component is no longer selected
+	if ( sc18->cs == 1 ) {
+		sc18->step = 0;
+	}
 }
 
 
@@ -449,10 +465,6 @@ void sc18is600_init(struct avr_t * avr)
 
 	memset(sc18, 0, sizeof(sc18is600_t));
 	sc18->avr = avr;
-#if 0
-    sc18->irq = avr_io_getirq(avr, AVR_IOCTL_SPI_GETIRQ(0), SPI_IRQ_INPUT);
-	avr_irq_register_notify(avr_io_getirq(avr, AVR_IOCTL_SPI_GETIRQ(0), SPI_IRQ_OUTPUT), sc18_in_hook, sc18);
-#else
     sc18->irq = avr_alloc_irq(&avr->irq_pool, SC18_SPI_IRQ_IN, SC18_IRQ_COUNT, spi_irq_names);
 
     avr_connect_irq(sc18->irq + SC18_SPI_IRQ_OUT, avr_io_getirq(avr, AVR_IOCTL_SPI_GETIRQ(0), SPI_IRQ_INPUT));
@@ -461,7 +473,6 @@ void sc18is600_init(struct avr_t * avr)
 
     avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ(SC18_CS_PORT), SC18_CS_PIN), sc18->irq + SC18_CS_IRQ);
 	avr_irq_register_notify(sc18->irq + SC18_CS_IRQ, sc18_cs_hook, sc18);
-#endif
 }
 
 
