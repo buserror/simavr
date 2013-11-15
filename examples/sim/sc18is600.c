@@ -115,7 +115,6 @@ typedef struct {
 	int step;				// internal command step
 	sc18_cmd_t cmd;
 
-	uint8_t tx_buf[SC18_TX_BUF_SIZE];
 	uint8_t rx_buf[SC18_RX_BUF_SIZE];
 
 	uint8_t reg_offset;
@@ -139,16 +138,23 @@ static uint8_t sc18_wr_n(uint8_t value, sc18is600_t * sc18)
 	printf("sc18_wr_n: step %02d ", sc18->step);
 
 	// step #0 is the command
-	if ( sc18->step != 0 ) {
-		// next steps up to limit are for writing the buffer
-		if ( sc18->step > SC18_TX_BUF_SIZE ) {
-			printf("sc18is600: write n bytes: too many data %d\n", sc18->step);
-		}
-		else {
-			// store the frame
-			sc18->tx_buf[sc18->step - 1] = value;
-		}
-	}
+	if ( sc18->step == 0 ) {
+        return 0xff;
+    }
+
+    // next steps up to limit are for writing the buffer
+    if ( sc18->step > SC18_TX_BUF_SIZE ) {
+        printf("too many data %d ", sc18->step);
+        return 0xff;
+    }
+
+    // algo
+    //
+    // MPU6050 who_am_i
+    if ( sc18->step == 3 && value == 0x75 ) {
+        // store the who_am_i response
+        sc18->rx_buf[0] = 0x68;
+    }
 
 	return 0xff;
 }
@@ -160,17 +166,17 @@ static uint8_t sc18_rd_n(uint8_t value, sc18is600_t * sc18)
 	printf("sc18_rd_n: step %02d ", sc18->step);
 
 	// step #0 is the command
-	if ( sc18->step != 0 ) {
-		// next steps up to limit are for writing the buffer
-		if ( sc18->step > SC18_TX_BUF_SIZE ) {
-			printf("sc18is600: read n bytes: too many data %d\n", sc18->step);
-		}
-		else {
-			// store the frame
-			sc18->tx_buf[sc18->step - 1] = value;
-		}
-	}
+	if ( sc18->step == 0 ) {
+        return 0xff;
+    }
 
+    // next steps up to limit are for writing the buffer
+    if ( sc18->step > SC18_TX_BUF_SIZE ) {
+        printf("too many data %d ", sc18->step);
+        return 0xff;
+    }
+
+    printf("not implemented yet! ");
 	return 0xff;
 }
 
@@ -181,17 +187,17 @@ static uint8_t sc18_wr_rd(uint8_t value, sc18is600_t * sc18)
 	printf("sc18_wr_rd: step %02d ", sc18->step);
 
 	// step #0 is the command
-	if ( sc18->step != 0 ) {
-		// next steps up to limit are for writing the buffer
-		if ( sc18->step > SC18_TX_BUF_SIZE ) {
-			printf("sc18is600: read after write: too many data %d\n", sc18->step);
-		}
-		else {
-			// store the frame
-			sc18->tx_buf[sc18->step - 1] = value;
-		}
-	}
+	if ( sc18->step == 0 ) {
+        return 0xff;
+    }
 
+    // next steps up to limit are for writing the buffer
+    if ( sc18->step > SC18_TX_BUF_SIZE ) {
+        printf("too many data %d ", sc18->step);
+        return 0xff;
+    }
+
+    printf("not implemented yet! ");
 	return 0xff;
 }
 
@@ -202,18 +208,18 @@ static uint8_t sc18_rd_buf(uint8_t value, sc18is600_t * sc18)
 	printf("sc18_rd_buf: step %02d ", sc18->step);
 
 	// step #0 is the command
-	if ( sc18->step != 0 ) {
-		// next steps up to limit are for reading the buffer
-		if ( sc18->step > SC18_RX_BUF_SIZE ) {
-			printf("sc18is600: read buffer: offset out of bound %d\n", sc18->step);
-		}
-		else {
-			// send the I2C received byte
-			return sc18->rx_buf[sc18->step - 1];
-		}
-	}
+	if ( sc18->step == 0 ) {
+        return 0xff;
+    }
 
-	return 0xff;
+    // next steps up to limit are for reading the buffer
+    if ( sc18->step > SC18_RX_BUF_SIZE ) {
+        printf("offset out of bound %d ", sc18->step);
+        return 0xff;
+    }
+
+    // send the content of the response buffer
+	return sc18->rx_buf[sc18->step - 1];
 }
 
 
@@ -223,17 +229,16 @@ static uint8_t sc18_wr_wr(uint8_t value, sc18is600_t * sc18)
 	printf("sc18_wr_wr: step %02d ", sc18->step);
 
 	// step #0 is the command
-	if ( sc18->step != 0 ) {
-		// next steps up to limit are for writing the buffer
-		if ( sc18->step > SC18_TX_BUF_SIZE ) {
-			printf("sc18is600: write after write: too many data %d\n", sc18->step);
-		}
-		else {
-			// store the frame
-			sc18->tx_buf[sc18->step - 1] = value;
-		}
-	}
+	if ( sc18->step == 0 ) {
+        return 0xff;
+    }
 
+    // next steps up to limit are for writing the buffer
+    if ( sc18->step > SC18_TX_BUF_SIZE ) {
+        printf("sc18is600: write after write: too many data %d\n", sc18->step);
+    }
+
+    printf("not implemented yet! ");
 	return 0xff;
 }
 
