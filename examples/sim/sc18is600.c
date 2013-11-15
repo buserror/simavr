@@ -127,7 +127,7 @@ static sc18is600_t * sc18;
 // write n bytes to I2C-bus slave device
 static uint8_t sc18_wr_n(uint8_t value, sc18is600_t * sc18)
 {
-	printf("sc18_wr_n: step %d ", sc18->step);
+	printf("sc18_wr_n: step %02d ", sc18->step);
 
 	// step #0 is the command
 	if ( sc18->step != 0 ) {
@@ -148,7 +148,7 @@ static uint8_t sc18_wr_n(uint8_t value, sc18is600_t * sc18)
 // read n bytes to I2C-bus slave device
 static uint8_t sc18_rd_n(uint8_t value, sc18is600_t * sc18)
 {
-	printf("sc18_rd_n: step %d ", sc18->step);
+	printf("sc18_rd_n: step %02d ", sc18->step);
 
 	// step #0 is the command
 	if ( sc18->step != 0 ) {
@@ -169,7 +169,7 @@ static uint8_t sc18_rd_n(uint8_t value, sc18is600_t * sc18)
 // I2C-bus write then read (read after write)
 static uint8_t sc18_wr_rd(uint8_t value, sc18is600_t * sc18)
 {
-	printf("sc18_wr_rd: step %d ", sc18->step);
+	printf("sc18_wr_rd: step %02d ", sc18->step);
 
 	// step #0 is the command
 	if ( sc18->step != 0 ) {
@@ -190,7 +190,7 @@ static uint8_t sc18_wr_rd(uint8_t value, sc18is600_t * sc18)
 // read buffer
 static uint8_t sc18_rd_buf(uint8_t value, sc18is600_t * sc18)
 {
-	printf("sc18_rd_buf: step %d ", sc18->step);
+	printf("sc18_rd_buf: step %02d ", sc18->step);
 
 	// step #0 is the command
 	if ( sc18->step != 0 ) {
@@ -211,7 +211,7 @@ static uint8_t sc18_rd_buf(uint8_t value, sc18is600_t * sc18)
 // I2C-bus write after write
 static uint8_t sc18_wr_wr(uint8_t value, sc18is600_t * sc18)
 {
-	printf("sc18_wr_wr: step %d ", sc18->step);
+	printf("sc18_wr_wr: step %02d ", sc18->step);
 
 	// step #0 is the command
 	if ( sc18->step != 0 ) {
@@ -232,7 +232,7 @@ static uint8_t sc18_wr_wr(uint8_t value, sc18is600_t * sc18)
 // SPI configuration
 static uint8_t sc18_conf(uint8_t value, sc18is600_t * sc18)
 {
-	printf("sc18_conf: step %d ", sc18->step);
+	printf("sc18_conf: step %02d ", sc18->step);
 
 	switch (sc18->step) {
 	case 0:
@@ -258,7 +258,7 @@ static uint8_t sc18_conf(uint8_t value, sc18is600_t * sc18)
 		break;
 
 	default:
-		printf("sc18is600: conf invalid step %d\n", sc18->step);
+		printf("sc18is600: conf invalid step %02d\n", sc18->step);
 		break;
 	}
 
@@ -269,7 +269,7 @@ static uint8_t sc18_conf(uint8_t value, sc18is600_t * sc18)
 // write internal registers
 static uint8_t sc18_wr_reg(uint8_t value, sc18is600_t * sc18)
 {
-	printf("sc18_wr_reg: step %d ", sc18->step);
+	printf("sc18_wr_reg: step %02d ", sc18->step);
 
 	switch (sc18->step) {
 	case 0:
@@ -292,7 +292,7 @@ static uint8_t sc18_wr_reg(uint8_t value, sc18is600_t * sc18)
 		break;
 
 	default:
-		printf("sc18is600: wr_reg invalid step %d\n", sc18->step);
+		printf("sc18is600: wr_reg invalid step %02d\n", sc18->step);
 		break;
 	}
 
@@ -303,7 +303,7 @@ static uint8_t sc18_wr_reg(uint8_t value, sc18is600_t * sc18)
 // power-down mode
 static uint8_t sc18_pwr(uint8_t value, sc18is600_t * sc18)
 {
-	printf("sc18_pwr: step %d ", sc18->step);
+	printf("sc18_pwr: step %02d ", sc18->step);
 
 	// sequence 0x30 0x5a 0xa5
 	switch (sc18->step) {
@@ -335,7 +335,7 @@ static uint8_t sc18_pwr(uint8_t value, sc18is600_t * sc18)
 // read internal registers
 static uint8_t sc18_rd_reg(uint8_t value, sc18is600_t * sc18)
 {
-	printf("sc18_rd_reg: step %d ", sc18->step);
+	printf("sc18_rd_reg: step %02d ", sc18->step);
 
 	switch (sc18->step) {
 	case 0:
@@ -358,7 +358,7 @@ static uint8_t sc18_rd_reg(uint8_t value, sc18is600_t * sc18)
 		break;
 
 	default:
-		printf("sc18is600: wr_reg invalid step %d\n", sc18->step);
+		printf("sc18is600: wr_reg invalid step %02d\n", sc18->step);
 		break;
 	}
 
