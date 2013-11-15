@@ -90,6 +90,15 @@ typedef enum {
 // private constants
 //
 
+static const char* const reg_name[] = {
+	"IOconfig",
+	"IOstate ",
+	"I2CClock",
+	"I2CTO   ",
+	"I2CStat ",
+	"I2CAddr ",
+};
+
 
 //--------------------------------------------------------------------
 // private structure definitions
@@ -273,6 +282,7 @@ static uint8_t sc18_wr_reg(uint8_t value, sc18is600_t * sc18)
 
 	switch (sc18->step) {
 	case 0:
+		printf("           ");
 		// command is received
 		break;
 
@@ -283,10 +293,12 @@ static uint8_t sc18_wr_reg(uint8_t value, sc18is600_t * sc18)
 		}
 		else {
 			sc18->reg_offset = value;
+			printf("[%s] ", reg_name[value]);
 		}
 		break;
 
 	case 2:
+		printf("           ");
 		// register value is received
 		*((uint8_t*)&sc18->regs + sc18->reg_offset) = value;
 		break;
@@ -340,6 +352,7 @@ static uint8_t sc18_rd_reg(uint8_t value, sc18is600_t * sc18)
 	switch (sc18->step) {
 	case 0:
 		// command is received
+		printf("           ");
 		break;
 
 	case 1:
@@ -349,10 +362,12 @@ static uint8_t sc18_rd_reg(uint8_t value, sc18is600_t * sc18)
 		}
 		else {
 			sc18->reg_offset = value;
+			printf("[%s] ", reg_name[value]);
 		}
 		break;
 
 	case 2:
+		printf("           ");
 		// register value is received
 		return *((uint8_t*)&sc18->regs + sc18->reg_offset);
 		break;
