@@ -26,6 +26,8 @@
 //
 // quite basic simulation of the MPU-6050 I2C component
 //
+// it can be configured to connect to the I2C bus of the simulated SC18IS600
+#define USE_SC18IS600
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -33,6 +35,9 @@
 #include "sim_avr.h"
 #include "avr_twi.h"
 
+#ifdef USE_SC18IS600
+# include "sc18is600.h"
+#endif
 
 //--------------------------------------------------------------------
 // private defines
@@ -44,6 +49,12 @@
 //--------------------------------------------------------------------
 // private structure definitions
 //
+
+typedef enum {
+    MPU_I2C_IRQ_IN,
+    MPU_I2C_IRQ_OUT,
+    MPU_I2C_IRQ_COUNT,
+} _mpu_i2c_irq_t;
 
 typedef struct {
 	struct avr_t * avr;		// AVR access for time
@@ -168,7 +179,7 @@ static void simu_update(int cycle, int freq, uint8_t* regs)
 		}
 	}
 
-	// update register
+	// update registers
 	regs[0] = (simu.acc_x & 0xff00) >> 8;	// acc X
 	regs[1] = (simu.acc_x & 0x00ff) >> 0;
 	regs[2] = (simu.acc_y & 0xff00) >> 8;	// acc Y
@@ -189,7 +200,7 @@ static void simu_update(int cycle, int freq, uint8_t* regs)
 
 
 // called on every I2C transaction
-static void mpu_6050_in_hook(struct avr_irq_t * irq, uint32_t value, void * param)
+static void mpu_6050_i2c_in_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	mpu_6050_t * mpu = (mpu_6050_t*)param;
 	avr_twi_msg_irq_t v;
@@ -213,7 +224,8 @@ static void mpu_6050_in_hook(struct avr_irq_t * irq, uint32_t value, void * para
 	// START received
 	if ( v.u.twi.msg & TWI_COND_START ) {
 		// ackwonledge it
-		avr_raise_irq(mpu->irq + TWI_IRQ_INPUT, avr_twi_irq_msg(TWI_COND_ACK, mpu->self_addr, 1));
+		avr_raise_irq(mpu->irq + MPU_I2C_IRQ_OUT, avr_twi_irq_msg(TWI_COND_ACK, mpu->self_addr, 1));
+
 		printf("MPU 6050 (t=%5.3fs) @%02x [",  1. * mpu->avr->cycle / mpu->avr->frequency, mpu->self_addr);
 
 		// reset write sequence
@@ -228,7 +240,7 @@ static void mpu_6050_in_hook(struct avr_irq_t * irq, uint32_t value, void * para
 	// WRITE
 	if (v.u.twi.msg & TWI_COND_WRITE) {
 		// ackwonledge it
-		avr_raise_irq(mpu->irq + TWI_IRQ_INPUT, avr_twi_irq_msg(TWI_COND_ACK, mpu->self_addr, 1));
+		avr_raise_irq(mpu->irq + MPU_I2C_IRQ_OUT, avr_twi_irq_msg(TWI_COND_ACK, mpu->self_addr, 1));
 
 		// if first write access since START
 		if ( mpu->write_step == 0 ) {
@@ -264,34 +276,47 @@ static void mpu_6050_in_hook(struct avr_irq_t * irq, uint32_t value, void * para
 			break;
 		}
 
+        // send the data
 		printf("%02x+", data);
-		avr_raise_irq(mpu->irq + TWI_IRQ_INPUT, avr_twi_irq_msg(TWI_COND_READ, mpu->self_addr, data));
+		avr_raise_irq(mpu->irq + MPU_I2C_IRQ_OUT, avr_twi_irq_msg(TWI_COND_READ, mpu->self_addr, data));
 
+        // increment register pointer
 		mpu->current_reg++;
 	}
 }
 
-static const char * _ee_irq_names[2] = {
-		[TWI_IRQ_INPUT] = "8>mpu_6050.out",
-		[TWI_IRQ_OUTPUT] = "32<mpu_6050.in",
+static const char * mpu_irq_names[MPU_I2C_IRQ_COUNT] = {
+		[MPU_I2C_IRQ_IN] = "32<mpu_6050.in",
+		[MPU_I2C_IRQ_OUT] = "8>mpu_6050.out",
 };
 
 
 void mpu_6050_init(struct avr_t * avr, uint8_t addr)
 {
-	mpu = malloc(sizeof(mpu_6050_t));
+    printf("mpu_6050 registered\n");
 
+    // allocate and reset the object
+	mpu = malloc(sizeof(mpu_6050_t));
 	memset(mpu, 0, sizeof(mpu_6050_t));
+
 	mpu->avr = avr;
 	mpu->self_addr = addr;
 
-	mpu->irq = avr_alloc_irq(&avr->irq_pool, 0, 2, _ee_irq_names);
-	avr_irq_register_notify(mpu->irq + TWI_IRQ_OUTPUT, mpu_6050_in_hook, mpu);
+    // create the irqs
+	mpu->irq = avr_alloc_irq(&avr->irq_pool, MPU_I2C_IRQ_IN, MPU_I2C_IRQ_COUNT, mpu_irq_names);
+	avr_irq_register_notify(mpu->irq + MPU_I2C_IRQ_IN, mpu_6050_i2c_in_hook, mpu);
 
-	// "connect" the IRQs of the eeprom to the TWI/i2c master of the AVR
+#ifdef USE_SC18IS600
+	// connect to the TWI/i2c master of the SC18IS600
+    avr_irq_t * sc18_irq = sc18is600_i2c_irq_get();
+    avr_connect_irq(sc18_irq + SC18_I2C_IRQ_OUT, mpu->irq + MPU_I2C_IRQ_IN);
+    avr_connect_irq(mpu->irq + MPU_I2C_IRQ_OUT, sc18_irq + SC18_I2C_IRQ_IN);
+#else
+	// "connect" the IRQs of the MPU to the TWI/i2c master of the AVR
 	uint32_t i2c_irq_base = AVR_IOCTL_TWI_GETIRQ(0);
-	avr_connect_irq(mpu->irq + TWI_IRQ_INPUT, avr_io_getirq(avr, i2c_irq_base, TWI_IRQ_INPUT));
-	avr_connect_irq(avr_io_getirq(avr, i2c_irq_base, TWI_IRQ_OUTPUT), mpu->irq + TWI_IRQ_OUTPUT);
+	avr_connect_irq(mpu->irq + MPU_I2C_IRQ_OUT, avr_io_getirq(avr, i2c_irq_base, TWI_IRQ_INPUT));
+	avr_connect_irq(avr_io_getirq(avr, i2c_irq_base, TWI_IRQ_OUTPUT), mpu->irq + MPU_I2C_IRQ_IN);
+#endif
 }
 
 
@@ -299,6 +324,7 @@ void simu_component_init(struct avr_t * avr)
 {
 	mpu_6050_init(avr, 0x34);
 
+    // reset simulation values
 	simu.acc_x = 0.;
 	simu.acc_y = 0.;
 	simu.acc_z = 0.;
