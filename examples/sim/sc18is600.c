@@ -144,7 +144,7 @@ typedef struct {
         } rd_n;             // read n context
     };
 
-	uint8_t reg_offset;
+	uint8_t reg_offset;         // internal register offset
 } sc18is600_t;
 
 
@@ -164,48 +164,60 @@ static void sc18_wr_n(sc18is600_t * sc18, sc18_hook_t hook)
 {
     uint32_t msg;
 
-    //printf("\nsc18_wr_n: step %02d ", sc18->step);
     if ( hook == SC18_FROM_CS_HOOK ) {
-        //printf("from cs ");
     }
     else {
-        //printf("from i2c ");
+        // nothing is done when I2C is ACKing
         return;
     }
 
-	// step #0 is the command
+	// step #0 is setting the command
 	if ( sc18->step == 0 ) {
+        // prepare algo conditions
         sc18->wr_n.index = 3;
         sc18->wr_n.len = sc18->tx_buf[1];
         sc18->wr_n.i2c_addr = sc18->tx_buf[2];
 
+        // send the I2C start
         msg = avr_twi_irq_msg(TWI_COND_START, sc18->wr_n.i2c_addr, 0);
         avr_raise_irq(sc18->i2c_irq + SC18_I2C_IRQ_OUT, msg);
         sc18->step++;
         return;
     }
 
-    // next steps up to limit are for writing the buffer
+    // send each byte from tx buffer
     if ( sc18->wr_n.len )  {
+        // send the data
         msg = avr_twi_irq_msg(TWI_COND_WRITE, sc18->wr_n.i2c_addr, sc18->tx_buf[sc18->wr_n.index]);
         avr_raise_irq(sc18->i2c_irq + SC18_I2C_IRQ_OUT, msg);
+
+        // update conditions
         sc18->step++;
         sc18->wr_n.index++;
         sc18->wr_n.len--;
         return;
     }
 
+    // when the data are fully sent
     if ( sc18->wr_n.len == 0 )  {
+        // send the I2C stop
         msg = avr_twi_irq_msg(TWI_COND_STOP, sc18->wr_n.i2c_addr, 0);
         avr_raise_irq(sc18->i2c_irq + SC18_I2C_IRQ_OUT, msg);
+
+        // and stop the algo
         sc18->fini = 1;
         return;
     }
 
+    // some boundary checks
     if ( sc18->wr_n.index > SC18_TX_BUF_SIZE ) {
         printf("buffer overflow %02d\n", sc18->wr_n.index);
+
+        // force I2C stop
         msg = avr_twi_irq_msg(TWI_COND_STOP, sc18->wr_n.i2c_addr, 0);
         avr_raise_irq(sc18->i2c_irq + SC18_I2C_IRQ_OUT, msg);
+
+        // and algo stop
         sc18->fini = 1;
         return;
     }
@@ -217,52 +229,64 @@ static void sc18_rd_n(sc18is600_t * sc18, sc18_hook_t hook, uint32_t value)
 {
     uint32_t msg;
 
-	//printf("sc18_rd_n: step %02d ", sc18->step);
-
     if ( hook == SC18_FROM_CS_HOOK ) {
-        //printf("from cs ");
     }
     else {
-        //printf("from i2c ");
+        // when I2C slave is responding
         avr_twi_msg_irq_t v = { .u.v = value };
 
+        // only store the received data
         sc18->rx_buf[sc18->rd_n.index] = v.u.twi.data;
         return;
     }
 
-	// step #0 is the command
+	// step #0 is setting the command
 	if ( sc18->step == 0 ) {
+        // prepare algo conditions
         sc18->rd_n.index = 0;
         sc18->rd_n.len = sc18->tx_buf[1];
         sc18->rd_n.i2c_addr = sc18->tx_buf[2];
 
+        // send the I2C start
         msg = avr_twi_irq_msg(TWI_COND_START, sc18->rd_n.i2c_addr, 0);
         avr_raise_irq(sc18->i2c_irq + SC18_I2C_IRQ_OUT, msg);
         sc18->step++;
         return;
     }
 
-    // next steps up to limit are for reading the buffer
+    // receive each byte to rx buffer
     if ( sc18->rd_n.len )  {
+        // request data from I2C component
         msg = avr_twi_irq_msg(TWI_COND_READ | TWI_COND_ACK, sc18->rd_n.i2c_addr, 0);
         avr_raise_irq(sc18->i2c_irq + SC18_I2C_IRQ_OUT, msg);
+
+        // update conditions
         sc18->step++;
         sc18->rd_n.index++;
         sc18->rd_n.len--;
         return;
     }
 
+    // when the data are fully received
     if ( sc18->wr_n.len == 0 )  {
+        // send the I2C stop
         msg = avr_twi_irq_msg(TWI_COND_STOP, sc18->wr_n.i2c_addr, 0);
         avr_raise_irq(sc18->i2c_irq + SC18_I2C_IRQ_OUT, msg);
+
+        // and stop algo
         sc18->fini = 1;
         return;
     }
 
+    // some boundary checks
     if ( sc18->wr_n.index > SC18_TX_BUF_SIZE ) {
         printf("buffer overflow %02d\n", sc18->wr_n.index);
+
+        // force the I2C stop
         msg = avr_twi_irq_msg(TWI_COND_STOP, sc18->wr_n.i2c_addr, 0);
         avr_raise_irq(sc18->i2c_irq + SC18_I2C_IRQ_OUT, msg);
+
+        // and stop algo
         sc18->fini = 1;
         return;
     }
@@ -324,7 +348,7 @@ static void sc18_wr_wr(sc18is600_t * sc18, sc18_hook_t hook)
         return;
     }
 
-    // next steps up to limit are for writing the buffer
+    // next steps up to limit are for sending the buffer
     if ( sc18->step > SC18_TX_BUF_SIZE ) {
         printf("sc18is600: write after write: too many data %d\n", sc18->step);
     }
@@ -564,7 +588,7 @@ static void sc18_spi_cs_hook(struct avr_irq_t * irq, uint32_t value, void * para
 	sc18is600_t * sc18 = (sc18is600_t*)param;
 
 	sc18->cs = value & SC18_CS_PB0;
-	printf("sc18is600: cs = %d ", sc18->cs);
+	printf("sc18is600: cs = %d\n", sc18->cs);
 
 	// reset step as component selection changes
     sc18->step = 0;
@@ -573,7 +597,6 @@ static void sc18_spi_cs_hook(struct avr_irq_t * irq, uint32_t value, void * para
     if ( sc18->cs == 0 ) {
         // reset command as component gets selected
         sc18->cmd = SC18_NOP;
-        printf("\n");
         return;
     }
 
@@ -604,16 +627,13 @@ static void sc18_spi_cs_hook(struct avr_irq_t * irq, uint32_t value, void * para
         case SC18_PWR:
         case SC18_NOP:
             sc18->fini = 1;
-            printf("\n");
             break;
 
         default:
             sc18->fini = 1;
-            printf("unknown command 0x%02x ", sc18->cmd);
-            printf("\n");
+            printf("unknown command 0x%02x\n", sc18->cmd);
             break;
         }
-
     }
 }
 
@@ -622,27 +642,6 @@ static void sc18_spi_cs_hook(struct avr_irq_t * irq, uint32_t value, void * para
 static void sc18_i2c_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	sc18is600_t * sc18 = (sc18is600_t*)param;
-
-#if 0
-    avr_twi_msg_irq_t v = { .u.v = value };
-
-    printf("sc18_i2c_hook: i2c addr = 0x%02x data = 0x%02x msg = ", v.u.twi.addr, v.u.twi.data);
-    if ( v.u.twi.msg & TWI_COND_START ) {
-        printf("START ");
-    }
-    if ( v.u.twi.msg & TWI_COND_STOP ) {
-        printf("STOP ");
-    }
-    if ( v.u.twi.msg & TWI_COND_READ ) {
-        printf("READ ");
-    }
-    if ( v.u.twi.msg & TWI_COND_WRITE ) {
-        printf("WRITE ");
-    }
-    if ( v.u.twi.msg & TWI_COND_ACK ) {
-        printf("ACK ");
-    }
-#endif
 
     // continue the requested I2C transaction
     switch (sc18->cmd) {
@@ -693,20 +692,21 @@ void sc18is600_init(struct avr_t * avr)
 {
     printf("sc18is600 registered\n");
 
+    // allocate and reset the object
     sc18 = malloc(sizeof(sc18is600_t));
-
 	memset(sc18, 0, sizeof(sc18is600_t));
+
 	sc18->avr = avr;
 
     // init of the SPI side
     sc18->spi_irq = avr_alloc_irq(&avr->irq_pool, SC18_SPI_IRQ_IN, SC18_SPI_IRQ_COUNT, spi_irq_names);
 
-    // bus
+    // connect to the bus
     avr_connect_irq(sc18->spi_irq + SC18_SPI_IRQ_OUT, avr_io_getirq(avr, AVR_IOCTL_SPI_GETIRQ(0), SPI_IRQ_INPUT));
     avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_SPI_GETIRQ(0), SPI_IRQ_OUTPUT), sc18->spi_irq + SC18_SPI_IRQ_IN);
 	avr_irq_register_notify(sc18->spi_irq + SC18_SPI_IRQ_IN, sc18_spi_hook, sc18);
 
-    // CS
+    // connect the CS
     avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ(SC18_CS_PORT), SC18_CS_PIN), sc18->spi_irq + SC18_SPI_CS_IRQ);
 	avr_irq_register_notify(sc18->spi_irq + SC18_SPI_CS_IRQ, sc18_spi_cs_hook, sc18);
 
