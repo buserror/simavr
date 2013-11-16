@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
 	// load component simulations
 	for (int comp = 0; comp < simu_component.nb; comp++) {
 		// load the simulation
-		simu_component.fd[comp] = dlopen(simu_component.name[comp], RTLD_NOW);
+		simu_component.fd[comp] = dlopen(simu_component.name[comp], RTLD_LAZY|RTLD_GLOBAL);
 		if (simu_component.fd[comp] == NULL) {
 			fprintf(stderr, "component simulation <%s> will not be used: %s\n", simu_component.name[comp], dlerror());
             continue;
