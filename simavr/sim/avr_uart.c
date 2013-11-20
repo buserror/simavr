@@ -192,8 +192,11 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 		//uint8_t udre = avr_regbit_get(avr, p->udrc.raised);
 		uint8_t txc = avr_regbit_get(avr, p->txc.raised);
 
-                // required for u2x (double uart transmission speed)
-		avr_core_watch_write(avr, addr, v);
+                // setting u2x (double uart transmission speed) may also involve
+                // overwriting read only flags, therefore set u2x explicitly.
+                if(addr == p->u2x.reg) {
+                	avr_regbit_setto_raw(avr, p->u2x, v);
+                }
 
 		//avr_clear_interrupt_if(avr, &p->udrc, udre);
 		avr_clear_interrupt_if(avr, &p->txc, txc);
