@@ -46,6 +46,9 @@ struct mcu_t {
 	avr_flash_t 	selfprog;
 	avr_watchdog_t	watchdog;
 	avr_extint_t	extint;
+#ifdef PORTA
+	avr_ioport_t	porta;
+#endif
 	avr_ioport_t	portb, portc, portd;
 	avr_uart_t		uart;
 	avr_adc_t		adc;
@@ -85,6 +88,11 @@ const struct mcu_t SIM_CORENAME = {
 		AVR_EXTINT_DECLARE(0, 'D', PD2),
 		AVR_EXTINT_DECLARE(1, 'D', PD3),
 	},
+#ifdef PORTA
+	.porta = {
+		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
+	},
+#endif
 	.portb = {
 		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
 	},
