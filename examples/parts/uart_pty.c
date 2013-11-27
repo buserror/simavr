@@ -44,6 +44,9 @@ DEFINE_FIFO(uint8_t,uart_pty_fifo);
 #define TRACE(_w)
 #endif
 
+#define LOCK_MUTEX { TRACE(printf("%s lock:  %p\n", __FUNCTION__ , (void*)pthread_self())); pthread_mutex_lock(&p->lock); }
+#define UNLOCK_MUTEX { pthread_mutex_unlock(&p->lock); TRACE(printf("%s unlock: %p\n", __FUNCTION__ , (void*)pthread_self())); }
+
 /*
  * called when a byte is send via the uart on the AVR
  */
@@ -54,6 +57,7 @@ uart_pty_in_hook(
 		void * param)
 {
 	uart_pty_t * p = (uart_pty_t*)param;
+	LOCK_MUTEX;
 	TRACE(printf("uart_pty_in_hook %02x\n", value);)
 	uart_pty_fifo_write(&p->pty.in, value);
 
@@ -62,6 +66,7 @@ uart_pty_in_hook(
 			uart_pty_fifo_write(&p->tap.in, '\r');
 		uart_pty_fifo_write(&p->tap.in, value);
 	}
+	UNLOCK_MUTEX;
 }
 
 // try to empty our fifo, the uart_pty_xoff_hook() will be called when
@@ -70,6 +75,7 @@ static void
 uart_pty_flush_incoming(
 		uart_pty_t * p)
 {
+	LOCK_MUTEX;
 	while (p->xon && !uart_pty_fifo_isempty(&p->pty.out)) {
 		uint8_t byte = uart_pty_fifo_read(&p->pty.out);
 		TRACE(printf("uart_pty_flush_incoming send %02x\n", byte);)
@@ -93,6 +99,7 @@ uart_pty_flush_incoming(
 			avr_raise_irq(p->irq + IRQ_UART_PTY_BYTE_OUT, byte);
 		}
 	}
+	UNLOCK_MUTEX;
 }
 
 /*
@@ -140,12 +147,16 @@ uart_pty_thread(
 		for (int ti = 0; ti < 2; ti++) if (p->port[ti].s) {
 			// read more only if buffer was flushed
 			if (p->port[ti].buffer_len == p->port[ti].buffer_done) {
+				LOCK_MUTEX;
 				FD_SET(p->port[ti].s, &read_set);
 				max = p->port[ti].s > max ? p->port[ti].s : max;
+				UNLOCK_MUTEX;
 			}
 			if (!uart_pty_fifo_isempty(&p->port[ti].in)) {
+				LOCK_MUTEX;
 				FD_SET(p->port[ti].s, &write_set);
 				max = p->port[ti].s > max ? p->port[ti].s : max;
+				UNLOCK_MUTEX;
 			}
 		}
 
@@ -159,19 +170,24 @@ uart_pty_thread(
 
 		for (int ti = 0; ti < 2; ti++) if (p->port[ti].s) {
 			if (FD_ISSET(p->port[ti].s, &read_set)) {
+				LOCK_MUTEX;
 				ssize_t r = read(p->port[ti].s, p->port[ti].buffer, sizeof(p->port[ti].buffer)-1);
 				p->port[ti].buffer_len = r;
 				p->port[ti].buffer_done = 0;
 				TRACE(hdump("pty recv", p->port[ti].buffer, r);)
+				UNLOCK_MUTEX;
 			}
 			if (p->port[ti].buffer_done < p->port[ti].buffer_len) {
 				// write them in fifo
+				LOCK_MUTEX;
 				while (p->port[ti].buffer_done < p->port[ti].buffer_len &&
 						!uart_pty_fifo_isfull(&p->port[ti].out))
 					uart_pty_fifo_write(&p->port[ti].out,
 							p->port[ti].buffer[p->port[ti].buffer_done++]);
+				UNLOCK_MUTEX;
 			}
 			if (FD_ISSET(p->port[ti].s, &write_set)) {
+				LOCK_MUTEX;
 				uint8_t buffer[512];
 				// write them in fifo
 				uint8_t * dst = buffer;
@@ -181,6 +197,7 @@ uart_pty_thread(
 				size_t len = dst - buffer;
 				TRACE(size_t r =) write(p->port[ti].s, buffer, len);
 				TRACE(hdump("pty send", buffer, r);)
+				UNLOCK_MUTEX;
 			}
 		}
 		uart_pty_flush_incoming(p);
@@ -225,6 +242,7 @@ uart_pty_init(
 				ti == 0 ? "bridge" : "tap", p->port[ti].slavename);
 	}
 
+	pthread_mutex_init(&p->lock, NULL);
 	pthread_create(&p->thread, NULL, uart_pty_thread, p);
 
 }
