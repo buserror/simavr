@@ -72,8 +72,7 @@ enum {
 	LOG_TRACE,
 };
 
-typedef void (*avr_logger_p)(struct avr_t* avr, const int level, const char * format, ... );
-extern avr_logger_p avr_global_logger;
+
 #ifndef AVR_LOG
 #define AVR_LOG(avr, level, ...) \
 	do { \
@@ -373,6 +372,31 @@ avr_sadly_crashed(
 		avr_t *avr,
 		uint8_t signal);
 
+/*
+ * Logs a message using the current logger
+ */
+void
+avr_global_logger(
+		struct avr_t* avr, 
+		const int level, 
+		const char * format, 
+		... );
+
+#ifndef AVR_CORE
+#include <stdarg.h>
+/*
+ * Type for custom logging functions
+ */
+typedef void (*avr_logger_p)(struct avr_t* avr, const int level, const char * format, va_list ap);
+
+/* Sets a global logging function in place of the default */
+void
+avr_global_logger_set(
+		avr_logger_p logger);
+/* Gets the current global logger function */
+avr_logger_p
+avr_global_logger_get();
+#endif
 
 /*
  * These are callbacks for the two 'main' behaviour in simavr

@@ -35,8 +35,36 @@
 #define AVR_KIND_DECL
 #include "sim_core_decl.h"
 
-static void std_logger(avr_t * avr, const int level, const char * format, ...);
-avr_logger_p avr_global_logger = std_logger;
+static void std_logger(avr_t * avr, const int level, const char * format, va_list ap);
+static avr_logger_p _avr_global_logger = std_logger;
+
+void
+avr_global_logger(
+		struct avr_t* avr, 
+		const int level, 
+		const char * format, 
+		... )
+{
+	va_list args;
+	va_start(args, format);
+	if (_avr_global_logger)
+		_avr_global_logger(avr, level, format, args);
+	va_end(args);	
+}
+
+void
+avr_global_logger_set(
+		avr_logger_p logger)
+{
+	_avr_global_logger = logger ? logger : std_logger;
+}
+
+avr_logger_p
+avr_global_logger_get()
+{
+	return _avr_global_logger;
+}
+
 
 int avr_init(avr_t * avr)
 {
@@ -353,13 +381,10 @@ avr_make_mcu_by_name(
 	return avr;
 }
 
-static void std_logger(avr_t* avr, const int level, const char * format, ...)
+static void std_logger(avr_t* avr, const int level, const char * format, va_list ap)
 {
 	if (!avr || avr->log >= level) {
-		va_list args;
-		va_start(args, format);
-		vfprintf((level > LOG_ERROR) ?  stdout : stderr , format, args);
-		va_end(args);
+		vfprintf((level > LOG_ERROR) ?  stdout : stderr , format, ap);
 	}
 }
 
