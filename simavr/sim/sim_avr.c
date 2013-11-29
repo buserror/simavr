@@ -81,6 +81,7 @@ int avr_init(avr_t * avr)
 	// cpu is in limbo before init is finished.
 	avr->state = cpu_Limbo;
 	avr->frequency = 1000000;	// can be overridden via avr_mcu_section
+	avr_interrupt_init(avr);
 	if (avr->special_init)
 		avr->special_init(avr);
 	if (avr->init)
@@ -122,10 +123,10 @@ void avr_reset(avr_t * avr)
 	avr->pc = 0;
 	for (int i = 0; i < 8; i++)
 		avr->sreg[i] = 0;
-	if (avr->reset)
-		avr->reset(avr);
 	avr_interrupt_reset(avr);
 	avr_cycle_timer_reset(avr);
+	if (avr->reset)
+		avr->reset(avr);
 	avr_io_t * port = avr->io_port;
 	while (port) {
 		if (port->reset)
