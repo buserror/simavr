@@ -724,6 +724,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 			if (res)
 				avr->sreg[S_Z] = 0;
 			avr->sreg[S_N] = (res >> 7) & 1;
+			avr->sreg[S_H] = ((k + avr->sreg[S_C) & 0x7) > (vr & 0x7);
 			avr->sreg[S_C] = (k + avr->sreg[S_C]) > vr;
 			avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 			SREG();
@@ -737,6 +738,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 			_avr_set_r(avr, r, res);
 			avr->sreg[S_Z] = res  == 0;
 			avr->sreg[S_N] = (res >> 7) & 1;
+			avr->sreg[S_H] = (k & 0x7) > (vr & 0x7);
 			avr->sreg[S_C] = k > vr;
 			avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 			SREG();
