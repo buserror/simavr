@@ -219,7 +219,10 @@ void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, avr_flashaddr_t ad
  * a minimum count of requested sleep microseconds are reached
  * (low amounts cannot be handled accurately).
  */
-static inline uint32_t avr_pending_sleep_usec(avr_t * avr, avr_cycle_count_t howLong)
+uint32_t 
+avr_pending_sleep_usec(
+		avr_t * avr, 
+		avr_cycle_count_t howLong)
 {
 	avr->sleep_usec += avr_cycles_to_usec(avr, howLong);
 	uint32_t usec = avr->sleep_usec;

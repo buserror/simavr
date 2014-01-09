@@ -406,6 +406,17 @@ void avr_callback_run_gdb(avr_t * avr);
 void avr_callback_sleep_raw(avr_t * avr, avr_cycle_count_t howLong);
 void avr_callback_run_raw(avr_t * avr);
 
+/**
+ * Accumulates sleep requests (and returns a sleep time of 0) until
+ * a minimum count of requested sleep microseconds are reached
+ * (low amounts cannot be handled accurately).
+ * This function is an utility function for the sleep callbacks
+ */
+uint32_t 
+avr_pending_sleep_usec(
+		avr_t * avr, 
+		avr_cycle_count_t howLong);
+
 #ifdef __cplusplus
 };
 #endif
