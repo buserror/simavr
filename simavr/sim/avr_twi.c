@@ -86,7 +86,7 @@ _avr_twi_status_set(
 		avr_raise_interrupt(p->io.avr, &p->twi);
 }
 
-static inline uint8_t
+static __attribute__ ((unused)) inline uint8_t
 _avr_twi_status_get(
 		avr_twi_t * p)
 {
@@ -139,7 +139,7 @@ avr_twi_write(
 
 	avr_core_watch_write(avr, addr, v);
 #if AVR_TWI_DEBUG
-	AVR_TRACE(avr, "%s %02x START:%d STOP:%d ACK:%d INT:%d TWSR:%02x (state %02x)\n", 
+	AVR_TRACE(avr, "%s %02x START:%d STOP:%d ACK:%d INT:%d TWSR:%02x (state %02x)\n",
 			__func__, v,
 			avr_regbit_get(avr, p->twsta),
 			avr_regbit_get(avr, p->twsto),
@@ -202,13 +202,13 @@ avr_twi_write(
 	int data = cleared &&
 			!avr_regbit_get(avr, p->twsta) &&
 			!avr_regbit_get(avr, p->twsto);
-	
+
 	if (!data)
 		return;
 
 	int do_read = p->peer_addr & 1;
 	int do_ack = avr_regbit_get(avr, p->twea) != 0;
-	
+
 	if (p->state & TWI_COND_SLAVE) {
 		// writing or reading a byte
 		if (p->state & TWI_COND_ADDR) {
@@ -237,13 +237,13 @@ avr_twi_write(
 			p->state |= TWI_COND_ADDR;
 			avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
 					avr_twi_irq_msg(
-						TWI_COND_ADDR | 
+						TWI_COND_ADDR |
 							(do_ack ? TWI_COND_ACK : 0) |
-							(p->state & TWI_COND_WRITE ? TWI_COND_READ : 0), 
+							(p->state & TWI_COND_WRITE ? TWI_COND_READ : 0),
 						p->peer_addr, avr->data[p->r_twdr]));
 		}
 	} else {
-	
+
 		// writing or reading a byte
 		if (p->state & TWI_COND_ADDR) {
 #if AVR_TWI_DEBUG
@@ -402,7 +402,7 @@ avr_twi_irq_input(
 				// INVERSE logic here
 				if (!(msg.u.twi.msg & TWI_COND_WRITE))
 					p->peer_addr |= 1;
-				_avr_twi_delay_state(p, 9, 
+				_avr_twi_delay_state(p, 9,
 					msg.u.twi.msg & TWI_COND_WRITE ?
 						TWI_SRX_ADR_ACK : TWI_STX_ADR_ACK );
 			}
@@ -415,7 +415,7 @@ avr_twi_irq_input(
 		}
 	}
 	if (msg.u.twi.msg & TWI_COND_STOP) {
-		_avr_twi_delay_state(p, 9, 
+		_avr_twi_delay_state(p, 9,
 			msg.u.twi.msg & TWI_COND_WRITE ?
 				TWI_SRX_ADR_ACK : TWI_STX_ADR_ACK );
 	}
