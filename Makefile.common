@@ -55,7 +55,7 @@ IPATH		+= /opt/local/include
 LFLAGS		= -L/opt/local/lib/
 endif
 else
-LINUX_AVR_ROOTS := /usr/lib/avr /usr/avr /opt/cross/avr/avr
+LINUX_AVR_ROOTS := /usr/lib/avr /usr/avr /opt/cross/avr/avr /usr/local/avr
 AVR_ROOT := $(firstword $(wildcard $(LINUX_AVR_ROOTS)))
 ifeq (${AVR_ROOT},)
 $(error No avr-libc root directory found. Tried the following paths: $(LINUX_AVR_ROOTS))
