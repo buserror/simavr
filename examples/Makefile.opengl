@@ -11,8 +11,10 @@ else
 ifeq (${shell uname -o}, Msys)
 LDFLAGS 	+= -mwindows -lopengl32 -lfreeglut
 else
+CPPFLAGS	+= ${shell pkg-config --cflags gl}
 CPPFLAGS	+= ${shell pkg-config --cflags glu glut} -DFREEBSD=1
-LDFLAGS 	+= ${shell pkg-config --libs glu glut}
+LDFLAGS 	+= ${shell pkg-config --libs gl}
+LDFLAGS 	+= ${shell pkg-config --libs glu glut} -lglut
 endif
 endif
 endif
