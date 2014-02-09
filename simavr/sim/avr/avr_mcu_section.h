@@ -172,7 +172,7 @@ struct avr_mmcu_vcd_trace_t {
  * without using a UART to do debug.
  */
 #define AVR_MCU_SIMAVR_CONSOLE(_register) \
-	const struct avr_mmcu_addr_t _simavr_command_register _MMCU_ = {\
+	const struct avr_mmcu_addr_t _simavr_console_register _MMCU_ = {\
 		.tag = AVR_MMCU_TAG_SIMAVR_CONSOLE,\
 		.len = sizeof(void *),\
 		.what = (void*)_register, \
