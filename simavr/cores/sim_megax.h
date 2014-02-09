@@ -46,15 +46,16 @@ struct mcu_t {
 	avr_flash_t 	selfprog;
 	avr_watchdog_t	watchdog;
 	avr_extint_t	extint;
-#ifdef PORTA
-	avr_ioport_t	porta;
-#endif
 	avr_ioport_t	portb, portc, portd;
 	avr_uart_t		uart;
 	avr_adc_t		adc;
 	avr_timer_t		timer0,timer1,timer2;
 	avr_spi_t		spi;
 	avr_twi_t		twi;
+	// PORTA exists on m16 and 32, but not on 8. 
+	// It is still necessary to declare this as otherwise
+	// the core_megax shared constructor will be confused
+	avr_ioport_t	porta;
 };
 
 #ifdef SIM_CORENAME
@@ -102,7 +103,6 @@ const struct mcu_t SIM_CORENAME = {
 	.portd = {
 		.name = 'D', .r_port = PORTD, .r_ddr = DDRD, .r_pin = PIND,
 	},
-
 	.uart = {
 	   // no PRUSART .disabled = AVR_IO_REGBIT(PRR,PRUSART0),
 		.name = '0',
