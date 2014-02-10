@@ -27,6 +27,7 @@
 #include "sim_avr.h"
 #include "sim_elf.h"
 #include "sim_core.h"
+#include "sim_fast_core.h"
 #include "sim_gdb.h"
 #include "sim_hex.h"
 
@@ -40,6 +41,7 @@ void display_usage(char * app)
 		   "       -ff: Load next .hex file as flash\n"
 		   "       -ee: Load next .hex file as eeprom\n"
 		   "       -v: Raise verbosity level (can be passed more than once)\n"
+		   "-fast-core: Run using fast core\n"
 		   "   Supported AVR cores:\n");
 	for (int i = 0; avr_kind[i]; i++) {
 		printf("       ");
@@ -73,7 +75,8 @@ int main(int argc, char *argv[])
 	uint32_t loadBase = AVR_SEGMENT_OFFSET_FLASH;
 	int trace_vectors[8] = {0};
 	int trace_vectors_count = 0;
-
+	int fast_core = 0;
+	
 	if (argc == 1)
 		display_usage(basename(argv[0]));
 
@@ -103,6 +106,8 @@ int main(int argc, char *argv[])
 			loadBase = AVR_SEGMENT_OFFSET_EEPROM;
 		} else if (!strcmp(argv[pi], "-ff")) {
 			loadBase = AVR_SEGMENT_OFFSET_FLASH;			
+		} else if (!strcmp(argv[pi], "-fast-core")) {
+			fast_core++;
 		} else if (argv[pi][0] != '-') {
 			char * filename = argv[pi];
 			char * suffix = strrchr(filename, '.');
@@ -154,6 +159,10 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	avr_init(avr);
+	if(fast_core) {
+		avr_fast_core_init(avr);
+		avr->run = avr_fast_core_run_many;
+	}
 	avr_load_firmware(avr, &f);
 	if (f.flashbase) {
 		printf("Attempted to load a bootloader at %04x\n", f.flashbase);
