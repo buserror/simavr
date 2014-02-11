@@ -211,7 +211,7 @@ const struct mcu_t SIM_CORENAME = {
 		.r_tcnth = TCNT1H,
 
 		.ices = AVR_IO_REGBIT(TCCR1B, ICES1),
-		.icp = AVR_IO_REGBIT(PORTD, 4),
+		.icp = AVR_IO_REGBIT(ICP_PORT, ICP_PIN),
 
 		.overflow = {
 			.enable = AVR_IO_REGBIT(TIMSK, TOIE1),

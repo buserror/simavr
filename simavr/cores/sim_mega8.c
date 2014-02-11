@@ -25,6 +25,9 @@
 #define SIM_MMCU		"atmega8"
 #define SIM_CORENAME	mcu_mega8
 
+#define ICP_PORT	PORTB
+#define ICP_PIN		0
+
 #define _AVR_IO_H_
 #define __ASSEMBLER__
 #include "avr/iom8.h"

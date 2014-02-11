@@ -27,6 +27,9 @@
 #define SIM_MMCU		"atmega16"
 #define SIM_CORENAME	mcu_mega16
 
+#define ICP_PORT	PORTD
+#define ICP_PIN		6
+	
 #define _AVR_IO_H_
 #define __ASSEMBLER__
 #include "avr/iom16.h"
