@@ -172,8 +172,11 @@ const struct mcu_t SIM_CORENAME = {
 	},
 	.timer0 = {
 		.name = '0',
+		.wgm_op = {
+			[0] = AVR_TIMER_WGM_NORMAL8(),
+			// CTC etc. are missing because atmega8 does not support them on timer0
+		},
 		.cs = { AVR_IO_REGBIT(TCCR0, CS00), AVR_IO_REGBIT(TCCR0, CS01), AVR_IO_REGBIT(TCCR0, CS02) },
-		//		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */},
 
 		.r_tcnt = TCNT0,
@@ -183,6 +186,7 @@ const struct mcu_t SIM_CORENAME = {
 			.raised = AVR_IO_REGBIT(TIFR, TOV0),
 			.vector = TIMER0_OVF_vect,
 		},
+		// Compare Output Mode is missing for timer0 as atmega8 does not support it
 	},
 	.timer1 = {
 		.name = '1',
