@@ -57,7 +57,7 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 	memset(avr->trace_data->codeline, 0, scount * sizeof(avr_symbol_t*));
 
 	for (int i = 0; i < firmware->symbolcount; i++)
-		if (!(firmware->symbol[i]->addr >> 20))	// code address
+		if (firmware->symbol[i]->addr < firmware->flashsize)	// code address
 			avr->trace_data->codeline[firmware->symbol[i]->addr >> 1] =
 				firmware->symbol[i];
 	// "spread" the pointers for known symbols forward
