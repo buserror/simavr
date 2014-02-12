@@ -1,5 +1,5 @@
 /*
-	sim_mega88.c
+	sim_mega16.c
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
@@ -19,18 +19,20 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// atmega32 has different name for Watchdog Turn-off Enable register 
+#define WDCE WDTOE
 #include "sim_avr.h"
 
-#define SIM_VECTOR_SIZE	2
-#define SIM_MMCU		"atmega8"
-#define SIM_CORENAME	mcu_mega8
+#define SIM_VECTOR_SIZE	4
+#define SIM_MMCU		"atmega16"
+#define SIM_CORENAME	mcu_mega16
 
-#define ICP_PORT	PORTB
-#define ICP_PIN		0
-
+#define ICP_PORT	PORTD
+#define ICP_PIN		6
+	
 #define _AVR_IO_H_
 #define __ASSEMBLER__
-#include "avr/iom8.h"
+#include "avr/iom16.h"
 // instantiate the new core
 #include "sim_megax.h"
 
@@ -39,8 +41,8 @@ static avr_t * make()
 	return avr_core_allocate(&SIM_CORENAME.core, sizeof(struct mcu_t));
 }
 
-avr_kind_t mega8 = {
-	.names = { "atmega8", "atmega8l" },
+avr_kind_t mega16 = {
+	.names = { "atmega16", },
 	.make = make
 };
 

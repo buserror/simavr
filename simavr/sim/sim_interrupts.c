@@ -33,11 +33,23 @@
 #define INT_FIFO_MOD(_v) ((_v) &  (INT_FIFO_SIZE - 1))
 
 void
-avr_interrupt_reset(
+avr_interrupt_init(
 		avr_t * avr )
 {
 	avr_int_table_p table = &avr->interrupts;
 	memset(table, 0, sizeof(*table));
+}
+
+void
+avr_interrupt_reset(
+		avr_t * avr )
+{
+	printf("%s\n", __func__);
+	avr_int_table_p table = &avr->interrupts;
+	table->pending_r = table->pending_w = 0;
+	table->pending_wait = 0;
+	for (int i = 0; i < table->vector_count; i++)
+		table->vector[i]->pending = 0;
 }
 
 void

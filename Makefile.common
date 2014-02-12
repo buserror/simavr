@@ -41,7 +41,7 @@ ARCH 		= ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
 
 CFLAGS		+= -O2 -Wall
 CFLAGS		+= -g
-CORE_CFLAGS	= -nostdinc
+CORE_CFLAGS	= -nostdinc -DAVR_CORE=1
 
 ifeq (${shell uname}, Darwin)
 # gcc 4.2 from MacOS is really not up to scratch anymore 
@@ -55,7 +55,11 @@ IPATH		+= /opt/local/include
 LFLAGS		= -L/opt/local/lib/
 endif
 else
-AVR_ROOT 	:= /usr/lib/avr
+LINUX_AVR_ROOTS := /usr/lib/avr /usr/avr /opt/cross/avr/avr
+AVR_ROOT := $(firstword $(wildcard $(LINUX_AVR_ROOTS)))
+ifeq (${AVR_ROOT},)
+$(error No avr-libc root directory found. Tried the following paths: $(LINUX_AVR_ROOTS))
+endif
 AVR_INC 	:= ${AVR_ROOT}
 AVR 		:= avr-
 

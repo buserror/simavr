@@ -72,8 +72,7 @@ enum {
 	LOG_TRACE,
 };
 
-typedef void (*avr_logger_p)(struct avr_t* avr, const int level, const char * format, ... );
-extern avr_logger_p avr_global_logger;
+
 #ifndef AVR_LOG
 #define AVR_LOG(avr, level, ...) \
 	do { \
@@ -293,7 +292,7 @@ typedef struct avr_t {
 // this is a static constructor for each of the AVR devices
 typedef struct avr_kind_t {
 	const char * names[4];	// name aliases
-	avr_t * (*make)();
+	avr_t * (*make)(void);
 } avr_kind_t;
 
 // a symbol loaded from the .elf file
@@ -373,6 +372,31 @@ avr_sadly_crashed(
 		avr_t *avr,
 		uint8_t signal);
 
+/*
+ * Logs a message using the current logger
+ */
+void
+avr_global_logger(
+		struct avr_t* avr, 
+		const int level, 
+		const char * format, 
+		... );
+
+#ifndef AVR_CORE
+#include <stdarg.h>
+/*
+ * Type for custom logging functions
+ */
+typedef void (*avr_logger_p)(struct avr_t* avr, const int level, const char * format, va_list ap);
+
+/* Sets a global logging function in place of the default */
+void
+avr_global_logger_set(
+		avr_logger_p logger);
+/* Gets the current global logger function */
+avr_logger_p
+avr_global_logger_get();
+#endif
 
 /*
  * These are callbacks for the two 'main' behaviour in simavr
@@ -381,6 +405,17 @@ void avr_callback_sleep_gdb(avr_t * avr, avr_cycle_count_t howLong);
 void avr_callback_run_gdb(avr_t * avr);
 void avr_callback_sleep_raw(avr_t * avr, avr_cycle_count_t howLong);
 void avr_callback_run_raw(avr_t * avr);
+
+/**
+ * Accumulates sleep requests (and returns a sleep time of 0) until
+ * a minimum count of requested sleep microseconds are reached
+ * (low amounts cannot be handled accurately).
+ * This function is an utility function for the sleep callbacks
+ */
+uint32_t 
+avr_pending_sleep_usec(
+		avr_t * avr, 
+		avr_cycle_count_t howLong);
 
 #ifdef __cplusplus
 };

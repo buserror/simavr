@@ -51,7 +51,9 @@ static void avr_spi_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, voi
 	avr_spi_t * p = (avr_spi_t *)param;
 
 	if (addr == p->r_spdr) {
-	//	printf("avr_spi_write = %02x\n", v);
+		/* Clear the SPIF bit. See ATmega164/324/644 manual, Section 18.5.2. */
+		avr_regbit_clear(avr, p->spi.raised);
+
 		avr_core_watch_write(avr, addr, v);
 		avr_cycle_timer_register_usec(avr, 100, avr_spi_raise, p); // should be speed dependent
 	}

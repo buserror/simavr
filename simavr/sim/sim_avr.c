@@ -35,8 +35,36 @@
 #define AVR_KIND_DECL
 #include "sim_core_decl.h"
 
-static void std_logger(avr_t * avr, const int level, const char * format, ...);
-avr_logger_p avr_global_logger = std_logger;
+static void std_logger(avr_t * avr, const int level, const char * format, va_list ap);
+static avr_logger_p _avr_global_logger = std_logger;
+
+void
+avr_global_logger(
+		struct avr_t* avr, 
+		const int level, 
+		const char * format, 
+		... )
+{
+	va_list args;
+	va_start(args, format);
+	if (_avr_global_logger)
+		_avr_global_logger(avr, level, format, args);
+	va_end(args);	
+}
+
+void
+avr_global_logger_set(
+		avr_logger_p logger)
+{
+	_avr_global_logger = logger ? logger : std_logger;
+}
+
+avr_logger_p
+avr_global_logger_get()
+{
+	return _avr_global_logger;
+}
+
 
 int avr_init(avr_t * avr)
 {
@@ -53,6 +81,7 @@ int avr_init(avr_t * avr)
 	// cpu is in limbo before init is finished.
 	avr->state = cpu_Limbo;
 	avr->frequency = 1000000;	// can be overridden via avr_mcu_section
+	avr_interrupt_init(avr);
 	if (avr->special_init)
 		avr->special_init(avr);
 	if (avr->init)
@@ -94,10 +123,10 @@ void avr_reset(avr_t * avr)
 	avr->pc = 0;
 	for (int i = 0; i < 8; i++)
 		avr->sreg[i] = 0;
-	if (avr->reset)
-		avr->reset(avr);
 	avr_interrupt_reset(avr);
 	avr_cycle_timer_reset(avr);
+	if (avr->reset)
+		avr->reset(avr);
 	avr_io_t * port = avr->io_port;
 	while (port) {
 		if (port->reset)
@@ -177,7 +206,7 @@ void avr_set_console_register(avr_t * avr, avr_io_addr_t addr)
 
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, avr_flashaddr_t address)
 {
-	if (size > avr->flashend+1) {
+	if ((address + size) > avr->flashend+1) {
 		AVR_LOG(avr, LOG_ERROR, "avr_loadcode(): Attempted to load code of size %d but flash size is only %d.\n",
 			size, avr->flashend + 1);
 		abort();
@@ -190,7 +219,10 @@ void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, avr_flashaddr_t ad
  * a minimum count of requested sleep microseconds are reached
  * (low amounts cannot be handled accurately).
  */
-static inline uint32_t avr_pending_sleep_usec(avr_t * avr, avr_cycle_count_t howLong)
+uint32_t 
+avr_pending_sleep_usec(
+		avr_t * avr, 
+		avr_cycle_count_t howLong)
 {
 	avr->sleep_usec += avr_cycles_to_usec(avr, howLong);
 	uint32_t usec = avr->sleep_usec;
@@ -353,13 +385,10 @@ avr_make_mcu_by_name(
 	return avr;
 }
 
-static void std_logger(avr_t* avr, const int level, const char * format, ...)
+static void std_logger(avr_t* avr, const int level, const char * format, va_list ap)
 {
 	if (!avr || avr->log >= level) {
-		va_list args;
-		va_start(args, format);
-		vfprintf((level > LOG_ERROR) ?  stdout : stderr , format, args);
-		va_end(args);
+		vfprintf((level > LOG_ERROR) ?  stdout : stderr , format, ap);
 	}
 }
 

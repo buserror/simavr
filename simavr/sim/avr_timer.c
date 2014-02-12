@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include "avr_timer.h"
 #include "avr_ioport.h"
+#include "sim_time.h"
 
 /*
  * The timers are /always/ 16 bits here, if the higher byte register
@@ -193,8 +194,9 @@ static void avr_timer_configure(avr_timer_t * p, uint32_t clock, uint32_t top)
 
 	p->tov_cycles = frequency / t; // avr_hz_to_cycles(frequency, t);
 
-	AVR_LOG(p->io.avr, LOG_TRACE, "TIMER: %s-%c TOP %.2fHz = %d cycles\n",
-			__FUNCTION__, p->name, t, (int)p->tov_cycles);
+	AVR_LOG(p->io.avr, LOG_TRACE, "TIMER: %s-%c TOP %.2fHz = %d cycles = %dusec\n",
+			__FUNCTION__, p->name, t, (int)p->tov_cycles,
+			(int)avr_cycles_to_usec(p->io.avr, p->tov_cycles));
 
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
 		if (!p->comp[compi].r_ocr)
@@ -207,7 +209,8 @@ static void avr_timer_configure(avr_timer_t * p, uint32_t clock, uint32_t top)
 
 		if (ocr && ocr <= top) {
 			p->comp[compi].comp_cycles = frequency / fc; // avr_hz_to_cycles(p->io.avr, fa);
-			AVR_LOG(p->io.avr, LOG_TRACE, "TIMER: %s-%c %c %.2fHz = %d cycles\n", __FUNCTION__, p->name,
+			AVR_LOG(p->io.avr, LOG_TRACE, "TIMER: %s-%c %c %.2fHz = %d cycles\n", 
+					__FUNCTION__, p->name,
 					'A'+compi, fc, (int)p->comp[compi].comp_cycles);
 		}
 	}
