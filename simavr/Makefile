@@ -30,7 +30,9 @@ CFLAGS	+= -Werror
 # it otherwise eat quite a bit of few cycles, even disabled
 #CFLAGS	+= -DCONFIG_SIMAVR_TRACE=1
 
-all:	obj config libsimavr ${target}
+all:
+	$(MAKE) obj config
+	$(MAKE) libsimavr ${target}
 
 include ../Makefile.common
 
