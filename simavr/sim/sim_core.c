@@ -1178,7 +1178,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 									SREG();
 									cycle++;
 								}	break;
-								case 0x9700: {	// SBIW - Subtract Immediate from Word 1001 0110 KKdd KKKK
+								case 0x9700: {	// SBIW - Subtract Immediate from Word 1001 0111 KKdd KKKK
 									uint8_t r = 24 + ((opcode >> 3) & 0x6);
 									uint8_t k = ((opcode & 0x00c0) >> 2) | (opcode & 0xf);
 									uint8_t rdl = avr->data[r], rdh = avr->data[r+1];
