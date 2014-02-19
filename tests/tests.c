@@ -54,7 +54,7 @@ cycle_timer_longjmp_cb(struct avr_t *avr, avr_cycle_count_t when, void *param) {
 
 static jmp_buf *special_deinit_jmpbuf = NULL;
 
-static void special_deinit_longjmp_cb(struct avr_t *avr) {
+static void special_deinit_longjmp_cb(struct avr_t *avr, void *data) {
 	if (special_deinit_jmpbuf)
 		longjmp(*special_deinit_jmpbuf, LJR_SPECIAL_DEINIT);
 }
