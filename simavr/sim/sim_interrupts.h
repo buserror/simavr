@@ -99,6 +99,11 @@ avr_get_interrupt_irq(
 		struct avr_t * avr,
 		uint8_t v);
 
+// Initializes the interrupt table
+void
+avr_interrupt_init(
+		struct avr_t * avr );
+
 // reset the interrupt table and the fifo
 void
 avr_interrupt_reset(

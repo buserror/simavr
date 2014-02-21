@@ -1,5 +1,5 @@
 /*
-	sim_mega88.c
+	sim_mega1284.c
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
@@ -21,26 +21,22 @@
 
 #include "sim_avr.h"
 
-#define SIM_VECTOR_SIZE	2
-#define SIM_MMCU		"atmega8"
-#define SIM_CORENAME	mcu_mega8
-
-#define ICP_PORT	PORTB
-#define ICP_PIN		0
+#define SIM_MMCU		"atmega1284"
+#define SIM_CORENAME	mcu_mega1284
 
 #define _AVR_IO_H_
 #define __ASSEMBLER__
-#include "avr/iom8.h"
+#include "avr/iom1284p.h"
 // instantiate the new core
-#include "sim_megax.h"
+#include "sim_megax4.h"
 
 static avr_t * make()
 {
 	return avr_core_allocate(&SIM_CORENAME.core, sizeof(struct mcu_t));
 }
 
-avr_kind_t mega8 = {
-	.names = { "atmega8", "atmega8l" },
+avr_kind_t mega1284 = {
+	.names = { "atmega1284p", "atmega1284" },
 	.make = make
 };
 

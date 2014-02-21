@@ -66,18 +66,21 @@ enum {
  * The current log level is kept in avr->log.
  */
 enum {
-	LOG_ERROR = 1,
+	LOG_OUTPUT = 0,
+	LOG_ERROR,
 	LOG_WARNING,
 	LOG_TRACE,
 };
-typedef void (*logger_t)(struct avr_t* avr, const int level, const char * format, ... );
-extern logger_t global_logger;
+
+
 #ifndef AVR_LOG
 #define AVR_LOG(avr, level, ...) \
 	do { \
-		global_logger(avr, level, __VA_ARGS__); \
+		avr_global_logger(avr, level, __VA_ARGS__); \
 	} while(0)
 #endif
+#define AVR_TRACE(avr, ... ) \
+	AVR_LOG(avr, LOG_TRACE, __VA_ARGS__)
 
 /*
  * Core states.
@@ -96,16 +99,9 @@ enum {
 	cpu_Crashed,    // avr software crashed (watchdog fired)
 };
 
-// a symbol loaded from the .elf file
-typedef struct avr_symbol_t {
-	const char *	symbol;
-	avr_flashaddr_t	addr;
-} avr_symbol_t;
-
 // this is only ever used if CONFIG_SIMAVR_TRACE is defined
 struct avr_trace_data_t {
-	avr_symbol_t 		(*codeline)[];
-	uint32_t		codesize;
+	struct avr_symbol_t ** codeline;
 
 	/* DEBUG ONLY
 	 * this keeps track of "jumps" ie, call,jmp,ret,reti and so on
@@ -171,13 +167,15 @@ typedef struct avr_t {
 	 * is passed on to the operating system.
 	 */
 	uint32_t sleep_usec;
-	
+
 	// called at init time
 	void (*init)(struct avr_t * avr);
 	// called at init time (for special purposes like using a memory mapped file as flash see: simduino)
-	void (*special_init)(struct avr_t * avr);
+	void (*special_init)(struct avr_t * avr, void * data);
 	// called at termination time ( to clean special initializations)
-	void (*special_deinit)(struct avr_t * avr);
+	void (*special_deinit)(struct avr_t * avr, void * data);
+    // value passed to special_init() and special_deinit()
+	void *special_data;
 	// called at reset time
 	void (*reset)(struct avr_t * avr);
 
@@ -258,13 +256,6 @@ typedef struct avr_t {
 
 	// flash memory (initialized to 0xff, and code loaded into it)
 	uint8_t *	flash;
-
-#ifdef CONFIG_SIMAVR_FAST_CORE
-#ifndef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
-	uint32_t *	uflash;
-#endif
-#endif
-
 	// this is the general purpose registers, IO registers, and SRAM
 	uint8_t *	data;
 
@@ -303,24 +294,14 @@ typedef struct avr_t {
 // this is a static constructor for each of the AVR devices
 typedef struct avr_kind_t {
 	const char * names[4];	// name aliases
-	avr_t * (*make)();
+	avr_t * (*make)(void);
 } avr_kind_t;
 
-static inline avr_symbol_t *avr_symbol_for_address(avr_t *avr, avr_flashaddr_t addr) {
-	for(int index = 0; index < avr->trace_data->codesize; index++) {
-		avr_symbol_t *symbol = &(*avr->trace_data->codeline)[index];
-		if(addr == symbol->addr)
-			return(symbol);
-	}
-
-	return(0);
-}
-
-static inline const char *avr_symbol_name_for_address(avr_t *avr, avr_flashaddr_t addr) {
-	avr_symbol_t *symbol = avr_symbol_for_address(avr, addr);
-
-	return((0 != symbol) ? symbol->symbol : 0);
-}
+// a symbol loaded from the .elf file
+typedef struct avr_symbol_t {
+	uint32_t	addr;
+	const char  symbol[0];
+} avr_symbol_t;
 
 // locate the maker for mcu "name" and allocates a new avr instance
 avr_t *
@@ -393,6 +374,31 @@ avr_sadly_crashed(
 		avr_t *avr,
 		uint8_t signal);
 
+/*
+ * Logs a message using the current logger
+ */
+void
+avr_global_logger(
+		struct avr_t* avr, 
+		const int level, 
+		const char * format, 
+		... );
+
+#ifndef AVR_CORE
+#include <stdarg.h>
+/*
+ * Type for custom logging functions
+ */
+typedef void (*avr_logger_p)(struct avr_t* avr, const int level, const char * format, va_list ap);
+
+/* Sets a global logging function in place of the default */
+void
+avr_global_logger_set(
+		avr_logger_p logger);
+/* Gets the current global logger function */
+avr_logger_p
+avr_global_logger_get();
+#endif
 
 /*
  * These are callbacks for the two 'main' behaviour in simavr
@@ -401,6 +407,17 @@ void avr_callback_sleep_gdb(avr_t * avr, avr_cycle_count_t howLong);
 void avr_callback_run_gdb(avr_t * avr);
 void avr_callback_sleep_raw(avr_t * avr, avr_cycle_count_t howLong);
 void avr_callback_run_raw(avr_t * avr);
+
+/**
+ * Accumulates sleep requests (and returns a sleep time of 0) until
+ * a minimum count of requested sleep microseconds are reached
+ * (low amounts cannot be handled accurately).
+ * This function is an utility function for the sleep callbacks
+ */
+uint32_t 
+avr_pending_sleep_usec(
+		avr_t * avr, 
+		avr_cycle_count_t howLong);
 
 #ifdef __cplusplus
 };

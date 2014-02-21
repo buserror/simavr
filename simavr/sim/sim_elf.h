@@ -32,7 +32,7 @@ extern "C" {
 #define ELF_SYMBOLS 1
 #endif
 
-/* these are the addresses the gnu linker uses to 
+/* these are the addresses the gnu linker uses to
  * "fake" a non-Harvard addressing space for the AVR
  */
 #define AVR_SEGMENT_OFFSET_FLASH 0
@@ -53,7 +53,12 @@ typedef struct elf_firmware_t {
 		uint16_t addr;
 		char	name[64];
 	} trace[32];
-	
+
+	struct {
+		char port;
+		uint8_t mask, value;
+	} external_state[8];
+
 	// register to listen to for commands from the firmware
 	uint16_t	command_register_addr;
 	uint16_t	console_register_addr;
@@ -68,8 +73,8 @@ typedef struct elf_firmware_t {
 	uint32_t 	eesize;
 
 #if ELF_SYMBOLS
-	avr_symbol_t		(*codeline)[];
-	uint32_t		codesize;	// in elements
+	avr_symbol_t **  symbol;
+	uint32_t		symbolcount;
 #endif
 } elf_firmware_t ;
 

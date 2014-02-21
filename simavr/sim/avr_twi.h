@@ -31,8 +31,8 @@ extern "C" {
 //#include "sim_twi.h"
 
 enum {
-	TWI_IRQ_MISO = 0,
-	TWI_IRQ_MOSI,
+	TWI_IRQ_INPUT = 0,
+	TWI_IRQ_OUTPUT,
 	TWI_IRQ_STATUS,
 	TWI_IRQ_COUNT
 };
@@ -44,6 +44,8 @@ enum {
 	TWI_COND_ACK = (1 << 3),
 	TWI_COND_WRITE = (1 << 4),
 	TWI_COND_READ = (1 << 5),
+	// internal state, do not use in irq messages
+	TWI_COND_SLAVE	= (1 << 6),
 };
 
 typedef struct avr_twi_msg_t {

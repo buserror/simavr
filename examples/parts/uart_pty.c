@@ -71,8 +71,9 @@ uart_pty_flush_incoming(
 		uart_pty_t * p)
 {
 	while (p->xon && !uart_pty_fifo_isempty(&p->pty.out)) {
+		TRACE(int r = p->pty.out.read;)
 		uint8_t byte = uart_pty_fifo_read(&p->pty.out);
-		TRACE(printf("uart_pty_flush_incoming send %02x\n", byte);)
+		TRACE(printf("uart_pty_flush_incoming send r %03d:%02x\n", r, byte);)
 		avr_raise_irq(p->irq + IRQ_UART_PTY_BYTE_OUT, byte);
 
 		if (p->tap.s) {
@@ -159,17 +160,22 @@ uart_pty_thread(
 
 		for (int ti = 0; ti < 2; ti++) if (p->port[ti].s) {
 			if (FD_ISSET(p->port[ti].s, &read_set)) {
-				ssize_t r = read(p->port[ti].s, p->port[ti].buffer, sizeof(p->port[ti].buffer)-1);
+				ssize_t r = read(p->port[ti].s, p->port[ti].buffer,
+									sizeof(p->port[ti].buffer)-1);
 				p->port[ti].buffer_len = r;
 				p->port[ti].buffer_done = 0;
-				TRACE(hdump("pty recv", p->port[ti].buffer, r);)
+				TRACE(if (!p->port[ti].tap) hdump("pty recv", p->port[ti].buffer, r);)
 			}
 			if (p->port[ti].buffer_done < p->port[ti].buffer_len) {
 				// write them in fifo
 				while (p->port[ti].buffer_done < p->port[ti].buffer_len &&
-						!uart_pty_fifo_isfull(&p->port[ti].out))
+						!uart_pty_fifo_isfull(&p->port[ti].out)) {
+					int index = p->port[ti].buffer_done++;
+					TRACE(int wi = p->port[ti].out.write;)
 					uart_pty_fifo_write(&p->port[ti].out,
-							p->port[ti].buffer[p->port[ti].buffer_done++]);
+							p->port[ti].buffer[index]);
+					TRACE(printf("w %3d:%02x\n", wi, p->port[ti].buffer[index]);)
+				}
 			}
 			if (FD_ISSET(p->port[ti].s, &write_set)) {
 				uint8_t buffer[512];
@@ -180,10 +186,13 @@ uart_pty_thread(
 					*dst++ = uart_pty_fifo_read(&p->port[ti].in);
 				size_t len = dst - buffer;
 				TRACE(size_t r =) write(p->port[ti].s, buffer, len);
-				TRACE(hdump("pty send", buffer, r);)
+				TRACE(if (!p->port[ti].tap) hdump("pty send", buffer, r);)
 			}
 		}
-		uart_pty_flush_incoming(p);
+		/* DO NOT call this, this create a concurency issue with the
+		 * FIFO that can't be solved cleanly with a memory barrier
+			uart_pty_flush_incoming(p);
+		  */
 	}
 	return NULL;
 }

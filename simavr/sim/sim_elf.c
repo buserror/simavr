@@ -35,6 +35,7 @@
 #include "sim_elf.h"
 #include "sim_vcd_file.h"
 #include "avr_eeprom.h"
+#include "avr_ioport.h"
 
 #ifndef O_BINARY
 #define O_BINARY 0
@@ -50,9 +51,23 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 		avr->avcc = firmware->avcc;
 	if (firmware->aref)
 		avr->aref = firmware->aref;
-#if CONFIG_SIMAVR_TRACE
-	avr->trace_data->codesize = firmware->codesize;
-	avr->trace_data->codeline = firmware->codeline;
+#if CONFIG_SIMAVR_TRACE && ELF_SYMBOLS
+	int scount = firmware->flashsize >> 1;
+	avr->trace_data->codeline = malloc(scount * sizeof(avr_symbol_t*));
+	memset(avr->trace_data->codeline, 0, scount * sizeof(avr_symbol_t*));
+
+	for (int i = 0; i < firmware->symbolcount; i++)
+		if (firmware->symbol[i]->addr < firmware->flashsize)	// code address
+			avr->trace_data->codeline[firmware->symbol[i]->addr >> 1] =
+				firmware->symbol[i];
+	// "spread" the pointers for known symbols forward
+	avr_symbol_t * last = NULL;
+	for (int i = 0; i < scount; i++) {
+		if (!avr->trace_data->codeline[i])
+			avr->trace_data->codeline[i] = last;
+		else
+			last = avr->trace_data->codeline[i];
+	}
 #endif
 
 	avr_loadcode(avr, firmware->flash, firmware->flashsize, firmware->flashbase);
@@ -61,7 +76,18 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 		avr_eeprom_desc_t d = { .ee = firmware->eeprom, .offset = 0, .size = firmware->eesize };
 		avr_ioctl(avr, AVR_IOCTL_EEPROM_SET, &d);
 	}
-
+	// load the default pull up/down values for ports
+	for (int i = 0; i < 8; i++)
+		if (firmware->external_state[i].port == 0)
+			break;
+		else {
+			avr_ioport_external_t e = {
+				.name = firmware->external_state[i].port,
+				.mask = firmware->external_state[i].mask,
+				.value = firmware->external_state[i].value,
+			};
+			avr_ioctl(avr, AVR_IOCTL_IOPORT_SET_EXTERNAL(e.name), &e);
+		}
 	avr_set_command_register(avr, firmware->command_register_addr);
 	avr_set_console_register(avr, firmware->console_register_addr);
 
@@ -71,11 +97,11 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 		return;
 	avr->vcd = malloc(sizeof(*avr->vcd));
 	memset(avr->vcd, 0, sizeof(*avr->vcd));
-	avr_vcd_init(avr, 
+	avr_vcd_init(avr,
 		firmware->tracename[0] ? firmware->tracename: "gtkwave_trace.vcd",
 		avr->vcd,
 		firmware->traceperiod >= 1000 ? firmware->traceperiod : 1000);
-	
+
 	AVR_LOG(avr, LOG_TRACE, "Creating VCD trace file '%s'\n", avr->vcd->filename);
 	for (int ti = 0; ti < firmware->tracecount; ti++) {
 		if (firmware->trace[ti].mask == 0xff || firmware->trace[ti].mask == 0) {
@@ -106,14 +132,14 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 							__FUNCTION__, firmware->trace[ti].addr);
 						break;
 					}
-					
+
 					if (count == 1) {
 						avr_vcd_add_signal(avr->vcd, bit, 1, firmware->trace[ti].name);
 						break;
 					}
 					char comp[128];
 					sprintf(comp, "%s.%d", firmware->trace[ti].name, bi);
-					avr_vcd_add_signal(avr->vcd, bit, 1, firmware->trace[ti].name);					
+					avr_vcd_add_signal(avr->vcd, bit, 1, firmware->trace[ti].name);
 				}
 		}
 	}
@@ -137,7 +163,7 @@ static void elf_parse_mmcu_section(elf_firmware_t * firmware, uint8_t * src, uin
 				break;
 			case AVR_MMCU_TAG_NAME:
 				strcpy(firmware->mmcu, (char*)src);
-				break;		
+				break;
 			case AVR_MMCU_TAG_VCC:
 				firmware->vcc =
 					src[0] | (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
@@ -150,6 +176,19 @@ static void elf_parse_mmcu_section(elf_firmware_t * firmware, uint8_t * src, uin
 				firmware->aref =
 					src[0] | (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
 				break;
+			case AVR_MMCU_TAG_PORT_EXTERNAL_PULL: {
+				for (int i = 0; i < 8; i++)
+					if (!firmware->external_state[i].port) {
+						firmware->external_state[i].port = src[2];
+						firmware->external_state[i].mask = src[1];
+						firmware->external_state[i].value = src[0];
+						AVR_LOG(NULL, LOG_TRACE, "AVR_MMCU_TAG_PORT_EXTERNAL_PULL[%d] %c:%02x:%02x\n",
+							i, firmware->external_state[i].port,
+							firmware->external_state[i].mask,
+							firmware->external_state[i].value);
+						break;
+					}
+			}	break;
 			case AVR_MMCU_TAG_VCD_TRACE: {
 				uint8_t mask = src[0];
 				uint16_t addr = src[1] | (src[2] << 8);
@@ -157,7 +196,7 @@ static void elf_parse_mmcu_section(elf_firmware_t * firmware, uint8_t * src, uin
 				AVR_LOG(NULL, LOG_TRACE, "AVR_MMCU_TAG_VCD_TRACE %04x:%02x - %s\n", addr, mask, name);
 				firmware->trace[firmware->tracecount].mask = mask;
 				firmware->trace[firmware->tracecount].addr = addr;
-				strncpy(firmware->trace[firmware->tracecount].name, name, 
+				strncpy(firmware->trace[firmware->tracecount].name, name,
 					sizeof(firmware->trace[firmware->tracecount].name));
 				firmware->tracecount++;
 			}	break;
@@ -194,13 +233,14 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 		return -1;
 	}
 
-	Elf_Data *data_data = NULL, 
+	Elf_Data *data_data = NULL,
 		*data_text = NULL,
 		*data_ee = NULL;                /* Data Descriptor */
 
 	memset(firmware, 0, sizeof(*firmware));
 #if ELF_SYMBOLS
-	firmware->codeline=NULL;
+	firmware->symbolcount = 0;
+	firmware->symbol = NULL;
 #endif
 
 	/* this is actually mandatory !! otherwise elf_begin() fails */
@@ -244,13 +284,6 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 			// the section divided by the entry size
 			int symbol_count = shdr.sh_size / shdr.sh_entsize;
 
-			firmware->codesize = symbol_count;
-
-			// use the symbol_count to allocate for that many symbols.
-			uint32_t bitesize = (symbol_count + 1) * sizeof(avr_symbol_t);
-			firmware->codeline = malloc(bitesize);
-			memset(firmware->codeline,0, bitesize);
-
 			// loop through to grab all symbols
 			for (int i = 0; i < symbol_count; i++) {
 				GElf_Sym sym;			/* Symbol */
@@ -258,32 +291,43 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 				gelf_getsym(edata, i, &sym);
 
 				// print out the value and size
-			//	printf("%08x %08d ", sym.st_value, sym.st_size);
-				if (ELF32_ST_BIND(sym.st_info) == STB_GLOBAL || 
-						ELF32_ST_TYPE(sym.st_info) == STT_FUNC || 
+				if (ELF32_ST_BIND(sym.st_info) == STB_GLOBAL ||
+						ELF32_ST_TYPE(sym.st_info) == STT_FUNC ||
 						ELF32_ST_TYPE(sym.st_info) == STT_OBJECT) {
 					const char * name = elf_strptr(elf, shdr.sh_link, sym.st_name);
-					avr_symbol_t * s = &(*firmware->codeline)[i];
 
-					// type of symbol
-					if (sym.st_value & 0xfff00000) {
+					avr_symbol_t * s = malloc(sizeof(avr_symbol_t) + strlen(name) + 1);
+					strcpy((char*)s->symbol, name);
+					s->addr = sym.st_value;
+					if (!(firmware->symbolcount % 8))
+						firmware->symbol = realloc(
+							firmware->symbol,
+							(firmware->symbolcount + 8) * sizeof(firmware->symbol[0]));
 
-					} else {
-						s->symbol = strdup(name);
-						s->addr = sym.st_value;
-					}
+					// insert new element, keep the array sorted
+					int insert = -1;
+					for (int si = 0; si < firmware->symbolcount && insert == -1; si++)
+						if (firmware->symbol[si]->addr >= s->addr)
+							insert = si;
+					if (insert == -1)
+						insert = firmware->symbolcount;
+					else
+						memmove(firmware->symbol + insert + 1,
+								firmware->symbol + insert,
+								(firmware->symbolcount - insert) * sizeof(firmware->symbol[0]));
+					firmware->symbol[insert] = s;
+					firmware->symbolcount++;
 				}
 			}
 		}
 #endif
 	}
-
 	uint32_t offset = 0;
 	firmware->flashsize =
 			(data_text ? data_text->d_size : 0) +
 			(data_data ? data_data->d_size : 0);
 	firmware->flash = malloc(firmware->flashsize);
-	
+
 	// using unsigned int for output, since there is no AVR with 4GB
 	if (data_text) {
 	//	hdump("code", data_text->d_buf, data_text->d_size);
