@@ -1,3 +1,5 @@
+#define CONFIG_SIMAVR_FAST_CORE_AGGRESSIVE_OPTIONS
+
 /*
 	sim_fast_core.c
 
@@ -37,10 +39,6 @@
 #include "sim_fast_core.h"
 #include "avr_watchdog.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* AVR_FAST_CORE_UINST_PROFILING
 	tracks dtime and count of each instruction executed
 	 enable/disable via 
@@ -48,16 +46,28 @@ extern "C" {
 	 in sim_fast_core_profiling.h */
 #include "sim_fast_core_profiler.h"
 
-/* AVR_FAST_CORE_USE_GLOBAL_FLASH_ACCESS
-	uses globals for uflash and io_table access, will not work for multiple avr cores */
-/* AVR_FAST_CORE_COMBINING
-	common instruction sequences are combined as well as allowing 16 bit access tricks. */
-/* AVR_FAST_CORE_COMMON_DATA
-	puts avr->data local data for multiple register references */
 /* AVR_FAST_CORE_BRANCH_HINTS
 	via likely() and unlikely() macros provide the compiler (and possibly passed 
 	onto the processor) hints to help reduce pipeline stalls due to 
 	misspredicted branches. USE WITH CARE! :) */
+/* AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
+	for processors with fast multiply, helps reduce branches in comparisons 
+	some processors may have specialized instructions making this slower */
+/* AVR_FAST_CORE_COMBINING
+	common instruction sequences are combined as well as allowing 16 bit access tricks. */
+/* AVR_FAST_CORE_COMMON_DATA
+	puts avr->data local data for multiple register references. */
+/* AVR_FAST_CORE_COMPLEX
+	some instuctions are translated to use a more simplified form. */
+/* AVR_FAST_CORE_CPI_BRXX
+	use individual cpi_brxx instruction sequences. */
+/* AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE
+	uses a central funciton to do the actual branch. */
+/* AVR_FAST_CORE_IO_DISPTACH_TABLES
+	initial io access will be trapped, later access will happen through dispatch tables. */
+/* AVR_FAST_CORE_READ_MODIFY_WRITE
+	reduces redundancy inherent in register access...  and cuts back on 
+	some unecessary checks. */
 /* AVR_FAST_CORE_SKIP_SHIFT
 	use shifts vs comparisons and branching where shifting is less expensive
 	then branching. Some processors have specialized instructions to handle
@@ -65,58 +75,34 @@ extern "C" {
 /* AVR_FAST_CORE_32_SKIP_SHIFT
 	long instruction skip is not as strait forward as a simple skip...
 	overall results may vary. */
-/* AVR_FAST_CORE_READ_MODIFY_WRITE
-	reduces redundancy inherent in register access...  and cuts back on 
-	some unecessary checks. */
-/* AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	for processors with fast multiply, helps reduce branches in comparisons 
-	some processors may have specialized instructions making this slower */
 /* AVR_FAST_CORE_SLEEP_PREPROCESS_TIMERS_AND_INTERRUPTS
-	fast forwards avr->cycle then calls timer and interrupt service routines in sleep */
-/* AVR_FAST_CORE_IO_DISPTACH_TABLES
-	initial io access will be trapped, later access will happen through dispatch tables. */
-	
-#define AVR_FAST_CORE_USE_GLOBAL_FLASH_ACCESS
-#define AVR_FAST_CORE_COMBINING
-#define AVR_FAST_CORE_COMMON_DATA
+	fast forwards avr->cycle then calls timer and interrupt service routines in sleep functions */
+
 #define AVR_FAST_CORE_BRANCH_HINTS
-#define AVR_FAST_CORE_SKIP_SHIFT
-#define AVR_FAST_CORE_32_SKIP_SHIFT
-#define AVR_FAST_CORE_READ_MODIFY_WRITE
-#define AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-#define AVR_FAST_CORE_SLEEP_PREPROCESS_TIMERS_AND_INTERRUPTS
-#define AVR_FAST_CORE_IO_DISPTACH_TABLES
+static const int _AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY = 1;
+static const int _AVR_FAST_CORE_COMBINING = 1;
+static const int _AVR_FAST_CORE_COMMON_DATA = 1;
+static const int _AVR_FAST_CORE_COMPLEX = 1;
+static const int _AVR_FAST_CORE_CPI_BRXX = 1;
+static const int _AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE = 1;
+static const int _AVR_FAST_CORE_IO_DISPATCH_TABLES = 1;
+static const int _AVR_FAST_CORE_READ_MODIFY_WRITE = 1;
+static const int _AVR_FAST_CORE_SKIP_SHIFT = 1;
+static const int _AVR_FAST_CORE_32_SKIP_SHIFT = 1;
+static const int _AVR_FAST_CORE_SLEEP_PREPROCESS_TIMERS_AND_INTERRUPTS = 1;
 
-/*
-	NOTE!!!  Concerning AVR_FAST_CORE_USE_CPI_BRXX and AVR_FAST_CORE_CPI_BRXX_CODE...
-	
-	FAST_CORE_USE_CPI_BRXX
-		controls the actual usage of instruction sequences.
-	FAST_CORE_CPI_BRXX_CODE
-		determines if the actual code is sent through the compiler
-			or left out during the build.
-	FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE
-		uses a central funciton to do the actual branch.
 
-	WHY??:
-		Sometimes using the code does not always result in improved performance..
-			even where theory would dictate otherwise.
-		Unforunately taking the code bodies out duing test cases has also
-			shown to negatively impact performance.
-		Overall the results have a lot to do with code size, cache sizes,
-			and code arrangement...  Wether it be function bodies or
-			branches/jumps.
-*/
 
-#define AVR_FAST_CORE_USE_CPI_BRXX
-#define AVR_FAST_CORE_CPI_BRXX_CODE
-#define AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE
-
-#ifndef AVR_FAST_CORE_UINST_PROFILING
+#ifdef CONFIG_SIMAVR_FAST_CORE_AGGRESSIVE_OPTIONS
+/* AVR_FAST_CORE_GLOBAL_FLASH_ACCESS
+	uses globals for uflash and io_table access, will not work for multiple avr cores */
+static const int _AVR_FAST_CORE_GLOBAL_FLASH_ACCESS = 1;
 /* AVR_FAST_CORE_TAIL_CALL
 	build using tail calls, not all compilers may support the features
 	necessary and/or may be compiler dependant. */
-#define AVR_FAST_CORE_TAIL_CALL
+#ifndef AVR_FAST_CORE_UINST_PROFILING
+static const int _AVR_FAST_CORE_TAIL_CALL = 1;
+#endif
 #endif
 
 /* AVR_FAST_CORE_DECODE_TRAP
@@ -124,8 +110,8 @@ extern "C" {
 /* AVR_FAST_CORE_AGGRESSIVE_CHECKS
 	bounds checking at multiple points. */
 
-//#define AVR_FAST_CORE_DECODE_TRAP
-//#define AVR_FAST_CORE_AGGRESSIVE_CHECKS
+static const int _AVR_FAST_CORE_DECODE_TRAP = 0;
+static const int _AVR_FAST_CORE_AGGRESSIVE_CHECKS = 0;
 
 #ifndef CONFIG_SIMAVR_TRACE
 /* AVR_FAST_CORE_LOCAL_TRACE
@@ -147,73 +133,117 @@ extern "C" {
 //#define AVR_CORE_FAST_CORE_DIFF_TRACE
 #ifndef AVR_CORE_FAST_CORE_DIFF_TRACE
 //#define AVR_FAST_CORE_ITRACE
-//#define AVR_FAST_CORE_STACK_TRACE
+//#define AVR_FAST_CORE_LOCAL_TRACE
+//#define AVR_FAST_CORE_STACK_TRACE;
+static const int _AVR_CORE_FAST_CORE_BUGS = 0;
+static const int _AVR_CORE_FAST_CORE_DIFF_TRACE = 0;
 #endif
 #else
 /* do not touch these here...  set above. */
-#define AVR_FAST_CORE_STACK_TRACE
-#define AVR_CORE_FAST_CORE_DIFF_TRACE
+#define AVR_FAST_CORE_LOCAL_TRACE
+static const int _AVR_FAST_CORE_STACK_TRACE = 0;
+static const int _AVR_CORE_FAST_CORE_BUGS = 1;
+static const int _AVR_CORE_FAST_CORE_DIFF_TRACE = 1;
 #endif
 
 /* ****
 	>>>>	END OF OPTION FLAGS SECTION
 **** */
 
-// 1,2,4,8,16,32,64
-#define AVR_CORE_FLASH_UFLASH_SIZE_SHIFT(x) (x << 1)
-#define AVR_CORE_FLASH_ADDR_SHIFT(x) (x >> 1)
-//#define AVR_CORE_FLASH_ADDR_SHIFT(x) x
-
-
-#ifdef AVR_FAST_CORE_IO_DISPTACH_TABLES
-typedef uint_fast8_t (*_avr_fast_core_io_read_fn_t)(avr_t * avr, int_fast32_t * count, uint_fast16_t addr);
-typedef void (*_avr_fast_core_io_write_fn_t)(avr_t * avr, int_fast32_t * count, uint_fast16_t addr, uint_fast8_t v);
-#define AVR_FAST_CORE_SET_IO_READ_FN_DO_RET(addr, name) AVR_FAST_CORE_IO_READ_FN(addr) = name; return(name(avr, count, addr))
-#define AVR_FAST_CORE_SET_IO_WRITE_FN_DO_RET(addr, name) AVR_FAST_CORE_IO_WRITE_FN(addr) = name; return(name(avr, count, addr, v))
-#define AVR_FAST_CORE_IO_READ_FN_DO(avr, count, addr) AVR_FAST_CORE_IO_READ_FN(addr)(avr, count, addr)
-#define AVR_FAST_CORE_IO_WRITE_FN_DO(avr, count, addr, v) AVR_FAST_CORE_IO_WRITE_FN(addr)(avr, count, addr, v)
-#define IO_INLINE
+#if defined(AVR_FAST_CORE_ITRACE)
+#define _AVR_FAST_CORE_ITRACE 1
 #else
-#define AVR_FAST_CORE_SET_IO_READ_FN_DO_RET(addr, name) return(name(avr, count, addr))
-#define AVR_FAST_CORE_SET_IO_WRITE_FN_DO_RET(addr, name) return(name(avr, count, addr, v))
-#define AVR_FAST_CORE_IO_READ_FN_DO(avr, count, addr)
-#define AVR_FAST_CORE_IO_WRITE_FN_DO(avr, count, addr, v)
-#define IO_INLINE inline
+#define _AVR_FAST_CORE_ITRACE 0
 #endif
 
-#define AVR_CORE_FLASH_FAST_CORE_UFLASH ((uint32_t*)&((uint8_t *)avr->flash)[avr->flashend + 1])
+#if defined(AVR_FAST_CORE_DIFF_TRACE)
+#define _AVR_FAST_CORE_DIFF_TRACE 1
+#else
+#define _AVR_FAST_CORE_DIFF_TRACE 0
+#endif
 
-#ifdef AVR_FAST_CORE_USE_GLOBAL_FLASH_ACCESS
+
+// 1,2,4,8,16,32,64
+
+/* avr pc word addressed, stock core pc byte addressed */
+//#define AVR_CORE_FLASH_UFLASH_SIZE_SHIFT(x) (x << 1)
+//#define AVR_CORE_FLASH_ADDR_SHIFT(x) (x >> 1)
+
+/* using below, will leave slot between opcode data...  for extra... stuff... .?. .?. ;) */
+#define AVR_CORE_FLASH_UFLASH_SIZE_SHIFT(x) (x << 2)
+#define AVR_CORE_FLASH_ADDR_SHIFT(x) x
+
 static uint32_t *_avr_fast_core_uflash;
-#define AVR_FAST_CORE_UFLASH_ADDR_AT(addr) _avr_fast_core_uflash[AVR_CORE_FLASH_ADDR_SHIFT(addr)]
-#ifdef AVR_FAST_CORE_IO_DISPTACH_TABLES
+
+#define AVR_FAST_CORE_GLOBAL_UFLASH_ADDR_AT(addr) _avr_fast_core_uflash[AVR_CORE_FLASH_ADDR_SHIFT(addr)]
+
+typedef uint_fast8_t (*_avr_fast_core_io_read_fn_t)(avr_t *avr, int_fast32_t *count, uint_fast16_t addr);
+typedef void (*_avr_fast_core_io_write_fn_t)(avr_t *avr, int_fast32_t *count, uint_fast16_t addr, uint_fast8_t v);
+
 static _avr_fast_core_io_read_fn_t _avr_fast_core_io_read_fn[MAX_IOs];
 static _avr_fast_core_io_write_fn_t _avr_fast_core_io_write_fn[MAX_IOs];
-#define AVR_FAST_CORE_IO_READ_FN(addr) _avr_fast_core_io_read_fn[addr]
-#define AVR_FAST_CORE_IO_WRITE_FN(addr) _avr_fast_core_io_write_fn[addr]
-#endif
-#else
-#ifdef AVR_FAST_CORE_IO_DISPTACH_TABLES
+
+#define AVR_FAST_CORE_GLOBAL_IO_READ_FN(addr) _avr_fast_core_io_read_fn[addr]
+#define AVR_FAST_CORE_GLOBAL_IO_WRITE_FN(addr) _avr_fast_core_io_write_fn[addr]
+
+#define AVR_FAST_CORE_GLOBAL_IO_READ_FN_DO(avr, count, addr) AVR_FAST_CORE_GLOBAL_IO_READ_FN(addr)(avr, count, addr)
+#define AVR_FAST_CORE_GLOBAL_IO_WRITE_FN_DO(avr, count, addr, v) AVR_FAST_CORE_GLOBAL_IO_WRITE_FN(addr)(avr, count, addr, v)
+
 typedef struct _avr_fast_core_data_t {
 	_avr_fast_core_io_read_fn_t	io_read_fn[MAX_IOs];
 	_avr_fast_core_io_write_fn_t	io_write_fn[MAX_IOs];
 	uint32_t 			uflash[];
 }_avr_fast_core_data_t, *_avr_fast_core_data_p;
+
 #define AVR_FAST_CORE_DATA ((_avr_fast_core_data_p)&((uint8_t *)avr->flash)[avr->flashend + 1])
-#define AVR_FAST_CORE_UFLASH_ADDR_AT(addr) AVR_FAST_CORE_DATA->uflash[AVR_CORE_FLASH_ADDR_SHIFT(addr)]
-#define AVR_FAST_CORE_IO_READ_FN(addr) AVR_FAST_CORE_DATA->io_read_fn[addr]
-#define AVR_FAST_CORE_IO_WRITE_FN(addr) AVR_FAST_CORE_DATA->io_write_fn[addr]
-#else
-#define AVR_FAST_CORE_UFLASH_ADDR_AT(addr) AVR_CORE_FLASH_FAST_CORE_UFLASH[AVR_CORE_FLASH_ADDR_SHIFT(addr)]
-#endif
-#endif
 
-#ifdef AVR_FAST_CORE_COMBINING
-const int _AVR_FAST_CORE_COMBINING = 1;
-#else
-const int _AVR_FAST_CORE_COMBINING = 0;
-#endif
+#define AVR_FAST_CORE_DATA_UFLASH_ADDR_AT(addr) AVR_FAST_CORE_DATA->uflash[AVR_CORE_FLASH_ADDR_SHIFT(addr)]
 
+#define AVR_FAST_CORE_DATA_IO_READ_FN(addr) AVR_FAST_CORE_DATA->io_read_fn[addr]
+#define AVR_FAST_CORE_DATA_IO_WRITE_FN(addr) AVR_FAST_CORE_DATA->io_write_fn[addr]
+
+#define AVR_FAST_CORE_IO_READ_FN_DO(avr, count, addr) \
+	do { \
+		if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS) { \
+			AVR_FAST_CORE_GLOBAL_IO_READ_FN(addr)(avr, count, addr); \
+		} else { \
+			AVR_FAST_CORE_DATA_IO_READ_FN(addr)(avr, count, addr); \
+		} \
+	} while(0);
+
+#define AVR_FAST_CORE_IO_WRITE_FN_DO(avr, count, addr, v) \
+	do { \
+		if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS) { \
+			AVR_FAST_CORE_GLOBAL_IO_WRITE_FN(addr)(avr, count, addr); \
+		} else { \
+			AVR_FAST_CORE_DATA_IO_WRITE_FN(addr)(avr, count, addr); \
+		} \
+	} while(0);
+
+#define AVR_FAST_CORE_SET_IO_READ_FN_DO_RET(addr, name) \
+	do { \
+		if(_AVR_FAST_CORE_IO_DISPATCH_TABLES) { \
+			if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS) { \
+				AVR_FAST_CORE_GLOBAL_IO_READ_FN(addr) = name; \
+			} else { \
+				AVR_FAST_CORE_DATA_IO_READ_FN(addr) = name; \
+			} \
+		} \
+		return(name(avr, count, addr)); \
+	} while(0);
+	
+#define AVR_FAST_CORE_SET_IO_WRITE_FN_DO_RET(addr, name) \
+	do { \
+		if(_AVR_FAST_CORE_IO_DISPATCH_TABLES) { \
+			if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS) { \
+				AVR_FAST_CORE_GLOBAL_IO_WRITE_FN(addr) = name; \
+			} else { \
+				AVR_FAST_CORE_DATA_IO_WRITE_FN(addr) = name; \
+			} \
+		} \
+		return(name(avr, count, addr, v)); \
+	} while(0);
+	
 #define CYCLES(x) { if(1==(x)) { avr->cycle++; (*count)--; } else { avr->cycle += (x); (*count) -= (x); }}
 
 #ifdef AVR_FAST_CORE_BRANCH_HINTS
@@ -224,34 +254,38 @@ const int _AVR_FAST_CORE_COMBINING = 0;
 #define unlikely(x) x
 #endif
 
-#ifdef AVR_FAST_CORE_UINST_PROFILING
-static avr_cycle_count_t _avr_fast_core_cycle_timer_process(avr_t * avr, avr_cycle_count_t count) {
-	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
-	uint_fast8_t pool_count = pool->count;
-	avr_cycle_count_t new_count = count;
+static avr_cycle_count_t _avr_fast_core_cycle_timer_process(avr_t *avr, avr_cycle_count_t count)
+{
+	if(_AVR_FAST_CORE_UINST_PROFILING) {
+		avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
+		uint_fast8_t pool_count = pool->count;
+		avr_cycle_count_t new_count = count;
 	
-	if(pool_count) {
-		avr_cycle_timer_slot_t  cycle_timer = pool->timer[pool_count-1];
-		avr_cycle_count_t when = cycle_timer.when;
-		if (when < avr->cycle) {
-			AVR_FAST_CORE_PROFILER_PROFILE(timer, new_count = avr_cycle_timer_process(avr));
+		if(pool_count) {
+			avr_cycle_timer_slot_t  cycle_timer = pool->timer[pool_count-1];
+			avr_cycle_count_t when = cycle_timer.when;
+			if (when < avr->cycle) {
+				AVR_FAST_CORE_PROFILER_PROFILE(timer, new_count = avr_cycle_timer_process(avr));
+			}
 		}
-	}
 	
-	return(new_count);
+		return(new_count);
+	} else {
+		return(avr_cycle_timer_process(avr));
+	}
 }
 
-static void _avr_fast_core_service_interrupts(avr_t * avr) {
-	if(avr->sreg[S_I]) {
-		if(avr_has_pending_interrupts(avr)) {
-			AVR_FAST_CORE_PROFILER_PROFILE(isr, avr_service_interrupts(avr));
+static void _avr_fast_core_service_interrupts(avr_t *avr) {
+	if(_AVR_FAST_CORE_UINST_PROFILING) {
+		if(avr->sreg[S_I]) {
+			if(avr_has_pending_interrupts(avr)) {
+				AVR_FAST_CORE_PROFILER_PROFILE(isr, avr_service_interrupts(avr));
+			}
 		}
+	} else {
+		return(avr_service_interrupts(avr));
 	}
 }
-#else
-#define _avr_fast_core_cycle_timer_process(avr, count) avr_cycle_timer_process(avr)
-#define _avr_fast_core_service_interrupts(avr) avr_service_interrupts(avr)
-#endif
 
 #define xSTATE(_f, args...) { \
 	printf("%06x: " _f, avr->pc, ## args);\
@@ -265,7 +299,7 @@ static void _avr_fast_core_service_interrupts(avr_t * avr) {
 	for (int _sbi = 0; _sbi < 8; _sbi++)\
 		printf("%c", avr->sreg[_sbi] ? toupper(_sreg_bit_name[_sbi]) : '.');\
 	printf("\n");\
-}
+	}
 
 #ifdef AVR_FAST_CORE_STACK_TRACE
 #ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -303,60 +337,68 @@ extern const char * avr_regname(uint8_t reg);
 /*
  * Dump changed registers when tracing
  */
-extern void avr_dump_state(avr_t * avr);
+extern void avr_dump_state(avr_t *avr);
 #endif
 
-static inline uint_fast8_t _avr_fast_core_data_read(avr_t* avr, uint_fast16_t addr) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely(addr > avr->ramend)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-		CRASH();
+static inline uint_fast8_t _avr_fast_core_data_read(avr_t* avr, uint_fast16_t addr)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely(addr > avr->ramend)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.\n", __FUNCTION__, addr);
+			CRASH();
+		}
 	}
-#endif
+
 	return(avr->data[addr]);
 }
 
-static inline void _avr_fast_core_data_write(avr_t* avr, uint_fast16_t addr, uint_fast8_t data) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely(addr > avr->ramend)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-		CRASH();
+static inline void _avr_fast_core_data_write(avr_t* avr, uint_fast16_t addr, uint_fast8_t data)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely(addr > avr->ramend)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.\n", __FUNCTION__, addr);
+			CRASH();
+		}
 	}
-#endif
+
 	avr->data[addr]=data;
 }
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-static inline uint_fast16_t _avr_bswap16le(uint_fast16_t v) {
-	return(v);
+static inline uint_fast16_t _avr_bswap16le(uint_fast16_t v)
+{
+	if(__BYTE_ORDER == __LITTLE_ENDIAN) {
+		return(v);
+	} else {
+		return(((v & 0xff00) >> 8) | ((v & 0x00ff) << 8));
+	}
 }
 
-static inline uint_fast16_t _avr_bswap16be(uint_fast16_t v) {
-	return(((v & 0xff00) >> 8) | ((v & 0x00ff) << 8));
-}
-#else
-static inline uint_fast16_t _avr_bswap16le(uint_fast16_t v) {
-	return(((v & 0xff00) >> 8) | ((v & 0x00ff) << 8));
+static inline uint_fast16_t _avr_bswap16be(uint_fast16_t v)
+{
+	if(__BYTE_ORDER == __LITTLE_ENDIAN) {
+		return(((v & 0xff00) >> 8) | ((v & 0x00ff) << 8));
+	} else {
+		return(v);
+	}
 }
 
-static inline uint_fast16_t _avr_bswap16be(uint_fast16_t v) {
-	return(v);
-}
-#endif
-
-static inline uint_fast16_t _avr_fast_core_fetch16(void* p, uint_fast16_t addr) {
+static inline uint_fast16_t _avr_fast_core_fetch16(void* p, uint_fast16_t addr)
+{
 	return(*((uint16_t *)&((uint8_t *)p)[addr]));
 }
 
-static inline void _avr_fast_core_store16(void*p, uint_fast16_t addr, uint_fast16_t data) {
+static inline void _avr_fast_core_store16(void*p, uint_fast16_t addr, uint_fast16_t data)
+{
 	*((uint16_t *)&((uint8_t *)p)[addr])=data;
 }
 
-static inline void _avr_fast_core_data_mov(avr_t* avr, uint_fast16_t dst, uint_fast16_t src) {
+static inline void _avr_fast_core_data_mov(avr_t* avr, uint_fast16_t dst, uint_fast16_t src)
+{
 	avr->data[dst] = avr->data[src];
 }
 
-static inline void _avr_fast_core_data_mov16(avr_t* avr, uint_fast16_t dst, uint_fast16_t src) {
+static inline void _avr_fast_core_data_mov16(avr_t* avr, uint_fast16_t dst, uint_fast16_t src)
+{
 	uint8_t* data = avr->data;
 
 	uint16_t* ptr_src = (uint16_t *)&data[src];
@@ -365,110 +407,140 @@ static inline void _avr_fast_core_data_mov16(avr_t* avr, uint_fast16_t dst, uint
 	*ptr_dst = *ptr_src;
 }
 
-static inline uint_fast16_t _avr_fast_core_data_read16(avr_t* avr, uint_fast16_t addr) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely((addr + 1) > avr->ramend)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-		CRASH();
+static inline uint_fast16_t _avr_fast_core_data_read16(avr_t* avr, uint_fast16_t addr)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely((addr + 1) > avr->ramend)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+			CRASH();
+		}
 	}
-#endif
+
 	return(_avr_fast_core_fetch16(avr->data, addr));
 }
 
-static inline void _avr_fast_core_data_write16(avr_t* avr, uint_fast16_t addr, uint_fast16_t data) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely((addr + 1) > avr->ramend)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-		CRASH();
+static inline void _avr_fast_core_data_write16(avr_t* avr, uint_fast16_t addr, uint_fast16_t data)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely((addr + 1) > avr->ramend)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+			CRASH();
+		}
 	}
-#endif
+
 	_avr_fast_core_store16(avr->data, addr, data);
 }
 
-static inline uint_fast16_t _avr_fast_core_data_read16be(avr_t* avr, uint_fast16_t addr) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely((addr + 1) > avr->ramend)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-		CRASH();
+static inline uint_fast16_t _avr_fast_core_data_read16be(avr_t* avr, uint_fast16_t addr)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely((addr + 1) > avr->ramend)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+			CRASH();
+		}
 	}
-#endif
+	
 	return(_avr_bswap16be(_avr_fast_core_fetch16(avr->data, addr)));
 }
 
-static inline uint_fast16_t _avr_fast_core_data_read16le(avr_t* avr, uint_fast16_t addr) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely((addr + 1) > avr->ramend)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-		CRASH();
+static inline uint_fast16_t _avr_fast_core_data_read16le(avr_t* avr, uint_fast16_t addr)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely((addr + 1) > avr->ramend)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+			CRASH();
+		}
 	}
-#endif
+
 	return(_avr_bswap16le(_avr_fast_core_fetch16(avr->data, addr)));
 }
 
-static inline void _avr_fast_core_data_write16be(avr_t* avr, uint_fast16_t addr, uint_fast16_t data) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely((addr + 1) > avr->ramend)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-		CRASH();
+static inline void _avr_fast_core_data_write16be(avr_t* avr, uint_fast16_t addr, uint_fast16_t data)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely((addr + 1) > avr->ramend)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+			CRASH();
+		}
 	}
-#endif
+
 	_avr_fast_core_store16(avr->data, addr, _avr_bswap16be(data));
 }
 
-static inline void _avr_fast_core_data_write16le(avr_t* avr, uint_fast16_t addr, uint_fast16_t data) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely((addr + 1) > avr->ramend)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-		CRASH();
+static inline void _avr_fast_core_data_write16le(avr_t* avr, uint_fast16_t addr, uint_fast16_t data)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely((addr + 1) > avr->ramend)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+			CRASH();
+		}
 	}
-#endif
+
 	_avr_fast_core_store16(avr->data, addr, _avr_bswap16le(data));
 }
 
 /*
  * Stack pointer access
  */
-static inline uint_fast16_t _avr_fast_core_sp_get(avr_t * avr)
+static inline uint_fast16_t _avr_fast_core_sp_get(avr_t *avr)
 {
-	return(_avr_fast_core_data_read16le(avr, R_SPL));
+	if(_AVR_FAST_CORE_COMBINING) {
+		return(_avr_fast_core_data_read16le(avr, R_SPL));
+	} else {
+		uint_fast16_t sp = _avr_fast_core_data_read(avr, R_SPL);
+		return(sp | (_avr_fast_core_data_read(avr, R_SPH) << 8));
+	}
 }
 
-static inline void _avr_fast_core_sp_set(avr_t * avr, uint_fast16_t sp)
+static inline void _avr_fast_core_sp_set(avr_t *avr, uint_fast16_t sp)
 {
-	_avr_fast_core_data_write16le(avr, R_SPL, sp);
+	if(_AVR_FAST_CORE_COMBINING) {
+		_avr_fast_core_data_write16le(avr, R_SPL, sp);
+	} else {
+		_avr_fast_core_data_write(avr, R_SPH, sp >> 8);
+		_avr_fast_core_data_write(avr, R_SPL, sp & 0xff);
+	}
 }
 
 /*
  * Register access funcitons
  */
-static inline uint_fast8_t _avr_fast_core_fetch_r(avr_t* avr, uint_fast8_t reg) {
+static inline uint_fast8_t _avr_fast_core_fetch_r(avr_t* avr, uint_fast8_t reg)
+{
 	return(_avr_fast_core_data_read(avr, reg));
 }
 
-static inline void _avr_mov_r(avr_t* avr, uint_fast8_t dst, uint_fast8_t src) {
+static inline void _avr_mov_r(avr_t* avr, uint_fast8_t dst, uint_fast8_t src)
+{
 	_avr_fast_core_data_mov(avr, dst, src);
 }
-static inline void _avr_fast_core_store_r(avr_t* avr, uint_fast8_t reg, uint_fast8_t v) {
+static inline void _avr_fast_core_store_r(avr_t* avr, uint_fast8_t reg, uint_fast8_t v)
+{
 	_avr_fast_core_data_write(avr, reg, v);
 }
 
-static inline uint_fast16_t _avr_fast_core_fetch_r16(avr_t* avr, uint_fast8_t addr) {
+static inline uint_fast16_t _avr_fast_core_fetch_r16(avr_t* avr, uint_fast8_t addr)
+{
 	return(_avr_fast_core_data_read16(avr, addr));
 }
 
-static inline void _avr_mov_r16(avr_t* avr, uint_fast8_t dst, uint_fast8_t src) {
+static inline void _avr_mov_r16(avr_t* avr, uint_fast8_t dst, uint_fast8_t src)
+{
 	_avr_fast_core_data_mov16(avr, dst, src);
 }
 
-static inline void _avr_fast_core_store_r16(avr_t* avr, uint_fast8_t addr, uint_fast16_t data) {
+static inline void _avr_fast_core_store_r16(avr_t* avr, uint_fast8_t addr, uint_fast16_t data)
+{
 	_avr_fast_core_data_write16(avr, addr, data);
 }
 
-static inline uint_fast16_t _avr_fast_core_fetch_r16le(avr_t* avr, uint_fast8_t addr) {
+static inline uint_fast16_t _avr_fast_core_fetch_r16le(avr_t* avr, uint_fast8_t addr)
+{
 	return(_avr_fast_core_data_read16le(avr, addr));
 }
 
-static inline void _avr_fast_core_store_r16le(avr_t* avr, uint_fast8_t addr, uint_fast16_t data) {
+static inline void _avr_fast_core_store_r16le(avr_t* avr, uint_fast8_t addr, uint_fast16_t data)
+{
 	_avr_fast_core_data_write16le(avr, addr, data);
 }
 
@@ -476,11 +548,13 @@ static inline void _avr_fast_core_store_r16le(avr_t* avr, uint_fast8_t addr, uin
 /*
  * Flash accessors
  */
-static inline uint_fast16_t _avr_fast_core_flash_read16le(avr_t* avr, uint_fast16_t addr) {
+static inline uint_fast16_t _avr_fast_core_flash_read16le(avr_t* avr, uint_fast16_t addr)
+{
 	return(_avr_bswap16le(_avr_fast_core_fetch16(avr->flash, addr)));
 }
 
-static inline uint_fast16_t _avr_fast_core_flash_read16be(avr_t* avr, uint_fast16_t addr) {
+static inline uint_fast16_t _avr_fast_core_flash_read16be(avr_t* avr, uint_fast16_t addr)
+{
 	return(_avr_bswap16be(_avr_fast_core_fetch16(avr->flash, addr)));
 }
 
@@ -549,29 +623,50 @@ static inline uint_fast16_t _avr_fast_core_flash_read16be(avr_t* avr, uint_fast1
 	printf("\n");\
 	}
 #else
-	#ifdef AVR_FAST_CORE_LOCAL_TRACE
-		#define T(w) w
-		#define NO_T(w)
-		#define REG_TOUCH(a, r)
-		#define STATE(_f, args...) xSTATE(_f, ## args)
-		#define SREG() xSREG()
-	#else
-		#define REG_TOUCH(a, r)
-		#ifdef AVR_FAST_CORE_ITRACE
-			static uint32_t _avr_fast_core_flash_uflash_read_0(avr_t* avr, avr_flashaddr_t addr);
-			#define T(w) w
-			#define NO_T(w)
-			#define STATE(_f, args...) { if(0 == _avr_fast_core_flash_uflash_read_0(avr, avr->pc)) xSTATE(_f, ## args) }
-		#else
-			#define T(w)
-			#define NO_T(w) w
-			#define STATE(_f, args...)
-		#endif
-		#define SREG()
-	#endif
+#ifdef AVR_FAST_CORE_LOCAL_TRACE
+#define T(w) w
+#define NO_T(w)
+#define REG_TOUCH(a, r)
+#define STATE(_f, args...) xSTATE(_f, ## args)
+#define SREG() xSREG()
+#else
+#define REG_TOUCH(a, r)
+#ifdef AVR_FAST_CORE_ITRACE
+#else
+#endif
+#define SREG()
+#endif
 #endif
 
-static IO_INLINE void _avr_fast_core_reg_io_write_sreg(avr_t * avr, int_fast32_t * count, uint_fast16_t addr, uint_fast8_t v) {
+static uint32_t _avr_fast_core_flash_uflash_read_0(avr_t* avr, avr_flashaddr_t addr);
+#if defined(AVR_FAST_CORE_ITRACE) || defined(AVR_FAST_CORE_LOCAL_TRACE)
+#define T(w) w
+#define NO_T(w)
+#define SREG() xSREG()
+#endif
+
+#if !defined(AVR_FAST_CORE_ITRACE) && !defined(AVR_FAST_CORE_LOCAL_TRACE)
+#define T(w)
+#define NO_T(w) w
+#define SREG()
+#endif
+
+#if defined(AVR_FAST_CORE_ITRACE) && !defined(AVR_FAST_CORE_LOCAL_TRACE)
+#define STATE(_f, args...) \
+	do { \
+		if(0 == _avr_fast_core_flash_uflash_read_0(avr, avr->pc)) \
+			xSTATE(_f, ## args); \
+	} while(0);
+#elif defined(AVR_FAST_CORE_LOCAL_TRACE)
+#define STATE(_f, args...) \
+	xSTATE(_f, ## args)
+#else
+#define STATE(_f, args...)
+#endif
+
+
+static void _avr_fast_core_reg_io_write_sreg(avr_t *avr, int_fast32_t *count, uint_fast16_t addr, uint_fast8_t v)
+{
 	AVR_FAST_CORE_PROFILER_PROFILE_START(iow_sreg);
 	REG_TOUCH(avr, addr);
 
@@ -585,7 +680,8 @@ static IO_INLINE void _avr_fast_core_reg_io_write_sreg(avr_t * avr, int_fast32_t
 	AVR_FAST_CORE_PROFILER_PROFILE_STOP(iow_sreg);
 }
 
-static IO_INLINE void _avr_fast_core_reg_io_write_data(avr_t * avr, int_fast32_t * count, uint_fast16_t addr, uint_fast8_t v) {
+static void _avr_fast_core_reg_io_write_data(avr_t *avr, int_fast32_t *count, uint_fast16_t addr, uint_fast8_t v)
+{
 	AVR_FAST_CORE_PROFILER_PROFILE_START(iow_data);
 	REG_TOUCH(avr, addr);
 
@@ -593,7 +689,8 @@ static IO_INLINE void _avr_fast_core_reg_io_write_data(avr_t * avr, int_fast32_t
 	AVR_FAST_CORE_PROFILER_PROFILE_STOP(iow_data);
 }
 
-static IO_INLINE void _avr_fast_core_reg_io_write_wc(avr_t * avr, int_fast32_t * count, uint_fast16_t addr, uint_fast8_t v) {
+static void _avr_fast_core_reg_io_write_wc(avr_t *avr, int_fast32_t *count, uint_fast16_t addr, uint_fast8_t v)
+{
 	AVR_FAST_CORE_PROFILER_PROFILE_START(iow_wc);
 	REG_TOUCH(avr, addr);
 
@@ -605,7 +702,8 @@ static IO_INLINE void _avr_fast_core_reg_io_write_wc(avr_t * avr, int_fast32_t *
 	AVR_FAST_CORE_PROFILER_PROFILE_STOP(iow_wc);
 }
 
-static IO_INLINE void _avr_fast_core_reg_io_write_irq(avr_t * avr, int_fast32_t * count, uint_fast16_t addr, uint_fast8_t v) {
+static void _avr_fast_core_reg_io_write_irq(avr_t *avr, int_fast32_t *count, uint_fast16_t addr, uint_fast8_t v)
+{
 	AVR_FAST_CORE_PROFILER_PROFILE_START(iow_irq);
 	REG_TOUCH(avr, addr);
 
@@ -621,7 +719,8 @@ static IO_INLINE void _avr_fast_core_reg_io_write_irq(avr_t * avr, int_fast32_t 
 	AVR_FAST_CORE_PROFILER_PROFILE_STOP(iow_irq);
 }
 
-static IO_INLINE void _avr_fast_core_reg_io_write_wc_irq(avr_t * avr, int_fast32_t * count, uint_fast16_t addr, uint_fast8_t v) {
+static void _avr_fast_core_reg_io_write_wc_irq(avr_t *avr, int_fast32_t *count, uint_fast16_t addr, uint_fast8_t v)
+{
 	AVR_FAST_CORE_PROFILER_PROFILE_START(iow_wc_irq);
 	REG_TOUCH(avr, addr);
 
@@ -637,13 +736,12 @@ static IO_INLINE void _avr_fast_core_reg_io_write_wc_irq(avr_t * avr, int_fast32
 	AVR_FAST_CORE_PROFILER_PROFILE_STOP(iow_wc_irq);
 }
 
-static void _avr_fast_core_reg_io_write_trap(avr_t * avr, int_fast32_t * count, uint_fast16_t addr, uint_fast8_t v) {
+static void _avr_fast_core_reg_io_write_trap(avr_t *avr, int_fast32_t *count, uint_fast16_t addr, uint_fast8_t v)
+{
 	if (addr == R_SREG) {
 		AVR_FAST_CORE_SET_IO_WRITE_FN_DO_RET(addr, _avr_fast_core_reg_io_write_sreg);
-#ifndef AVR_FAST_CORE_IO_DISPTACH_TABLES
-	} else if ((addr == R_SPL) || (addr == R_SPH)) {
+	} else if(!_AVR_FAST_CORE_IO_DISPATCH_TABLES && ((addr == R_SPL) || (addr == R_SPH))) {
 		AVR_FAST_CORE_SET_IO_WRITE_FN_DO_RET(addr, _avr_fast_core_reg_io_write_data);
-#endif
 	} else if (addr > 31) {
 		uint8_t io = AVR_DATA_TO_IO(addr);
 
@@ -661,21 +759,30 @@ static void _avr_fast_core_reg_io_write_trap(avr_t * avr, int_fast32_t * count, 
 	}
 }
 
-static inline void _avr_fast_core_reg_io_write(avr_t * avr, int_fast32_t * count, uint_fast16_t addr, uint_fast8_t v) {
+static inline void _avr_fast_core_reg_io_write(avr_t *avr, int_fast32_t *count, uint_fast16_t addr, uint_fast8_t v)
+{
+	_avr_fast_core_io_write_fn_t iow_fn;
+
 	AVR_FAST_CORE_PROFILER_PROFILE_START(iow);
 
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely(addr > avr->ramend)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-		CRASH();
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely(addr > avr->ramend)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+			CRASH();
+		}
 	}
-#endif
 
-#ifdef AVR_FAST_CORE_IO_DISPTACH_TABLES
-	if(likely(AVR_FAST_CORE_IO_WRITE_FN(addr))) {
-		AVR_FAST_CORE_IO_WRITE_FN_DO(avr, count, addr, v);
+	if(_AVR_FAST_CORE_IO_DISPATCH_TABLES) {
+		if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS) {
+			iow_fn = AVR_FAST_CORE_GLOBAL_IO_WRITE_FN(addr);
+		} else {
+			iow_fn = AVR_FAST_CORE_DATA_IO_WRITE_FN(addr);
+		}
+	}
+	
+	if(likely(iow_fn)) {
+		iow_fn(avr, count, addr, v);
 	} else
-#endif
 		_avr_fast_core_reg_io_write_trap(avr, count, addr, v);
 
 	AVR_FAST_CORE_PROFILER_PROFILE_STOP(iow);
@@ -684,17 +791,19 @@ static inline void _avr_fast_core_reg_io_write(avr_t * avr, int_fast32_t * count
 /*
  * Set any address to a value; split between registers and SRAM
  */
-static inline void _avr_fast_core_store_ram(avr_t * avr, int_fast32_t * count, uint_fast16_t addr, uint_fast8_t v) {
+static inline void _avr_fast_core_store_ram(avr_t *avr, int_fast32_t *count, uint_fast16_t addr, uint_fast8_t v)
+{
 	if (likely(addr >= 256 && addr <= avr->ramend))
 		return(_avr_fast_core_data_write(avr, addr, v));
 	else
 		return(_avr_fast_core_reg_io_write(avr, count, addr, v));
 }
 
-static IO_INLINE uint_fast8_t _avr_fast_core_reg_io_read_sreg(avr_t * avr, int_fast32_t * count, uint_fast16_t addr) {
+static uint_fast8_t _avr_fast_core_reg_io_read_sreg(avr_t *avr, int_fast32_t *count, uint_fast16_t addr)
+{
 	AVR_FAST_CORE_PROFILER_PROFILE_START(ior_sreg);
 
-	register uint_fast8_t sreg = 0;
+	uint_fast8_t sreg = 0;
 	
 	READ_SREG_INTO(avr, sreg);
 	_avr_fast_core_data_write(avr, R_SREG, sreg);
@@ -703,7 +812,8 @@ static IO_INLINE uint_fast8_t _avr_fast_core_reg_io_read_sreg(avr_t * avr, int_f
 	return(sreg);
 }
 
-static IO_INLINE uint_fast8_t _avr_fast_core_reg_io_read_data(avr_t * avr, int_fast32_t * count, uint_fast16_t addr) {
+static uint_fast8_t _avr_fast_core_reg_io_read_data(avr_t *avr, int_fast32_t *count, uint_fast16_t addr)
+{
 	AVR_FAST_CORE_PROFILER_PROFILE_START(ior_data);
 	
 	uint_fast8_t  data = _avr_fast_core_data_read(avr, addr);
@@ -712,7 +822,8 @@ static IO_INLINE uint_fast8_t _avr_fast_core_reg_io_read_data(avr_t * avr, int_f
 	return(data);
 }
 
-static IO_INLINE uint_fast8_t _avr_fast_core_reg_io_read_rc(avr_t * avr, int_fast32_t * count, uint_fast16_t addr) {
+static uint_fast8_t _avr_fast_core_reg_io_read_rc(avr_t *avr, int_fast32_t *count, uint_fast16_t addr)
+{
 	AVR_FAST_CORE_PROFILER_PROFILE_START(ior_rc);
 	uint8_t io = AVR_DATA_TO_IO(addr);
 
@@ -725,7 +836,8 @@ static IO_INLINE uint_fast8_t _avr_fast_core_reg_io_read_rc(avr_t * avr, int_fas
 	return(data);
 }
 
-static IO_INLINE uint_fast8_t _avr_fast_core_reg_io_read_irq(avr_t * avr, int_fast32_t * count, uint_fast16_t addr) {
+static uint_fast8_t _avr_fast_core_reg_io_read_irq(avr_t *avr, int_fast32_t *count, uint_fast16_t addr)
+{
 	AVR_FAST_CORE_PROFILER_PROFILE_START(ior_irq);
 	uint8_t io = AVR_DATA_TO_IO(addr);
 
@@ -741,7 +853,8 @@ static IO_INLINE uint_fast8_t _avr_fast_core_reg_io_read_irq(avr_t * avr, int_fa
 	return(data);
 }
 
-static IO_INLINE uint_fast8_t _avr_fast_core_reg_io_read_rc_irq(avr_t * avr, int_fast32_t * count, uint_fast16_t addr) {
+static uint_fast8_t _avr_fast_core_reg_io_read_rc_irq(avr_t *avr, int_fast32_t *count, uint_fast16_t addr)
+{
 	AVR_FAST_CORE_PROFILER_PROFILE_START(ior_rc_irq);
 	uint8_t io = AVR_DATA_TO_IO(addr);
 
@@ -760,13 +873,12 @@ static IO_INLINE uint_fast8_t _avr_fast_core_reg_io_read_rc_irq(avr_t * avr, int
 	return(data);
 }
 
-static uint_fast8_t _avr_fast_core_reg_io_read_trap(avr_t * avr, int_fast32_t * count, uint_fast16_t addr) {
+static uint_fast8_t _avr_fast_core_reg_io_read_trap(avr_t *avr, int_fast32_t *count, uint_fast16_t addr)
+{
 	if (addr == R_SREG) {
 		AVR_FAST_CORE_SET_IO_READ_FN_DO_RET(addr, _avr_fast_core_reg_io_read_sreg);
-#ifndef AVR_FAST_CORE_IO_DISPTACH_TABLES
-	} else if ((addr == R_SPL) || (addr == R_SPH)) {
+	} else if (!_AVR_FAST_CORE_IO_DISPATCH_TABLES &&((addr == R_SPL) || (addr == R_SPH))) {
 		AVR_FAST_CORE_SET_IO_READ_FN_DO_RET(addr, _avr_fast_core_reg_io_read_data);
-#endif
 	} else if (addr > 31) {
 		uint8_t io = AVR_DATA_TO_IO(addr);
 	
@@ -784,23 +896,32 @@ static uint_fast8_t _avr_fast_core_reg_io_read_trap(avr_t * avr, int_fast32_t * 
 	}
 }
 
-static inline uint_fast8_t _avr_fast_core_reg_io_read(avr_t * avr, int_fast32_t * count, uint_fast16_t addr) {
+static inline uint_fast8_t _avr_fast_core_reg_io_read(avr_t *avr, int_fast32_t *count, uint_fast16_t addr)
+{
+	_avr_fast_core_io_read_fn_t ior_fn;
+
 	uint_fast8_t data;
 
 	AVR_FAST_CORE_PROFILER_PROFILE_START(ior);
 	
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely(addr > avr->ramend)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-		CRASH();
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely(addr > avr->ramend)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+			CRASH();
+		}
 	}
-#endif
 
-#ifdef AVR_FAST_CORE_IO_DISPTACH_TABLES
-	if(likely(AVR_FAST_CORE_IO_READ_FN(addr)))
-		data = AVR_FAST_CORE_IO_READ_FN_DO(avr, count, addr);
-	else
-#endif
+	if(_AVR_FAST_CORE_IO_DISPATCH_TABLES) {
+		if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS) {
+			ior_fn = AVR_FAST_CORE_GLOBAL_IO_READ_FN(addr);
+		} else {
+			ior_fn = AVR_FAST_CORE_DATA_IO_READ_FN(addr);
+		}
+	}
+	
+	if(likely(ior_fn)) {
+		data = ior_fn(avr, count, addr);
+	} else
 		data = _avr_fast_core_reg_io_read_trap(avr, count, addr);
 		
 	AVR_FAST_CORE_PROFILER_PROFILE_STOP(ior);
@@ -810,7 +931,7 @@ static inline uint_fast8_t _avr_fast_core_reg_io_read(avr_t * avr, int_fast32_t 
 /*
  * Get a value from SRAM.
  */
-static inline uint_fast8_t _avr_fast_core_fetch_ram(avr_t * avr, int_fast32_t * count, uint_fast16_t addr)
+static inline uint_fast8_t _avr_fast_core_fetch_ram(avr_t *avr, int_fast32_t *count, uint_fast16_t addr)
 {
 	uint_fast8_t data;
 	if(likely(addr >= 256 && addr <= avr->ramend))
@@ -821,225 +942,250 @@ static inline uint_fast8_t _avr_fast_core_fetch_ram(avr_t * avr, int_fast32_t * 
 	}
 }
 
-#ifdef AVR_FAST_CORE_READ_MODIFY_WRITE
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
 typedef struct avr_rmw_t {
-	void *	data;
+	avr_t	*avr;
+	uint16_t		addr;
+	union	{
+		uint8_t		*b;
+		uint16_t	*w;
+	}data;
 	int	flags;
 }avr_rmw_t, *avr_rmw_p;
-#define AVR_FAST_CORE_RMW_DEFN(name) avr_rmw_t rmw_##name##_rmw; avr_rmw_p name = &rmw_##name##_rmw
-#else
-typedef void *avr_rmw_p;
-#define AVR_FAST_CORE_RMW_DEFN(name) avr_rmw_p name;
-#endif
-
-typedef avr_rmw_p * const avr_rmw_h;
 
 /*
 	generic rmw functions */
 
-static inline uint8_t avr_rmw8_ptr_set_fetch(avr_rmw_h rmw, uint8_t *data) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	(*rmw)->data = data;
-	(*rmw)->flags = 8;
-#else
-	*(uint8_t **)rmw = data;
-#endif
+static inline uint8_t _avr_fast_core_rmw8_ptr_set_fetch(avr_rmw_p rmw, uint8_t *data)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(!rmw) {
+			printf("FAST-CORE (%s): null pointer\n", __FUNCTION__);
+			abort();
+		}
+		
+		rmw->flags = 8;
+	}
+	
+	rmw->data.b = data;
+	
 	return(*data);
 }
 
-static inline void avr_rmw8_store(avr_rmw_p rmw, uint8_t data) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(!rmw) {
-		printf("FAST-CORE (%s): null pointer\n", __FUNCTION__);
-		abort();
-	} else if(rmw->flags != 8) {
-		printf("FAST-CORE (%s): get from invalid set pointer type, %p[.data: %p .flags: 0x%04x]\n",
-			__FUNCTION__, rmw, (uint8_t *)rmw->data, rmw->flags);
+static inline void _avr_fast_core_rmw8_store(avr_rmw_p rmw, uint8_t data)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(!rmw) {
+			printf("FAST-CORE (%s): null pointer\n", __FUNCTION__);
+			abort();
+		}
+		
+		if(rmw->flags != 8) {
+			printf("FAST-CORE (%s): get from invalid set pointer type, %p[.data: %p .flags: 0x%04x]\n",
+				__FUNCTION__, rmw, rmw->data.b, rmw->flags);
+		}
 	}
-	*(uint8_t *)rmw->data = data;
-#else
-	*(uint8_t *)rmw = data;
-#endif
+	
+	*rmw->data.b = data;
 }
 
-static inline uint16_t avr_rmw16_ptr_set_fetch(avr_rmw_h rmw, uint16_t *data) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	(*rmw)->data = data;
-	(*rmw)->flags = 16;
-#else
-	*(uint16_t **)rmw = data;
-#endif
+static inline uint16_t _avr_fast_core_rmw16_ptr_set_fetch(avr_rmw_p rmw, uint16_t *data)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(!rmw) {
+			printf("FAST-CORE (%s): null pointer\n", __FUNCTION__);
+			abort();
+		}
+		
+		rmw->flags = 16;
+	}
+	
+	rmw->data.w = data;
+
 	return(*data);
 }
 
-static inline void _avr_fast_core_rmw16le_store(avr_rmw_p rmw, uint16_t data) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(!rmw) {
-		printf("FAST-CORE (%s): null pointer\n", __FUNCTION__);
-		abort();
-	} else if(rmw->flags != 16) {
-		printf("FAST-CORE (%s): get from invalid set pointer type, %p[.data: %p .flags: 0x%04x]\n",
-			__FUNCTION__, rmw, (uint16_t *)rmw->data, rmw->flags);
+static inline void _avr_fast_core_rmw16le_store(avr_rmw_p rmw, uint16_t data)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(!rmw) {
+			printf("FAST-CORE (%s): null pointer\n", __FUNCTION__);
+			abort();
+		}
+		
+		if(rmw->flags != 16) {
+			printf("FAST-CORE (%s): get from invalid set pointer type, %p[.data: %p .flags: 0x%04x]\n",
+				__FUNCTION__, rmw, rmw->data.w, rmw->flags);
+		}
 	}
-	*(uint16_t *)rmw->data = data;
-#else
-	*(uint16_t *)rmw = data;
-#endif
+	
+	*rmw->data.w = data;
 }
 
-static inline uint_fast16_t _avr_rmw_fetch16(void * p, uint_fast16_t addr, avr_rmw_h ptr_data) {
-	return(avr_rmw16_ptr_set_fetch(ptr_data, ((uint16_t*)&((uint8_t *)p)[addr])));
+static inline uint_fast16_t _avr_fast_core_rmw_fetch16(void * p, uint_fast16_t addr, avr_rmw_p ptr_data)
+{
+	return(_avr_fast_core_rmw16_ptr_set_fetch(ptr_data, ((uint16_t*)&((uint8_t *)p)[addr])));
 }
 
 /*
 	avr data function */
 
-static inline uint_fast8_t _avr_fast_core_data_rmw(avr_t* avr, uint_fast16_t addr, avr_rmw_h ptr_reg) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely(addr > avr->ramend)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-		CRASH();
+static inline uint_fast8_t _avr_fast_core_data_rmw(avr_t* avr, uint_fast16_t addr, avr_rmw_p ptr_reg)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely(addr > avr->ramend)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+			CRASH();
+		}
 	}
-#endif
-	return(avr_rmw8_ptr_set_fetch(ptr_reg, &avr->data[addr]));
+	
+	if(_AVR_FAST_CORE_READ_MODIFY_WRITE)
+		ptr_reg->avr = avr;
+
+	return(_avr_fast_core_rmw8_ptr_set_fetch(ptr_reg, &avr->data[addr]));
 }
 
-static inline uint_fast16_t _avr_fast_core_data_rmw16le(avr_t* avr, uint_fast16_t addr, avr_rmw_h ptr_reg) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely((addr + 1) > avr->ramend)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-		CRASH();
+static inline uint_fast16_t _avr_fast_core_data_rmw16le(avr_t* avr, uint_fast16_t addr, avr_rmw_p ptr_reg)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely((addr + 1) > avr->ramend)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
+			CRASH();
+		}
 	}
-#endif
-	return(_avr_bswap16le(_avr_rmw_fetch16(avr->data, addr, ptr_reg)));
+
+	if(_AVR_FAST_CORE_READ_MODIFY_WRITE)
+		ptr_reg->avr = avr;
+		
+	return(_avr_bswap16le(_avr_fast_core_rmw_fetch16(avr->data, addr, ptr_reg)));
 }
 
-static inline void _avr_fast_core_rmw_store(avr_rmw_p ptr_reg, uint_fast8_t data) {
-	avr_rmw8_store(ptr_reg, data);
+static inline void _avr_fast_core_rmw_store(avr_rmw_p ptr_reg, uint_fast8_t data)
+{
+	_avr_fast_core_rmw8_store(ptr_reg, data);
 }
 
-static inline void _avr_rmw_write16le(avr_rmw_p ptr_data, uint_fast16_t data) {
-	_avr_fast_core_rmw16le_store(ptr_data, _avr_bswap16le(data));
+static inline void _avr_rmw_write16le(avr_rmw_p ptr_data, uint_fast16_t data)
+{
+	if(_AVR_FAST_CORE_READ_MODIFY_WRITE) {
+		_avr_fast_core_rmw16le_store(ptr_data, _avr_bswap16le(data));
+	} else {
+		ptr_data->avr->data[ptr_data->addr] = data;
+	}
 }
 
 /*
 	stack accessors */
 
-static inline uint_fast16_t _avr_fast_core_rmw_sp(avr_t * avr, avr_rmw_h ptr_sp) {
+static inline uint_fast16_t _avr_fast_core_rmw_sp(avr_t *avr, avr_rmw_p ptr_sp)
+{
 	return(_avr_fast_core_data_rmw16le(avr, R_SPL, ptr_sp));
 }
 
 /*
 	avr register functions */
 
-static inline uint_fast8_t _avr_fast_core_rmw_fetch_r(avr_t* avr, uint_fast8_t reg, avr_rmw_h reg_ptr) {
+static inline uint_fast8_t _avr_fast_core_rmw_fetch_r(avr_t* avr, uint_fast8_t reg, avr_rmw_p reg_ptr)
+{
 	return(_avr_fast_core_data_rmw(avr, reg, reg_ptr));
 }
 
-static inline uint_fast16_t _avr_fast_core_rmw_fetch_r16le(avr_t* avr, uint_fast8_t addr, avr_rmw_h reg_ptr) {
+static inline uint_fast16_t _avr_fast_core_rmw_fetch_r16le(avr_t* avr, uint_fast8_t addr, avr_rmw_p reg_ptr)
+{
 	return(_avr_fast_core_data_rmw16le(avr, addr, reg_ptr));
 }
-
-#define RMW(w) w
-#define NO_RMW(w) 
-#else
-#define RMW(w) 
-#define NO_RMW(w) w
-#endif
 
 /*
  * Stack push accessors. Push/pop 8 and 16 bits
  */
-static inline void _avr_fast_core_push8(avr_t * avr, int_fast32_t * count, uint_fast8_t v) {
-	NO_RMW(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
-	RMW(AVR_FAST_CORE_RMW_DEFN(ptr_sp); uint_fast16_t sp = _avr_fast_core_rmw_sp(avr, &ptr_sp));
+static inline void _avr_fast_core_push8(avr_t *avr, int_fast32_t *count, uint_fast8_t v)
+{
+	avr_rmw_t ptr_sp;
+	uint_fast16_t sp = _avr_fast_core_rmw_sp(avr, &ptr_sp);
 
 	TSTACK(printf("%s @0x%04x[0x%04x]\n", __FUNCTION__, sp, v));
 	_avr_fast_core_store_ram(avr, count, sp, v);
 
-	NO_RMW(_avr_fast_core_sp_set(avr, sp-1));
-	RMW(_avr_rmw_write16le(ptr_sp, sp - 1));
+	_avr_rmw_write16le(&ptr_sp, sp - 1);
 }
 
-static inline uint_fast8_t _avr_fast_core_pop8(avr_t * avr, int_fast32_t * count) {
-	NO_RMW(uint_fast16_t sp = _avr_fast_core_sp_get(avr) + 1);
-	RMW(AVR_FAST_CORE_RMW_DEFN(ptr_sp); uint_fast16_t sp = _avr_fast_core_rmw_sp(avr, &ptr_sp) + 1);
+static inline uint_fast8_t _avr_fast_core_pop8(avr_t *avr, int_fast32_t *count)
+{
+	avr_rmw_t ptr_sp;
+	uint_fast16_t sp = _avr_fast_core_rmw_sp(avr, &ptr_sp) + 1;
 
 	uint_fast8_t res = _avr_fast_core_fetch_ram(avr, count, sp);
 	TSTACK(printf("%s @0x%04x[0x%04x]\n", __FUNCTION__, sp, res));
 
-	NO_RMW(_avr_fast_core_sp_set(avr, sp));
-	RMW(_avr_rmw_write16le(ptr_sp, sp));
+	_avr_rmw_write16le(&ptr_sp, sp);
+	
 	return res;
 }
 
-#ifdef AVR_FAST_CORE_COMBINING
-static inline void _avr_fast_core_push16xx(avr_t * avr, uint_fast16_t v) {
-	NO_RMW(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
-	RMW(AVR_FAST_CORE_RMW_DEFN(ptr_sp); uint_fast16_t sp = _avr_fast_core_rmw_sp(avr, &ptr_sp));
+static inline void _avr_fast_core_push16xx(avr_t *avr, uint_fast16_t v)
+{
+	avr_rmw_t ptr_sp;
+	uint_fast16_t sp = _avr_fast_core_rmw_sp(avr, &ptr_sp);
 
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely(256 > sp)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): stack pointer at 0x%04x, below end of io space, aborting.",
-			__FUNCTION__, sp);
-		CRASH();
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely(256 > sp)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): stack pointer at 0x%04x, below end of io space, aborting.",
+				__FUNCTION__, sp);
+			CRASH();
+		}
 	}
-#endif
 
 	if(likely(sp <= avr->ramend)) {
 		_avr_fast_core_data_write16(avr, sp - 1, v);
-		NO_RMW(_avr_fast_core_sp_set(avr, sp - 2));
-		RMW(_avr_rmw_write16le(ptr_sp, sp - 2));
+		_avr_rmw_write16le(&ptr_sp, sp - 2);
 	} else {
 		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): stack pointer at 0x%04x, above ramend... aborting.",
 			__FUNCTION__, sp);
 		CRASH();
 	}
 }
-#endif
 
-static inline void _avr_fast_core_push16be(avr_t * avr, int_fast32_t * count, uint_fast16_t v) {
-#ifdef AVR_FAST_CORE_COMBINING
-	TSTACK(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
-	STACK("push.w ([%02x]@%04x):([%02x]@%04x)\n", 
-		v >> 8, sp - 1, v & 0xff, sp);
-	_avr_fast_core_push16xx(avr, _avr_bswap16be(v));
-#else
-	_avr_fast_core_push8(avr, count, v);
-	_avr_fast_core_push8(avr, count, v >> 8);
-#endif
-}
-
-static inline void _avr_fast_core_push16le(avr_t * avr, int_fast32_t * count, uint_fast16_t v) {
-#ifdef AVR_FAST_CORE_COMBINING
-	TSTACK(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
-	STACK("push.w ([%02x]@%04x):([%02x]@%04x)\n", 
-		v & 0xff, sp - 1, v >> 8, sp);
-	_avr_fast_core_push16xx(avr, _avr_bswap16le(v));
-#else
-	_avr_fast_core_push8(avr, count, v >> 8);
-	_avr_fast_core_push8(avr, count, v);
-#endif
-}
-
-#ifdef AVR_FAST_CORE_COMBINING
-static inline uint_fast16_t _avr_fast_core_pop16xx(avr_t * avr) {
-	NO_RMW(uint_fast16_t sp = _avr_fast_core_sp_get(avr) + 2);
-	RMW(AVR_FAST_CORE_RMW_DEFN(ptr_sp); uint_fast16_t sp = _avr_fast_core_rmw_sp(avr, &ptr_sp) + 2);
-
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely(256 > sp)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): stack pointer at 0x%04x, below end of io space, aborting.",
-			__FUNCTION__, sp);
-		CRASH();
+static inline void _avr_fast_core_push16be(avr_t *avr, int_fast32_t *count, uint_fast16_t v)
+{
+	if(_AVR_FAST_CORE_COMBINING) {
+		TSTACK(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
+		STACK("push.w ([%02x]@%04x):([%02x]@%04x)\n", 
+			v >> 8, sp - 1, v & 0xff, sp);
+		_avr_fast_core_push16xx(avr, _avr_bswap16be(v));
+	} else {
+		_avr_fast_core_push8(avr, count, v);
+		_avr_fast_core_push8(avr, count, v >> 8);
 	}
-#endif
+}
+
+static inline void _avr_fast_core_push16le(avr_t *avr, int_fast32_t *count, uint_fast16_t v)
+{
+	if(_AVR_FAST_CORE_COMBINING) {
+		TSTACK(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
+		STACK("push.w ([%02x]@%04x):([%02x]@%04x)\n", 
+			v & 0xff, sp - 1, v >> 8, sp);
+		_avr_fast_core_push16xx(avr, _avr_bswap16le(v));
+	} else {
+		_avr_fast_core_push8(avr, count, v >> 8);
+		_avr_fast_core_push8(avr, count, v);
+	}
+}
+
+static inline uint_fast16_t _avr_fast_core_pop16xx(avr_t *avr)
+{
+	avr_rmw_t ptr_sp;
+	uint_fast16_t sp = _avr_fast_core_rmw_sp(avr, &ptr_sp) + 2;
+
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely(256 > sp)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): stack pointer at 0x%04x, below end of io space, aborting.",
+				__FUNCTION__, sp);
+			CRASH();
+		}
+	}
 
 	if(likely(sp <= avr->ramend)) {
 		uint_fast16_t data = _avr_fast_core_data_read16(avr, sp - 1);
-		NO_RMW(_avr_fast_core_sp_set(avr, sp));
-		RMW(_avr_rmw_write16le(ptr_sp, sp));
+		_avr_rmw_write16le(&ptr_sp, sp);
 		return(data);
 	} else {
 		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): stack pointer at 0x%04x, above ramend... aborting.",
@@ -1049,37 +1195,42 @@ static inline uint_fast16_t _avr_fast_core_pop16xx(avr_t * avr) {
 
 	return(0);
 }
-#endif
 
-static inline uint_fast16_t _avr_fast_core_pop16be(avr_t * avr, int_fast32_t * count) {
+static inline uint_fast16_t _avr_fast_core_pop16be(avr_t *avr, int_fast32_t *count)
+{
 	uint_fast16_t data;
-#ifdef AVR_FAST_CORE_COMBINING
-	TSTACK(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
-	data = _avr_bswap16be(_avr_fast_core_pop16xx(avr));
-	STACK("pop.w ([%02x]@%04x):([%02x]@%04x)\n", 
-		data >> 8, sp + 1, data & 0xff, sp + 2);
-#else
-	data = _avr_fast_core_pop8(avr, count) << 8;
-	data |= _avr_fast_core_pop8(avr, count);
-#endif	
+	
+	if(_AVR_FAST_CORE_COMBINING) {
+		TSTACK(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
+		data = _avr_bswap16be(_avr_fast_core_pop16xx(avr));
+		STACK("pop.w ([%02x]@%04x):([%02x]@%04x)\n", 
+			data >> 8, sp + 1, data & 0xff, sp + 2);
+	} else {
+		data = _avr_fast_core_pop8(avr, count) << 8;
+		data |= _avr_fast_core_pop8(avr, count);
+	}
+
 	return(data);
 }
 
-static inline uint_fast16_t _avr_fast_core_pop16le(avr_t * avr, int_fast32_t * count) {
+static inline uint_fast16_t _avr_fast_core_pop16le(avr_t *avr, int_fast32_t *count)
+{
 	uint_fast16_t data;
-#ifdef AVR_FAST_CORE_COMBINING
-	TSTACK(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
-	data = _avr_bswap16le(_avr_fast_core_pop16xx(avr));
-	STACK("pop.w ([%02x]@%04x):([%02x]@%04x)\n",
-		data & 0xff, sp + 1, data >> 8, sp + 2);
-#else
-	data = _avr_fast_core_pop8(avr, count);
-	data |= (_avr_fast_core_pop8(avr, count) << 8);
-#endif
+
+	if(_AVR_FAST_CORE_COMBINING) {
+		TSTACK(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
+		data = _avr_bswap16le(_avr_fast_core_pop16xx(avr));
+		STACK("pop.w ([%02x]@%04x):([%02x]@%04x)\n",
+			data & 0xff, sp + 1, data >> 8, sp + 2);
+	} else {
+		data = _avr_fast_core_pop8(avr, count);
+		data |= (_avr_fast_core_pop8(avr, count) << 8);
+	}
+
 	return(data);
 }
 
-static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
+static inline int _avr_is_instruction_32_bits(avr_t *avr, avr_flashaddr_t pc)
 {
 	int o = (_avr_fast_core_flash_read16le(avr, pc)) & 0xfc0f;
 	
@@ -1091,13 +1242,15 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
 			o == 0x940f; // CALL Long Call to sub
 }
 
-static inline void _avr_fast_core_flags_zc16(avr_t* avr, const uint_fast16_t res) {
+static inline void _avr_fast_core_flags_zc16(avr_t* avr, const uint_fast16_t res)
+{
 	avr->sreg[S_Z] = res == 0;
 	avr->sreg[S_C] = (res >> 15) & 1;
 }
 
 
-static inline void _avr_fast_core_flags_zcnvs(avr_t* avr, const uint_fast8_t res, const uint_fast8_t vr) {
+static inline void _avr_fast_core_flags_zcnvs(avr_t* avr, const uint_fast8_t res, const uint_fast8_t vr)
+{
 	avr->sreg[S_Z] = res == 0;
 	avr->sreg[S_C] = vr & 1;
 	avr->sreg[S_N] = (res >> 7) & 1;
@@ -1105,23 +1258,8 @@ static inline void _avr_fast_core_flags_zcnvs(avr_t* avr, const uint_fast8_t res
 	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-static inline void _avr_fast_core_flags_zcn0vs(avr_t* avr, const uint_fast8_t res, const uint_fast8_t vr) {
-	avr->sreg[S_Z] = res == 0;
-	avr->sreg[S_C] = vr & 1;
-	avr->sreg[S_N] = 0;
-	avr->sreg[S_V] = avr->sreg[S_N] ^ avr->sreg[S_C];
-	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
-}
-
-static inline void _avr_fast_core_flags_zcnvs16(avr_t* avr, const uint_fast16_t res, const uint_fast16_t vr) {
-	avr->sreg[S_Z] = res == 0;
-	avr->sreg[S_C] = vr & 1;
-	avr->sreg[S_N] = (res >> 15) & 1;
-	avr->sreg[S_V] = avr->sreg[S_N] ^ avr->sreg[S_C];
-	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
-}
-
-static inline void _avr_fast_core_flags_zcn0vs16(avr_t* avr, const uint_fast16_t res, const uint_fast16_t vr) {
+static inline void _avr_fast_core_flags_zcn0vs(avr_t* avr, const uint_fast8_t res, const uint_fast8_t vr)
+{
 	avr->sreg[S_Z] = res == 0;
 	avr->sreg[S_C] = vr & 1;
 	avr->sreg[S_N] = 0;
@@ -1129,51 +1267,77 @@ static inline void _avr_fast_core_flags_zcn0vs16(avr_t* avr, const uint_fast16_t
 	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-static inline void _avr_fast_core_flags_zns(avr_t* avr, const uint_fast8_t res) {
+static inline void _avr_fast_core_flags_zcnvs16(avr_t* avr, const uint_fast16_t res, const uint_fast16_t vr)
+{
+	avr->sreg[S_Z] = res == 0;
+	avr->sreg[S_C] = vr & 1;
+	avr->sreg[S_N] = (res >> 15) & 1;
+	avr->sreg[S_V] = avr->sreg[S_N] ^ avr->sreg[S_C];
+	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+}
+
+static inline void _avr_fast_core_flags_zcn0vs16(avr_t* avr, const uint_fast16_t res, const uint_fast16_t vr)
+{
+	avr->sreg[S_Z] = res == 0;
+	avr->sreg[S_C] = vr & 1;
+	avr->sreg[S_N] = 0;
+	avr->sreg[S_V] = avr->sreg[S_N] ^ avr->sreg[S_C];
+	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+}
+
+static inline void _avr_fast_core_flags_zns(avr_t* avr, const uint_fast8_t res)
+{
 	avr->sreg[S_Z] = res == 0;
 	avr->sreg[S_N] = (res >> 7) & 1;
 	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-static inline void _avr_fast_core_flags_znvs(avr_t* avr, const uint_fast8_t res) {
+static inline void _avr_fast_core_flags_znvs(avr_t* avr, const uint_fast8_t res)
+{
 	avr->sreg[S_Z] = res == 0;
 	avr->sreg[S_N] = (res >> 7) & 1;
 	avr->sreg[S_V] = avr->sreg[S_N] ^ avr->sreg[S_C];
 	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-static inline void _avr_fast_core_flags_Rzns(avr_t* avr, const uint_fast8_t res) {
+static inline void _avr_fast_core_flags_Rzns(avr_t* avr, const uint_fast8_t res)
+{
 	if (res)
 		avr->sreg[S_Z] = 0;
 	avr->sreg[S_N] = (res >> 7) & 1;
 	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-static inline void _avr_fast_core_flags_zns16(avr_t* avr, const uint_fast16_t res) {
+static inline void _avr_fast_core_flags_zns16(avr_t* avr, const uint_fast16_t res)
+{
 	avr->sreg[S_Z] = res == 0;
 	avr->sreg[S_N] = (res >> 15) & 1;
 	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-static inline void _avr_fast_core_flags_Rzns16(avr_t* avr, const uint_fast16_t res) {
+static inline void _avr_fast_core_flags_Rzns16(avr_t* avr, const uint_fast16_t res)
+{
 	if (res)
 		avr->sreg[S_Z] = 0;
 	avr->sreg[S_N] = (res >> 15) & 1;
 	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-static inline void _avr_fast_core_flags_znv0s(avr_t* avr, const uint_fast8_t res) {
+static inline void _avr_fast_core_flags_znv0s(avr_t* avr, const uint_fast8_t res)
+{
 	avr->sreg[S_V] = 0;
 	_avr_fast_core_flags_zns(avr, res);
 }
 
-static inline void _avr_fast_core_flags_znv0s16(avr_t* avr, const uint_fast16_t res) {
+static inline void _avr_fast_core_flags_znv0s16(avr_t* avr, const uint_fast16_t res)
+{
 	avr->sreg[S_V] = 0;
 	_avr_fast_core_flags_zns16(avr, res);
 }
 
 /* solutions pulled from NO EXECUTE website, bochs, qemu */
-static inline void _avr_fast_core_flags_add(avr_t* avr, const uint_fast8_t res, const uint_fast8_t rd, const uint_fast8_t rr) {
+static inline void _avr_fast_core_flags_add(avr_t* avr, const uint_fast8_t res, const uint_fast8_t rd, const uint_fast8_t rr)
+{
 	uint_fast8_t xvec = (rd ^ rr);
 	uint_fast8_t ovec = (rr ^ res) & ~xvec;
 	uint_fast8_t rxor = xvec ^ ovec ^ res;
@@ -1184,7 +1348,8 @@ static inline void _avr_fast_core_flags_add(avr_t* avr, const uint_fast8_t res, 
 	avr->sreg[S_V] = (ovec >> 7) & 1;
 }
 
-static inline void _avr_fast_core_flags_add_zns(avr_t* avr, const uint_fast8_t res, const uint_fast8_t rd, const uint_fast8_t rr) {
+static inline void _avr_fast_core_flags_add_zns(avr_t* avr, const uint_fast8_t res, const uint_fast8_t rd, const uint_fast8_t rr)
+{
 	uint_fast8_t xvec = (rd ^ rr);
 	uint_fast8_t ovec = (rr ^ res) & ~xvec;
 	uint_fast8_t rxor = xvec ^ ovec ^ res;
@@ -1200,7 +1365,8 @@ static inline void _avr_fast_core_flags_add_zns(avr_t* avr, const uint_fast8_t r
 	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-static inline void _avr_fast_core_flags_add16(avr_t* avr, const uint_fast16_t res, const uint_fast16_t rd, const uint_fast16_t rr) {
+static inline void _avr_fast_core_flags_add16(avr_t* avr, const uint_fast16_t res, const uint_fast16_t rd, const uint_fast16_t rr)
+{
 	uint_fast16_t xvec = (rd ^ rr);
 	uint_fast16_t ovec = (rr ^ res) & ~xvec;
 	uint_fast16_t rxor = xvec ^ ovec ^ res;
@@ -1211,7 +1377,8 @@ static inline void _avr_fast_core_flags_add16(avr_t* avr, const uint_fast16_t re
 	avr->sreg[S_V] = (ovec >> 15) & 1;
 }
 
-static inline void _avr_fast_core_flags_add16_zns16(avr_t* avr, const uint_fast16_t res, const uint_fast16_t rd, const uint_fast16_t rr) {
+static inline void _avr_fast_core_flags_add16_zns16(avr_t* avr, const uint_fast16_t res, const uint_fast16_t rd, const uint_fast16_t rr)
+{
 	uint_fast16_t xvec = (rd ^ rr);
 	uint_fast16_t ovec = (rr ^ res) & ~xvec;
 	uint_fast16_t rxor = xvec ^ ovec ^ res;
@@ -1241,7 +1408,8 @@ static inline void _avr_fast_core_flags_add16_zns16(avr_t* avr, const uint_fast1
 	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-static inline void _avr_fast_core_flags_sub(avr_t* avr, const uint_fast8_t res, const uint_fast8_t rd, const uint_fast8_t rr) {
+static inline void _avr_fast_core_flags_sub(avr_t* avr, const uint_fast8_t res, const uint_fast8_t rd, const uint_fast8_t rr)
+{
 	uint_fast8_t xvec = (rd ^ rr);
 	uint_fast8_t ovec = (rd ^ res) & xvec;
 	uint_fast8_t rxor = xvec ^ ovec ^ res;
@@ -1252,7 +1420,8 @@ static inline void _avr_fast_core_flags_sub(avr_t* avr, const uint_fast8_t res, 
 	avr->sreg[S_V] = (ovec >> 7) & 1;
 }
 
-static inline void _avr_fast_core_flags_sub_zns(avr_t* avr, const uint_fast8_t res, const uint_fast8_t rd, const uint_fast8_t rr) {
+static inline void _avr_fast_core_flags_sub_zns(avr_t* avr, const uint_fast8_t res, const uint_fast8_t rd, const uint_fast8_t rr)
+{
 	uint_fast8_t xvec = (rd ^ rr);
 	uint_fast8_t ovec = (rd ^ res) & xvec;
 	uint_fast8_t rxor = xvec ^ ovec ^ res;
@@ -1269,7 +1438,8 @@ static inline void _avr_fast_core_flags_sub_zns(avr_t* avr, const uint_fast8_t r
 	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-static inline void _avr_fast_core_flags_sub_Rzns(avr_t* avr, const uint_fast8_t res, const uint_fast8_t rd, const uint_fast8_t rr) {
+static inline void _avr_fast_core_flags_sub_Rzns(avr_t* avr, const uint_fast8_t res, const uint_fast8_t rd, const uint_fast8_t rr)
+{
 	uint_fast8_t xvec = (rd ^ rr);
 	uint_fast8_t ovec = (rd ^ res) & xvec;
 	uint_fast8_t rxor = xvec ^ ovec ^ res;
@@ -1287,7 +1457,8 @@ static inline void _avr_fast_core_flags_sub_Rzns(avr_t* avr, const uint_fast8_t 
 	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-static inline void _avr_fast_core_flags_sub16(avr_t* avr, const uint_fast16_t res, const uint_fast16_t rd, const uint_fast16_t rr) {
+static inline void _avr_fast_core_flags_sub16(avr_t* avr, const uint_fast16_t res, const uint_fast16_t rd, const uint_fast16_t rr)
+{
 	uint_fast16_t xvec = (rd ^ rr);
 	uint_fast16_t ovec = (rd ^ res) & xvec;
 	uint_fast16_t rxor = xvec ^ ovec ^ res;
@@ -1298,7 +1469,8 @@ static inline void _avr_fast_core_flags_sub16(avr_t* avr, const uint_fast16_t re
 	avr->sreg[S_V] = (ovec >> 15) & 1;
 }
 
-static inline void _avr_fast_core_flags_sub16_zns16(avr_t* avr, const uint_fast16_t res, const uint_fast16_t rd, const uint_fast16_t rr) {
+static inline void _avr_fast_core_flags_sub16_zns16(avr_t* avr, const uint_fast16_t res, const uint_fast16_t rd, const uint_fast16_t rr)
+{
 	uint_fast16_t xvec = (rd ^ rr);
 	uint_fast16_t ovec = (rd ^ res) & xvec;
 	uint_fast16_t rxor = xvec ^ ovec ^ res;
@@ -1315,15 +1487,11 @@ static inline void _avr_fast_core_flags_sub16_zns16(avr_t* avr, const uint_fast1
 	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-#if defined(AVR_FAST_CORE_USE_CPI_BRXX) || defined(AVR_FAST_CORE_CPI_BRXX_CODE)
 #define AVR_FAST_CORE_CPI_BRXX_GROUP \
 		AVR_FAST_CORE_UINST_ESAC_DEFN(h4k8o7_cpi_brcc) \
 		AVR_FAST_CORE_UINST_ESAC_DEFN(h4k8o7_cpi_brcs) \
 		AVR_FAST_CORE_UINST_ESAC_DEFN(h4k8o7_cpi_breq) \
 		AVR_FAST_CORE_UINST_ESAC_DEFN(h4k8o7_cpi_brne)
-#else
-#define AVR_FAST_CORE_CPI_BRXX_GROUP
-#endif
 
 #define AVR_FAST_CORE_UINST_ESAC_TABLE_DEFN \
 		AVR_FAST_CORE_UINST_ESAC_DEFN(avr_decode_one) \
@@ -1460,30 +1628,35 @@ enum {
 	AVR_FAST_CORE_UINST_ESAC_TABLE_DEFN
 };
 
-static inline void _avr_fast_core_flash_uflash_write_0(avr_t* avr, avr_flashaddr_t addr, uint_fast32_t data) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely(addr > avr->flashend)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of flash, aborting.", __FUNCTION__, addr);
-		CRASH();
+static inline void _avr_fast_core_flash_uflash_write_0(avr_t* avr, avr_flashaddr_t addr, uint_fast32_t data)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely(addr > avr->flashend)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of flash, aborting.", __FUNCTION__, addr);
+			CRASH();
+		}
 	}
-#endif
 
-	AVR_FAST_CORE_UFLASH_ADDR_AT(addr) = data;
+	if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS)
+		AVR_FAST_CORE_GLOBAL_UFLASH_ADDR_AT(addr) = data;
+	else
+		AVR_FAST_CORE_DATA_UFLASH_ADDR_AT(addr) = data;
 }
 
-static inline uint_fast32_t _avr_fast_core_flash_uflash_read_0(avr_t* avr, avr_flashaddr_t addr) {
-#ifdef AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	if(unlikely(addr > avr->flashend)) {
-		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of flash, aborting.", __FUNCTION__, addr);
-		CRASH();
+static inline uint_fast32_t _avr_fast_core_flash_uflash_read_0(avr_t* avr, avr_flashaddr_t addr)
+{
+	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+		if(unlikely(addr > avr->flashend)) {
+			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of flash, aborting.", __FUNCTION__, addr);
+			CRASH();
+		}
 	}
-#endif
 
-	return(AVR_FAST_CORE_UFLASH_ADDR_AT(addr));
+	if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS)
+		return(AVR_FAST_CORE_GLOBAL_UFLASH_ADDR_AT(addr));
+	else
+		return(AVR_FAST_CORE_DATA_UFLASH_ADDR_AT(addr));
 }
-
-
-
 
 #define AVR_FAST_CORE_UINST_DEFN_vIO(io) \
 	uint_fast8_t v##io = _avr_fast_core_reg_io_read(avr, count, io)
@@ -1492,8 +1665,7 @@ static inline uint_fast32_t _avr_fast_core_flash_uflash_read_0(avr_t* avr, avr_f
 	uint_fast8_t v##rx = _avr_fast_core_fetch_r(avr, rx)
 
 #define AVR_FAST_CORE_UINST_DEFN_vRrmw(rx) \
-	RMW(AVR_FAST_CORE_RMW_DEFN(pv##rx); uint_fast8_t v##rx = _avr_fast_core_rmw_fetch_r(avr, rx, &pv##rx)); \
-	NO_RMW(AVR_FAST_CORE_UINST_DEFN_vR(rx))
+	avr_rmw_t rmw_##rx; uint_fast8_t v##rx = _avr_fast_core_rmw_fetch_r(avr, rx, &rmw_##rx); \
 
 #define AVR_FAST_CORE_UINST_DEFN_v16R(rx) \
 	uint_fast8_t v##rx = _avr_fast_core_fetch_r16(avr, rx)
@@ -1502,16 +1674,13 @@ static inline uint_fast32_t _avr_fast_core_flash_uflash_read_0(avr_t* avr, avr_f
 	uint_fast16_t v##rx = _avr_fast_core_fetch_r16le(avr, rx)
 
 #define AVR_FAST_CORE_UINST_DEFN_v16leRrmw(rx) \
-	RMW(AVR_FAST_CORE_RMW_DEFN(pv##rx); uint_fast16_t v##rx = _avr_fast_core_rmw_fetch_r16le(avr, rx, &pv##rx)); \
-	NO_RMW(AVR_FAST_CORE_UINST_DEFN_v16leR(rx))
+	avr_rmw_t rmw_##rx; uint_fast16_t v##rx = _avr_fast_core_rmw_fetch_r16le(avr, rx, &rmw_##rx); \
 
-#define AVR_FAST_CORE_RMW_STORE_R(avr, r0, data) \
-	RMW(_avr_fast_core_rmw_store(pv##r0, data)); \
-	NO_RMW(_avr_fast_core_store_r(avr, r0, data));
+#define AVR_FAST_CORE_RMW_STORE_R(r0, data) \
+	_avr_fast_core_rmw_store(&rmw_##r0, data)
 
-#define AVR_FAST_CORE_RMW_STORE_R16LE(avr, r0, data) \
-	RMW(_avr_fast_core_rmw16le_store(pv##r0, data)); \
-	NO_RMW(_avr_fast_core_store_r16le(avr, r0, data));
+#define AVR_FAST_CORE_RMW_STORE_R16LE(r0, data) \
+	_avr_fast_core_rmw16le_store(&rmw_##r0, data)
 
 #define AVR_FAST_CORE_UINST_R0(xu_opcode) (xu_opcode & 0xff)
 #define AVR_FAST_CORE_UINST_R1(xu_opcode) ((xu_opcode >> 8) & 0xff)
@@ -1735,15 +1904,15 @@ static inline uint_fast8_t _avr_fast_core_inst_decode_r4(const uint_fast16_t o) 
 #define AVR_FAST_CORE_INST_DEFN_R5(r5, xi_opcode) uint_fast8_t r5 = ( ((xi_opcode & 0x0200) >> 5) | _avr_fast_core_inst_decode_r4(xi_opcode) )
 #define AVR_FAST_CORE_INST_DEFN_R16(r16, xi_opcode) uint_fast8_t r16 = (16 + _avr_fast_core_inst_decode_r4(xi_opcode))
 
-typedef void (pfnInst_t)(avr_t* avr, int_fast32_t * count, uint_fast32_t u_opcode);
+typedef void (pfnInst_t)(avr_t* avr, int_fast32_t *count, uint_fast32_t u_opcode);
 
 #define AVR_FAST_CORE_INST_DECL(name) \
-	void _avr_fast_core_inst_##name(avr_t * avr, int_fast32_t * count, uint16_t i_opcode)
+	void _avr_fast_core_inst_##name(avr_t *avr, int_fast32_t *count, uint16_t i_opcode)
 #define AVR_FAST_CORE_INST_CALL(type, name) \
 	_avr_fast_core_inst_##type##_##name(avr, count, i_opcode)
 	
 #define AVR_FAST_CORE_UINST_DECL(name) \
-	void _avr_fast_core_uinst_##name(avr_t * avr, int_fast32_t * count, uint_fast32_t u_opcode)
+	void _avr_fast_core_uinst_##name(avr_t *avr, int_fast32_t *count, uint_fast32_t u_opcode)
 #define AVR_FAST_CORE_UINST_CALL(name) \
 	_avr_fast_core_uinst_##name(avr, count, u_opcode)
 
@@ -1753,18 +1922,16 @@ typedef void (pfnInst_t)(avr_t* avr, int_fast32_t * count, uint_fast32_t u_opcod
 typedef pfnInst_t * pfnInst_p;
 
 
-#ifdef AVR_FAST_CORE_ITRACE
 #define AVR_FAST_CORE_ITRACE_CALL(combining) \
-	_avr_fast_core_itrace(avr, combining, i_opcode, inst_pc, u_opcode, __FUNCTION__)
+	_avr_fast_core_itrace_call(avr, combining, i_opcode, inst_pc, u_opcode, __FUNCTION__)
 	
-static void _avr_fast_core_itrace(avr_t * avr, int combining, uint16_t i_opcode,
+static void _avr_fast_core_itrace_call(avr_t *avr, int combining, uint16_t i_opcode,
 		avr_flashaddr_t inst_pc, uint32_t u_opcode, const char *function) {
-	iSTATE("\t\t\t\t\t\t\t\t%s  (0x%04x [0x%08x]) %s\n", (combining ? "combining" : "         "),
-		i_opcode, u_opcode, function);
+	if(_AVR_FAST_CORE_ITRACE)
+		iSTATE("\t\t\t\t\t\t\t\t%s  (0x%04x [0x%08x]) %s\n",
+			(combining ? "combining" : "         "),
+				i_opcode, u_opcode, function);
 }
-#else
-#define AVR_FAST_CORE_ITRACE_CALL(combining)
-#endif
 
 #define AVR_FAST_CORE_INST_XLAT(type, name) \
 	avr_flashaddr_t __attribute__((__unused__)) inst_pc = avr->pc; \
@@ -1803,7 +1970,7 @@ static void _avr_fast_core_itrace(avr_t * avr, int combining, uint16_t i_opcode,
 #define AVR_FAST_CORE_BEGIN_COMPLEX_INST_DEFN(type, name, args...) \
 	AVR_FAST_CORE_INST_DECL(type##_##name) { \
 		AVR_FAST_CORE_INST_XLAT(type, name); \
-		if(0 != _AVR_FAST_CORE_COMBINING) { \
+		if(0 != _AVR_FAST_CORE_COMPLEX) { \
 			AVR_FAST_CORE_INST_DEFN_##type(i_opcode, ## args);
 		
 #define AVR_FAST_CORE_END_COMPLEX_INST_DEFN \
@@ -1814,7 +1981,7 @@ static void _avr_fast_core_itrace(avr_t * avr, int combining, uint16_t i_opcode,
 		AVR_FAST_CORE_ITRACE_CALL(0); \
 	}
 
-static uint32_t _avr_fast_core_inst_xlat_x(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_x(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, 0, 0, 0));
 }
 
@@ -1822,7 +1989,7 @@ static uint32_t _avr_fast_core_inst_xlat_x(avr_t * avr, uint8_t r0, uint16_t i_o
 	AVR_FAST_CORE_INST_DEFN_A5(a5, xi_opcode); \
 	AVR_FAST_CORE_INST_DEFN_B3a(b3, xi_opcode)
 
-static uint32_t _avr_fast_core_inst_xlat_a5m8(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_a5m8(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	AVR_FAST_CORE_INST_DEFN_a5m8(i_opcode, a5, b3);
 	uint8_t mask = (1 << b3);
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, a5, mask, 0));
@@ -1831,7 +1998,7 @@ static uint32_t _avr_fast_core_inst_xlat_a5m8(avr_t * avr, uint8_t r0, uint16_t 
 #define AVR_FAST_CORE_INST_DEFN_b3(xi_opcode, b3) \
 	AVR_FAST_CORE_INST_DEFN_B3b(b3, xi_opcode);
 
-static uint32_t _avr_fast_core_inst_xlat_b3(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_b3(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	AVR_FAST_CORE_INST_DEFN_b3(i_opcode, b3);
 	uint8_t mask = (1 << b3);
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, b3, mask, 0));
@@ -1841,13 +2008,13 @@ static uint32_t _avr_fast_core_inst_xlat_b3(avr_t * avr, uint8_t r0, uint16_t i_
 	AVR_FAST_CORE_INST_DEFN_B3a(b3, xi_opcode); \
 	AVR_FAST_CORE_INST_DEFN_O7(o7, xi_opcode)
 
-static uint32_t _avr_fast_core_inst_xlat_b3o7(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_b3o7(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	AVR_FAST_CORE_INST_DEFN_b3o7(i_opcode, b3, o7);
 	uint8_t mask = (1 << b3);
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, b3, o7, mask));
 }
 
-static uint32_t _avr_fast_core_inst_xlat_d4r4(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_d4r4(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	AVR_FAST_CORE_INST_DEFN_D4(d4, i_opcode) << 1;
 	AVR_FAST_CORE_INST_DEFN_R4(r4, i_opcode) << 1;
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, d4, r4, 0));
@@ -1856,7 +2023,7 @@ static uint32_t _avr_fast_core_inst_xlat_d4r4(avr_t * avr, uint8_t r0, uint16_t 
 #define AVR_FAST_CORE_INST_DEFN_d5(xi_opcode, d5) \
 	AVR_FAST_CORE_INST_DEFN_D5(d5, xi_opcode);
 
-static uint32_t _avr_fast_core_inst_xlat_d5(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_d5(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	AVR_FAST_CORE_INST_DEFN_d5(i_opcode, d5);
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, d5, 0, 0));
 }
@@ -1866,18 +2033,18 @@ static uint32_t _avr_fast_core_inst_xlat_d5(avr_t * avr, uint8_t r0, uint16_t i_
 	AVR_FAST_CORE_INST_DEFN_D5(d5, xi_opcode); \
 	AVR_FAST_CORE_INST_DEFN_A6(a6, xi_opcode)
 
-static uint32_t _avr_fast_core_inst_xlat_d5a6(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_d5a6(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	AVR_FAST_CORE_INST_DEFN_d5a6(i_opcode, d5, a6);
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, d5, a6, 0));
 }
 
-static uint32_t _avr_fast_core_inst_xlat_d5b3(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_d5b3(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	AVR_FAST_CORE_INST_DEFN_D5(d5, i_opcode);
 	AVR_FAST_CORE_INST_DEFN_B3a(b3, i_opcode);
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, d5, b3, 0));
 }
 
-static uint32_t _avr_fast_core_inst_xlat_d5m8(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_d5m8(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	AVR_FAST_CORE_INST_DEFN_D5(d5, i_opcode);
 	AVR_FAST_CORE_INST_DEFN_B3a(b3, i_opcode);
 	uint8_t mask = (1 << b3);
@@ -1888,12 +2055,12 @@ static uint32_t _avr_fast_core_inst_xlat_d5m8(avr_t * avr, uint8_t r0, uint16_t 
 	AVR_FAST_CORE_INST_DEFN_D5(d5, xi_opcode); \
 	AVR_FAST_CORE_INST_DEFN_R5(r5, xi_opcode)
 
-static uint32_t _avr_fast_core_inst_xlat_d5r5(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_d5r5(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	AVR_FAST_CORE_INST_DEFN_d5r5(i_opcode, d5, r5);
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, d5, r5, 0));
 }
 
-static uint32_t _avr_fast_core_inst_xlat_d5rXYZ(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_d5rXYZ(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	AVR_FAST_CORE_INST_DEFN_D5(d5, i_opcode);
 	uint8_t  rXYZ = ((uint8_t []){R_ZL, 0x00, R_YL, R_XL})[(i_opcode & 0x000c)>>2];
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, d5, rXYZ, 0));
@@ -1904,7 +2071,7 @@ static uint32_t _avr_fast_core_inst_xlat_d5rXYZ(avr_t * avr, uint8_t r0, uint16_
 	uint8_t  rYZ = ((i_opcode & 0x0008) ? R_YL : R_ZL); \
 	AVR_FAST_CORE_INST_DEFN_Q6(q6, xi_opcode)
 
-static uint32_t _avr_fast_core_inst_xlat_d5rYZq6(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_d5rYZq6(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	AVR_FAST_CORE_INST_DEFN_d5rYZq6(i_opcode, d5, rYZ, q6);
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, d5, rYZ, q6));
 }
@@ -1912,15 +2079,17 @@ static uint32_t _avr_fast_core_inst_xlat_d5rYZq6(avr_t * avr, uint8_t r0, uint16
 
 #define AVR_FAST_CORE_INST_DEFN_d5x16(xi_opcode, d5, x16) \
 	AVR_FAST_CORE_INST_DEFN_D5(d5, xi_opcode); \
+	AVR_FAST_CORE_FLASH_OPCODE_DEFN(x16, new_pc); \
+	new_pc += 2;
+
+
+static uint32_t _avr_fast_core_inst_xlat_d5x16(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
+	AVR_FAST_CORE_INST_DEFN_D5(d5, i_opcode);
 	AVR_FAST_CORE_FLASH_OPCODE_DEFN(x16, (2 + avr->pc));
-
-
-static uint32_t _avr_fast_core_inst_xlat_d5x16(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
-	AVR_FAST_CORE_INST_DEFN_d5x16(i_opcode, d5, x16);
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, d5, x16, 0));
 }
 
-static uint32_t _avr_fast_core_inst_xlat_d16r16(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_d16r16(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	AVR_FAST_CORE_INST_DEFN_D16(d16, i_opcode);
 	AVR_FAST_CORE_INST_DEFN_R16(r16, i_opcode);
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, d16, r16, 0));
@@ -1930,30 +2099,30 @@ static uint32_t _avr_fast_core_inst_xlat_d16r16(avr_t * avr, uint8_t r0, uint16_
 	AVR_FAST_CORE_INST_DEFN_H4(h4, xi_opcode); \
 	AVR_FAST_CORE_INST_DEFN_K8(k8, xi_opcode)
 
-static uint32_t _avr_fast_core_inst_xlat_h4k8(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_h4k8(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	AVR_FAST_CORE_INST_DEFN_h4k8(i_opcode, h4, k8);
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, h4, k8, 0));
 }
 
-static uint32_t _avr_fast_core_inst_xlat_o12(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_o12(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	AVR_FAST_CORE_INST_DEFN_O12(o12, i_opcode);
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, 0, o12, 0));
 }
 
-static uint32_t _avr_fast_core_inst_xlat_p2k6(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_p2k6(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	AVR_FAST_CORE_INST_DEFN_P2(p2, i_opcode);
 	AVR_FAST_CORE_INST_DEFN_K6(k6, i_opcode);
 	return(AVR_FAST_CORE_MAKE_UFLASH_OPCODE(r0, p2, k6, 0));
 }
 
-static uint32_t _avr_fast_core_inst_xlat_x22(avr_t * avr, uint8_t r0, uint16_t i_opcode) {
+static uint32_t _avr_fast_core_inst_xlat_x22(avr_t *avr, uint8_t r0, uint16_t i_opcode) {
 	uint_fast8_t x6 = ((_avr_fast_core_inst_decode_d5(i_opcode) << 1) | (i_opcode & 0x0001));
 	AVR_FAST_CORE_FLASH_OPCODE_DEFN(x16, (2 + avr->pc));
 	uint_fast32_t x22 = ((x6 << 16) | x16) << 1;
 	return((x22 << 8) | r0);
 }
 
-#if 1
+#if 0
 #define AVR_FAST_CORE_UINST_STEP_PC_CYCLES(x, y) CYCLES(y); avr->pc += (x);
 #define AVR_FAST_CORE_UINST_JMP_PC_CYCLES(x, y) CYCLES(y); avr->pc = (x);
 #else
@@ -1961,28 +2130,15 @@ static uint32_t _avr_fast_core_inst_xlat_x22(avr_t * avr, uint8_t r0, uint16_t i
 #define AVR_FAST_CORE_UINST_JMP_PC_CYCLES(x, y) avr->pc = (x); CYCLES(y);
 #endif
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-#define CAT_AVR_FAST_CORE_UINST_STEP_PC_CYCLES(x, y) \
-	AVR_FAST_CORE_UINST_STEP_PC_CYCLES(x, y); \
-	if(0 >= *count) return;
-#else
-#define CAT_AVR_FAST_CORE_UINST_STEP_PC_CYCLES(x, y) \
-	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(x, y));
-#endif
-
-#ifdef AVR_FAST_CORE_TAIL_CALL
 static pfnInst_p _avr_fast_core_uinst_op_table[256];
 #define AVR_FAST_CORE_UINST_SPLT_NEXT() \
-	if(likely(0 < *count)) { \
+	if(_AVR_FAST_CORE_TAIL_CALL && likely(0 < *count)) { \
 		AVR_FAST_CORE_UFLASH_OPCODE_FETCH(u_opcode, avr->pc); \
 		AVR_FAST_CORE_UINST_DEFN_R0(u_opcode, u_opcode_op); \
 		pfnInst_p pfn = _avr_fast_core_uinst_op_table[u_opcode_op]; \
 		return(AVR_FAST_CORE_PFN_UINST_CALL(u_opcode)); \
 	} else \
 		return;
-#else
-#define AVR_FAST_CORE_UINST_SPLT_NEXT() return
-#endif
 
 #define AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(next_pc, next_cycles) \
 	AVR_FAST_CORE_UINST_STEP_PC_CYCLES(next_pc, next_cycles); \
@@ -1992,7 +2148,8 @@ static pfnInst_p _avr_fast_core_uinst_op_table[256];
 	AVR_FAST_CORE_UINST_JMP_PC_CYCLES(next_pc, next_cycles); \
 	AVR_FAST_CORE_UINST_SPLT_NEXT();
 
-AVR_FAST_CORE_UINST_DECL(d5r5_adc) {
+AVR_FAST_CORE_UINST_DECL(d5r5_adc)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(u_opcode, d, r);
 	uint_fast8_t res = vd + vr + avr->sreg[S_C];
 
@@ -2002,7 +2159,7 @@ AVR_FAST_CORE_UINST_DECL(d5r5_adc) {
 		STATE("addc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 	}
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	_avr_fast_core_flags_add_zns(avr, res, vd, vr);
 
@@ -2015,7 +2172,8 @@ AVR_FAST_CORE_BEGIN_COMPLEX_INST_DEFN(d5r5, adc, d5, r5)
 		u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(d5_rol, d5, 0, 0);
 AVR_FAST_CORE_END_COMPLEX_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(d5r5_add) {
+AVR_FAST_CORE_UINST_DECL(d5r5_add)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(u_opcode, d, r);
 	uint_fast8_t res = vd + vr;
 
@@ -2025,7 +2183,7 @@ AVR_FAST_CORE_UINST_DECL(d5r5_add) {
 		STATE("add %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 	}
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	_avr_fast_core_flags_add_zns(avr, res, vd, vr);
 
@@ -2038,10 +2196,11 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(d5r5, add, d5, r5)
 
 	if( (0x0c00 /* ADD */ == (i_opcode & 0xfc00)) && (0x1c00 /* ADDC */ == (next_opcode & 0xfc00))
 			&& ((d5 + 1) == d5b) && ((r5 + 1) == r5b) ) {
-		if(d5 == r5)
+		if(d5 == r5) {
 			u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(d5_lsl_rol, d5, 0, 0);
-		else
+		} else {
 			u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(d5r5_add_adc, d5, r5, 0);
+		}
 	} else if (d5 == r5) {
 		int count = 1;
 		while((7 > count) && (i_opcode == next_opcode)) {
@@ -2059,34 +2218,35 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(d5r5, add, d5, r5)
 		combining = 0;
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(d5r5_add_adc) {
+AVR_FAST_CORE_UINST_DECL(d5r5_add_adc)
+{
 	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_v16leR2(u_opcode, d, r);
 	uint_fast16_t res = vd + vr;
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	T(uint8_t vdl = vd & 0xff; uint8_t vrl = vr & 0xff);
-	T(uint8_t res0 = vdl + vrl);
-	STATE("add %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vdl, avr_regname(r), vrl, res0);
-	T(_avr_fast_core_flags_add_zns(avr, res0, vdl, vrl));
-	SREG();
-#else
-//	STATE("/ add %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vdl, avr_regname(r), vrl, res0);
-	STATE("add.adc %s:%s[%04x], %s:%s[%04x] = %04x\n", avr_regname(d), avr_regname(d + 1), vd, 
-		avr_regname(r), avr_regname(r + 1), vr, res);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		T(uint8_t vdl = vd & 0xff; uint8_t vrl = vr & 0xff);
+		T(uint8_t res0 = vdl + vrl);
+		STATE("add %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vdl, avr_regname(r), vrl, res0);
+		T(_avr_fast_core_flags_add_zns(avr, res0, vdl, vrl));
+		SREG();
+	} else {
+	//	STATE("/ add %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vdl, avr_regname(r), vrl, res0);
+		STATE("add.adc %s:%s[%04x], %s:%s[%04x] = %04x\n", avr_regname(d), avr_regname(d + 1), vd, 
+			avr_regname(r), avr_regname(r + 1), vr, res);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
 	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	T(uint8_t vdh = vd >> 8; uint8_t vrh = vr >> 8);
-	T(uint8_t res1 = vdh + vrh + avr->sreg[S_C]);
-	STATE("addc %s[%02x], %s[%02x] = %02x\n", avr_regname(d + 1), vdh, avr_regname(r + 1), vrh, res1);
-#else
-//	STATE("\\ addc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vdh, avr_regname(r), vrh, res1);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		T(uint8_t vdh = vd >> 8; uint8_t vrh = vr >> 8);
+		T(uint8_t res1 = vdh + vrh + avr->sreg[S_C]);
+		STATE("addc %s[%02x], %s[%02x] = %02x\n", avr_regname(d + 1), vdh, avr_regname(r + 1), vrh, res1);
+	} else {
+	//	STATE("\\ addc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vdh, avr_regname(r), vrh, res1);
+	}
 
-	AVR_FAST_CORE_RMW_STORE_R16LE(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R16LE(d, res);
 
 /*	NOTE: about flag behavior...
 	certain flags, despite logic where concerned with the combination of
@@ -2109,17 +2269,18 @@ AVR_FAST_CORE_UINST_DECL(d5r5_add_adc) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(p2k6_adiw) {
+AVR_FAST_CORE_UINST_DECL(p2k6_adiw)
+{
 	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_R2(u_opcode, p, k);
 	uint_fast16_t res = vp + k;
 
-#ifndef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("adiw %s:%s[%04x], 0x%02x = 0x%04x\n", avr_regname(p), avr_regname(p+1), vp, k, res);
-#else
-	STATE("adiw %s:%s[%04x], 0x%02x\n", avr_regname(p), avr_regname(p+1), vp, k);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("adiw %s:%s[%04x], 0x%02x = 0x%04x\n", avr_regname(p), avr_regname(p+1), vp, k, res);
+	} else {
+		STATE("adiw %s:%s[%04x], 0x%02x\n", avr_regname(p), avr_regname(p+1), vp, k);
+	}
 
-	AVR_FAST_CORE_RMW_STORE_R16LE(avr, p, res);
+	AVR_FAST_CORE_RMW_STORE_R16LE(p, res);
 
 	avr->sreg[S_V] = (((~vp) & res) >> 15) & 1;
 	avr->sreg[S_C] = (((~res) & vp) >> 15) & 1;
@@ -2132,7 +2293,8 @@ AVR_FAST_CORE_UINST_DECL(p2k6_adiw) {
 }
 AVR_FAST_CORE_INST_DEFN(p2k6, adiw)
 
-AVR_FAST_CORE_UINST_DECL(d5r5_and) {
+AVR_FAST_CORE_UINST_DECL(d5r5_and)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(u_opcode, d, r);
 	uint_fast8_t res = vd & vr;
 
@@ -2142,7 +2304,7 @@ AVR_FAST_CORE_UINST_DECL(d5r5_and) {
 		STATE("and %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 	}
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 	
 	_avr_fast_core_flags_znv0s(avr, res);
 
@@ -2155,17 +2317,18 @@ AVR_FAST_CORE_BEGIN_COMPLEX_INST_DEFN(d5r5, and, d5, r5)
 		u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(d5_tst, d5, 0, 0);
 AVR_FAST_CORE_END_COMPLEX_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(h4k8_andi) {
+AVR_FAST_CORE_UINST_DECL(h4k8_andi)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, h, k);
 	uint_fast8_t res = vh & k;
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
-#else
-	STATE("andi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), vh, k, res);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
+	} else {
+		STATE("andi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), vh, k, res);
+	}
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, h, res);
+	AVR_FAST_CORE_RMW_STORE_R(h, res);
 
 	_avr_fast_core_flags_znv0s(avr, res);
 
@@ -2194,23 +2357,24 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(h4k8, andi, h4, k8)
 		combining = 0;
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(h4k16_andi_andi) {
+AVR_FAST_CORE_UINST_DECL(h4k16_andi_andi)
+{
 	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_16R2(u_opcode, h, k);
 	uint_fast16_t res = vh & k;
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), vh & 0xff, k & 0xff);
-#else
-	STATE("andi %s:%s[%04x], 0x%04x\n", avr_regname(h), avr_regname(h + 1), vh, k);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), vh & 0xff, k & 0xff);
+	} else {
+		STATE("andi %s:%s[%04x], 0x%04x\n", avr_regname(h), avr_regname(h + 1), vh, k);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("andi %s[%02x], 0x%02x\n", avr_regname(h + 1), vh >> 8, k >> 8);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("andi %s[%02x], 0x%02x\n", avr_regname(h + 1), vh >> 8, k >> 8);
+	}
 
-	AVR_FAST_CORE_RMW_STORE_R16LE(avr, h, res);
+	AVR_FAST_CORE_RMW_STORE_R16LE(h, res);
 	
 	_avr_fast_core_flags_znv0s16(avr, res);
 
@@ -2220,15 +2384,16 @@ AVR_FAST_CORE_UINST_DECL(h4k16_andi_andi) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(h4r5k8_andi_or) {
+AVR_FAST_CORE_UINST_DECL(h4r5k8_andi_or)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2_R3(u_opcode, h, r, andi_k);
 	uint_fast8_t andi_res = vh & andi_k;
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), vh, andi_k);
-#else
-	STATE("/ andi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), vh, andi_k, andi_res);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), vh, andi_k);
+	} else {
+		STATE("/ andi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), vh, andi_k, andi_res);
+	}
 
 	T(_avr_fast_core_flags_znv0s(avr, andi_res));
 	SREG();
@@ -2237,13 +2402,13 @@ AVR_FAST_CORE_UINST_DECL(h4r5k8_andi_or) {
 
 	uint_fast8_t res = andi_res | vr;
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("or %s[%02x], %s[%02x] = %02x\n", avr_regname(h), andi_res, avr_regname(r), vr, res);
-#else
-	STATE("\\ or %s[%02x], %s[%02x] = %02x\n", avr_regname(h), andi_res, avr_regname(r), vr, res);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("or %s[%02x], %s[%02x] = %02x\n", avr_regname(h), andi_res, avr_regname(r), vr, res);
+	} else {
+		STATE("\\ or %s[%02x], %s[%02x] = %02x\n", avr_regname(h), andi_res, avr_regname(r), vr, res);
+	}
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, h, res);
+	AVR_FAST_CORE_RMW_STORE_R(h, res);
 
 	_avr_fast_core_flags_znv0s(avr, res);
 
@@ -2253,15 +2418,16 @@ AVR_FAST_CORE_UINST_DECL(h4r5k8_andi_or) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(h4k8k8_andi_ori) {
+AVR_FAST_CORE_UINST_DECL(h4k8k8_andi_ori)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2_R3(u_opcode, h, andi_k, ori_k);
 	uint_fast8_t andi_res = vh & andi_k;
 	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), vh, andi_k);
-#else
-	STATE("/ andi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), vh, andi_k, andi_res);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), vh, andi_k);
+	} else {
+		STATE("/ andi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), vh, andi_k, andi_res);
+	}
 
 	T(_avr_fast_core_flags_znv0s(avr, andi_res));
 	SREG();
@@ -2269,13 +2435,13 @@ AVR_FAST_CORE_UINST_DECL(h4k8k8_andi_ori) {
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 	uint_fast8_t res = andi_res | ori_k;
 	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("ori %s[%02x], 0x%02x\n", avr_regname(h), andi_res, ori_k);
-#else
-	STATE("\\ ori %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), andi_res, ori_k, res);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("ori %s[%02x], 0x%02x\n", avr_regname(h), andi_res, ori_k);
+	} else {
+		STATE("\\ ori %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), andi_res, ori_k, res);
+	}
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, h, res);
+	AVR_FAST_CORE_RMW_STORE_R(h, res);
 
 	_avr_fast_core_flags_znv0s(avr, res);
 
@@ -2285,7 +2451,8 @@ AVR_FAST_CORE_UINST_DECL(h4k8k8_andi_ori) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_asr) {
+AVR_FAST_CORE_UINST_DECL(d5_asr)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
 	
 	uint_fast8_t neg = vd & 0x80;
@@ -2293,7 +2460,7 @@ AVR_FAST_CORE_UINST_DECL(d5_asr) {
 	
 	STATE("asr %s[%02x]\n", avr_regname(d), vd);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 	
 	neg >>= 7;
 	
@@ -2309,7 +2476,8 @@ AVR_FAST_CORE_UINST_DECL(d5_asr) {
 }
 AVR_FAST_CORE_INST_DEFN(d5, asr)
 
-AVR_FAST_CORE_UINST_DECL(b3_bclr) {
+AVR_FAST_CORE_UINST_DECL(b3_bclr)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1(u_opcode, b);
 	avr->sreg[b]=0;
 
@@ -2323,119 +2491,134 @@ AVR_FAST_CORE_UINST_DECL(b3_bclr) {
 }
 AVR_FAST_CORE_INST_DEFN(b3, bclr)
 
-AVR_FAST_CORE_UINST_DECL(d5m8_bld) {
+AVR_FAST_CORE_UINST_DECL(d5m8_bld)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, d, mask);
 	
-#ifdef AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	uint_fast8_t res = (vd & ~(mask)) | (avr->sreg[S_T] * (mask));
-#else
-	uint_fast8_t res = (vd & ~(mask)) | (avr->sreg[S_T] ? (mask) : 0);
-#endif
+	uint_fast8_t res;
+	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+		res = (vd & ~(mask)) | (avr->sreg[S_T] * (mask));
+	} else {
+		res = (vd & ~(mask)) | (avr->sreg[S_T] ? (mask) : 0);
+	}
 
 	STATE("bld %s[%02x], 0x%02x = %02x\n", avr_regname(d), vd, mask, res);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
 }
 AVR_FAST_CORE_INST_DEFN(d5m8, bld)
 
-AVR_FAST_CORE_UINST_DECL(o7_brcc) {
+AVR_FAST_CORE_UINST_DECL(o7_brcc)
+{
 	AVR_FAST_CORE_UINST_DEFN_iR2(u_opcode, o);
 
 	int branch = (0 == avr->sreg[S_C]);
 	avr_flashaddr_t new_pc = 2 + avr->pc;
 	
-#ifdef AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	avr_flashaddr_t branch_pc = new_pc + (o * branch);
-#else
-	avr_flashaddr_t branch_pc = new_pc + (branch ? o : 0);
-#endif
+	avr_flashaddr_t branch_pc;
+	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+		branch_pc = new_pc + (o * branch);
+	} else {
+		branch_pc = new_pc + (branch ? o : 0);
+	}
 
 	STATE("brcc .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
 	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch);
 }
 
-AVR_FAST_CORE_UINST_DECL(o7_brcs) {
+AVR_FAST_CORE_UINST_DECL(o7_brcs)
+{
 	AVR_FAST_CORE_UINST_DEFN_iR2(u_opcode, o);
 
 	int branch = (0 != avr->sreg[S_C]);
 	avr_flashaddr_t new_pc = 2 + avr->pc;
 	
-#ifdef AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	avr_flashaddr_t branch_pc = new_pc + (o * branch);
-#else
-	avr_flashaddr_t branch_pc = new_pc + (branch ? o : 0);
-#endif
+	avr_flashaddr_t branch_pc;
+	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+		branch_pc = new_pc + (o * branch);
+	} else {
+		branch_pc = new_pc + (branch ? o : 0);
+	}
 
 	STATE("brcs .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
 	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch);
 }
 
-AVR_FAST_CORE_UINST_DECL(o7_breq) {
+AVR_FAST_CORE_UINST_DECL(o7_breq)
+{
 	AVR_FAST_CORE_UINST_DEFN_iR2(u_opcode, o);
 
 	int branch = (0 != avr->sreg[S_Z]);
 	avr_flashaddr_t new_pc = 2 + avr->pc;
-	
-#ifdef AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	avr_flashaddr_t branch_pc = new_pc + (o * branch);
-#else
-	avr_flashaddr_t branch_pc = new_pc + (branch ? o : 0);
-#endif
+
+	avr_flashaddr_t branch_pc;
+	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+		branch_pc = new_pc + (o * branch);
+	} else {
+		branch_pc = new_pc + (branch ? o : 0);
+	}
 
 	STATE("breq .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
 	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch);
 }
 
-AVR_FAST_CORE_UINST_DECL(o7_brne) {
+AVR_FAST_CORE_UINST_DECL(o7_brne)
+{
 	AVR_FAST_CORE_UINST_DEFN_iR2(u_opcode, o);
 
 	int branch = (0 == avr->sreg[S_Z]);
 	avr_flashaddr_t new_pc = 2 + avr->pc;
-	
-#ifdef AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	avr_flashaddr_t branch_pc = new_pc + (o * branch);
-#else
-	avr_flashaddr_t branch_pc = new_pc + (branch ? o : 0);
-#endif
+
+	avr_flashaddr_t branch_pc;
+	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+		branch_pc = new_pc + (o * branch);
+	} else {
+		branch_pc = new_pc + (branch ? o : 0);
+	}
 
 	STATE("brne .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
 	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch);
 }
 
-AVR_FAST_CORE_UINST_DECL(o7_brpl) {
+AVR_FAST_CORE_UINST_DECL(o7_brpl)
+{
 	AVR_FAST_CORE_UINST_DEFN_iR2(u_opcode, o);
 
 	int branch = (0 == avr->sreg[S_N]);
 	avr_flashaddr_t new_pc = 2 + avr->pc;
-	
-#ifdef AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	avr_flashaddr_t branch_pc = new_pc + (o * branch);
-#else
-	avr_flashaddr_t branch_pc = new_pc + (branch ? o : 0);
-#endif
+
+	avr_flashaddr_t branch_pc;
+	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+		branch_pc = new_pc + (o * branch);
+	} else {
+		branch_pc = new_pc + (branch ? o : 0);
+	}
 
 	STATE("brpl .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
 	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch);
 }
 
-AVR_FAST_CORE_UINST_DECL(b3o7_brxc) {
+AVR_FAST_CORE_UINST_DECL(b3o7_brxc)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_iR2(u_opcode, b, o);
 
 	int branch = (0 == avr->sreg[b]);
 	avr_flashaddr_t new_pc = 2 + avr->pc;
 
-#ifdef AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	avr_flashaddr_t branch_pc = new_pc + (o * branch);
-#else
-	avr_flashaddr_t branch_pc = new_pc + (branch ? o : 0);
-#endif
+	avr_flashaddr_t branch_pc;
+	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+		branch_pc = new_pc + (o * branch);
+	} else {
+		branch_pc = new_pc + (branch ? o : 0);
+	}
+
 	const char *names[8] = {
 		"brcc", "brne", "brpl", "brvc", NULL, "brhc", "brtc", "brid"
 	};
@@ -2448,26 +2631,28 @@ AVR_FAST_CORE_UINST_DECL(b3o7_brxc) {
 
 	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch);
 }
-AVR_FAST_CORE_BEGIN_COMPLEX_INST_DEFN(b3o7, brxc, b, o)
-	if(S_C == b)
-		u_opcode =AVR_FAST_CORE_MAKE_UINST_OPCODE(o7_brcc, 0, o, 0);
-	else if(S_N == b)
-		u_opcode =AVR_FAST_CORE_MAKE_UINST_OPCODE(o7_brpl, 0, o, 0);
-	else if(S_Z == b)
-		u_opcode =AVR_FAST_CORE_MAKE_UINST_OPCODE(o7_brne, 0, o, 0);
+AVR_FAST_CORE_BEGIN_COMPLEX_INST_DEFN(b3o7, brxc, b3, o7)
+	if(S_C == b3)
+		u_opcode =AVR_FAST_CORE_MAKE_UINST_OPCODE(o7_brcc, 0, o7, 0);
+	else if(S_N == b3)
+		u_opcode =AVR_FAST_CORE_MAKE_UINST_OPCODE(o7_brpl, 0, o7, 0);
+	else if(S_Z == b3)
+		u_opcode =AVR_FAST_CORE_MAKE_UINST_OPCODE(o7_brne, 0, o7, 0);
 AVR_FAST_CORE_END_COMPLEX_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(b3o7_brxs) {
+AVR_FAST_CORE_UINST_DECL(b3o7_brxs)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_iR2(u_opcode, b, o);
 
 	int branch = (0 != avr->sreg[b]);
 	avr_flashaddr_t new_pc = 2 + avr->pc;
 
-#ifdef AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	avr_flashaddr_t branch_pc = new_pc + (o * branch);
-#else
-	avr_flashaddr_t branch_pc = new_pc + (branch ? o : 0);
-#endif
+	avr_flashaddr_t branch_pc;
+	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+		branch_pc = new_pc + (o * branch);
+	} else {
+		branch_pc = new_pc + (branch ? o : 0);
+	}
 
 	const char *names[8] = {
 		"brcs", "breq", "brmi", "brvs", NULL, "brhs", "brts", "brie"
@@ -2487,7 +2672,8 @@ AVR_FAST_CORE_BEGIN_COMPLEX_INST_DEFN(b3o7, brxs, b3, o7)
 		u_opcode =AVR_FAST_CORE_MAKE_UINST_OPCODE(o7_breq, 0, o7, 0);
 AVR_FAST_CORE_END_COMPLEX_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(b3_bset) {
+AVR_FAST_CORE_UINST_DECL(b3_bset)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1(u_opcode, b);
 	avr->sreg[b]=1;
 
@@ -2514,7 +2700,8 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(b3, bset, b3)
 		combining = 0;
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(d5b3_bst) {
+AVR_FAST_CORE_UINST_DECL(d5b3_bst)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, b);
 	uint_fast8_t res = (vd >> b) & 1;
 
@@ -2528,14 +2715,15 @@ AVR_FAST_CORE_UINST_DECL(d5b3_bst) {
 }
 AVR_FAST_CORE_INST_DEFN(d5b3, bst)
 
-AVR_FAST_CORE_UINST_DECL(x22_call) {
+AVR_FAST_CORE_UINST_DECL(x22_call)
+{
 	AVR_FAST_CORE_UINST_DEFN_24R1(u_opcode, x22);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("call 0x%06x\n", x22 >> 1);
-#else
-	STATE("call 0x%06x\n", x22);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("call 0x%06x\n", x22 >> 1);
+	} else {
+		STATE("call 0x%06x\n", x22);
+	}
 
 	_avr_fast_core_push16be(avr, count, 2 + (avr->pc >> 1));
 
@@ -2546,7 +2734,8 @@ AVR_FAST_CORE_UINST_DECL(x22_call) {
 }
 AVR_FAST_CORE_INST_DEFN(x22, call)
 
-AVR_FAST_CORE_UINST_DECL(a5m8_cbi) {
+AVR_FAST_CORE_UINST_DECL(a5m8_cbi)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, io, mask);
 	AVR_FAST_CORE_UINST_DEFN_vIO(io);
 	uint_fast8_t res = vio & ~(mask);
@@ -2563,7 +2752,8 @@ AVR_FAST_CORE_BEGIN_COMPLEX_INST_DEFN(a5m8, cbi, a5, mask)
 	}
 AVR_FAST_CORE_END_COMPLEX_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(cli) {
+AVR_FAST_CORE_UINST_DECL(cli)
+{
 	T(uint_fast8_t io = R_SREG);
 	uint_fast8_t mask = S_I;
 
@@ -2579,7 +2769,8 @@ AVR_FAST_CORE_UINST_DECL(cli) {
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2);
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_clr) {
+AVR_FAST_CORE_UINST_DECL(d5_clr)
+{
 	T(AVR_FAST_CORE_UINST_DEFN_vR1(u_opcode, d));
 	NO_T(AVR_FAST_CORE_UINST_DEFN_R1(u_opcode, d));
 
@@ -2597,13 +2788,14 @@ AVR_FAST_CORE_UINST_DECL(d5_clr) {
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_com) {
+AVR_FAST_CORE_UINST_DECL(d5_com)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
 	uint_fast8_t res = 0xff - vd;
 
 	STATE("com %s[%02x] = %02x\n", avr_regname(d), vd, res);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	avr->sreg[S_C] = 1;
 
@@ -2615,7 +2807,8 @@ AVR_FAST_CORE_UINST_DECL(d5_com) {
 }
 AVR_FAST_CORE_INST_DEFN(d5, com)
 
-AVR_FAST_CORE_UINST_DECL(d5r5_cp) {
+AVR_FAST_CORE_UINST_DECL(d5r5_cp)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_vR2(u_opcode, d, r);
 	uint_fast8_t res = vd - vr;
 
@@ -2643,28 +2836,29 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(d5r5, cp, d5, r5)
 		combining = 0;
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(d5r5_cp_cpc) {
+AVR_FAST_CORE_UINST_DECL(d5r5_cp_cpc)
+{
 	AVR_FAST_CORE_UINST_DEFN_v16leR1_v16leR2(u_opcode, d, r);
 	uint_fast16_t res = vd - vr;
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	T(uint8_t vdl = vd & 0xff; uint8_t vrl = vr & 0xff);
-	T(uint8_t res0 = vdl  - vrl);
-	STATE("cp %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vdl, avr_regname(r), vrl, res0);
-	T(_avr_fast_core_flags_sub_zns(avr, res0, vdl, vrl));
-	T(SREG());
-#else
-	STATE("cp.cpc %s:%s[%04x], %s:%s[%04x] = %04x\n", avr_regname(d), avr_regname(d + 1), vd, 
-		avr_regname(r), avr_regname(r + 1), vr, res);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		T(uint8_t vdl = vd & 0xff; uint8_t vrl = vr & 0xff);
+		T(uint8_t res0 = vdl  - vrl);
+		STATE("cp %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vdl, avr_regname(r), vrl, res0);
+		T(_avr_fast_core_flags_sub_zns(avr, res0, vdl, vrl));
+		T(SREG());
+	} else {
+		STATE("cp.cpc %s:%s[%04x], %s:%s[%04x] = %04x\n", avr_regname(d), avr_regname(d + 1), vd, 
+			avr_regname(r), avr_regname(r + 1), vr, res);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	T(uint8_t vdh = (vd >> 8) & 0xff; uint8_t vrh = (vr >> 8) & 0xff);
-	T(uint8_t res1 = vdh  - vrh);
-	STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(d + 1), vdh, avr_regname(r + 1), vrh, res1);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		T(uint8_t vdh = (vd >> 8) & 0xff; uint8_t vrh = (vr >> 8) & 0xff);
+		T(uint8_t res1 = vdh  - vrh);
+		STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(d + 1), vdh, avr_regname(r + 1), vrh, res1);
+	}
 
 	_avr_fast_core_flags_sub16_zns16(avr, res, vd, vr);
 
@@ -2674,28 +2868,29 @@ AVR_FAST_CORE_UINST_DECL(d5r5_cp_cpc) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5r5o7_cp_cpc_brne) {
+AVR_FAST_CORE_UINST_DECL(d5r5o7_cp_cpc_brne)
+{
 	AVR_FAST_CORE_UINST_DEFN_v16leR1_v16leR2(u_opcode, d, r);
 	uint_fast16_t res = vd - vr;
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	T(uint8_t vdl = vd & 0xff; uint8_t vrl = vr & 0xff);
-	T(uint8_t res0 = vdl  - vrl);
-	STATE("cp %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vdl, avr_regname(r), vrl, res0);
-	T(_avr_fast_core_flags_sub_zns(avr, res0, vdl, vrl));
-	T(SREG());
-#else
-	STATE("cp.cpc %s:%s[%04x], %s:%s[%04x] = %04x\n", avr_regname(d), avr_regname(d + 1), vd, 
-		avr_regname(r), avr_regname(r + 1), vr, res);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		T(uint8_t vdl = vd & 0xff; uint8_t vrl = vr & 0xff);
+		T(uint8_t res0 = vdl  - vrl);
+		STATE("cp %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vdl, avr_regname(r), vrl, res0);
+		T(_avr_fast_core_flags_sub_zns(avr, res0, vdl, vrl));
+		T(SREG());
+	} else {
+		STATE("cp.cpc %s:%s[%04x], %s:%s[%04x] = %04x\n", avr_regname(d), avr_regname(d + 1), vd, 
+			avr_regname(r), avr_regname(r + 1), vr, res);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	T(uint8_t vdh = (vd >> 8) & 0xff; uint8_t vrh = (vr >> 8) & 0xff);
-	T(uint8_t res1 = vdh  - vrh);
-	STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(d + 1), vdh, avr_regname(r + 1), vrh, res1);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		T(uint8_t vdh = (vd >> 8) & 0xff; uint8_t vrh = (vr >> 8) & 0xff);
+		T(uint8_t res1 = vdh  - vrh);
+		STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(d + 1), vdh, avr_regname(r + 1), vrh, res1);
+	}
 
 	_avr_fast_core_flags_sub16_zns16(avr, res, vd, vr);
 
@@ -2708,12 +2903,13 @@ AVR_FAST_CORE_UINST_DECL(d5r5o7_cp_cpc_brne) {
 		
 	T(avr_flashaddr_t new_pc = 2 + avr->pc);
 	NO_T(avr_flashaddr_t new_pc = 2 + 2 + 2 + avr->pc);
-	
-#ifdef AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	avr_flashaddr_t branch_pc = new_pc + (o * branch);
-#else
-	avr_flashaddr_t branch_pc = new_pc + (branch ? o : 0);
-#endif
+
+	avr_flashaddr_t branch_pc;
+	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+		branch_pc = new_pc + (o * branch);
+	} else {
+		branch_pc = new_pc + (branch ? o : 0);
+	}
 
 	STATE("brne .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
@@ -2721,7 +2917,8 @@ AVR_FAST_CORE_UINST_DECL(d5r5o7_cp_cpc_brne) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + 1 + 1 + branch));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5r5_cpc) {
+AVR_FAST_CORE_UINST_DECL(d5r5_cpc)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_vR2(u_opcode, d, r);
 	uint_fast8_t res = vd - vr - avr->sreg[S_C];
 
@@ -2735,15 +2932,16 @@ AVR_FAST_CORE_UINST_DECL(d5r5_cpc) {
 }
 AVR_FAST_CORE_INST_DEFN(d5r5, cpc)
 
-AVR_FAST_CORE_UINST_DECL(h4k8_cpi) {
+AVR_FAST_CORE_UINST_DECL(h4k8_cpi)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 
-#ifndef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
-#else
-	STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
+	} else {
+		STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
+	}
 
 	_avr_fast_core_flags_sub_zns(avr, res, vh, k);
 
@@ -2754,29 +2952,27 @@ AVR_FAST_CORE_UINST_DECL(h4k8_cpi) {
 AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(h4k8, cpi, h4, k8)
 	AVR_FAST_CORE_INST_DEFN_D5(d5, next_opcode);
 
-#ifdef AVR_FAST_CORE_USE_CPI_BRXX
-	if( (0x3000 /* CPI */ == (i_opcode & 0xf000)) && (0xf000 /* BRX(S/C) */ == (next_opcode & 0xf800)) ) {
-		AVR_FAST_CORE_INST_DEFN_O7(o7, next_opcode);
-		switch(next_opcode & 0x0407) {
-			case	S_C:
-				u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(h4k8o7_cpi_brcs, h4, k8, o7);
-				break;
-			case	S_Z:
-				u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(h4k8o7_cpi_breq, h4, k8, o7);
-				break;
-			case	(0x400 | S_C):
-				u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(h4k8o7_cpi_brcc, h4, k8, o7);
-				break;
-			case	(0x400 | S_Z):
-				u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(h4k8o7_cpi_brne, h4, k8, o7);
-				break;
-			default:
-				combining = 0;
-				break;
-		}
-	} else 
-#endif
-		if( (0x3000 /* CPI.l */ == (i_opcode & 0xf000)) && (0x0400 /* CPC.h */ == (next_opcode & 0xfc00))
+	if(_AVR_FAST_CORE_CPI_BRXX &&
+		(0x3000 /* CPI */ == (i_opcode & 0xf000)) && (0xf000 /* BRX(S/C) */ == (next_opcode & 0xf800)) ) {
+			AVR_FAST_CORE_INST_DEFN_O7(o7, next_opcode);
+			switch(next_opcode & 0x0407) {
+				case	S_C:
+					u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(h4k8o7_cpi_brcs, h4, k8, o7);
+					break;
+				case	S_Z:
+					u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(h4k8o7_cpi_breq, h4, k8, o7);
+					break;
+				case	(0x400 | S_C):
+					u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(h4k8o7_cpi_brcc, h4, k8, o7);
+					break;
+				case	(0x400 | S_Z):
+					u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(h4k8o7_cpi_brne, h4, k8, o7);
+					break;
+				default:
+					combining = 0;
+					break;
+			}
+	} else if( (0x3000 /* CPI.l */ == (i_opcode & 0xf000)) && (0x0400 /* CPC.h */ == (next_opcode & 0xfc00))
 			&& ((h4 + 1) == d5) ) {
 		AVR_FAST_CORE_INST_DEFN_R5(r5, next_opcode);
 		u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(h4r5k8_cpi_cpc, h4, r5, k8);
@@ -2784,22 +2980,23 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(h4k8, cpi, h4, k8)
 		combining = 0;
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-#if defined(AVR_FAST_CORE_USE_CPI_BRXX) || defined(AVR_FAST_CORE_CPI_BRXX_CODE)
-
 #define AVR_FAST_CORE_DO_CPI_BRXX_BRANCH(branch_op_string) \
 	_avr_uinst_do_cpi_brxx_branch(avr, count, u_opcode, branch, branch_op_string)
-static void _avr_uinst_do_cpi_brxx_branch(avr_t * avr, int_fast32_t * count, uint_fast32_t u_opcode,
+	
+static void _avr_uinst_do_cpi_brxx_branch(avr_t *avr, int_fast32_t *count, uint_fast32_t u_opcode,
 	int branch, const char *branch_op_string);
 
-AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brcc) {
+
+AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brcc)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 
-#ifndef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
-#else
-	STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
+	} else {
+		STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
+	}
 
 	_avr_fast_core_flags_sub_zns(avr, res, vh, k);
 
@@ -2809,37 +3006,39 @@ AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brcc) {
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-#ifdef AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE
-	AVR_FAST_CORE_DO_CPI_BRXX_BRANCH("brcc");
-#else
+	if(_AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE) {
+		AVR_FAST_CORE_DO_CPI_BRXX_BRANCH("brcc");
+	} else {
 
-	AVR_FAST_CORE_UINST_DEFN_iR3(u_opcode, o);
+		AVR_FAST_CORE_UINST_DEFN_iR3(u_opcode, o);
 
-	T(avr_flashaddr_t new_pc = 2 + avr->pc);
-	NO_T(avr_flashaddr_t new_pc = 2 + 2 + avr->pc);
+		T(avr_flashaddr_t new_pc = 2 + avr->pc);
+		NO_T(avr_flashaddr_t new_pc = 2 + 2 + avr->pc);
 
-#ifdef AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	avr_flashaddr_t branch_pc = new_pc + (o * branch);
-#else
-	avr_flashaddr_t branch_pc = new_pc + (branch ? o : 0);
-#endif
+		avr_flashaddr_t branch_pc;
+		if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+			branch_pc = new_pc + (o * branch);
+		} else {
+			branch_pc = new_pc + (branch ? o : 0);
+		}
 
-	STATE("brcc .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
+		STATE("brcc .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
-	T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch));
-	NO_T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + 1 + branch));
-#endif
+		T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch));
+		NO_T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + 1 + branch));
+	}
 }
 
-AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brcs) {
+AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brcs)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 	
-#ifndef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
-#else
-	STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
+	} else {
+		STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
+	}
 
 	_avr_fast_core_flags_sub_zns(avr, res, vh, k);
 
@@ -2849,60 +3048,63 @@ AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brcs) {
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-#ifdef AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE
-	AVR_FAST_CORE_DO_CPI_BRXX_BRANCH("brcs");
-#else
+	if(_AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE) {
+		AVR_FAST_CORE_DO_CPI_BRXX_BRANCH("brcs");
+	} else {
 
-	AVR_FAST_CORE_UINST_DEFN_iR3(u_opcode, o);
+		AVR_FAST_CORE_UINST_DEFN_iR3(u_opcode, o);
 
-	T(avr_flashaddr_t new_pc = 2 + avr->pc);
-	NO_T(avr_flashaddr_t new_pc = 2 + 2 + avr->pc);
+		T(avr_flashaddr_t new_pc = 2 + avr->pc);
+		NO_T(avr_flashaddr_t new_pc = 2 + 2 + avr->pc);
 
-#ifdef AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	avr_flashaddr_t branch_pc = new_pc + (o * branch);
-#else
-	avr_flashaddr_t branch_pc = new_pc + (branch ? o : 0);
-#endif
+		avr_flashaddr_t branch_pc;
+		if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+			branch_pc = new_pc + (o * branch);
+		} else {
+			branch_pc = new_pc + (branch ? o : 0);
+		}
 
-	STATE("brcs .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
+		STATE("brcs .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
-	T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch));
-	NO_T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + 1 + branch));
-#endif
+		T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch));
+		NO_T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + 1 + branch));
+	}
 }
 
-static void _avr_uinst_do_cpi_brxx_branch(avr_t * avr, int_fast32_t * count,
-		uint_fast32_t u_opcode, int branch,
-			const char *branch_op_string) {
+static void _avr_uinst_do_cpi_brxx_branch(avr_t *avr, int_fast32_t *count,
+		uint_fast32_t u_opcode, int branch, 
+			const char *branch_op_string)
+{
 
 	AVR_FAST_CORE_UINST_DEFN_iR3(u_opcode, o);
 
 	T(avr_flashaddr_t new_pc = 2 + avr->pc);
 	NO_T(avr_flashaddr_t new_pc = 2 + 2 + avr->pc);
 
-#ifdef AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	avr_flashaddr_t branch_pc = new_pc + (o * branch);
-#else
-	avr_flashaddr_t branch_pc = new_pc + (branch ? o : 0);
-#endif
+	avr_flashaddr_t branch_pc;
+	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+		branch_pc = new_pc + (o * branch);
+	} else {
+		branch_pc = new_pc + (branch ? o : 0);
+	}
 
 	STATE("%s .%d [%04x]\t; Will%s branch\n", branch_op_string, o >> 1,
 		new_pc + o, branch ? "":" not");
 
 	T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch));
 	NO_T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + 1 + branch));
-
 }
 
-AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_breq) {
+AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_breq)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 	
-#ifndef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
-#else
-	STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
+	} else {
+		STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
+	}
 
 	_avr_fast_core_flags_sub_zns(avr, res, vh, k);
 
@@ -2912,38 +3114,40 @@ AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_breq) {
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-#ifdef AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE
-	AVR_FAST_CORE_DO_CPI_BRXX_BRANCH("breq");
-#else
+	if(_AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE) {
+		AVR_FAST_CORE_DO_CPI_BRXX_BRANCH("breq");
+	} else {
 
-	AVR_FAST_CORE_UINST_DEFN_iR3(u_opcode, o);
+		AVR_FAST_CORE_UINST_DEFN_iR3(u_opcode, o);
 
-	T(avr_flashaddr_t new_pc = 2 + avr->pc);
-	NO_T(avr_flashaddr_t new_pc = 2 + 2 + avr->pc);
+		T(avr_flashaddr_t new_pc = 2 + avr->pc);
+		NO_T(avr_flashaddr_t new_pc = 2 + 2 + avr->pc);
 
-#ifdef AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	avr_flashaddr_t branch_pc = new_pc + (o * branch);
-#else
-	avr_flashaddr_t branch_pc = new_pc + (branch ? o : 0);
-#endif
+		avr_flashaddr_t branch_pc;
+		if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+			branch_pc = new_pc + (o * branch);
+		} else {
+			branch_pc = new_pc + (branch ? o : 0);
+		}
 
-	STATE("breq .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
+		STATE("breq .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
-	T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch));
-	NO_T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + 1 + branch));
-#endif
+		T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch));
+		NO_T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + 1 + branch));
+	}
 }
 
-AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brne) {
+AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brne)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 	int branch = (vh != k);
 	
-#ifndef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
-#else
-	STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
+	} else {
+		STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
+	}
 
 	_avr_fast_core_flags_sub_zns(avr, res, vh, k);
 
@@ -2951,52 +3155,53 @@ AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brne) {
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-#ifdef AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE
-	AVR_FAST_CORE_DO_CPI_BRXX_BRANCH("brne");
-#else
+	if(_AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE) {
+		AVR_FAST_CORE_DO_CPI_BRXX_BRANCH("brne");
+	} else {
 
-	AVR_FAST_CORE_UINST_DEFN_iR3(u_opcode, o);
+		AVR_FAST_CORE_UINST_DEFN_iR3(u_opcode, o);
 
-	T(avr_flashaddr_t new_pc = 2 + avr->pc);
-	NO_T(avr_flashaddr_t new_pc = 2 + 2 + avr->pc);
+		T(avr_flashaddr_t new_pc = 2 + avr->pc);
+		NO_T(avr_flashaddr_t new_pc = 2 + 2 + avr->pc);
 
-#ifdef AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	avr_flashaddr_t branch_pc = new_pc + (o * branch);
-#else
-	avr_flashaddr_t branch_pc = new_pc + (branch ? o : 0);
-#endif
+		avr_flashaddr_t branch_pc;
+		if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+			branch_pc = new_pc + (o * branch);
+		} else {
+			branch_pc = new_pc + (branch ? o : 0);
+		}
 
-	STATE("brne .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
+		STATE("brne .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
-	T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch));
-	NO_T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + 1 + branch));
-#endif
+		T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch));
+		NO_T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + 1 + branch));
+	}
 }
-#endif
 
-AVR_FAST_CORE_UINST_DECL(h4r5k8_cpi_cpc) {
+AVR_FAST_CORE_UINST_DECL(h4r5k8_cpi_cpc)
+{
 	AVR_FAST_CORE_UINST_DEFN_v16leR1_vR2_R3(u_opcode, h, r, k);
 	uint_fast16_t vrk = (vr << 8) | k;
 	uint_fast16_t res = vh - vrk;
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	T(uint8_t vhl = vh & 0xff);
-	T(uint8_t res0 = vhl  - k);
-	STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vhl, k);
-	T(_avr_fast_core_flags_sub_zns(avr, res0, vhl, k));
-	T(SREG());
-#else
-	STATE("cpi.cpc %s:%s[%04x], 0x%04x = %04x\n", avr_regname(h), avr_regname(h + 1), vh, 
-		vrk, res);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		T(uint8_t vhl = vh & 0xff);
+		T(uint8_t res0 = vhl  - k);
+		STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vhl, k);
+		T(_avr_fast_core_flags_sub_zns(avr, res0, vhl, k));
+		T(SREG());
+	} else {
+		STATE("cpi.cpc %s:%s[%04x], 0x%04x = %04x\n", avr_regname(h), avr_regname(h + 1), vh, 
+			vrk, res);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
-	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	T(uint8_t vhh = (vh >> 8) & 0xff);
-	T(uint8_t res1 = vhh  - vr - avr->sreg[S_C]);
-	STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(h + 1), vhh, avr_regname(r), vr, res1);
-#endif
+
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		T(uint8_t vhh = (vh >> 8) & 0xff);
+		T(uint8_t res1 = vhh  - vr - avr->sreg[S_C]);
+		STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(h + 1), vhh, avr_regname(r), vr, res1);
+	}
 
 	_avr_fast_core_flags_sub16_zns16(avr, res, vh, vrk);
 
@@ -3006,48 +3211,51 @@ AVR_FAST_CORE_UINST_DECL(h4r5k8_cpi_cpc) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5r5_16_cpse) {
+AVR_FAST_CORE_UINST_DECL(d5r5_16_cpse)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_vR2(u_opcode, d, r);
 	uint_fast8_t skip = vd == vr;
 
 	STATE("cpse %s[%02x], %s[%02x]\t; Will%s skip\n", avr_regname(d), vd, avr_regname(r), vr, skip ? "":" not");
 
-#ifdef AVR_FAST_CORE_SKIP_SHIFT
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 << skip, 1 + skip);
-#else
-	if (skip) {
-		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
+	if(_AVR_FAST_CORE_SKIP_SHIFT) {
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 << skip, 1 + skip);
+	} else {
+		if (skip) {
+			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
+		}
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
 	}
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-#endif
 }
 AVR_FAST_CORE_INST_DEFN(d5r5, 16_cpse)
 
-AVR_FAST_CORE_UINST_DECL(d5r5_32_cpse) {
+AVR_FAST_CORE_UINST_DECL(d5r5_32_cpse)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_vR2(u_opcode, d, r);
 	uint_fast8_t skip = (vd == vr);
 	
 	STATE("cpse %s[%02x], %s[%02x]\t; Will%s skip\n", avr_regname(d), vd, avr_regname(r), vr, skip ? "":" not");
 
-#ifdef AVR_FAST_CORE_32_SKIP_SHIFT
-	int skip_count = skip ? 3 : 1;
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(skip_count << 1, skip_count);
-#else
-	if (skip) {
-		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(6, 3);
+	if(_AVR_FAST_CORE_32_SKIP_SHIFT) {
+		int skip_count = skip ? 3 : 1;
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(skip_count << 1, skip_count);
+	} else {
+		if (skip) {
+			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(6, 3);
+		}
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
 	}
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-#endif
 }
 AVR_FAST_CORE_INST_DEFN(d5r5, 32_cpse)
 
-AVR_FAST_CORE_UINST_DECL(d5_dec) {
+AVR_FAST_CORE_UINST_DECL(d5_dec)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
 	uint_fast8_t res = vd - 1;
 
 	STATE("dec %s[%02x] = %02x\n", avr_regname(d), vd, res);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	avr->sreg[S_V] = res == 0x7f;
 
@@ -3059,7 +3267,8 @@ AVR_FAST_CORE_UINST_DECL(d5_dec) {
 }
 AVR_FAST_CORE_INST_DEFN(d5, dec)
 
-AVR_FAST_CORE_UINST_DECL(x_eicall) {
+AVR_FAST_CORE_UINST_DECL(x_eicall)
+{
 	uint_fast32_t z = (_avr_fast_core_fetch_r16le(avr, R_ZL) | avr->data[avr->eind] << 16) << 1;
 
 	STATE("eicall Z[%04x]\n", z);
@@ -3072,7 +3281,8 @@ AVR_FAST_CORE_UINST_DECL(x_eicall) {
 }
 AVR_FAST_CORE_INST_DEFN(x, eicall)
 
-AVR_FAST_CORE_UINST_DECL(x_eijmp) {
+AVR_FAST_CORE_UINST_DECL(x_eijmp)
+{
 	uint_fast32_t z = (_avr_fast_core_fetch_r16le(avr, R_ZL) | avr->data[avr->eind] << 16) << 1;
 
 	STATE("eijmp Z[%04x]\n", z);
@@ -3083,7 +3293,8 @@ AVR_FAST_CORE_UINST_DECL(x_eijmp) {
 }
 AVR_FAST_CORE_INST_DEFN(x, eijmp)
 
-AVR_FAST_CORE_UINST_DECL(d5r5_eor) {
+AVR_FAST_CORE_UINST_DECL(d5r5_eor)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(u_opcode, d, r);
 	uint_fast8_t res = vd ^ vr;
 
@@ -3093,7 +3304,7 @@ AVR_FAST_CORE_UINST_DECL(d5r5_eor) {
 		STATE("eor %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 	}
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	_avr_fast_core_flags_znv0s(avr, res);
 
@@ -3107,7 +3318,8 @@ AVR_FAST_CORE_BEGIN_COMPLEX_INST_DEFN(d5r5, eor, d5, r5)
 	}
 AVR_FAST_CORE_END_COMPLEX_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(x_icall) {
+AVR_FAST_CORE_UINST_DECL(x_icall)
+{
 	uint_fast16_t z = _avr_fast_core_fetch_r16le(avr, R_ZL) << 1;
 
 	STATE("icall Z[%04x]\n", z);
@@ -3120,7 +3332,8 @@ AVR_FAST_CORE_UINST_DECL(x_icall) {
 }
 AVR_FAST_CORE_INST_DEFN(x, icall)
 
-AVR_FAST_CORE_UINST_DECL(x_ijmp) {
+AVR_FAST_CORE_UINST_DECL(x_ijmp)
+{
 	uint_fast16_t z = _avr_fast_core_fetch_r16le(avr, R_ZL) << 1;
 
 	STATE("ijmp Z[%04x]\n", z);
@@ -3131,16 +3344,17 @@ AVR_FAST_CORE_UINST_DECL(x_ijmp) {
 }
 AVR_FAST_CORE_INST_DEFN(x, ijmp)
 
-AVR_FAST_CORE_UINST_DECL(d5a6_in) {
+AVR_FAST_CORE_UINST_DECL(d5a6_in)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, d, a);
 	AVR_FAST_CORE_UINST_DEFN_vIO(a);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	/* CORE TRACE BUG ??? */
-	STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-#else
-	STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-#endif
+	if(_AVR_CORE_FAST_CORE_BUGS) {
+		/* CORE TRACE BUG ??? */
+		STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), avr->data[a]);
+	} else {
+		STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
+	}
 
 	_avr_fast_core_store_r(avr, d, va);
 
@@ -3177,16 +3391,17 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(d5a6, in, d5, a6)
 		combining = 0;
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(d5a6k8_in_andi_out) {
+AVR_FAST_CORE_UINST_DECL(d5a6k8_in_andi_out)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_R2_R3(u_opcode, d, a, k);
 	AVR_FAST_CORE_UINST_DEFN_vIO(a);
 	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	/* CORE TRACE BUG ??? */
-	STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-#else
-	STATE("/ in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		/* CORE TRACE BUG ??? */
+		STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), avr->data[a]);
+	} else {
+		STATE("/ in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
@@ -3194,11 +3409,11 @@ AVR_FAST_CORE_UINST_DECL(d5a6k8_in_andi_out) {
 
 	uint_fast8_t res = va & k;
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("andi %s[%02x], 0x%02x\n", avr_regname(d), va, k);
-#else
-	STATE("| andi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(d), va, k, res);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("andi %s[%02x], 0x%02x\n", avr_regname(d), va, k);
+	} else {
+		STATE("| andi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(d), va, k, res);
+	}
 
 	_avr_fast_core_store_r(avr, d, res);
 	_avr_fast_core_flags_znv0s(avr, res);
@@ -3209,11 +3424,11 @@ AVR_FAST_CORE_UINST_DECL(d5a6k8_in_andi_out) {
 
 	/* out d5, a6 */
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), res);
-#else
-	STATE("\\ out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), res);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), res);
+	} else {
+		STATE("\\ out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), res);
+	}
 
 	_avr_fast_core_reg_io_write(avr, count, a, res);
 
@@ -3221,16 +3436,17 @@ AVR_FAST_CORE_UINST_DECL(d5a6k8_in_andi_out) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2 + 2, 1 + 1 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5a6k8_in_ori_out) {
+AVR_FAST_CORE_UINST_DECL(d5a6k8_in_ori_out)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_R2_R3(u_opcode, d, a, k);
 	AVR_FAST_CORE_UINST_DEFN_vIO(a);
-	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	/* CORE TRACE BUG ??? */
-	STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-#else
-	STATE("/ in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-#endif
+
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		/* CORE TRACE BUG ??? */
+		STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), avr->data[a]);
+	} else {
+		STATE("/ in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 	
@@ -3238,11 +3454,11 @@ AVR_FAST_CORE_UINST_DECL(d5a6k8_in_ori_out) {
 
 	uint_fast8_t res = va | k;
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("ori %s[%02x], 0x%02x\n", avr_regname(d), va, k);
-#else
-	STATE("| ori %s[%02x], 0x%02x\n", avr_regname(d), va, k);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("ori %s[%02x], 0x%02x\n", avr_regname(d), va, k);
+	} else {
+		STATE("| ori %s[%02x], 0x%02x\n", avr_regname(d), va, k);
+	}
 
 	_avr_fast_core_store_r(avr, d, res);
 	_avr_fast_core_flags_znv0s(avr, res);
@@ -3253,11 +3469,11 @@ AVR_FAST_CORE_UINST_DECL(d5a6k8_in_ori_out) {
 
 	/* out d5, a6 */
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), res);
-#else
-	STATE("\\ out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), res);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), res);
+	} else {
+		STATE("\\ out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), res);
+	}
 
 	_avr_fast_core_reg_io_write(avr, count, a, res);
 
@@ -3265,16 +3481,17 @@ AVR_FAST_CORE_UINST_DECL(d5a6k8_in_ori_out) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2 + 2, 1 + 1 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5a6_in_push) {
+AVR_FAST_CORE_UINST_DECL(d5a6_in_push)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, d, a);
 	AVR_FAST_CORE_UINST_DEFN_vIO(a);
-	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	/* CORE TRACE BUG ??? */
-	STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-#else
-	STATE("/ in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-#endif
+
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		/* CORE TRACE BUG ??? */
+		STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), avr->data[a]);
+	} else {
+		STATE("/ in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
+	}
 
 	_avr_fast_core_store_r(avr, d, va);
 	
@@ -3282,26 +3499,27 @@ AVR_FAST_CORE_UINST_DECL(d5a6_in_push) {
 
 	_avr_fast_core_push8(avr, count, va);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STACK_STATE("push %s[%02x] (@%04x)\n", avr_regname(d), va, _avr_fast_core_sp_get(avr));
-#else
-	STACK_STATE("\\ push %s[%02x] (@%04x)\n", avr_regname(d), va, _avr_fast_core_sp_get(avr));
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STACK_STATE("push %s[%02x] (@%04x)\n", avr_regname(d), va, _avr_fast_core_sp_get(avr));
+	} else {
+		STACK_STATE("\\ push %s[%02x] (@%04x)\n", avr_regname(d), va, _avr_fast_core_sp_get(avr));
+	}
 
 	T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2));
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 2));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5a6m8_in_sbrs) {
+AVR_FAST_CORE_UINST_DECL(d5a6m8_in_sbrs)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_R2_R3(u_opcode, d, a, mask);
 	AVR_FAST_CORE_UINST_DEFN_vIO(a);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	/* CORE TRACE BUG ??? */
-	STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-#else
-	STATE("/ in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		/* CORE TRACE BUG ??? */
+		STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), avr->data[a]);
+	} else {
+		STATE("/ in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
+	}
 
 	_avr_fast_core_store_r(avr, d, va);
 
@@ -3313,40 +3531,42 @@ AVR_FAST_CORE_UINST_DECL(d5a6m8_in_sbrs) {
 
 	T(int cycles = 1);
 	NO_T(int cycles = 1 + 1);	
-	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("sbrs %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), va, mask, branch ? "":" not");
-#else
-	STATE("\\ sbrs %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), va, mask, branch ? "":" not");
-#endif
+
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("sbrs %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), va, mask, branch ? "":" not");
+	} else {
+		STATE("\\ sbrs %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), va, mask, branch ? "":" not");
+	}
 
 	if (branch) {
 		T(int shift = _avr_is_instruction_32_bits(avr, 2 + branch_pc));
 		NO_T(int shift = _avr_is_instruction_32_bits(avr, 2 + branch_pc));
-#ifdef AVR_FAST_CORE_SKIP_SHIFT
-		branch_pc += (2 << shift);
-		cycles += (1 << shift);
-#else		
-		if (shift) {
-			branch_pc += 4;
-			cycles += 2;
-		} else {
-			branch_pc += 2;
-			cycles += 1;
+
+		if(_AVR_FAST_CORE_SKIP_SHIFT) {
+			branch_pc += (2 << shift);
+			cycles += (1 << shift);
+		} else {		
+			if (shift) {
+				branch_pc += 4;
+				cycles += 2;
+			} else {
+				branch_pc += 2;
+				cycles += 1;
+			}
 		}
-#endif
 	}
 	
 	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, cycles);
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_inc) {
+AVR_FAST_CORE_UINST_DECL(d5_inc)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
 	uint_fast8_t res = vd + 1;
 
 	STATE("inc %s[%02x] = %02x\n", avr_regname(d), vd, res);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	avr->sreg[S_V] = res == 0x80;
 
@@ -3358,14 +3578,15 @@ AVR_FAST_CORE_UINST_DECL(d5_inc) {
 }
 AVR_FAST_CORE_INST_DEFN(d5, inc)
 
-AVR_FAST_CORE_UINST_DECL(x22_jmp) {
+AVR_FAST_CORE_UINST_DECL(x22_jmp)
+{
 	AVR_FAST_CORE_UINST_DEFN_24R1(u_opcode, x22);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("jmp 0x%06x\n", x22 >> 1);
-#else
-	STATE("jmp 0x%06x\n", x22);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("jmp 0x%06x\n", x22 >> 1);
+	} else {
+		STATE("jmp 0x%06x\n", x22);
+	}
 
 	TRACE_JUMP();
 	
@@ -3373,7 +3594,8 @@ AVR_FAST_CORE_UINST_DECL(x22_jmp) {
 }
 AVR_FAST_CORE_INST_DEFN(x22, jmp)
 
-AVR_FAST_CORE_UINST_DECL(d5rXYZ_ld_no_op) {
+AVR_FAST_CORE_UINST_DECL(d5rXYZ_ld_no_op)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_v16leR2(u_opcode, d, r);
 
 	uint_fast8_t ivr = _avr_fast_core_fetch_ram(avr, count, vr);
@@ -3385,7 +3607,8 @@ AVR_FAST_CORE_UINST_DECL(d5rXYZ_ld_no_op) {
 }
 AVR_FAST_CORE_INST_DEFN(d5rXYZ, ld_no_op)
 
-AVR_FAST_CORE_UINST_DECL(d5rXYZ_ld_pre_dec) {
+AVR_FAST_CORE_UINST_DECL(d5rXYZ_ld_pre_dec)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_v16leR2rmw(u_opcode, d, r);
 
 	vr--;
@@ -3395,13 +3618,14 @@ AVR_FAST_CORE_UINST_DECL(d5rXYZ_ld_pre_dec) {
 	
 	STATE("ld %s, --%c[%04x]\n", avr_regname(d), *avr_regname(r), vr);
 
-	AVR_FAST_CORE_RMW_STORE_R16LE(avr, r, vr);
+	AVR_FAST_CORE_RMW_STORE_R16LE(r, vr);
 
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2); // 2 cycles (1 for tinyavr, except with inc/dec 2)
 }
 AVR_FAST_CORE_INST_DEFN(d5rXYZ, ld_pre_dec)
 
-AVR_FAST_CORE_UINST_DECL(d5rXYZ_ld_post_inc) {
+AVR_FAST_CORE_UINST_DECL(d5rXYZ_ld_post_inc)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_v16leR2rmw(u_opcode, d, r);
 
 	uint_fast8_t ivr = _avr_fast_core_fetch_ram(avr, count, vr);
@@ -3411,13 +3635,14 @@ AVR_FAST_CORE_UINST_DECL(d5rXYZ_ld_post_inc) {
 	
 	STATE("ld %s, %c[%04x]++\n", avr_regname(d), *avr_regname(r), vr);
 
-	AVR_FAST_CORE_RMW_STORE_R16LE(avr, r, vr);
+	AVR_FAST_CORE_RMW_STORE_R16LE(r, vr);
 
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2); // 2 cycles (1 for tinyavr, except with inc/dec 2)
 }
 AVR_FAST_CORE_INST_DEFN(d5rXYZ, ld_post_inc)
 
-AVR_FAST_CORE_UINST_DECL(d5rYZq6_ldd) {
+AVR_FAST_CORE_UINST_DECL(d5rYZq6_ldd)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_v16leR2_R3(u_opcode, d, r, q);
 	vr += q;
 	
@@ -3439,7 +3664,8 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(d5rYZq6, ldd, d5, rYZ, q6)
 		combining=0;
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(d5rYZq6_ldd_ldd) {
+AVR_FAST_CORE_UINST_DECL(d5rYZq6_ldd_ldd)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_v16leR2_R3(u_opcode, d, r, q);
 	vr += q;
 
@@ -3454,22 +3680,23 @@ AVR_FAST_CORE_UINST_DECL(d5rYZq6_ldd_ldd) {
 	
 	_avr_fast_core_store_r16le(avr, d - 1, ivr);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("ld %s, (%c+%d[%04x])=[%02x]\n", avr_regname(d), *avr_regname(r), q, vr, ivr >> 8);
-	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 2));
-	STATE("ld %s, (%c+%d[%04x])=[%02x]\n", avr_regname(d), *avr_regname(r), q + 1, vr + 1, ivr & 0xff);
-	T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2)); // 2 cycles, 3 for tinyavr
-	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2)); // 2 cycles, 3 for tinyavr
-#else
-	STATE("ld.w %s:%s, (%s+%d:%d[%04x:%04x])=[%04x]\n", 
-		avr_regname(d), avr_regname(d - 1), 
-		avr_regname(r), q, q + 1, vr, vr + 1, 
-		ivr);
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2); // 2 cycles, 3 for tinyavr
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("ld %s, (%c+%d[%04x])=[%02x]\n", avr_regname(d), *avr_regname(r), q, vr, ivr >> 8);
+		T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 2));
+		STATE("ld %s, (%c+%d[%04x])=[%02x]\n", avr_regname(d), *avr_regname(r), q + 1, vr + 1, ivr & 0xff);
+		T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2)); // 2 cycles, 3 for tinyavr
+		NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2)); // 2 cycles, 3 for tinyavr
+	} else {
+		STATE("ld.w %s:%s, (%s+%d:%d[%04x:%04x])=[%04x]\n", 
+			avr_regname(d), avr_regname(d - 1), 
+			avr_regname(r), q, q + 1, vr, vr + 1, 
+			ivr);
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2); // 2 cycles, 3 for tinyavr
+	}
 }
 
-AVR_FAST_CORE_UINST_DECL(h4k8_ldi) {
+AVR_FAST_CORE_UINST_DECL(h4k8_ldi)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, h, k);
 	STATE("ldi %s, 0x%02x\n", avr_regname(h), k);
 
@@ -3498,27 +3725,28 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(h4k8, ldi, h4, k8)
 		combining = 0;
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(h4k16_ldi_ldi) {
+AVR_FAST_CORE_UINST_DECL(h4k16_ldi_ldi)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_16R2(u_opcode, h, k);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	//  For tracing purposes, there is no easier way to get around this...
-	T(AVR_FAST_CORE_FLASH_OPCODE_DEFN(i_opcode_a, avr->pc));
-	T(AVR_FAST_CORE_INST_DEFN_H4(h4a, i_opcode_a));
-	T(AVR_FAST_CORE_INST_DEFN_K8(k8a, i_opcode_a));
-	STATE("ldi %s, 0x%02x\n", avr_regname(h4a), k8a);
-#else
-	STATE("ldi.w %s:%s, 0x%04x\n", avr_regname(h), avr_regname(h+1), k);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		//  For tracing purposes, there is no easier way to get around this...
+		T(AVR_FAST_CORE_FLASH_OPCODE_DEFN(i_opcode_a, avr->pc));
+		T(AVR_FAST_CORE_INST_DEFN_H4(h4a, i_opcode_a));
+		T(AVR_FAST_CORE_INST_DEFN_K8(k8a, i_opcode_a));
+		STATE("ldi %s, 0x%02x\n", avr_regname(h4a), k8a);
+	} else {
+		STATE("ldi.w %s:%s, 0x%04x\n", avr_regname(h), avr_regname(h+1), k);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	T(AVR_FAST_CORE_FLASH_OPCODE_DEFN(i_opcode_b, avr->pc));
-	T(AVR_FAST_CORE_INST_DEFN_H4(h4b, i_opcode_b));
-	T(AVR_FAST_CORE_INST_DEFN_K8(k8b, i_opcode_b));
-	STATE("ldi %s, 0x%02x\n", avr_regname(h4b), k8b);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		T(AVR_FAST_CORE_FLASH_OPCODE_DEFN(i_opcode_b, avr->pc));
+		T(AVR_FAST_CORE_INST_DEFN_H4(h4b, i_opcode_b));
+		T(AVR_FAST_CORE_INST_DEFN_K8(k8b, i_opcode_b));
+		STATE("ldi %s, 0x%02x\n", avr_regname(h4b), k8b);
+	}
 
 	_avr_fast_core_store_r16le(avr, h, k);
 
@@ -3526,23 +3754,25 @@ AVR_FAST_CORE_UINST_DECL(h4k16_ldi_ldi) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(h4k8a6_ldi_out) {
+AVR_FAST_CORE_UINST_DECL(h4k8a6_ldi_out)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_R2_R3(u_opcode, h, k, a);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("ldi %s, 0x%02x\n", avr_regname(h), k);
-#else
-	STATE("/ ldi %s, 0x%02x\n", avr_regname(h), k);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("ldi %s, 0x%02x\n", avr_regname(h), k);
+	} else {
+		STATE("/ ldi %s, 0x%02x\n", avr_regname(h), k);
+	}
+
 	_avr_fast_core_store_r(avr, h, k);
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(h), k);
-#else
-	STATE("\\ out %s, %s[%02x]\n", avr_regname(a), avr_regname(h), k);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(h), k);
+	} else {
+		STATE("\\ out %s, %s[%02x]\n", avr_regname(a), avr_regname(h), k);
+	}
 
 	_avr_fast_core_reg_io_write(avr, count, a, k);
 
@@ -3550,16 +3780,18 @@ AVR_FAST_CORE_UINST_DECL(h4k8a6_ldi_out) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 1));	
 }
 
-AVR_FAST_CORE_UINST_DECL(d5x16_lds) {
+AVR_FAST_CORE_UINST_DECL(d5x16_lds)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_16R2(u_opcode, d, x);
 	
 	uint_fast8_t vd = _avr_fast_core_fetch_ram(avr, count, x);
-	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
-#else
-	STATE("lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vd);
-#endif
+
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
+	} else {
+		STATE("lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vd);
+	}
+
 	_avr_fast_core_store_r(avr, d, vd);
 
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);	
@@ -3571,62 +3803,67 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(d5x16, lds, d5, x16)
 
 	if( (0x9000 /* LDS.l */ == (0xfe0f & i_opcode)) && (0x9000 /* LDS.h */ == (0xfe0f & next_opcode))
 			&& ((d5 + 1) == d5b) && ((x16 + 1) == x16b) ) {
-		if(0xff < x16)
+		if(0xff < x16) {
 			u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(d5x16_lds_lds_no_io, d5, x16, 0);
-		else u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(d5x16_lds_lds, d5, x16, 0);
+		} else {
+			u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(d5x16_lds_lds, d5, x16, 0);
+		}
 	} else if( (0x9000 /* LDS */ == (0xfe0f & i_opcode)) && (0x2000 /* TST */ == (0xfc00 & next_opcode))
 			&& (d5 == d5b) && (d5 == r5) ) {
 		if(0xff < x16) {
 			u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(d5x16_lds_no_io_tst, d5, x16, 0);
-		} else
+		} else {
 			u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(d5x16_lds_tst, d5, x16, 0);
+		}
 	} else {
-		if(0xff < x16)
+		if(0xff < x16) {
 			u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(d5x16_lds_no_io, d5, x16, 0);
-	
+		}
 		combining = 0;
 	}
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(d5x16_lds_no_io) {
+AVR_FAST_CORE_UINST_DECL(d5x16_lds_no_io)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_16R2(u_opcode, d, x);
 
 	uint_fast8_t vd = _avr_fast_core_data_read(avr, x);
-	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	/* CORE BUG -- TRACE */
-	STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
-#else
-	STATE("lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vd);
-#endif
+
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		/* CORE BUG -- TRACE */
+		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
+	} else {
+		STATE("lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vd);
+	}
 
 	_avr_fast_core_store_r(avr, d, vd);
 
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);	
 }
 
-AVR_FAST_CORE_UINST_DECL(d5x16_lds_lds) {
+AVR_FAST_CORE_UINST_DECL(d5x16_lds_lds)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_16R2(u_opcode, d, x);
 
 	/* lds low:high, sts high:low ... replicate order incase in the instance io is accessed. */
 
 	uint_fast8_t vxl = _avr_fast_core_fetch_ram(avr, count, x);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
-#else
-	STATE("/ lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vxl);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
+	} else {
+		STATE("/ lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vxl);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(4, 2));
 
 	uint_fast8_t vxh = _avr_fast_core_fetch_ram(avr, count, x + 1);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("lds %s[%02x], 0x%04x\n", avr_regname(d + 1), _avr_fast_core_fetch_r(avr, d + 1), x + 1);
-#else
-	STATE("\\ lds %s, 0x%04x[%02x]\n", avr_regname(d + 1), x + 1, vxh);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d + 1), _avr_fast_core_fetch_r(avr, d + 1), x + 1);
+	} else {
+		STATE("\\ lds %s, 0x%04x[%02x]\n", avr_regname(d + 1), x + 1, vxh);
+	}
 
 	_avr_fast_core_store_r16le(avr, d, (vxh << 8) | vxl);
 
@@ -3634,7 +3871,8 @@ AVR_FAST_CORE_UINST_DECL(d5x16_lds_lds) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4 + 4, 2 + 2));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5x16_lds_lds_no_io) {
+AVR_FAST_CORE_UINST_DECL(d5x16_lds_lds_no_io)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_16R2(u_opcode, d, x);
 
 	/* lds low:high, sts high:low ... replicate order incase in the instance io is accessed. */
@@ -3642,19 +3880,19 @@ AVR_FAST_CORE_UINST_DECL(d5x16_lds_lds_no_io) {
 	T(uint_fast16_t vx = _avr_fast_core_data_read16le(avr, x));
 	NO_T(uint_fast16_t vx = _avr_fast_core_data_read16(avr, x));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
-#else
-	STATE("/ lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vx & 0xff);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
+	} else {
+		STATE("/ lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vx & 0xff);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(4, 2));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("lds %s[%02x], 0x%04x\n", avr_regname(d + 1), _avr_fast_core_fetch_r(avr, d), x + 1);
-#else
-	STATE("\\ lds %s, 0x%04x[%02x]\n", avr_regname(d + 1), x + 1, vx > 8);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d + 1), _avr_fast_core_fetch_r(avr, d), x + 1);
+	} else {
+		STATE("\\ lds %s, 0x%04x[%02x]\n", avr_regname(d + 1), x + 1, vx > 8);
+	}
 
 	T(_avr_fast_core_store_r16le(avr, d, vx));
 	NO_T(_avr_fast_core_store_r16(avr, d, vx));
@@ -3663,26 +3901,28 @@ AVR_FAST_CORE_UINST_DECL(d5x16_lds_lds_no_io) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4 + 4, 2 + 2));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5x16_lds_no_io_tst) {
+AVR_FAST_CORE_UINST_DECL(d5x16_lds_no_io_tst)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_16R2(u_opcode, d, x);
 
 	uint_fast8_t vd = _avr_fast_core_data_read(avr, x);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
-#else
-	STATE("/ lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vd);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
+	} else {
+		STATE("/ lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vd);
+	}
 
 	_avr_fast_core_store_r(avr, d, vd);
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(4, 2)); // 2 cycles
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("tst %s[%02x]\n", avr_regname(d), vd);
-#else
-	STATE("\\ tst %s[%02x]\n", avr_regname(d), vd);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("tst %s[%02x]\n", avr_regname(d), vd);
+	} else {
+		STATE("\\ tst %s[%02x]\n", avr_regname(d), vd);
+	}
+
 	_avr_fast_core_flags_znv0s(avr, vd);
 
 	SREG();
@@ -3691,26 +3931,28 @@ AVR_FAST_CORE_UINST_DECL(d5x16_lds_no_io_tst) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4 + 2, 2 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5x16_lds_tst) {
+AVR_FAST_CORE_UINST_DECL(d5x16_lds_tst)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_16R2(u_opcode, d, x);
 	
 	uint_fast8_t vd = _avr_fast_core_fetch_ram(avr, count, x);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
-#else
-	STATE("/ lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vd);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
+	} else {
+		STATE("/ lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vd);
+	}
 
 	_avr_fast_core_store_r(avr, d, vd);
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(4, 2)); // 2 cycles
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("tst %s[%02x]\n", avr_regname(d), vd);
-#else
-	STATE("\\ tst %s[%02x]\n", avr_regname(d), vd);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("tst %s[%02x]\n", avr_regname(d), vd);
+	} else {
+		STATE("\\ tst %s[%02x]\n", avr_regname(d), vd);
+	}
+
 	_avr_fast_core_flags_znv0s(avr, vd);
 
 	SREG();
@@ -3719,16 +3961,17 @@ AVR_FAST_CORE_UINST_DECL(d5x16_lds_tst) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4 + 2, 2 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_lpm_z) {
+AVR_FAST_CORE_UINST_DECL(d5_lpm_z)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1(u_opcode, d);
 	uint_fast16_t z = _avr_fast_core_fetch_r16le(avr, R_ZL);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	/* CORE TRACE BUG -- LPM will always indicate as Z+ */
-	STATE("lpm %s, (Z[%04x]+)\n", avr_regname(d), z);
-#else
-	STATE("lpm %s, (Z[%04x])\n", avr_regname(d), z);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		/* CORE TRACE BUG -- LPM will always indicate as Z+ */
+		STATE("lpm %s, (Z[%04x]+)\n", avr_regname(d), z);
+	} else {
+		STATE("lpm %s, (Z[%04x])\n", avr_regname(d), z);
+	}
 
 	_avr_fast_core_store_r(avr, d, avr->flash[z]);
 	
@@ -3736,7 +3979,8 @@ AVR_FAST_CORE_UINST_DECL(d5_lpm_z) {
 }
 AVR_FAST_CORE_INST_DEFN(d5, lpm_z)
 
-AVR_FAST_CORE_UINST_DECL(d5_lpm_z_post_inc) {
+AVR_FAST_CORE_UINST_DECL(d5_lpm_z_post_inc)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1(u_opcode, d);
 	uint_fast8_t z = R_ZL;
 	AVR_FAST_CORE_UINST_DEFN_v16leRrmw(z);
@@ -3747,7 +3991,7 @@ AVR_FAST_CORE_UINST_DECL(d5_lpm_z_post_inc) {
 
 	vz++;
 
-	AVR_FAST_CORE_RMW_STORE_R16LE(avr, z, vz);
+	AVR_FAST_CORE_RMW_STORE_R16LE(z, vz);
 
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 3); // 3 cycles
 }
@@ -3759,57 +4003,62 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(d5, lpm_z_post_inc, d5)
 		uint_fast8_t regs[4] = {R_ZL, 0x00, R_YL, R_XL};
 		uint_fast8_t r = regs[(next_opcode & 0x000c)>>2];
 		uint_fast8_t opr = next_opcode & 0x0003;
-		if(opr == 1)
+		if(opr == 1) {
 			u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(d5rXYZ_lpm_z_post_inc_st_post_inc, d5, r, 0);
-		else
+		} else {
 			combining = 0;
-	 } else if( ((0x9e0c /* LPM_Z+.l */ & i_opcode) == (0x9e0c /* LPM_Z+.h */ & next_opcode))
+		}
+	 } else if( ((0xfe0f /* LPM_Z+.l */ & i_opcode) == (0xfe0f /* LPM_Z+.h */ & next_opcode))
 			&& ((d5 + 1) == d5b) ) {
 		u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(d5_lpm16_z_post_inc, d5, 0, 0);
-	 } else
 		combining = 0;
+	 } else {
+		combining = 0;
+	}
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(d5rXYZ_lpm_z_post_inc_st_post_inc) {
+AVR_FAST_CORE_UINST_DECL(d5rXYZ_lpm_z_post_inc_st_post_inc)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_v16leR2rmw(u_opcode, d, r);
 	uint_fast8_t z = R_ZL;
 	AVR_FAST_CORE_UINST_DEFN_v16leRrmw(z);
 
 	uint_fast8_t vd = avr->flash[z];
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("lpm %s, (Z[%04x]+)\n", avr_regname(d), z);
-#else
-	STATE("/ lpm %s, (Z[%04x]+)\n", avr_regname(d), z);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("lpm %s, (Z[%04x]+)\n", avr_regname(d), z);
+	} else {
+		STATE("/ lpm %s, (Z[%04x]+)\n", avr_regname(d), z);
+	}
 
 	_avr_fast_core_store_r(avr, d, vd);
 	
 	vz++;
 	
-	AVR_FAST_CORE_RMW_STORE_R16LE(avr, z, vz);
+	AVR_FAST_CORE_RMW_STORE_R16LE(z, vz);
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 3)); // 3 cycles
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("st %c[%04x]++, %s[0x%02x]\n", *avr_regname(r), vr,
-		avr_regname(d), vd);
-#else
-	STATE("\\ st %c[%04x]++, %s[0x%02x]\n", *avr_regname(r), vr,
-		avr_regname(d), vd);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("st %c[%04x]++, %s[0x%02x]\n", *avr_regname(r), vr,
+			avr_regname(d), vd);
+	} else {
+		STATE("\\ st %c[%04x]++, %s[0x%02x]\n", *avr_regname(r), vr,
+			avr_regname(d), vd);
+	}
 
 	_avr_fast_core_store_ram(avr, count, vr, vd);
 	vr++;
 	
-	AVR_FAST_CORE_RMW_STORE_R16LE(avr, r, vr);
+	AVR_FAST_CORE_RMW_STORE_R16LE(r, vr);
 
 	
 	T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2)); // 2 cycles, except tinyavr
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 3 + 2)); 
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_lpm16_z_post_inc) {
+AVR_FAST_CORE_UINST_DECL(d5_lpm16_z_post_inc)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1(u_opcode, d);
 	uint_fast8_t z = R_ZL;
 	AVR_FAST_CORE_UINST_DEFN_v16leRrmw(z);
@@ -3817,36 +4066,37 @@ AVR_FAST_CORE_UINST_DECL(d5_lpm16_z_post_inc) {
 	T(uint_fast16_t vd = _avr_fast_core_flash_read16le(avr, vz));
 	NO_T(uint_fast16_t vd = _avr_fast_core_fetch16(avr->flash, vz));
 	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("lpm %s, (Z[%04x]+)\n", avr_regname(d), vz);
-#else
-	STATE("lpm.w %s:%s, (Z[%04x:%04x]+) = 0x%04x\n", avr_regname(d), avr_regname(d + 1), vz, vz + 1, vd);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("lpm %s, (Z[%04x]+)\n", avr_regname(d), vz);
+	} else {
+		STATE("lpm.w %s:%s, (Z[%04x:%04x]+) = 0x%04x\n", avr_regname(d), avr_regname(d + 1), vz, vz + 1, vd);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 3));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("lpm %s, (Z[%04x]+)\n", avr_regname(d+1), vz + 1);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("lpm %s, (Z[%04x]+)\n", avr_regname(d+1), vz + 1);
+	}
 
 	T(_avr_fast_core_store_r16le(avr, d, vd));
 	NO_T(_avr_fast_core_store_r16(avr, d, vd));
 	
 	vz += 2;
 	
-	AVR_FAST_CORE_RMW_STORE_R16LE(avr, z, vz);
+	AVR_FAST_CORE_RMW_STORE_R16LE(z, vz);
 
 	T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 3));
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 3 + 3));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_lsl) {
+AVR_FAST_CORE_UINST_DECL(d5_lsl)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
 	uint_fast8_t res = vd << 1;
 
 	STATE("lsl %s[%02x] = %02x\n", avr_regname(d), vd, res);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	_avr_fast_core_flags_znvs(avr, res);
 	avr->sreg[S_H] = (vd >> 3) & 1;
@@ -3857,13 +4107,14 @@ AVR_FAST_CORE_UINST_DECL(d5_lsl) {
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
 }
 
-AVR_FAST_CORE_UINST_DECL(d5r5_lsl_lsl) {
+AVR_FAST_CORE_UINST_DECL(d5r5_lsl_lsl)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, d, r);
 	uint_fast8_t res = vd << r;
 
 	STATE("lsl %s[%02x] = %02x\n", avr_regname(d), vd, res);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	_avr_fast_core_flags_znvs(avr, res);
 
@@ -3877,26 +4128,27 @@ AVR_FAST_CORE_UINST_DECL(d5r5_lsl_lsl) {
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(r << 1, r);
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_lsl_rol) {
+AVR_FAST_CORE_UINST_DECL(d5_lsl_rol)
+{
 	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw(u_opcode, d);
 	uint_fast16_t res = vd << 1;
 
-#ifdef AVR_FAST_CORE_DIFF_TRACE
-	T(uint8_t vdl = vd & 0xff; uint8_t res0 = res & 0xff);
-	STATE("lsl %s[%02x] = %02x\n", avr_regname(d), vdl, res0);
-	T(_avr_fast_core_flags_add_zns(avr, res0, vdl, vdl));
-	SREG();
-#else
-	STATE("lsr.w %s:%s[%04x] = [%04x]\n", avr_regname(d), avr_regname(d + 1), vd, res);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		T(uint8_t vdl = vd & 0xff; uint8_t res0 = res & 0xff);
+		STATE("lsl %s[%02x] = %02x\n", avr_regname(d), vdl, res0);
+		T(_avr_fast_core_flags_add_zns(avr, res0, vdl, vdl));
+		SREG();
+	} else {
+		STATE("lsr.w %s:%s[%04x] = [%04x]\n", avr_regname(d), avr_regname(d + 1), vd, res);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("rol %s[%02x]\n", avr_regname(d), vd >> 8);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("rol %s[%02x]\n", avr_regname(d), vd >> 8);
+	}
 
-	AVR_FAST_CORE_RMW_STORE_R16LE(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R16LE(d, res);
 
 	/* NOTE:
 		where it concerns the emulation of the combination of lsl + rol,
@@ -3913,13 +4165,14 @@ AVR_FAST_CORE_UINST_DECL(d5_lsl_rol) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_lsr) {
+AVR_FAST_CORE_UINST_DECL(d5_lsr)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
 	uint_fast8_t res = vd >> 1;
 
 	STATE("lsr %s[%02x]\n", avr_regname(d), vd);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	_avr_fast_core_flags_zcn0vs(avr, res, vd);
 
@@ -3942,17 +4195,19 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(d5, lsr, d5)
 		} while((7 > count) && (i_opcode == next_opcode));
 
  		u_opcode =AVR_FAST_CORE_MAKE_UINST_OPCODE(d5r5_lsr_lsr, d5, count, 0);
-	} else
+	} else {
 		combining = 0;
+	}
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(d5r5_lsr_lsr) {
+AVR_FAST_CORE_UINST_DECL(d5r5_lsr_lsr)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, d, r);
 	uint_fast8_t res = vd >> r;
 
 	STATE("lsr %s[%02x]\n", avr_regname(d), vd);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	_avr_fast_core_flags_zcn0vs(avr, res, (vd >> (r - 1)));
 
@@ -3962,29 +4217,30 @@ AVR_FAST_CORE_UINST_DECL(d5r5_lsr_lsr) {
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(r << 1, r);
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_lsr_ror) {
+AVR_FAST_CORE_UINST_DECL(d5_lsr_ror)
+{
 	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw(u_opcode, d);
 	uint_fast16_t res = vd >> 1;
 	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	T(uint8_t vdh = vd >> 8);
-	T(uint8_t res0 = vdh >> 1);
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		T(uint8_t vdh = vd >> 8);
+		T(uint8_t res0 = vdh >> 1);
 
-	STATE("lsr %s[%02x]\n", avr_regname(d + 1), vdh);
-	T(_avr_fast_core_flags_zcn0vs(avr, res0, vdh));
-	SREG();
-#else
-	STATE("lsr.w %s:%s[%04x] = [%04x]\n", avr_regname(d), avr_regname(d + 1), vd, res);
-#endif
+		STATE("lsr %s[%02x]\n", avr_regname(d + 1), vdh);
+		T(_avr_fast_core_flags_zcn0vs(avr, res0, vdh));
+		SREG();
+	} else {
+		STATE("lsr.w %s:%s[%04x] = [%04x]\n", avr_regname(d), avr_regname(d + 1), vd, res);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	T(uint8_t vdl = vd & 0xff);
-	STATE("ror %s[%02x]\n", avr_regname(d), vdl);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		T(uint8_t vdl = vd & 0xff);
+		STATE("ror %s[%02x]\n", avr_regname(d), vdl);
+	}
 
-	AVR_FAST_CORE_RMW_STORE_R16LE(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R16LE(d, res);
 
 	_avr_fast_core_flags_zcnvs16(avr, res, vd);
 
@@ -3994,24 +4250,26 @@ AVR_FAST_CORE_UINST_DECL(d5_lsr_ror) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5r5_mov) {
+AVR_FAST_CORE_UINST_DECL(d5r5_mov)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1(u_opcode, d);
 	T(AVR_FAST_CORE_UINST_DEFN_vR2(u_opcode, r));
 	NO_T(AVR_FAST_CORE_UINST_DEFN_R2(u_opcode, r));
 	
 	_avr_mov_r(avr, d, r);
 	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("mov %s, %s[%02x] = %02x\n", avr_regname(d), avr_regname(r), vr, vr);
-#else
-	STATE("mov %s, %s[%02x]\n", avr_regname(d), avr_regname(r), vr);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("mov %s, %s[%02x] = %02x\n", avr_regname(d), avr_regname(r), vr, vr);
+	} else {
+		STATE("mov %s, %s[%02x]\n", avr_regname(d), avr_regname(r), vr);
+	}
 
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
 }
 AVR_FAST_CORE_INST_DEFN(d5r5, mov)
 
-AVR_FAST_CORE_UINST_DECL(d4r4_movw) {
+AVR_FAST_CORE_UINST_DECL(d4r4_movw)
+{
 	T(AVR_FAST_CORE_UINST_DEFN_R1_v16leR2(u_opcode, d, r));
 	NO_T(AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, d, r));
 	
@@ -4023,7 +4281,8 @@ AVR_FAST_CORE_UINST_DECL(d4r4_movw) {
 }
 AVR_FAST_CORE_INST_DEFN(d4r4, movw)
 
-AVR_FAST_CORE_UINST_DECL(d5r5_mul) {
+AVR_FAST_CORE_UINST_DECL(d5r5_mul)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_vR2(u_opcode, d, r);
 	uint_least16_t res = vd * vr;
 
@@ -4039,7 +4298,8 @@ AVR_FAST_CORE_UINST_DECL(d5r5_mul) {
 }
 AVR_FAST_CORE_INST_DEFN(d5r5, mul)
 
-AVR_FAST_CORE_UINST_DECL(d16r16_muls) {
+AVR_FAST_CORE_UINST_DECL(d16r16_muls)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, d, r);
 	int_least8_t vd = _avr_fast_core_fetch_r(avr, d);
 	int_least8_t vr = _avr_fast_core_fetch_r(avr, r);
@@ -4056,13 +4316,14 @@ AVR_FAST_CORE_UINST_DECL(d16r16_muls) {
 }
 AVR_FAST_CORE_INST_DEFN(d16r16, muls)
 
-AVR_FAST_CORE_UINST_DECL(d5_neg) {
+AVR_FAST_CORE_UINST_DECL(d5_neg)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
 	uint_fast8_t res = 0x00 - vd;
 
 	STATE("neg %s[%02x] = %02x\n", avr_regname(d), vd, res);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	avr->sreg[S_H] = ((res | vd) >> 3) & 1;
 	avr->sreg[S_V] = res == 0x80;
@@ -4076,19 +4337,21 @@ AVR_FAST_CORE_UINST_DECL(d5_neg) {
 }
 AVR_FAST_CORE_INST_DEFN(d5, neg)
 
-AVR_FAST_CORE_UINST_DECL(x_nop) {
+AVR_FAST_CORE_UINST_DECL(x_nop)
+{
 	STATE("nop\n");
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
 }
 AVR_FAST_CORE_INST_DEFN(x, nop)
 
-AVR_FAST_CORE_UINST_DECL(d5r5_or) {
+AVR_FAST_CORE_UINST_DECL(d5r5_or)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(u_opcode, d, r);
 	uint_fast8_t res = vd | vr;
 
 	STATE("or %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	_avr_fast_core_flags_znv0s(avr, res);
 
@@ -4097,13 +4360,14 @@ AVR_FAST_CORE_UINST_DECL(d5r5_or) {
 }
 AVR_FAST_CORE_INST_DEFN(d5r5, or)
 
-AVR_FAST_CORE_UINST_DECL(h4k8_ori) {
+AVR_FAST_CORE_UINST_DECL(h4k8_ori)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, h, k);
 	uint_fast8_t res = vh | k;
 
 	STATE("ori %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, h, res);
+	AVR_FAST_CORE_RMW_STORE_R(h, res);
 
 	_avr_fast_core_flags_znv0s(avr, res);
 
@@ -4112,7 +4376,8 @@ AVR_FAST_CORE_UINST_DECL(h4k8_ori) {
 }
 AVR_FAST_CORE_INST_DEFN(h4k8, ori)
 
-AVR_FAST_CORE_UINST_DECL(d5a6_out) {
+AVR_FAST_CORE_UINST_DECL(d5a6_out)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, a);
 
 	STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), vd);
@@ -4127,16 +4392,23 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(d5a6, out, d5, a6)
 		if((0xb800 /* OUT */ == (0xf800 & next_opcode)) && (R_SREG == a6b)) {
 			AVR_FAST_CORE_FLASH_OPCODE_DEFN(next_next_opcode, 2 + new_pc);
 			AVR_FAST_CORE_INST_DEFN_D5(__attribute__((__unused__))d5b, next_opcode);
-			AVR_FAST_CORE_INST_DEFN_A6(__attribute__((__unused__))a6c, next_opcode);
+			AVR_FAST_CORE_INST_DEFN_A6(__attribute__((__unused__))a6c, next_next_opcode);
 			if((0xb800 /* OUT */ == (0xf800 & next_next_opcode)) && (R_SPL == a6c)) {
-				AVR_FAST_CORE_INST_DEFN_D5(__attribute__((__unused__))d5c, next_opcode);
+				AVR_FAST_CORE_INST_DEFN_D5(__attribute__((__unused__))d5c, next_next_opcode);
 				u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(d5r5_out_sph_sreg_spl, d5, d5b, d5c);
-			} else combining = 0;
-		} else combining = 0;
-	} else combining = 0;
+			} else {
+				combining = 0;
+			}
+		} else {
+			combining = 0;
+		}
+	} else {
+		combining = 0;
+	}
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(d5r5_out_sph_sreg_spl) {
+AVR_FAST_CORE_UINST_DECL(d5r5_out_sph_sreg_spl)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_vR2_vR3(u_opcode, d, r, d2);
 
 	/* R_SPH */
@@ -4162,7 +4434,8 @@ AVR_FAST_CORE_UINST_DECL(d5r5_out_sph_sreg_spl) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2 + 2, 1 + 1 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_pop) {
+AVR_FAST_CORE_UINST_DECL(d5_pop)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1(u_opcode, d);
 
 	uint_fast8_t vd = _avr_fast_core_pop8(avr, count);
@@ -4185,29 +4458,31 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(d5, pop, d5)
 			&& (d5 == d5b) ) {
 		AVR_FAST_CORE_INST_DEFN_A6(a6, next_opcode);
 		u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(d5a6_pop_out, d5, a6, 0);
-	} else
+	} else {
 		combining = 0;
+	}
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(d5a6_pop_out) {
+AVR_FAST_CORE_UINST_DECL(d5a6_pop_out)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, d, a);
 
 	uint_fast8_t vd = _avr_fast_core_pop8(avr, count);
 	_avr_fast_core_store_r(avr, d, vd);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STACK_STATE("pop %s (@%04x)[%02x]\n", avr_regname(d), _avr_fast_core_sp_get(avr), vd);
-#else
-	STACK_STATE("/ pop %s (@%04x)[%02x]\n", avr_regname(d), _avr_fast_core_sp_get(avr), vd);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STACK_STATE("pop %s (@%04x)[%02x]\n", avr_regname(d), _avr_fast_core_sp_get(avr), vd);
+	} else {
+		STACK_STATE("/ pop %s (@%04x)[%02x]\n", avr_regname(d), _avr_fast_core_sp_get(avr), vd);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 2));
 	
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), vd);
-#else
-	STATE("\\ out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), vd);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), vd);
+	} else {
+		STATE("\\ out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), vd);
+	}
 
 	_avr_fast_core_reg_io_write(avr, count, a, vd);
 	
@@ -4215,25 +4490,26 @@ AVR_FAST_CORE_UINST_DECL(d5a6_pop_out) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_pop_pop16be) {
+AVR_FAST_CORE_UINST_DECL(d5_pop_pop16be)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1(u_opcode, d);
 
 	uint_fast16_t vd = _avr_fast_core_pop16be(avr, count);
 	T(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STACK_STATE("pop %s (@%04x)[%02x]\n", avr_regname(d + 1), sp - 1, vd >> 8);
-#else
-	STACK_STATE("/ pop %s (@%04x)[%02x]\n", avr_regname(d + 1), sp - 1, vd >> 8);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STACK_STATE("pop %s (@%04x)[%02x]\n", avr_regname(d + 1), sp - 1, vd >> 8);
+	} else {
+		STACK_STATE("/ pop %s (@%04x)[%02x]\n", avr_regname(d + 1), sp - 1, vd >> 8);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 2));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STACK_STATE("pop %s (@%04x)[%02x]\n", avr_regname(d), sp, vd & 0xff);
-#else
-	STACK_STATE("\\ pop %s (@%04x)[%02x]\n", avr_regname(d), sp, vd & 0xff);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STACK_STATE("pop %s (@%04x)[%02x]\n", avr_regname(d), sp, vd & 0xff);
+	} else {
+		STACK_STATE("\\ pop %s (@%04x)[%02x]\n", avr_regname(d), sp, vd & 0xff);
+	}
 
 	_avr_fast_core_store_r16le(avr, d, vd);
 
@@ -4241,25 +4517,26 @@ AVR_FAST_CORE_UINST_DECL(d5_pop_pop16be) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_pop_pop16le) {
+AVR_FAST_CORE_UINST_DECL(d5_pop_pop16le)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1(u_opcode, d);
 
 	uint_fast16_t vd = _avr_fast_core_pop16le(avr, count);
 	T(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STACK_STATE("pop %s (@%04x)[%02x]\n", avr_regname(d), sp - 1, vd & 0xff);
-#else
-	STACK_STATE("/ pop %s (@%04x)[%02x]\n", avr_regname(d), sp - 1, vd & 0xff);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STACK_STATE("pop %s (@%04x)[%02x]\n", avr_regname(d), sp - 1, vd & 0xff);
+	} else {
+		STACK_STATE("/ pop %s (@%04x)[%02x]\n", avr_regname(d), sp - 1, vd & 0xff);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 2));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STACK_STATE("pop %s (@%04x)[%02x]\n", avr_regname(d + 1), sp, vd >> 8);
-#else
-	STACK_STATE("\\ pop %s (@%04x)[%02x]\n", avr_regname(d + 1), sp, vd >> 8);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STACK_STATE("pop %s (@%04x)[%02x]\n", avr_regname(d + 1), sp, vd >> 8);
+	} else {
+		STACK_STATE("\\ pop %s (@%04x)[%02x]\n", avr_regname(d + 1), sp, vd >> 8);
+	}
 
 	_avr_fast_core_store_r16le(avr, d, vd);
 
@@ -4285,47 +4562,51 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(d5, push, d5)
 	} else if( (0x920f /* PUSH.h */ == (0xfe0f & i_opcode)) && (0x920f /* PUSH.l */ == (0xfe0f & next_opcode))
 			&& (d5 == (d5b + 1)) ) {
 		u_opcode = AVR_FAST_CORE_MAKE_UINST_OPCODE(d5_push_push16le, d5b, 0, 0);
-	} else
+	} else {
 		combining = 0;
+	}
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(d5_push_push16be) {
+AVR_FAST_CORE_UINST_DECL(d5_push_push16be)
+{
 	AVR_FAST_CORE_UINST_DEFN_v16leR1(u_opcode, d);
 
 	_avr_fast_core_push16be(avr, count, vd);
 	T(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STACK_STATE("push %s[%02x] (@%04x)\n", avr_regname(d), vd & 0xff, sp + 1);
-	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 2));
-	STACK_STATE("push %s[%02x] (@%04x)\n", avr_regname(d + 1), vd >> 8, sp);
-	T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2));
-	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2));
-#else
-	STACK_STATE("push.w %s:%s[%04x] (@%04x)\n", avr_regname(d+1), avr_regname(d), vd, sp);
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STACK_STATE("push %s[%02x] (@%04x)\n", avr_regname(d), vd & 0xff, sp + 1);
+		T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 2));
+		STACK_STATE("push %s[%02x] (@%04x)\n", avr_regname(d + 1), vd >> 8, sp);
+		T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2));
+		NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2));
+	} else {
+		STACK_STATE("push.w %s:%s[%04x] (@%04x)\n", avr_regname(d+1), avr_regname(d), vd, sp);
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2);
+	}
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_push_push16le) {
+AVR_FAST_CORE_UINST_DECL(d5_push_push16le)
+{
 	AVR_FAST_CORE_UINST_DEFN_v16leR1(u_opcode, d);
 
 	_avr_fast_core_push16le(avr, count, vd);
 	T(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STACK_STATE("push %s[%02x] (@%04x)\n", avr_regname(d + 1), vd >> 8, sp + 1);
-	T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2));
-	STACK_STATE("push %s[%02x] (@%04x)\n", avr_regname(d), vd & 0xff, sp);
-	T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2));
-	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2));
-#else
-	STACK_STATE("push.w %s:%s[%04x] (@%04x)\n", avr_regname(d+1), avr_regname(d), vd, sp);
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2)
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STACK_STATE("push %s[%02x] (@%04x)\n", avr_regname(d + 1), vd >> 8, sp + 1);
+		T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2));
+		STACK_STATE("push %s[%02x] (@%04x)\n", avr_regname(d), vd & 0xff, sp);
+		T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2));
+		NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2));
+	} else {
+		STACK_STATE("push.w %s:%s[%04x] (@%04x)\n", avr_regname(d+1), avr_regname(d), vd, sp);
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2)
+	}
 }
 
-AVR_FAST_CORE_UINST_DECL(o12_rcall) {
+AVR_FAST_CORE_UINST_DECL(o12_rcall)
+{
 	AVR_FAST_CORE_UINST_DEFN_16R2(u_opcode, o);
 	avr_flashaddr_t new_pc = 2 + avr->pc;
 	avr_flashaddr_t branch_pc = new_pc + (int16_t)o;
@@ -4344,7 +4625,8 @@ AVR_FAST_CORE_UINST_DECL(o12_rcall) {
 }
 AVR_FAST_CORE_INST_DEFN(o12, rcall)
 
-AVR_FAST_CORE_UINST_DECL(x_ret) {
+AVR_FAST_CORE_UINST_DECL(x_ret)
+{
 	STATE("ret\n");
 
 	TRACE_JUMP();
@@ -4354,7 +4636,8 @@ AVR_FAST_CORE_UINST_DECL(x_ret) {
 }
 AVR_FAST_CORE_INST_DEFN(x, ret)
 
-AVR_FAST_CORE_UINST_DECL(x_reti) {
+AVR_FAST_CORE_UINST_DECL(x_reti)
+{
 	*count = 0;
 	avr->sreg[S_I] = 1;
 
@@ -4367,7 +4650,8 @@ AVR_FAST_CORE_UINST_DECL(x_reti) {
 }
 AVR_FAST_CORE_INST_DEFN(x, reti)
 
-AVR_FAST_CORE_UINST_DECL(o12_rjmp) {
+AVR_FAST_CORE_UINST_DECL(o12_rjmp)
+{
 	AVR_FAST_CORE_UINST_DEFN_16R2(u_opcode, o);
 	avr_flashaddr_t new_pc = 2 + avr->pc;
 	avr_flashaddr_t	branch_pc = new_pc + (int16_t)o;
@@ -4380,13 +4664,14 @@ AVR_FAST_CORE_UINST_DECL(o12_rjmp) {
 }
 AVR_FAST_CORE_INST_DEFN(o12, rjmp)
 
-AVR_FAST_CORE_UINST_DECL(d5_rol) {
+AVR_FAST_CORE_UINST_DECL(d5_rol)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
 	uint_fast8_t res = (vd << 1) + avr->sreg[S_C];
 
 	STATE("rol %s[%02x] = %02x\n", avr_regname(d), vd, res);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	_avr_fast_core_flags_add_zns(avr, res, vd, vd);
 
@@ -4395,18 +4680,21 @@ AVR_FAST_CORE_UINST_DECL(d5_rol) {
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_ror) {
+AVR_FAST_CORE_UINST_DECL(d5_ror)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
 	
-#ifdef AVR_FAST_CORE_USE_BRANCHLESS_WITH_MULTIPLY
-	uint_fast8_t res = (avr->sreg[S_C] * 0x80) | vd >> 1;
-#else
-	uint_fast8_t res = (avr->sreg[S_C] ? 0x80 : 0) | vd >> 1;
-#endif
+	uint_fast8_t res;
+	
+	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+		res = (avr->sreg[S_C] * 0x80) | vd >> 1;
+	} else {
+		res = (avr->sreg[S_C] ? 0x80 : 0) | vd >> 1;
+	}
 
 	STATE("ror %s[%02x]\n", avr_regname(d), vd);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	_avr_fast_core_flags_zcnvs(avr, res, vd);
 
@@ -4416,13 +4704,14 @@ AVR_FAST_CORE_UINST_DECL(d5_ror) {
 }
 AVR_FAST_CORE_INST_DEFN(d5, ror)
 
-AVR_FAST_CORE_UINST_DECL(d5r5_sbc) {
+AVR_FAST_CORE_UINST_DECL(d5r5_sbc)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(u_opcode, d, r);
 	uint_fast8_t res = vd - vr - avr->sreg[S_C];
 
 	STATE("sbc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	_avr_fast_core_flags_sub_Rzns(avr, res, vd, vr);
 
@@ -4432,21 +4721,22 @@ AVR_FAST_CORE_UINST_DECL(d5r5_sbc) {
 }
 AVR_FAST_CORE_INST_DEFN(d5r5, sbc)
 
-AVR_FAST_CORE_UINST_DECL(h4k8_sbci) {
+AVR_FAST_CORE_UINST_DECL(h4k8_sbci)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k - avr->sreg[S_C];
 
 	STATE("sbci %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, h, res);
+	AVR_FAST_CORE_RMW_STORE_R(h, res);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	// CORE BUG -- standard core does not calculate H and V flags.
-	avr->sreg[S_C] = (k + avr->sreg[S_C]) > vh;
-	_avr_fast_core_flags_Rzns(avr, res);
-#else
-	_avr_fast_core_flags_sub_Rzns(avr, res, vh, k);
-#endif
+	if(_AVR_CORE_FAST_CORE_BUGS) {
+		// CORE BUG -- standard core does not calculate H and V flags.
+		avr->sreg[S_C] = (k + avr->sreg[S_C]) > vh;
+		_avr_fast_core_flags_Rzns(avr, res);
+	} else {
+		_avr_fast_core_flags_sub_Rzns(avr, res, vh, k);
+	}
 
 	SREG();
 
@@ -4454,7 +4744,8 @@ AVR_FAST_CORE_UINST_DECL(h4k8_sbci) {
 }
 AVR_FAST_CORE_INST_DEFN(h4k8, sbci)
 
-AVR_FAST_CORE_UINST_DECL(a5m8_sbi) {
+AVR_FAST_CORE_UINST_DECL(a5m8_sbi)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, io, mask);
 	AVR_FAST_CORE_UINST_DEFN_vIO(io);
 	uint_fast8_t res = vio | mask;
@@ -4467,106 +4758,111 @@ AVR_FAST_CORE_UINST_DECL(a5m8_sbi) {
 }
 AVR_FAST_CORE_INST_DEFN(a5m8, sbi)
 
-AVR_FAST_CORE_UINST_DECL(a5m8_16_sbic) {
+AVR_FAST_CORE_UINST_DECL(a5m8_16_sbic)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, io, mask);
 	AVR_FAST_CORE_UINST_DEFN_vIO(io);
 	uint_fast8_t skip = (0 == (vio & mask));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("sbic %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), vio, mask, skip ? "":" not");
-#else
-	STATE("sbic %s[%04x], 0x%02x\t; Will%s skip\n", avr_regname(io), vio, mask, skip ? "":" not");
-#endif
-
-#ifdef AVR_FAST_CORE_SKIP_SHIFT
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 << skip, 1 + skip);
-#else
-	if (skip) {
-		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("sbic %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), vio, mask, skip ? "":" not");
+	} else {
+		STATE("sbic %s[%04x], 0x%02x\t; Will%s skip\n", avr_regname(io), vio, mask, skip ? "":" not");
 	}
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-#endif
+
+	if(_AVR_FAST_CORE_SKIP_SHIFT) {
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 << skip, 1 + skip);
+	} else {
+		if (skip) {
+			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
+		}
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
+	}
 }
 AVR_FAST_CORE_INST_DEFN(a5m8, 16_sbic)
 
-AVR_FAST_CORE_UINST_DECL(a5m8_32_sbic) {
+AVR_FAST_CORE_UINST_DECL(a5m8_32_sbic)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, io, mask);
 	AVR_FAST_CORE_UINST_DEFN_vIO(io);
 	
 	uint_fast8_t skip = (0 == (vio & mask));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("sbic %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), vio, mask, skip ? "":" not");
-#else
-	STATE("sbic %s[%04x], 0x%02x\t; Will%s skip\n", avr_regname(io), vio, mask, skip ? "":" not");
-#endif
-
-#ifdef AVR_FAST_CORE_32_SKIP_SHIFT
-	int skip_count = skip ? 3 : 1;
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(skip_count << 1, skip_count);
-#else
-	if (skip) {
-		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(6, 3);
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("sbic %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), vio, mask, skip ? "":" not");
+	} else {
+		STATE("sbic %s[%04x], 0x%02x\t; Will%s skip\n", avr_regname(io), vio, mask, skip ? "":" not");
 	}
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-#endif
+
+	if(_AVR_FAST_CORE_32_SKIP_SHIFT) {
+		int skip_count = skip ? 3 : 1;
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(skip_count << 1, skip_count);
+	} else {
+		if (skip) {
+			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(6, 3);
+		}
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
+	}
 }
 AVR_FAST_CORE_INST_DEFN(a5m8, 32_sbic)
 
-AVR_FAST_CORE_UINST_DECL(a5m8_16_sbis) {
+AVR_FAST_CORE_UINST_DECL(a5m8_16_sbis)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, io, mask);
 	AVR_FAST_CORE_UINST_DEFN_vIO(io);
 	
 	uint_fast8_t skip = (0 != (vio & mask));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("sbis %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), vio, mask, skip ? "":" not");
-#else
-	STATE("sbis %s[%04x], 0x%02x\t; Will%s skip\n", avr_regname(io), vio, mask, skip ? "":" not");
-#endif
-
-#ifdef AVR_FAST_CORE_SKIP_SHIFT
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 << skip, 1 + skip);
-#else
-	if (skip) {
-		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("sbis %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), vio, mask, skip ? "":" not");
+	} else {
+		STATE("sbis %s[%04x], 0x%02x\t; Will%s skip\n", avr_regname(io), vio, mask, skip ? "":" not");
 	}
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-#endif
+
+	if(_AVR_FAST_CORE_SKIP_SHIFT) {
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 << skip, 1 + skip);
+	} else {
+		if (skip) {
+			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
+		}
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
+	}
 }
 AVR_FAST_CORE_INST_DEFN(a5m8, 16_sbis)
 
-AVR_FAST_CORE_UINST_DECL(a5m8_32_sbis) {
+AVR_FAST_CORE_UINST_DECL(a5m8_32_sbis)
+{
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, io, mask);
 	AVR_FAST_CORE_UINST_DEFN_vIO(io);
 	
 	uint_fast8_t skip = (0 != (vio & mask));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("sbis %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), vio, mask, skip ? "":" not");
-#else
-	STATE("sbis %s[%04x], 0x%02x\t; Will%s skip\n", avr_regname(io), vio, mask, skip ? "":" not");
-#endif
-
-#ifdef AVR_FAST_CORE_32_SKIP_SHIFT
-	int skip_count = skip ? 3 : 1;
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(skip_count << 1, skip_count);
-#else
-	if (skip) {
-		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(6, 3);
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("sbis %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), vio, mask, skip ? "":" not");
+	} else {
+		STATE("sbis %s[%04x], 0x%02x\t; Will%s skip\n", avr_regname(io), vio, mask, skip ? "":" not");
 	}
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-#endif
+
+	if(_AVR_FAST_CORE_32_SKIP_SHIFT) {
+		int skip_count = skip ? 3 : 1;
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(skip_count << 1, skip_count);
+	} else {
+		if (skip) {
+			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(6, 3);
+		}
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
+	}
 }
 AVR_FAST_CORE_INST_DEFN(a5m8, 32_sbis)
 
-AVR_FAST_CORE_UINST_DECL(p2k6_sbiw) {
+AVR_FAST_CORE_UINST_DECL(p2k6_sbiw)
+{
 	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_R2(u_opcode, p, k);
 	uint_fast16_t res = vp - k;
 
 	STATE("sbiw %s:%s[%04x], 0x%02x\n", avr_regname(p), avr_regname(p+1), vp, k);
 
-	AVR_FAST_CORE_RMW_STORE_R16LE(avr, p, res);
+	AVR_FAST_CORE_RMW_STORE_R16LE(p, res);
 
 	avr->sreg[S_V] = ((vp & (~res)) >> 15) & 1;
 	avr->sreg[S_C] = ((res & (~vp)) >> 15) & 1;
@@ -4579,95 +4875,100 @@ AVR_FAST_CORE_UINST_DECL(p2k6_sbiw) {
 }
 AVR_FAST_CORE_INST_DEFN(p2k6, sbiw)
 
-AVR_FAST_CORE_UINST_DECL(d5m8_16_sbrc) {
+AVR_FAST_CORE_UINST_DECL(d5m8_16_sbrc)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, mask);
 	int	skip = (0 == (vd & (mask)));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("sbrc %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), vd, mask, skip ? "":" not");
-#else
-	STATE("sbrc %s[%02x], 0x%02x\t; Will%s skip\n", avr_regname(d), vd, mask, skip ? "":" not");
-#endif
-
-#ifdef AVR_FAST_CORE_SKIP_SHIFT
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 << skip, 1 + skip);
-#else
-	if (skip) {
-		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("sbrc %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), vd, mask, skip ? "":" not");
+	} else {
+		STATE("sbrc %s[%02x], 0x%02x\t; Will%s skip\n", avr_regname(d), vd, mask, skip ? "":" not");
 	}
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-#endif
+
+	if(_AVR_FAST_CORE_SKIP_SHIFT) {
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 << skip, 1 + skip);
+	} else {
+		if (skip) {
+			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
+		}
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
+	}
 }
 AVR_FAST_CORE_INST_DEFN(d5m8, 16_sbrc)
 
-AVR_FAST_CORE_UINST_DECL(d5m8_32_sbrc) {
+AVR_FAST_CORE_UINST_DECL(d5m8_32_sbrc)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, mask);
 	int	skip = (0 == (vd & (mask)));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("sbrc %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), vd, mask, skip ? "":" not");
-#else
-	STATE("sbrc %s[%02x], 0x%02x\t; Will%s skip\n", avr_regname(d), vd, mask, skip ? "":" not");
-#endif
-
-#ifdef AVR_FAST_CORE_32_SKIP_SHIFT
-	int skip_count = skip ? 3 : 1;
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(skip_count << 1, skip_count);
-#else
-	if (skip) {
-		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(6, 3);
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("sbrc %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), vd, mask, skip ? "":" not");
+	} else {
+		STATE("sbrc %s[%02x], 0x%02x\t; Will%s skip\n", avr_regname(d), vd, mask, skip ? "":" not");
 	}
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-#endif
+
+	if(_AVR_FAST_CORE_32_SKIP_SHIFT) {
+		int skip_count = skip ? 3 : 1;
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(skip_count << 1, skip_count);
+	} else {
+		if (skip) {
+			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(6, 3);
+		}
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
+	}
 }
 AVR_FAST_CORE_INST_DEFN(d5m8, 32_sbrc)
 
-AVR_FAST_CORE_UINST_DECL(d5m8_16_sbrs) {
+AVR_FAST_CORE_UINST_DECL(d5m8_16_sbrs)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, mask);
 	int	skip = (0 != (vd & (mask)));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("sbrs %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), vd, mask, skip ? "":" not");
-#else
-	STATE("sbrs %s[%02x], 0x%02x\t; Will%s skip\n", avr_regname(d), vd, mask, skip ? "":" not");
-#endif
-
-#ifdef AVR_FAST_CORE_SKIP_SHIFT
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 << skip, 1 + skip);
-#else
-	if (skip) {
-		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("sbrs %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), vd, mask, skip ? "":" not");
+	} else {
+		STATE("sbrs %s[%02x], 0x%02x\t; Will%s skip\n", avr_regname(d), vd, mask, skip ? "":" not");
 	}
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-#endif
+
+	if(_AVR_FAST_CORE_SKIP_SHIFT) {
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 << skip, 1 + skip);
+	} else {
+		if (skip) {
+			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
+		}
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
+	}
 }
 AVR_FAST_CORE_INST_DEFN(d5m8, 16_sbrs)
 
-AVR_FAST_CORE_UINST_DECL(d5m8_32_sbrs) {
+AVR_FAST_CORE_UINST_DECL(d5m8_32_sbrs)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, mask);
 	int	skip = (0 != (vd & (mask)));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("sbrs %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), vd, mask, skip ? "":" not");
-#else
-	STATE("sbrs %s[%02x], 0x%02x\t; Will%s skip\n", avr_regname(d), vd, mask, skip ? "":" not");
-#endif
-
-#ifdef AVR_FAST_CORE_32_SKIP_SHIFT
-	int skip_count = skip ? 3 : 1;
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(skip_count << 1, skip_count);
-#else
-	if (skip) {
-		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(6, 3);
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("sbrs %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), vd, mask, skip ? "":" not");
+	} else {
+		STATE("sbrs %s[%02x], 0x%02x\t; Will%s skip\n", avr_regname(d), vd, mask, skip ? "":" not");
 	}
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-#endif
+
+	if(_AVR_FAST_CORE_32_SKIP_SHIFT) {
+		int skip_count = skip ? 3 : 1;
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(skip_count << 1, skip_count);
+	} else {
+		if (skip) {
+			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(6, 3);
+		}
+		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
+	}
 }
 AVR_FAST_CORE_INST_DEFN(d5m8, 32_sbrs)
 
-AVR_FAST_CORE_UINST_DECL(sei) {
+AVR_FAST_CORE_UINST_DECL(sei)
+{
 	/* 
-		avr instruction manual states there shall be one cycle latency
+		avr instruction manual states there shall be one cycle
 		after issuing an sei instruction. */
 
 	*count = 1;
@@ -4679,7 +4980,8 @@ AVR_FAST_CORE_UINST_DECL(sei) {
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
 }
 
-AVR_FAST_CORE_UINST_DECL(sei_sleep) {
+AVR_FAST_CORE_UINST_DECL(sei_sleep)
+{
 	avr->sreg[S_I]=1;
 
 	STATE("sei\n");
@@ -4695,23 +4997,22 @@ AVR_FAST_CORE_UINST_DECL(sei_sleep) {
 
 	if(!avr_has_pending_interrupts(avr)) {
 		avr->state = cpu_Sleeping;
-#ifdef AVR_FAST_CORE_SLEEP_PREPROCESS_TIMERS_AND_INTERRUPTS
-		CYCLES(1);
-		T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, *count));
-		NO_T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2 + 2, *count));
-		_avr_fast_core_cycle_timer_process(avr, 0);
-		_avr_fast_core_service_interrupts(avr);
+		if(_AVR_FAST_CORE_SLEEP_PREPROCESS_TIMERS_AND_INTERRUPTS) {
+			CYCLES(1);
+			T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, *count));
+			NO_T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2 + 2, *count));
+			_avr_fast_core_cycle_timer_process(avr, 0);
+			_avr_fast_core_service_interrupts(avr);
+		} else {
+			*count = 0;
+			T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1));
+			NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 1));
+		}
 	}
-#else
-		*count = 0;
-	}
-
-	T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1));
-	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 1));
-#endif	
 }
 
-AVR_FAST_CORE_UINST_DECL(x_sleep) {
+AVR_FAST_CORE_UINST_DECL(x_sleep)
+{
 	STATE("sleep\n");
 	/* Don't sleep if there are interrupts about to be serviced.
 	 * Without this check, it was possible to incorrectly enter a state
@@ -4719,22 +5020,21 @@ AVR_FAST_CORE_UINST_DECL(x_sleep) {
 	 * details, see the commit message. */
 	if(!avr_has_pending_interrupts(avr) || !avr->sreg[S_I]) {
 		avr->state = cpu_Sleeping;
-#ifdef AVR_FAST_CORE_SLEEP_PREPROCESS_TIMERS_AND_INTERRUPTS
-		CYCLES(1);
-		AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, *count);
-		_avr_fast_core_cycle_timer_process(avr, 0);
-		_avr_fast_core_service_interrupts(avr);
+		if(_AVR_FAST_CORE_SLEEP_PREPROCESS_TIMERS_AND_INTERRUPTS) {
+			CYCLES(1);
+			AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, *count);
+			_avr_fast_core_cycle_timer_process(avr, 0);
+			_avr_fast_core_service_interrupts(avr);
+		} else {
+			*count = 0;
+			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
+		}
 	}
-#else
-		*count = 0;
-	}
-
-	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-#endif	
 }
 AVR_FAST_CORE_INST_DEFN(x, sleep)
 
-AVR_FAST_CORE_UINST_DECL(d5rXYZ_st_no_op) {
+AVR_FAST_CORE_UINST_DECL(d5rXYZ_st_no_op)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_v16leR2(u_opcode, d, r);
 
 	STATE("st %c[%04x], %s[%02x] \n", *avr_regname(r), vr, avr_regname(d), vd);
@@ -4745,7 +5045,8 @@ AVR_FAST_CORE_UINST_DECL(d5rXYZ_st_no_op) {
 }
 AVR_FAST_CORE_INST_DEFN(d5rXYZ, st_no_op)
 
-AVR_FAST_CORE_UINST_DECL(d5rXYZ_st_pre_dec) {
+AVR_FAST_CORE_UINST_DECL(d5rXYZ_st_pre_dec)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_v16leR2rmw(u_opcode, d, r);
 
 	STATE("st --%c[%04x], %s[%02x] \n", *avr_regname(r), vr, avr_regname(d), vd);
@@ -4753,13 +5054,14 @@ AVR_FAST_CORE_UINST_DECL(d5rXYZ_st_pre_dec) {
 	vr--;
 	_avr_fast_core_store_ram(avr, count, vr, vd);
 
-	AVR_FAST_CORE_RMW_STORE_R16LE(avr, r, vr);
+	AVR_FAST_CORE_RMW_STORE_R16LE(r, vr);
 
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2); // 2 cycles, except tinyavr
 }
 AVR_FAST_CORE_INST_DEFN(d5rXYZ, st_pre_dec)
 
-AVR_FAST_CORE_UINST_DECL(d5rXYZ_st_post_inc) {
+AVR_FAST_CORE_UINST_DECL(d5rXYZ_st_post_inc)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_v16leR2rmw(u_opcode, d, r);
 
 	STATE("st %c[%04x]++, %s[%02x] \n", *avr_regname(r), vr, avr_regname(d), vd);
@@ -4767,13 +5069,14 @@ AVR_FAST_CORE_UINST_DECL(d5rXYZ_st_post_inc) {
 	_avr_fast_core_store_ram(avr, count, vr, vd);
 	vr++;
 	
-	AVR_FAST_CORE_RMW_STORE_R16LE(avr, r, vr);
+	AVR_FAST_CORE_RMW_STORE_R16LE(r, vr);
 
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2); // 2 cycles, except tinyavr
 }
 AVR_FAST_CORE_INST_DEFN(d5rXYZ, st_post_inc)
 
-AVR_FAST_CORE_UINST_DECL(d5rYZq6_std) {
+AVR_FAST_CORE_UINST_DECL(d5rYZq6_std)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_v16leR2_R3(u_opcode, d, r, q);
 	vr += q;
 
@@ -4797,22 +5100,23 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(d5rYZq6, std, d5, rZY, q6)
 		combining = 0;
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(d5rYZq6_std_std_hhll) {
+AVR_FAST_CORE_UINST_DECL(d5rYZq6_std_std_hhll)
+{
 	AVR_FAST_CORE_UINST_DEFN_v16leR1_v16leR2_R3(u_opcode, d, r, q);
 	vr += q;
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("st (%c+%d[%04x]), %s[%02x]\n", *avr_regname(r), q + 1, vr + 1, avr_regname(d), vd >> 8);
-#else
-	STATE("st (%c+%d:%d[%04x:%04x]), %s:%s[%04x]\n", *avr_regname(r), q, q + 1, vr, vr + 1,
-		avr_regname(d), avr_regname(d + 1), vd);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("st (%c+%d[%04x]), %s[%02x]\n", *avr_regname(r), q + 1, vr + 1, avr_regname(d), vd >> 8);
+	} else {
+		STATE("st (%c+%d:%d[%04x:%04x]), %s:%s[%04x]\n", *avr_regname(r),
+			q, q + 1, vr, vr + 1, avr_regname(d), avr_regname(d + 1), vd);
+	}
 
 	T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2)); // 2 cycles, except tinyavr
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("st (%c+%d[%04x]), %s[%02x]\n", *avr_regname(r), q, vr, avr_regname(d), vd & 0xff);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("st (%c+%d[%04x]), %s[%02x]\n", *avr_regname(r), q, vr, avr_regname(d), vd & 0xff);
+	}
 
 	if(likely(0xff < vr)) {
 		_avr_fast_core_data_write16le(avr, vr, vd);
@@ -4825,22 +5129,23 @@ AVR_FAST_CORE_UINST_DECL(d5rYZq6_std_std_hhll) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5rYZq6_std_std_hllh) {
+AVR_FAST_CORE_UINST_DECL(d5rYZq6_std_std_hllh)
+{
 	AVR_FAST_CORE_UINST_DEFN_v16leR1_v16leR2_R3(u_opcode, d, r, q);
 	vr += q;
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("st (%c+%d[%04x]), %s[%02x]\n", *avr_regname(r), q + 1, vr + 1, avr_regname(d), vd & 0xff);
-#else
-	STATE("st (%c+%d:%d[%04x:%04x]), %s:%s[%04x]\n", *avr_regname(r), q + 1, q , vr + 1, vr,
-		avr_regname(d), avr_regname(d + 1), vd);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("st (%c+%d[%04x]), %s[%02x]\n", *avr_regname(r), q + 1, vr + 1, avr_regname(d), vd & 0xff);
+	} else {
+		STATE("st (%c+%d:%d[%04x:%04x]), %s:%s[%04x]\n", *avr_regname(r),
+			q + 1, q , vr + 1, vr, avr_regname(d), avr_regname(d + 1), vd);
+	}
 
 	T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2)); // 2 cycles, except tinyavr
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("st (%c+%d[%04x]), %s[%02x]\n", *avr_regname(r), q, vr, avr_regname(d), vd >> 8);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("st (%c+%d[%04x]), %s[%02x]\n", *avr_regname(r), q, vr, avr_regname(d), vd >> 8);
+	}
 
 	if(likely(0xff < vr)) {
 		_avr_fast_core_data_write16be(avr, vr, vd);
@@ -4853,7 +5158,8 @@ AVR_FAST_CORE_UINST_DECL(d5rYZq6_std_std_hllh) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5x16_sts) {
+AVR_FAST_CORE_UINST_DECL(d5x16_sts)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_16R2(u_opcode, d, x);
 
 	STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), vd);
@@ -4880,7 +5186,8 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(d5x16, sts, d5, x16)
 	}
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(d5x16_sts_no_io) {
+AVR_FAST_CORE_UINST_DECL(d5x16_sts_no_io)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1_16R2(u_opcode, d, x);
 
 	STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), vd);
@@ -4890,18 +5197,21 @@ AVR_FAST_CORE_UINST_DECL(d5x16_sts_no_io) {
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
 }
 
-AVR_FAST_CORE_UINST_DECL(d5x16_sts_sts) {
+AVR_FAST_CORE_UINST_DECL(d5x16_sts_sts)
+{
 	AVR_FAST_CORE_UINST_DEFN_v16leR1_16R2(u_opcode, d, x);
 
 	/* lds low:high, sts high:low ... replicate order incase in the instance io is accessed. */
 
 	uint_fast8_t vdh = vd >> 8;
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("sts 0x%04x, %s[%02x]\n", x + 1, avr_regname(d), vdh);
-#else
-	STATE("sts.w 0x%04x:0x%04x, %s:%s[%04x]\n", x, x + 1, avr_regname(d), avr_regname(d + 1), _avr_fast_core_fetch_r16(avr, d));
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("sts 0x%04x, %s[%02x]\n", x + 1, avr_regname(d), vdh);
+	} else {
+		STATE("sts.w 0x%04x:0x%04x, %s:%s[%04x]\n", x, x + 1,
+			avr_regname(d), avr_regname(d + 1),
+			_avr_fast_core_fetch_r16(avr, d));
+	}
 
 	_avr_fast_core_store_ram(avr, count, x + 1, vdh);
 
@@ -4909,9 +5219,9 @@ AVR_FAST_CORE_UINST_DECL(d5x16_sts_sts) {
 
 	uint_fast8_t vdl = vd & 0xff;
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), vdl);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), vdl);
+	}
 
 	_avr_fast_core_store_ram(avr, count, x, vdl);
 
@@ -4919,26 +5229,27 @@ AVR_FAST_CORE_UINST_DECL(d5x16_sts_sts) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4 + 4, 2 + 2));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5x16_sts_sts_no_io) {
+AVR_FAST_CORE_UINST_DECL(d5x16_sts_sts_no_io)
+{
 	T(AVR_FAST_CORE_UINST_DEFN_v16leR1_16R2(u_opcode, d, x));
 	NO_T(AVR_FAST_CORE_UINST_DEFN_v16R1_16R2(u_opcode, d, x));
 	
 	/* lds low:high, sts high:low ...
 		normally, replicate order incase in the instance io is accessed. */
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	T(uint_fast8_t vdh = vd >> 8);
-	STATE("sts 0x%04x, %s[%02x]\n", x + 1, avr_regname(d), vdh);
-#else
-	STATE("sts.w 0x%04x:0x%04x, %s:%s[%04x]\n", x, x + 1, avr_regname(d), avr_regname(d + 1), vd);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		T(uint_fast8_t vdh = vd >> 8);
+		STATE("sts 0x%04x, %s[%02x]\n", x + 1, avr_regname(d), vdh);
+	} else {
+		STATE("sts.w 0x%04x:0x%04x, %s:%s[%04x]\n", x, x + 1, avr_regname(d), avr_regname(d + 1), vd);
+	}
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(4, 2));
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	T(uint_fast8_t vdl = vd & 0xff);
-	STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), vdl);
-#endif
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		T(uint_fast8_t vdl = vd & 0xff);
+		STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), vdl);
+	}
 
 	T(_avr_fast_core_data_write16le(avr, x, vd));
 	NO_T(_avr_fast_core_data_write16(avr, x, vd));
@@ -4947,13 +5258,14 @@ AVR_FAST_CORE_UINST_DECL(d5x16_sts_sts_no_io) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4 + 4, 2 + 2));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5r5_sub) {
+AVR_FAST_CORE_UINST_DECL(d5r5_sub)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(u_opcode, d, r);
 	uint_fast8_t res = vd - vr;
 
 	STATE("sub %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	_avr_fast_core_flags_sub_zns(avr, res, vd, vr);
 
@@ -4963,21 +5275,22 @@ AVR_FAST_CORE_UINST_DECL(d5r5_sub) {
 }
 AVR_FAST_CORE_INST_DEFN(d5r5, sub)
 
-AVR_FAST_CORE_UINST_DECL(h4k8_subi) {
+AVR_FAST_CORE_UINST_DECL(h4k8_subi)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 
 	STATE("subi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, h, res);
+	AVR_FAST_CORE_RMW_STORE_R(h, res);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	// CORE BUG -- standard core does not calculate H and V flags.
-	avr->sreg[S_C] = k > vh;
-	_avr_fast_core_flags_zns(avr, res);
-#else
-	_avr_fast_core_flags_sub_zns(avr, res, vh, k);
-#endif
+	if(_AVR_CORE_FAST_CORE_BUGS) {
+		// CORE BUG -- standard core does not calculate H and V flags.
+		avr->sreg[S_C] = k > vh;
+		_avr_fast_core_flags_zns(avr, res);
+	} else {
+		_avr_fast_core_flags_sub_zns(avr, res, vh, k);
+	}
 
 	SREG();
 
@@ -4994,43 +5307,44 @@ AVR_FAST_CORE_BEGIN_COMBINING_INST_DEFN(h4k8, subi, h4, k8)
 		combining = 0;
 AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
-AVR_FAST_CORE_UINST_DECL(h4k16_subi_sbci) {
+AVR_FAST_CORE_UINST_DECL(h4k16_subi_sbci)
+{
 	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_16R2(u_opcode, h, k);
 	uint_fast16_t res = vh - k;
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	T(uint8_t vhl = vh & 0xff; uint8_t vkl = k & 0xff);
-	T(uint8_t res0 = vhl - vkl);
-	STATE("subi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vhl, vkl, res0);
+	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+		T(uint8_t vhl = vh & 0xff; uint8_t vkl = k & 0xff);
+		T(uint8_t res0 = vhl - vkl);
+		STATE("subi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vhl, vkl, res0);
 
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	// CORE BUG -- standard core does not calculate H and V flags.
-	T(avr->sreg[S_C] = vkl > vhl);
-	T(_avr_fast_core_flags_zns(avr, res0));
-#else
-	T(_avr_fast_core_flags_sub_zns(avr, res0, vhl, vkl));
-#endif
+		if(_AVR_CORE_FAST_CORE_BUGS) {
+			// CORE BUG -- standard core does not calculate H and V flags.
+			T(avr->sreg[S_C] = vkl > vhl);
+			T(_avr_fast_core_flags_zns(avr, res0));
+		} else {
+			T(_avr_fast_core_flags_sub_zns(avr, res0, vhl, vkl));
+		}
 
-	SREG();
+		SREG();
 
-	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
+		T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-	T(uint8_t vhh = vh >> 8; uint8_t vkh = k >> 8);
-	T(uint8_t res1 = vhh - vkh - avr->sreg[S_C]);
-	STATE("sbci %s[%02x], 0x%02x = %02x\n", avr_regname(h + 1), vhh, vkh, res1);
-#else
-	STATE("subi.sbci %s:%s[%04x], 0x%04x = %04x\n", avr_regname(h), avr_regname(h + 1), vh, k, res);
-#endif
+		T(uint8_t vhh = vh >> 8; uint8_t vkh = k >> 8);
+		T(uint8_t res1 = vhh - vkh - avr->sreg[S_C]);
+		STATE("sbci %s[%02x], 0x%02x = %02x\n", avr_regname(h + 1), vhh, vkh, res1);
+	} else {
+		STATE("subi.sbci %s:%s[%04x], 0x%04x = %04x\n", avr_regname(h), avr_regname(h + 1), vh, k, res);
+	}
+	
+	AVR_FAST_CORE_RMW_STORE_R16LE(h, res);
 
-	AVR_FAST_CORE_RMW_STORE_R16LE(avr, h, res);
-
-#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
-	// CORE BUG -- standard core does not calculate H and V flags.
-	avr->sreg[S_C] = k > vh;
-	_avr_fast_core_flags_zns16(avr, res);
-#else
-	_avr_fast_core_flags_sub16_zns16(avr, res, vh, k);
-#endif
+	if(_AVR_CORE_FAST_CORE_BUGS) {
+		// CORE BUG -- standard core does not calculate H and V flags.
+		avr->sreg[S_C] = k > vh;
+		_avr_fast_core_flags_zns16(avr, res);
+	} else {
+		_avr_fast_core_flags_sub16_zns16(avr, res, vh, k);
+	}
 
 	SREG();
 
@@ -5038,19 +5352,21 @@ AVR_FAST_CORE_UINST_DECL(h4k16_subi_sbci) {
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 1));
 }
 
-AVR_FAST_CORE_UINST_DECL(d5_swap) {
+AVR_FAST_CORE_UINST_DECL(d5_swap)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
 	uint_fast8_t res = (vd >> 4) | (vd << 4);
 
 	STATE("swap %s[%02x] = %02x\n", avr_regname(d), vd, res);
 
-	AVR_FAST_CORE_RMW_STORE_R(avr, d, res);
+	AVR_FAST_CORE_RMW_STORE_R(d, res);
 
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
 }
 AVR_FAST_CORE_INST_DEFN(d5, swap)
 
-AVR_FAST_CORE_UINST_DECL(d5_tst) {
+AVR_FAST_CORE_UINST_DECL(d5_tst)
+{
 	AVR_FAST_CORE_UINST_DEFN_vR1(u_opcode, d);
 
 	STATE("tst %s[%02x]\n", avr_regname(d), vd);
@@ -5066,7 +5382,7 @@ AVR_FAST_CORE_INST_DEFN(d5, tst)
 /*
  * Called when an invalid opcode is decoded
  */
-static void _avr_fast_core_invalid_opcode(avr_t * avr)
+static void _avr_fast_core_invalid_opcode(avr_t *avr)
 {
 #if CONFIG_SIMAVR_TRACE
 	printf(FONT_RED "*** %04x: %-25s Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
@@ -5096,7 +5412,7 @@ static void _avr_fast_core_invalid_opcode(avr_t * avr)
  * The number of cycles taken by instruction has been added, but might not be
  * entirely accurate.
  */
-static int _avr_fast_core_inst_decode_one(avr_t * avr, int_fast32_t * count)
+static int _avr_fast_core_inst_decode_one(avr_t *avr, int_fast32_t *count)
 {
 	avr_flashaddr_t new_pc = avr->pc + 2;
 	T(avr_cycle_count_t __attribute__((__unused__)) startCycle = avr->cycle);
@@ -5115,12 +5431,12 @@ static int _avr_fast_core_inst_decode_one(avr_t * avr, int_fast32_t * count)
 
 	AVR_FAST_CORE_FLASH_OPCODE_DEFN(i_opcode, avr->pc);
 
-#ifdef AVR_FAST_CORE_DECODE_TRAP
-	AVR_FAST_CORE_UFLASH_OPCODE_FETCH_DEFN(u_opcode, avr->pc);
-	if(unlikely(u_opcode)) {
-		xSTATE("opcode trap, not handled: 0x%08x [0x%04x]\n", u_opcode, i_opcode);
+	if(_AVR_FAST_CORE_DECODE_TRAP) {
+		AVR_FAST_CORE_UFLASH_OPCODE_FETCH_DEFN(u_opcode, avr->pc);
+		if(unlikely(u_opcode)) {
+			xSTATE("opcode trap, not handled: 0x%08x [0x%04x]\n", u_opcode, i_opcode);
+		}
 	}
-#endif
 
 	switch (i_opcode & 0xf000) {
 		case 0x0000: {
@@ -5533,7 +5849,8 @@ static int _avr_fast_core_inst_decode_one(avr_t * avr, int_fast32_t * count)
 	return(*count);
 }
 
-AVR_FAST_CORE_UINST_DECL(avr_decode_one) {
+AVR_FAST_CORE_UINST_DECL(avr_decode_one)
+{
 	_avr_fast_core_inst_decode_one(avr, count);
 }
 
@@ -5544,51 +5861,35 @@ static const char __attribute__((__unused__)) *_avr_fast_core_uinst_op_names[256
 	AVR_FAST_CORE_UINST_ESAC_TABLE_DEFN
 };
 
-#ifdef AVR_FAST_CORE_TAIL_CALL
 #undef AVR_FAST_CORE_UINST_ESAC_DEFN
 #define AVR_FAST_CORE_UINST_ESAC_DEFN(name) _avr_fast_core_uinst_##name,
 static pfnInst_p _avr_fast_core_uinst_op_table[256] = {
 	AVR_FAST_CORE_UINST_ESAC_TABLE_DEFN
 };
-#endif
 
-#undef AVR_FAST_CORE_UINST_ESAC_DEFN
-#define AVR_FAST_CORE_UINST_ESAC_DEFN(name) \
-	case _avr_fast_core_uinst_##name##_k: \
-		AVR_FAST_CORE_PROFILER_PROFILE_IPS(); \
-		AVR_FAST_CORE_PROFILER_PROFILE(uinst[u_opcode_op], AVR_FAST_CORE_UINST_CALL(name)); \
-		break;
-
-static int _avr_fast_core_run_one(avr_t* avr, int_fast32_t * count) {
+static int _avr_fast_core_run_one(avr_t* avr, int_fast32_t *count)
+{
 	AVR_FAST_CORE_UFLASH_OPCODE_FETCH_DEFN(u_opcode, avr->pc);
 	AVR_FAST_CORE_UINST_DEFN_R0(u_opcode, u_opcode_op);
 	AVR_FAST_CORE_PROFILER_PROFILE_ISEQ(u_opcode_op);
 
-#ifdef AVR_FAST_CORE_TAIL_CALL
 	pfnInst_p pfn = _avr_fast_core_uinst_op_table[u_opcode_op];
 
-	AVR_FAST_CORE_PROFILER_PROFILE_IPS();
 	AVR_FAST_CORE_PFN_UINST_CALL(u_opcode);
-#else
-	switch(u_opcode_op) {
-		AVR_FAST_CORE_UINST_ESAC_TABLE_DEFN;
-		default:
-			AVR_FAST_CORE_PROFILER_PROFILE_IPS();
-			return(_avr_fast_core_inst_decode_one(avr, count));
-	}
-#endif
+
 	return(*count);
 }
 
-void avr_fast_core_run_many(avr_t* avr) {
+void avr_fast_core_run_many(avr_t* avr)
+{
 	AVR_FAST_CORE_PROFILER_PROFILE_START(core_loop);
-	int_fast32_t count = _avr_fast_core_cycle_timer_process(avr, count);
+	int_fast32_t count = _avr_fast_core_cycle_timer_process(avr, 0);
 	
 	if(0 == avr->sreg[S_I]) {
 /* no interrupt free run */
 		if(likely(cpu_Running == avr->state)) {
 			while(0 < _avr_fast_core_run_one(avr, &count))
-				;
+				AVR_FAST_CORE_PROFILER_PROFILE_IPS();
 
 			if (avr->sreg[S_I] && !avr->i_shadow) {
 				avr->interrupts.pending_wait++;
@@ -5608,7 +5909,7 @@ interrupts_disabled:
 /* slow(er) run with interrupt check */
 		if(likely(cpu_Running == avr->state)) {
 			while(0 < _avr_fast_core_run_one(avr, &count))
-				;
+				AVR_FAST_CORE_PROFILER_PROFILE_IPS();
 
 			if(!avr->sreg[S_I] && avr->i_shadow) {
 				goto interrupts_disabled;
@@ -5630,15 +5931,15 @@ interrupts_enabled:
 	AVR_FAST_CORE_PROFILER_PROFILE_STOP(core_loop);
 }
 
-void avr_fast_core_init(avr_t* avr) {
+void avr_fast_core_init(avr_t* avr)
+{
 	/* avr program memory is 16 bits wide, byte addressed. */
-	uint32_t flashsize = (avr->flashend + 1); // 2
+	uint32_t flashsize = avr->flashend + 1; // 2
 
 	uint32_t uflashsize = AVR_CORE_FLASH_UFLASH_SIZE_SHIFT(flashsize);
 
-#if defined(AVR_FAST_CORE_IO_DISPTACH_TABLES) && !defined(AVR_FAST_CORE_USE_GLOBAL_FLASH_ACCESS)
-	uflashsize += sizeof(_avr_fast_core_data_t);
-#endif
+	if(!_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS && _AVR_FAST_CORE_IO_DISPATCH_TABLES)
+		uflashsize += sizeof(_avr_fast_core_data_t);
 
 	avr->flash = realloc(avr->flash, flashsize + uflashsize);
 	assert(0 != avr->flash);
@@ -5656,13 +5957,13 @@ void avr_fast_core_init(avr_t* avr) {
 	AVR_FAST_CORE_PROFILER_PROFILE_ISEQ_FLUSH(d5m8_32_sbrc);
 	AVR_FAST_CORE_PROFILER_PROFILE_ISEQ_FLUSH(d5m8_16_sbrs);
 	AVR_FAST_CORE_PROFILER_PROFILE_ISEQ_FLUSH(d5m8_32_sbrs);
-	
-#ifdef AVR_FAST_CORE_USE_GLOBAL_FLASH_ACCESS
-	_avr_fast_core_uflash = AVR_CORE_FLASH_FAST_CORE_UFLASH;
-#endif
+
+	if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS)
+		_avr_fast_core_uflash = &AVR_FAST_CORE_DATA_UFLASH_ADDR_AT(0);
 }
 
-avr_flashaddr_t avr_fast_core_run_one(avr_t * avr) {
+avr_flashaddr_t avr_fast_core_run_one(avr_t *avr)
+{
 	static int inited = 0;
 	int count = 1;
 	
