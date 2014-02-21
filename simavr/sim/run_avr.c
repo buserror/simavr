@@ -28,6 +28,7 @@
 #include "sim_elf.h"
 #include "sim_core.h"
 #include "sim_fast_core.h"
+#include "sim_fast_core_profiler.h"
 #include "sim_gdb.h"
 #include "sim_hex.h"
 
@@ -59,6 +60,22 @@ sig_int(
 		int sign)
 {
 	printf("signal caught, simavr terminating\n");
+
+#ifdef CONFIG_AVR_FAST_CORE_UINST_PROFILING
+	avr_fast_core_profiler_generate_report();
+#endif
+
+	if (avr)
+		avr_terminate(avr);
+	exit(0);
+}
+
+void
+sig_term(
+		int sign)
+{
+	printf("signal caught, simavr terminating\n");
+
 	if (avr)
 		avr_terminate(avr);
 	exit(0);
@@ -183,14 +200,19 @@ int main(int argc, char *argv[])
 		avr_gdb_init(avr);
 	}
 
-	signal(SIGINT, sig_int);
-	signal(SIGTERM, sig_int);
+	signal(SIGINT, sig_int);	/* C-c -- Control C -- Interrupt program execution signal. */
+	signal(SIGQUIT, sig_term);	/* C-\ -- Control \ -- Quit...  Error detected by user */
+	signal(SIGTERM, sig_term);	/* default program termination signal. */
 
 	for (;;) {
 		int state = avr_run(avr);
 		if ( state == cpu_Done || state == cpu_Crashed)
 			break;
 	}
+
+#ifdef CONFIG_AVR_FAST_CORE_UINST_PROFILING
+	avr_fast_core_profiler_generate_report();
+#endif
 	
 	avr_terminate(avr);
 }

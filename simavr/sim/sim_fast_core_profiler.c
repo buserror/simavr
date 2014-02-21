@@ -19,6 +19,9 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __SIM_FAST_CORE_PROFILER_C
+#define __SIM_FAST_CORE_PROFILER_C
+
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -28,7 +31,8 @@
 #define KHz(hz) ((hz)*1000ULL)
 #define MHz(hz) KHz(KHz(hz))
 
-static uint64_t _avr_fast_core_profiler_calibrate_get_dtime_loop(void) {
+static uint64_t _avr_fast_core_profiler_calibrate_get_dtime_loop(void)
+{
    	uint64_t start, elapsedTime;
 
 	start = avr_fast_core_profiler_get_dtime();
@@ -44,7 +48,8 @@ static uint64_t _avr_fast_core_profiler_calibrate_get_dtime_loop(void) {
 	
 }
 
-static uint64_t _avr_fast_core_profiler_calibrate_get_dtime_sleep(void) {
+static uint64_t _avr_fast_core_profiler_calibrate_get_dtime_sleep(void)
+{
    	uint64_t start = avr_fast_core_profiler_get_dtime();
 	
 	sleep(1);
@@ -52,7 +57,8 @@ static uint64_t _avr_fast_core_profiler_calibrate_get_dtime_sleep(void) {
 	return(avr_fast_core_profiler_get_dtime() - start);
 }
 
-extern uint64_t avr_fast_core_profiler_dtime_calibrate(void) {
+extern uint64_t avr_fast_core_profiler_dtime_calibrate(void)
+{
 	uint64_t cycleTime = _avr_fast_core_profiler_calibrate_get_dtime_loop();
 	uint64_t elapsedTime, ecdt;
 	double emhz;
@@ -71,18 +77,21 @@ extern uint64_t avr_fast_core_profiler_dtime_calibrate(void) {
 	return(ecdt);
 }
 
-#ifdef AVR_FAST_CORE_UINST_PROFILING
+#ifdef CONFIG_AVR_FAST_CORE_UINST_PROFILING
 
-#define AVERAGE(x) ((double)avr_fast_core_profiler_core_profile.x.elapsed/(double)avr_fast_core_profiler_core_profile.x.count)
+#define AVERAGE(x) ((double)avr_fast_core_profiler_core_profile.x.elapsed / \
+	(double)avr_fast_core_profiler_core_profile.x.count)
 
-#define PERCENTAGE(x, y) (((double)avr_fast_core_profiler_core_profile.x.elapsed/(double)avr_fast_core_profiler_core_profile.y.elapsed)*100.0)
+#define PERCENTAGE(x, y) (((double)avr_fast_core_profiler_core_profile.x.elapsed / \
+	(double)avr_fast_core_profiler_core_profile.y.elapsed) * 100.0)
 
 #define MAXixy(x, y, ix, iy) ((x > y) ? ix : iy)
 #define MINixy(x, y, ix, iy) ((x < y) ? ix : iy)
 
 struct avr_fast_core_profiler_core_profile_t avr_fast_core_profiler_core_profile;
 
-extern void avr_fast_core_profiler_generate_report(void) {
+extern void avr_fast_core_profiler_generate_report(void)
+{
 	avr_fast_core_profiler_profile_p sorted_list0[256];
 	avr_fast_core_profiler_profile_p sorted_list1[256];
 	avr_fast_core_profiler_core_profile_p core_profile = &avr_fast_core_profiler_core_profile;
@@ -90,6 +99,9 @@ extern void avr_fast_core_profiler_generate_report(void) {
 	printf("\n\n>> fast core profile report\n");
 	printf(">> raw profile list\n");
 
+	const char * name_count_elapsed_average_status_line = 
+		"name: %55s -- count: %012llu, elapsed: %016llu, avg: %012.4f\n";
+	
 	for(int i = 0; i < 256; i++) {
 		sorted_list0[i] = 0;
 		
@@ -100,7 +112,7 @@ extern void avr_fast_core_profiler_generate_report(void) {
 			core_profile->uinst_total.elapsed += uopd->elapsed;
 			
 			uopd->average = (double)uopd->elapsed/(double)uopd->count;
-			printf("name: %46s -- count: %012llu, elapsed: %016llu, avg: %012.4f\n", 
+			printf(name_count_elapsed_average_status_line, 
 				uopd->name, uopd->count, uopd->elapsed, uopd->average);
 
 		/* sort next for count */
@@ -122,7 +134,7 @@ extern void avr_fast_core_profiler_generate_report(void) {
 
 		if(uopd && uopd->name) {
 			if(!uopd->count)
-				printf("name: %46s -- count: %012llu, elapsed: %016llu, avg: %012.4f\n", 
+				printf(name_count_elapsed_average_status_line, 
 					uopd->name, uopd->count, uopd->elapsed, uopd->average);
 			else
 				uopd->percentage = PERCENTAGE(uinst[i], uinst_total);
@@ -131,11 +143,14 @@ extern void avr_fast_core_profiler_generate_report(void) {
 	
 	printf("\n\n>> sorted by count\n");
 	
+	const char * name_count_elapsed_average_percentage_status_line = 
+		"name: %55s -- count: %012llu, elapsed: %016llu, avg: %012.4f, pctg: %%%08.4f\n";
+		
 	for(int i = 0; i < 256; i++) {
 		sorted_list1[i] = 0;
 		avr_fast_core_profiler_profile_p uopd = sorted_list0[i];
 		if(uopd && uopd->name && uopd->count) {
-			printf("name: %46s -- count: %012llu, elapsed: %016llu, avg: %012.4f, pctg: %%%08.4f\n", 
+			printf(name_count_elapsed_average_percentage_status_line, 
 				uopd->name, uopd->count, uopd->elapsed, uopd->average, uopd->percentage);
 
 		/* sort next for average */
@@ -156,7 +171,7 @@ extern void avr_fast_core_profiler_generate_report(void) {
 		sorted_list0[i] = 0;
 		avr_fast_core_profiler_profile_p uopd = sorted_list1[i];
 		if(uopd && uopd->name && uopd->count) {
-			printf("name: %46s -- count: %012llu, elapsed: %016llu, avg: %012.4f, pctg: %%%08.4f\n", 
+			printf(name_count_elapsed_average_percentage_status_line, 
 				uopd->name, uopd->count, uopd->elapsed, uopd->average, uopd->percentage);
 				
 		/* sort next for percentage */
@@ -176,7 +191,7 @@ extern void avr_fast_core_profiler_generate_report(void) {
 	for(int i = 0; i < 256; i++) {
 		avr_fast_core_profiler_profile_p uopd = sorted_list0[i];
 		if(uopd && uopd->name && uopd->count) {
-			printf("name: %46s -- count: %012llu, elapsed: %016llu, avg: %012.4f, pctg: %%%08.4f\n", 
+			printf(name_count_elapsed_average_percentage_status_line, 
 				uopd->name, uopd->count, uopd->elapsed, uopd->average, uopd->percentage);
 		}
 	}
@@ -283,7 +298,7 @@ extern void avr_fast_core_profiler_generate_report(void) {
 		
 		avr_fast_core_profiler_profile_t *from = &core_profile->uinst[maxiy >> 8];
 		avr_fast_core_profiler_profile_t *tooo = &core_profile->uinst[maxiy & 0xff];
-		printf("%32s -- %32s count: 0x%016llu %04x\n", from->name, tooo->name, core_profile->iseq_profile[maxiy], maxiy);
+		printf("%55s -- %55s count: 0x%016llu %04x\n", from->name, tooo->name, core_profile->iseq_profile[maxiy], maxiy);
 		core_profile->iseq_profile[maxiy] = 0;
 	}
 }
@@ -294,16 +309,15 @@ extern void avr_fast_core_profiler_generate_report(void) {
 	core_profile->x.average =0; \
 	core_profile->x.percentage =0; \
 
-extern void avr_fast_core_profiler_init(const char *uinst_op_names[256]) {
+extern void avr_fast_core_profiler_init(const char *uinst_op_names[256])
+{
 	avr_fast_core_profiler_core_profile_p core_profile = &avr_fast_core_profiler_core_profile;
 
-	for(int i=0; i<256 ;i++) {
+	for(int i = 0; i < 256 ; i++) {
 		core_profile->uinst[i].name = uinst_op_names[i];
 		CLEAR_PROFILE_DATA(uinst[i]);
-	}
-	
-	for(int i = 0; i < (256 >> 3); i++)
 		core_profile->iseq_flush[i] = 1;
+	}
 	
 	CLEAR_PROFILE_DATA(core_loop);
 	
@@ -326,5 +340,5 @@ extern void avr_fast_core_profiler_init(const char *uinst_op_names[256]) {
 	CLEAR_PROFILE_DATA(timer);
 }
 
-#endif
-
+#endif /* #ifdef CONFIG_AVR_FAST_CORE_UINST_PROFILING */
+#endif /* #ifndef __SIM_FAST_CORE_PROFILER_C */

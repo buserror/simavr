@@ -1,5 +1,3 @@
-#define CONFIG_SIMAVR_FAST_CORE_AGGRESSIVE_OPTIONS
-
 /*
 	sim_fast_core.c
 
@@ -22,8 +20,8 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __AVR_FAST_CORE
-#define __AVR_FAST_CORE
+#ifndef __SIM_FAST_CORE_C
+#define __SIM_FAST_CORE_C
 
 #include <stdio.h>	// printf
 #include <ctype.h>	// toupper
@@ -39,10 +37,10 @@
 #include "sim_fast_core.h"
 #include "avr_watchdog.h"
 
-/* AVR_FAST_CORE_UINST_PROFILING
+/* CONFIG_AVR_FAST_CORE_UINST_PROFILING
 	tracks dtime and count of each instruction executed
 	 enable/disable via 
-	 	#define AVR_FAST_CORE_UINST_PROFILING
+	 	#define CONFIG_AVR_FAST_CORE_UINST_PROFILING
 	 in sim_fast_core_profiling.h */
 #include "sim_fast_core_profiler.h"
 
@@ -55,8 +53,6 @@
 	some processors may have specialized instructions making this slower */
 /* AVR_FAST_CORE_COMBINING
 	common instruction sequences are combined as well as allowing 16 bit access tricks. */
-/* AVR_FAST_CORE_COMMON_DATA
-	puts avr->data local data for multiple register references. */
 /* AVR_FAST_CORE_COMPLEX
 	some instuctions are translated to use a more simplified form. */
 /* AVR_FAST_CORE_CPI_BRXX
@@ -79,49 +75,57 @@
 	fast forwards avr->cycle then calls timer and interrupt service routines in sleep functions */
 
 #define AVR_FAST_CORE_BRANCH_HINTS
-static const int _AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY = 1;
+#define AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 static const int _AVR_FAST_CORE_COMBINING = 1;
-static const int _AVR_FAST_CORE_COMMON_DATA = 1;
 static const int _AVR_FAST_CORE_COMPLEX = 1;
 static const int _AVR_FAST_CORE_CPI_BRXX = 1;
-static const int _AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE = 1;
-static const int _AVR_FAST_CORE_IO_DISPATCH_TABLES = 1;
-static const int _AVR_FAST_CORE_READ_MODIFY_WRITE = 1;
-static const int _AVR_FAST_CORE_SKIP_SHIFT = 1;
-static const int _AVR_FAST_CORE_32_SKIP_SHIFT = 1;
-static const int _AVR_FAST_CORE_SLEEP_PREPROCESS_TIMERS_AND_INTERRUPTS = 1;
+#define AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE
+#define AVR_FAST_CORE_IO_DISPATCH_TABLES
+#define AVR_FAST_CORE_READ_MODIFY_WRITE
+#define AVR_FAST_CORE_SKIP_SHIFT
+#define AVR_FAST_CORE_32_SKIP_SHIFT
+#define AVR_FAST_CORE_SLEEP_PREPROCESS_TIMERS_AND_INTERRUPTS
 
 
-
+/* CONFIG_SIMAVR_FAST_CORE_AGGRESSIVE_OPTIONS
+	makefile option for those whom insist on every last possible cycle. */
 #ifdef CONFIG_SIMAVR_FAST_CORE_AGGRESSIVE_OPTIONS
-/* AVR_FAST_CORE_GLOBAL_FLASH_ACCESS
-	uses globals for uflash and io_table access, will not work for multiple avr cores */
-static const int _AVR_FAST_CORE_GLOBAL_FLASH_ACCESS = 1;
-/* AVR_FAST_CORE_TAIL_CALL
-	build using tail calls, not all compilers may support the features
-	necessary and/or may be compiler dependant. */
-#ifndef AVR_FAST_CORE_UINST_PROFILING
-static const int _AVR_FAST_CORE_TAIL_CALL = 1;
-#endif
+	/* AVR_FAST_CORE_GLOBAL_FLASH_ACCESS
+		uses globals for uflash and io_table access, will not work for multiple avr cores */
+
+	#define AVR_FAST_CORE_GLOBAL_FLASH_ACCESS
+
+	#ifndef CONFIG_AVR_FAST_CORE_UINST_PROFILING
+
+		/* AVR_FAST_CORE_TAIL_CALL
+			build using tail calls, not all compilers may support the features
+			necessary and/or may be compiler dependant. */
+
+		#define AVR_FAST_CORE_TAIL_CALL
+
+	#endif
 #endif
 
 /* AVR_FAST_CORE_DECODE_TRAP
 	specific trap to catch missing instruction handlers */
 /* AVR_FAST_CORE_AGGRESSIVE_CHECKS
-	bounds checking at multiple points. */
+	sanity and bounds checking at multiple points. */
 
 static const int _AVR_FAST_CORE_DECODE_TRAP = 0;
-static const int _AVR_FAST_CORE_AGGRESSIVE_CHECKS = 0;
+//#define AVR_FAST_CORE_AGGRESSIVE_CHECKS
 
 #ifndef CONFIG_SIMAVR_TRACE
-/* AVR_FAST_CORE_LOCAL_TRACE
-	set this to bypass mucking with the makefiles and possibly needing to 
-	rebuild the entire project... allows tracing specific to the fast core. */
+/* AVR_CORE_FAST_CORE_BUGS
+	Set to leave in known core bugs fixed in fast core and still existing
+	in standard core */
 /* AVR_CORE_FAST_CORE_DIFF_TRACE
 	Some trace statements are slightly different than the original core...
 	also, some operations have bug fixes included not in original core.
 	defining AVR_CORE_FAST_CORE_DIFF_TRACE returns operation close to original 
 	core to make diffing trace output from cores easier for debugging. */
+/* AVR_FAST_CORE_LOCAL_TRACE
+	set this to bypass mucking with the makefiles and possibly needing to 
+	rebuild the entire project... allows tracing specific to the fast core. */
 /* AVR_FAST_CORE_ITRACE
 	helps to track flash -> uflash instruction opcode as instructions are 
 	translated to uoperations...  after which quiets down as instructions 
@@ -129,41 +133,29 @@ static const int _AVR_FAST_CORE_AGGRESSIVE_CHECKS = 0;
 /* AVR_FAST_CORE_STACK_TRACE
 	adds more verbose detail to stack operations */
 
-//#define AVR_FAST_CORE_LOCAL_TRACE
 //#define AVR_CORE_FAST_CORE_DIFF_TRACE
-#ifndef AVR_CORE_FAST_CORE_DIFF_TRACE
-//#define AVR_FAST_CORE_ITRACE
 //#define AVR_FAST_CORE_LOCAL_TRACE
-//#define AVR_FAST_CORE_STACK_TRACE;
-static const int _AVR_CORE_FAST_CORE_BUGS = 0;
-static const int _AVR_CORE_FAST_CORE_DIFF_TRACE = 0;
+#ifndef AVR_CORE_FAST_CORE_DIFF_TRACE
+//#define AVR_CORE_FAST_CORE_BUGS
+//#define AVR_FAST_CORE_ITRACE
+//#define AVR_FAST_CORE_STACK_TRACE
 #endif
 #else
 /* do not touch these here...  set above. */
+#define AVR_CORE_FAST_CORE_BUGS
+#define AVR_CORE_FAST_CORE_DIFF_TRACE
 #define AVR_FAST_CORE_LOCAL_TRACE
-static const int _AVR_FAST_CORE_STACK_TRACE = 0;
-static const int _AVR_CORE_FAST_CORE_BUGS = 1;
-static const int _AVR_CORE_FAST_CORE_DIFF_TRACE = 1;
+#define AVR_FAST_CORE_STACK_TRACE
 #endif
 
 /* ****
 	>>>>	END OF OPTION FLAGS SECTION
 **** */
 
-#if defined(AVR_FAST_CORE_ITRACE)
-#define _AVR_FAST_CORE_ITRACE 1
-#else
-#define _AVR_FAST_CORE_ITRACE 0
-#endif
-
-#if defined(AVR_FAST_CORE_DIFF_TRACE)
-#define _AVR_FAST_CORE_DIFF_TRACE 1
-#else
-#define _AVR_FAST_CORE_DIFF_TRACE 0
-#endif
-
-
+// /--SIM-CORE - Byte addressed pc
+//   /--AVR - Word addressed pc
 // 1,2,4,8,16,32,64
+//     \--SIM-FAST-CORE - Long addressed pc
 
 /* avr pc word addressed, stock core pc byte addressed */
 //#define AVR_CORE_FLASH_UFLASH_SIZE_SHIFT(x) (x << 1)
@@ -173,77 +165,103 @@ static const int _AVR_CORE_FAST_CORE_DIFF_TRACE = 1;
 #define AVR_CORE_FLASH_UFLASH_SIZE_SHIFT(x) (x << 2)
 #define AVR_CORE_FLASH_ADDR_SHIFT(x) x
 
-static uint32_t *_avr_fast_core_uflash;
-
-#define AVR_FAST_CORE_GLOBAL_UFLASH_ADDR_AT(addr) _avr_fast_core_uflash[AVR_CORE_FLASH_ADDR_SHIFT(addr)]
-
 typedef uint_fast8_t (*_avr_fast_core_io_read_fn_t)(avr_t *avr, int_fast32_t *count, uint_fast16_t addr);
 typedef void (*_avr_fast_core_io_write_fn_t)(avr_t *avr, int_fast32_t *count, uint_fast16_t addr, uint_fast8_t v);
 
-static _avr_fast_core_io_read_fn_t _avr_fast_core_io_read_fn[MAX_IOs];
-static _avr_fast_core_io_write_fn_t _avr_fast_core_io_write_fn[MAX_IOs];
+#define AVR_CORE_FLASH_FAST_CORE_UFLASH ((uint32_t*)&((uint8_t *)avr->flash)[avr->flashend + 1])
 
-#define AVR_FAST_CORE_GLOBAL_IO_READ_FN(addr) _avr_fast_core_io_read_fn[addr]
-#define AVR_FAST_CORE_GLOBAL_IO_WRITE_FN(addr) _avr_fast_core_io_write_fn[addr]
+#ifdef AVR_FAST_CORE_GLOBAL_FLASH_ACCESS
 
-#define AVR_FAST_CORE_GLOBAL_IO_READ_FN_DO(avr, count, addr) AVR_FAST_CORE_GLOBAL_IO_READ_FN(addr)(avr, count, addr)
-#define AVR_FAST_CORE_GLOBAL_IO_WRITE_FN_DO(avr, count, addr, v) AVR_FAST_CORE_GLOBAL_IO_WRITE_FN(addr)(avr, count, addr, v)
+	static uint32_t *_avr_fast_core_uflash;
 
-typedef struct _avr_fast_core_data_t {
-	_avr_fast_core_io_read_fn_t	io_read_fn[MAX_IOs];
-	_avr_fast_core_io_write_fn_t	io_write_fn[MAX_IOs];
-	uint32_t 			uflash[];
-}_avr_fast_core_data_t, *_avr_fast_core_data_p;
+	#define AVR_FAST_CORE_GLOBAL_UFLASH_ADDR_AT(addr) _avr_fast_core_uflash[AVR_CORE_FLASH_ADDR_SHIFT(addr)]
 
-#define AVR_FAST_CORE_DATA ((_avr_fast_core_data_p)&((uint8_t *)avr->flash)[avr->flashend + 1])
+	#ifdef AVR_FAST_CORE_IO_DISPATCH_TABLES
 
-#define AVR_FAST_CORE_DATA_UFLASH_ADDR_AT(addr) AVR_FAST_CORE_DATA->uflash[AVR_CORE_FLASH_ADDR_SHIFT(addr)]
+		static _avr_fast_core_io_read_fn_t _avr_fast_core_io_read_fn[MAX_IOs];
+		static _avr_fast_core_io_write_fn_t _avr_fast_core_io_write_fn[MAX_IOs];
 
-#define AVR_FAST_CORE_DATA_IO_READ_FN(addr) AVR_FAST_CORE_DATA->io_read_fn[addr]
-#define AVR_FAST_CORE_DATA_IO_WRITE_FN(addr) AVR_FAST_CORE_DATA->io_write_fn[addr]
+		#define AVR_FAST_CORE_GLOBAL_IO_READ_FN(addr) _avr_fast_core_io_read_fn[addr]
+		#define AVR_FAST_CORE_GLOBAL_IO_WRITE_FN(addr) _avr_fast_core_io_write_fn[addr]
 
-#define AVR_FAST_CORE_IO_READ_FN_DO(avr, count, addr) \
-	do { \
-		if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS) { \
-			AVR_FAST_CORE_GLOBAL_IO_READ_FN(addr)(avr, count, addr); \
-		} else { \
-			AVR_FAST_CORE_DATA_IO_READ_FN(addr)(avr, count, addr); \
-		} \
-	} while(0);
+	#endif
 
-#define AVR_FAST_CORE_IO_WRITE_FN_DO(avr, count, addr, v) \
-	do { \
-		if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS) { \
-			AVR_FAST_CORE_GLOBAL_IO_WRITE_FN(addr)(avr, count, addr); \
-		} else { \
-			AVR_FAST_CORE_DATA_IO_WRITE_FN(addr)(avr, count, addr); \
-		} \
-	} while(0);
+#elif defined(AVR_FAST_CORE_IO_DISPATCH_TABLES)
 
-#define AVR_FAST_CORE_SET_IO_READ_FN_DO_RET(addr, name) \
-	do { \
-		if(_AVR_FAST_CORE_IO_DISPATCH_TABLES) { \
-			if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS) { \
-				AVR_FAST_CORE_GLOBAL_IO_READ_FN(addr) = name; \
-			} else { \
-				AVR_FAST_CORE_DATA_IO_READ_FN(addr) = name; \
-			} \
-		} \
-		return(name(avr, count, addr)); \
-	} while(0);
+	typedef struct _avr_fast_core_data_t {
+		_avr_fast_core_io_read_fn_t	io_read_fn[MAX_IOs];
+		_avr_fast_core_io_write_fn_t	io_write_fn[MAX_IOs];
+		uint32_t 			uflash[];
+	}_avr_fast_core_data_t, *_avr_fast_core_data_p;
+
+	#define AVR_FAST_CORE_DATA ((_avr_fast_core_data_p)AVR_CORE_FLASH_FAST_CORE_UFLASH)
+
+	#define AVR_FAST_CORE_DATA_UFLASH_ADDR_AT(addr) AVR_FAST_CORE_DATA->uflash[AVR_CORE_FLASH_ADDR_SHIFT(addr)]
+
+	#define AVR_FAST_CORE_DATA_IO_READ_FN(addr) AVR_FAST_CORE_DATA->io_read_fn[addr]
+	#define AVR_FAST_CORE_DATA_IO_WRITE_FN(addr) AVR_FAST_CORE_DATA->io_write_fn[addr]
+
+#else
 	
-#define AVR_FAST_CORE_SET_IO_WRITE_FN_DO_RET(addr, name) \
-	do { \
-		if(_AVR_FAST_CORE_IO_DISPATCH_TABLES) { \
-			if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS) { \
-				AVR_FAST_CORE_GLOBAL_IO_WRITE_FN(addr) = name; \
-			} else { \
-				AVR_FAST_CORE_DATA_IO_WRITE_FN(addr) = name; \
-			} \
-		} \
-		return(name(avr, count, addr, v)); \
-	} while(0);
-	
+	#define AVR_FAST_CORE_UFLASH_ADDR_AT(addr) AVR_CORE_FLASH_FAST_CORE_UFLASH[AVR_CORE_FLASH_ADDR_SHIFT(addr)]
+
+#endif
+
+#ifdef AVR_FAST_CORE_IO_DISPATCH_TABLES
+	#ifdef AVR_FAST_CORE_GLOBAL_FLASH_ACCESS
+
+		#define AVR_FAST_CORE_IO_READ_FN(addr) \
+			AVR_FAST_CORE_GLOBAL_IO_READ_FN(addr);
+		
+		#define AVR_FAST_CORE_IO_WRITE_FN(addr) \
+			AVR_FAST_CORE_GLOBAL_IO_WRITE_FN(addr);
+
+		#define AVR_FAST_CORE_IO_READ_FN_DO(avr, count, addr) \
+			AVR_FAST_CORE_GLOBAL_IO_READ_FN(addr)(avr, count, addr);
+
+		#define AVR_FAST_CORE_IO_WRITE_FN_DO(avr, count, addr, v) \
+			AVR_FAST_CORE_GLOBAL_IO_WRITE_FN(addr)(avr, count, addr, v);
+
+		#define AVR_FAST_CORE_SET_IO_READ_FN_DO_RET(addr, name) \
+			AVR_FAST_CORE_GLOBAL_IO_READ_FN(addr) = name; \
+			return(name(avr, count, addr));
+
+		#define AVR_FAST_CORE_SET_IO_WRITE_FN_DO_RET(addr, name) \
+			AVR_FAST_CORE_GLOBAL_IO_WRITE_FN(addr) = name; \
+			return(name(avr, count, addr, v));
+
+	#else /* core data */
+
+		#define AVR_FAST_CORE_IO_READ_FN(addr) \
+			AVR_FAST_CORE_DATA_IO_READ_FN(addr);
+
+		#define AVR_FAST_CORE_IO_WRITE_FN(addr) \
+			AVR_FAST_CORE_DATA_IO_WRITE_FN(addr);
+
+		#define AVR_FAST_CORE_IO_READ_FN_DO(avr, count, addr) \
+			AVR_FAST_CORE_DATA_IO_READ_FN(addr)(avr, count, addr);
+
+		#define AVR_FAST_CORE_IO_WRITE_FN_DO(avr, count, addr, v) \
+			AVR_FAST_CORE_DATA_IO_WRITE_FN(addr)(avr, count, addr, v);
+
+		#define AVR_FAST_CORE_SET_IO_READ_FN_DO_RET(addr, name) \
+			AVR_FAST_CORE_DATA_IO_READ_FN(addr) = name; \
+			return(name(avr, count, addr));
+
+		#define AVR_FAST_CORE_SET_IO_WRITE_FN_DO_RET(addr, name) \
+			AVR_FAST_CORE_DATA_IO_WRITE_FN(addr) = name; \
+			return(name(avr, count, addr, v));
+	#endif	
+#else /* !AVR_FAST_CORE_IO_DISPATCH_TABLES */
+
+	#define AVR_FAST_CORE_SET_IO_READ_FN_DO_RET(addr, name) \
+		return(name(avr, count, addr));
+
+	#define AVR_FAST_CORE_SET_IO_WRITE_FN_DO_RET(addr, name) \
+		return(name(avr, count, addr, v));
+
+#endif
+
 #define CYCLES(x) { if(1==(x)) { avr->cycle++; (*count)--; } else { avr->cycle += (x); (*count) -= (x); }}
 
 #ifdef AVR_FAST_CORE_BRANCH_HINTS
@@ -254,38 +272,39 @@ typedef struct _avr_fast_core_data_t {
 #define unlikely(x) x
 #endif
 
+
+#ifdef CONFIG_AVR_FAST_CORE_UINST_PROFILING
 static avr_cycle_count_t _avr_fast_core_cycle_timer_process(avr_t *avr, avr_cycle_count_t count)
 {
-	if(_AVR_FAST_CORE_UINST_PROFILING) {
-		avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
-		uint_fast8_t pool_count = pool->count;
-		avr_cycle_count_t new_count = count;
-	
-		if(pool_count) {
-			avr_cycle_timer_slot_t  cycle_timer = pool->timer[pool_count-1];
-			avr_cycle_count_t when = cycle_timer.when;
-			if (when < avr->cycle) {
-				AVR_FAST_CORE_PROFILER_PROFILE(timer, new_count = avr_cycle_timer_process(avr));
-			}
-		}
-	
-		return(new_count);
-	} else {
-		return(avr_cycle_timer_process(avr));
-	}
-}
+	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
+	uint_fast8_t pool_count = pool->count;
+	avr_cycle_count_t new_count = count;
 
-static void _avr_fast_core_service_interrupts(avr_t *avr) {
-	if(_AVR_FAST_CORE_UINST_PROFILING) {
-		if(avr->sreg[S_I]) {
-			if(avr_has_pending_interrupts(avr)) {
-				AVR_FAST_CORE_PROFILER_PROFILE(isr, avr_service_interrupts(avr));
-			}
+	if(pool_count) {
+		avr_cycle_timer_slot_t  cycle_timer = pool->timer[pool_count-1];
+		avr_cycle_count_t when = cycle_timer.when;
+		if (when < avr->cycle) {
+			AVR_FAST_CORE_PROFILER_PROFILE(timer, new_count = avr_cycle_timer_process(avr));
 		}
-	} else {
-		return(avr_service_interrupts(avr));
+	}
+
+	return(new_count);
+}
+#else
+#define _avr_fast_core_cycle_timer_process(avr, count) avr_cycle_timer_process(avr)
+#endif
+
+#ifdef CONFIG_AVR_FAST_CORE_UINST_PROFILING
+static void _avr_fast_core_service_interrupts(avr_t *avr) {
+	if(avr->sreg[S_I]) {
+		if(avr_has_pending_interrupts(avr)) {
+			AVR_FAST_CORE_PROFILER_PROFILE(isr, avr_service_interrupts(avr));
+		}
 	}
 }
+#else
+#define _avr_fast_core_service_interrupts(avr) avr_service_interrupts(avr);
+#endif
 
 #define xSTATE(_f, args...) { \
 	printf("%06x: " _f, avr->pc, ## args);\
@@ -342,44 +361,44 @@ extern void avr_dump_state(avr_t *avr);
 
 static inline uint_fast8_t _avr_fast_core_data_read(avr_t* avr, uint_fast16_t addr)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(addr > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.\n", __FUNCTION__, addr);
 			CRASH();
 		}
-	}
+	#endif
 
 	return(avr->data[addr]);
 }
 
 static inline void _avr_fast_core_data_write(avr_t* avr, uint_fast16_t addr, uint_fast8_t data)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(addr > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.\n", __FUNCTION__, addr);
 			CRASH();
 		}
-	}
+	#endif
 
 	avr->data[addr]=data;
 }
 
 static inline uint_fast16_t _avr_bswap16le(uint_fast16_t v)
 {
-	if(__BYTE_ORDER == __LITTLE_ENDIAN) {
+	#if __BYTE_ORDER == __LITTLE_ENDIAN
 		return(v);
-	} else {
+	#else
 		return(((v & 0xff00) >> 8) | ((v & 0x00ff) << 8));
-	}
+	#endif
 }
 
 static inline uint_fast16_t _avr_bswap16be(uint_fast16_t v)
 {
-	if(__BYTE_ORDER == __LITTLE_ENDIAN) {
+	#if __BYTE_ORDER == __LITTLE_ENDIAN
 		return(((v & 0xff00) >> 8) | ((v & 0x00ff) << 8));
-	} else {
+	#else
 		return(v);
-	}
+	#endif
 }
 
 static inline uint_fast16_t _avr_fast_core_fetch16(void* p, uint_fast16_t addr)
@@ -409,72 +428,72 @@ static inline void _avr_fast_core_data_mov16(avr_t* avr, uint_fast16_t dst, uint
 
 static inline uint_fast16_t _avr_fast_core_data_read16(avr_t* avr, uint_fast16_t addr)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely((addr + 1) > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
 			CRASH();
 		}
-	}
+	#endif
 
 	return(_avr_fast_core_fetch16(avr->data, addr));
 }
 
 static inline void _avr_fast_core_data_write16(avr_t* avr, uint_fast16_t addr, uint_fast16_t data)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely((addr + 1) > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
 			CRASH();
 		}
-	}
+	#endif
 
 	_avr_fast_core_store16(avr->data, addr, data);
 }
 
 static inline uint_fast16_t _avr_fast_core_data_read16be(avr_t* avr, uint_fast16_t addr)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely((addr + 1) > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
 			CRASH();
 		}
-	}
+	#endif
 	
 	return(_avr_bswap16be(_avr_fast_core_fetch16(avr->data, addr)));
 }
 
 static inline uint_fast16_t _avr_fast_core_data_read16le(avr_t* avr, uint_fast16_t addr)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely((addr + 1) > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
 			CRASH();
 		}
-	}
+	#endif
 
 	return(_avr_bswap16le(_avr_fast_core_fetch16(avr->data, addr)));
 }
 
 static inline void _avr_fast_core_data_write16be(avr_t* avr, uint_fast16_t addr, uint_fast16_t data)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely((addr + 1) > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
 			CRASH();
 		}
-	}
+	#endif
 
 	_avr_fast_core_store16(avr->data, addr, _avr_bswap16be(data));
 }
 
 static inline void _avr_fast_core_data_write16le(avr_t* avr, uint_fast16_t addr, uint_fast16_t data)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely((addr + 1) > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
 			CRASH();
 		}
-	}
+	#endif
 
 	_avr_fast_core_store16(avr->data, addr, _avr_bswap16le(data));
 }
@@ -484,22 +503,22 @@ static inline void _avr_fast_core_data_write16le(avr_t* avr, uint_fast16_t addr,
  */
 static inline uint_fast16_t _avr_fast_core_sp_get(avr_t *avr)
 {
-	if(_AVR_FAST_CORE_COMBINING) {
+	#ifdef AVR_FAST_CORE_COMBINING
 		return(_avr_fast_core_data_read16le(avr, R_SPL));
-	} else {
+	#else
 		uint_fast16_t sp = _avr_fast_core_data_read(avr, R_SPL);
 		return(sp | (_avr_fast_core_data_read(avr, R_SPH) << 8));
-	}
+	#endif
 }
 
 static inline void _avr_fast_core_sp_set(avr_t *avr, uint_fast16_t sp)
 {
-	if(_AVR_FAST_CORE_COMBINING) {
+	#ifdef AVR_FAST_CORE_COMBINING
 		_avr_fast_core_data_write16le(avr, R_SPL, sp);
-	} else {
+	#else
 		_avr_fast_core_data_write(avr, R_SPH, sp >> 8);
 		_avr_fast_core_data_write(avr, R_SPL, sp & 0xff);
-	}
+	#endif
 }
 
 /*
@@ -510,7 +529,7 @@ static inline uint_fast8_t _avr_fast_core_fetch_r(avr_t* avr, uint_fast8_t reg)
 	return(_avr_fast_core_data_read(avr, reg));
 }
 
-static inline void _avr_mov_r(avr_t* avr, uint_fast8_t dst, uint_fast8_t src)
+static inline void _avr_fast_core_mov_r(avr_t* avr, uint_fast8_t dst, uint_fast8_t src)
 {
 	_avr_fast_core_data_mov(avr, dst, src);
 }
@@ -524,7 +543,7 @@ static inline uint_fast16_t _avr_fast_core_fetch_r16(avr_t* avr, uint_fast8_t ad
 	return(_avr_fast_core_data_read16(avr, addr));
 }
 
-static inline void _avr_mov_r16(avr_t* avr, uint_fast8_t dst, uint_fast8_t src)
+static inline void _avr_fast_core_mov_r16(avr_t* avr, uint_fast8_t dst, uint_fast8_t src)
 {
 	_avr_fast_core_data_mov16(avr, dst, src);
 }
@@ -558,112 +577,121 @@ static inline uint_fast16_t _avr_fast_core_flash_read16be(avr_t* avr, uint_fast1
 	return(_avr_bswap16be(_avr_fast_core_fetch16(avr->flash, addr)));
 }
 
-/*
- * Add a "jump" address to the jump trace buffer
- */
-#if CONFIG_SIMAVR_TRACE
-#define TRACE_JUMP()\
-	avr->trace_data->old[avr->trace_data->old_pci].pc = avr->pc;\
-	avr->trace_data->old[avr->trace_data->old_pci].sp = _avr_fast_core_sp_get(avr);\
-	avr->trace_data->old_pci = (avr->trace_data->old_pci + 1) & (OLD_PC_SIZE-1);\
-
-#if AVR_STACK_WATCH
-#define STACK_FRAME_PUSH()\
-	avr->trace_data->stack_frame[avr->trace_data->stack_frame_index].pc = avr->pc;\
-	avr->trace_data->stack_frame[avr->trace_data->stack_frame_index].sp = _avr_fast_core_sp_get(avr);\
-	avr->trace_data->stack_frame_index++; 
-#define STACK_FRAME_POP()\
-	if (avr->trace_data->stack_frame_index > 0) \
-		avr->trace_data->stack_frame_index--;
-#else
-#define STACK_FRAME_PUSH()
-#define STACK_FRAME_POP()
-#endif
-#else /* CONFIG_SIMAVR_TRACE */
-
-#define TRACE_JUMP()
-#define STACK_FRAME_PUSH()
-#define STACK_FRAME_POP()
-
-#endif
 
 /*
- * Handle "touching" registers, marking them changed.
- * This is used only for debugging purposes to be able to
- * print the effects of each instructions on registers
+ * CONFIG_SIMAVR_TRACE
+ *	functionality has not been checked since the early stages of
+ *	making fast core... you have been warned.
  */
+
 #if CONFIG_SIMAVR_TRACE
+	/*
+	 * Add a "jump" address to the jump trace buffer
+	 */
+	#define TRACE_JUMP()\
+		avr->trace_data->old[avr->trace_data->old_pci].pc = avr->pc;\
+		avr->trace_data->old[avr->trace_data->old_pci].sp = _avr_fast_core_sp_get(avr);\
+		avr->trace_data->old_pci = (avr->trace_data->old_pci + 1) & (OLD_PC_SIZE-1);\
 
-#define T(w) w
-#define NO_T(w)
+	#if AVR_STACK_WATCH
 
-#define REG_TOUCH(a, r) (a)->trace_data->touched[(r) >> 5] |= (1 << ((r) & 0x1f))
-#define REG_ISTOUCHED(a, r) ((a)->trace_data->touched[(r) >> 5] & (1 << ((r) & 0x1f)))
+		#define STACK_FRAME_PUSH()\
+			avr->trace_data->stack_frame[avr->trace_data->stack_frame_index].pc = avr->pc;\
+			avr->trace_data->stack_frame[avr->trace_data->stack_frame_index].sp = _avr_fast_core_sp_get(avr);\
+			avr->trace_data->stack_frame_index++; 
 
-#define STATE(_f, args...) { \
-	if (avr->trace) {\
-		avr_symbol_t *symbol = avr_symbol_for_address(avr, avr->pc >> 1); \
-		if (symbol) {\
-			const char * symn = symbol->symbol; \
-			int dont = 0 && dont_trace(symn);\
-			if (dont!=donttrace) { \
-				donttrace = dont;\
-				DUMP_REG();\
+		#define STACK_FRAME_POP()\
+			if (avr->trace_data->stack_frame_index > 0) \
+				avr->trace_data->stack_frame_index--;
+
+		#define STACK_FRAME_PUSH()
+
+		#define STACK_FRAME_POP()
+	#endif
+
+	/*
+	 * Handle "touching" registers, marking them changed.
+	 * This is used only for debugging purposes to be able to
+	 * print the effects of each instructions on registers
+	 */
+
+	#define T(w) w
+	#define NO_T(w)
+
+	#define REG_TOUCH(a, r) (a)->trace_data->touched[(r) >> 5] |= (1 << ((r) & 0x1f))
+	#define REG_ISTOUCHED(a, r) ((a)->trace_data->touched[(r) >> 5] & (1 << ((r) & 0x1f)))
+
+	#define STATE(_f, args...) { \
+		if (avr->trace) {\
+			avr_symbol_t *symbol = avr_symbol_for_address(avr, avr->pc >> 1); \
+			if (symbol) {\
+				const char * symn = symbol->symbol; \
+				int dont = 0 && dont_trace(symn);\
+				if (dont!=donttrace) { \
+					donttrace = dont;\
+					DUMP_REG();\
+				}\
+				if (donttrace==0)\
+					printf("%04x: %-25s " _f, avr->pc, symn, ## args);\
+			} else \
+				printf("%s: %04x: " _f, __FUNCTION__, avr->pc, ## args);\
 			}\
-			if (donttrace==0)\
-				printf("%04x: %-25s " _f, avr->pc, symn, ## args);\
-		} else \
-			printf("%s: %04x: " _f, __FUNCTION__, avr->pc, ## args);\
-		}\
-	}
-#define SREG() if (avr->trace && donttrace == 0) {\
-	printf("%04x: \t\t\t\t\t\t\t\t\tSREG = ", avr->pc); \
-	for (int _sbi = 0; _sbi < 8; _sbi++)\
-		printf("%c", avr->sreg[_sbi] ? toupper(_sreg_bit_name[_sbi]) : '.');\
-	printf("\n");\
-	}
-#else
-#ifdef AVR_FAST_CORE_LOCAL_TRACE
-#define T(w) w
-#define NO_T(w)
-#define REG_TOUCH(a, r)
-#define STATE(_f, args...) xSTATE(_f, ## args)
-#define SREG() xSREG()
-#else
-#define REG_TOUCH(a, r)
-#ifdef AVR_FAST_CORE_ITRACE
-#else
-#endif
-#define SREG()
-#endif
-#endif
+		}
+	#define SREG() if (avr->trace && donttrace == 0) {\
+		printf("%04x: \t\t\t\t\t\t\t\t\tSREG = ", avr->pc); \
+		for (int _sbi = 0; _sbi < 8; _sbi++)\
+			printf("%c", avr->sreg[_sbi] ? toupper(_sreg_bit_name[_sbi]) : '.');\
+		printf("\n");\
+		}
 
-static uint32_t _avr_fast_core_flash_uflash_read_0(avr_t* avr, avr_flashaddr_t addr);
-#if defined(AVR_FAST_CORE_ITRACE) || defined(AVR_FAST_CORE_LOCAL_TRACE)
-#define T(w) w
-#define NO_T(w)
-#define SREG() xSREG()
-#endif
-
-#if !defined(AVR_FAST_CORE_ITRACE) && !defined(AVR_FAST_CORE_LOCAL_TRACE)
-#define T(w)
-#define NO_T(w) w
-#define SREG()
-#endif
-
-#if defined(AVR_FAST_CORE_ITRACE) && !defined(AVR_FAST_CORE_LOCAL_TRACE)
-#define STATE(_f, args...) \
-	do { \
-		if(0 == _avr_fast_core_flash_uflash_read_0(avr, avr->pc)) \
-			xSTATE(_f, ## args); \
-	} while(0);
-#elif defined(AVR_FAST_CORE_LOCAL_TRACE)
-#define STATE(_f, args...) \
-	xSTATE(_f, ## args)
 #else
-#define STATE(_f, args...)
-#endif
 
+	#define REG_TOUCH(a, r)
+
+	#define STACK_FRAME_POP()
+
+	#define STACK_FRAME_PUSH()
+
+	#define TRACE_JUMP()
+
+	#ifdef AVR_FAST_CORE_LOCAL_TRACE
+	
+		#define T(w) w
+	
+		#define NO_T(w)
+
+		#define STATE(_f, args...) \
+			xSTATE(_f, ## args)
+		
+		#define SREG() xSREG();
+
+	#else
+		#define SREG()
+
+		#ifdef AVR_FAST_CORE_ITRACE
+	
+			#define T(w) w
+	
+			#define NO_T(w)
+	
+			static uint32_t _avr_fast_core_flash_uflash_read_0(avr_t* avr, avr_flashaddr_t addr);
+			#define STATE(_f, args...) \
+				do { \
+					if(0 == _avr_fast_core_flash_uflash_read_0(avr, avr->pc)) \
+						xSTATE(_f, ## args); \
+				} while(0);
+
+		#else
+	
+			#define T(w)
+	
+			#define NO_T(w) w
+	
+			#define STATE(_f, args...)
+		
+		#endif
+	#endif
+#endif
 
 static void _avr_fast_core_reg_io_write_sreg(avr_t *avr, int_fast32_t *count, uint_fast16_t addr, uint_fast8_t v)
 {
@@ -740,8 +768,10 @@ static void _avr_fast_core_reg_io_write_trap(avr_t *avr, int_fast32_t *count, ui
 {
 	if (addr == R_SREG) {
 		AVR_FAST_CORE_SET_IO_WRITE_FN_DO_RET(addr, _avr_fast_core_reg_io_write_sreg);
-	} else if(!_AVR_FAST_CORE_IO_DISPATCH_TABLES && ((addr == R_SPL) || (addr == R_SPH))) {
+#ifdef AVR_FAST_CORE_IO_DISPATCH_TABLES
+	} else if ((addr == R_SPL) || (addr == R_SPH)) {
 		AVR_FAST_CORE_SET_IO_WRITE_FN_DO_RET(addr, _avr_fast_core_reg_io_write_data);
+#endif
 	} else if (addr > 31) {
 		uint8_t io = AVR_DATA_TO_IO(addr);
 
@@ -761,28 +791,21 @@ static void _avr_fast_core_reg_io_write_trap(avr_t *avr, int_fast32_t *count, ui
 
 static inline void _avr_fast_core_reg_io_write(avr_t *avr, int_fast32_t *count, uint_fast16_t addr, uint_fast8_t v)
 {
-	_avr_fast_core_io_write_fn_t iow_fn;
-
 	AVR_FAST_CORE_PROFILER_PROFILE_START(iow);
 
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(addr > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
 			CRASH();
 		}
-	}
+	#endif
 
-	if(_AVR_FAST_CORE_IO_DISPATCH_TABLES) {
-		if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS) {
-			iow_fn = AVR_FAST_CORE_GLOBAL_IO_WRITE_FN(addr);
-		} else {
-			iow_fn = AVR_FAST_CORE_DATA_IO_WRITE_FN(addr);
-		}
-	}
-	
+#ifdef AVR_FAST_CORE_IO_DISPATCH_TABLES
+	_avr_fast_core_io_write_fn_t iow_fn = AVR_FAST_CORE_IO_WRITE_FN(addr);
 	if(likely(iow_fn)) {
 		iow_fn(avr, count, addr, v);
 	} else
+#endif
 		_avr_fast_core_reg_io_write_trap(avr, count, addr, v);
 
 	AVR_FAST_CORE_PROFILER_PROFILE_STOP(iow);
@@ -877,8 +900,10 @@ static uint_fast8_t _avr_fast_core_reg_io_read_trap(avr_t *avr, int_fast32_t *co
 {
 	if (addr == R_SREG) {
 		AVR_FAST_CORE_SET_IO_READ_FN_DO_RET(addr, _avr_fast_core_reg_io_read_sreg);
-	} else if (!_AVR_FAST_CORE_IO_DISPATCH_TABLES &&((addr == R_SPL) || (addr == R_SPH))) {
+#ifdef AVR_FAST_CORE_IO_DISPATCH_TABLES
+	} else if ((addr == R_SPL) || (addr == R_SPH)) {
 		AVR_FAST_CORE_SET_IO_READ_FN_DO_RET(addr, _avr_fast_core_reg_io_read_data);
+#endif
 	} else if (addr > 31) {
 		uint8_t io = AVR_DATA_TO_IO(addr);
 	
@@ -898,30 +923,23 @@ static uint_fast8_t _avr_fast_core_reg_io_read_trap(avr_t *avr, int_fast32_t *co
 
 static inline uint_fast8_t _avr_fast_core_reg_io_read(avr_t *avr, int_fast32_t *count, uint_fast16_t addr)
 {
-	_avr_fast_core_io_read_fn_t ior_fn;
-
 	uint_fast8_t data;
 
 	AVR_FAST_CORE_PROFILER_PROFILE_START(ior);
 	
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(addr > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
 			CRASH();
 		}
-	}
+	#endif
 
-	if(_AVR_FAST_CORE_IO_DISPATCH_TABLES) {
-		if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS) {
-			ior_fn = AVR_FAST_CORE_GLOBAL_IO_READ_FN(addr);
-		} else {
-			ior_fn = AVR_FAST_CORE_DATA_IO_READ_FN(addr);
-		}
-	}
-	
+#ifdef AVR_FAST_CORE_IO_DISPATCH_TABLES
+	_avr_fast_core_io_read_fn_t ior_fn = AVR_FAST_CORE_IO_READ_FN(addr);
 	if(likely(ior_fn)) {
 		data = ior_fn(avr, count, addr);
 	} else
+#endif
 		data = _avr_fast_core_reg_io_read_trap(avr, count, addr);
 		
 	AVR_FAST_CORE_PROFILER_PROFILE_STOP(ior);
@@ -942,38 +960,51 @@ static inline uint_fast8_t _avr_fast_core_fetch_ram(avr_t *avr, int_fast32_t *co
 	}
 }
 
+#ifdef AVR_FAST_CORE_READ_MODIFY_WRITE
+typedef void *avr_rmw_t;
+typedef avr_rmw_t avr_rmw_p;
+#else
 typedef struct avr_rmw_t {
-	avr_t	*avr;
-	uint16_t		addr;
 	union	{
 		uint8_t		*b;
 		uint16_t	*w;
 	}data;
-	int	flags;
+
+	avr_t			*avr;
+	uint16_t		addr;
+
+#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
+	int			flags;
+#endif
 }avr_rmw_t, *avr_rmw_p;
+#endif
 
 /*
 	generic rmw functions */
 
 static inline uint8_t _avr_fast_core_rmw8_ptr_set_fetch(avr_rmw_p rmw, uint8_t *data)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(!rmw) {
 			printf("FAST-CORE (%s): null pointer\n", __FUNCTION__);
 			abort();
 		}
 		
 		rmw->flags = 8;
-	}
+	#endif
 	
-	rmw->data.b = data;
+	#ifdef AVR_FAST_CORE_READ_MODIFY_WRITE
+		*(uint8_t **)rmw = data;
+	#else
+		rmw->data.b = data;
+	#endif
 	
 	return(*data);
 }
 
 static inline void _avr_fast_core_rmw8_store(avr_rmw_p rmw, uint8_t data)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(!rmw) {
 			printf("FAST-CORE (%s): null pointer\n", __FUNCTION__);
 			abort();
@@ -983,30 +1014,38 @@ static inline void _avr_fast_core_rmw8_store(avr_rmw_p rmw, uint8_t data)
 			printf("FAST-CORE (%s): get from invalid set pointer type, %p[.data: %p .flags: 0x%04x]\n",
 				__FUNCTION__, rmw, rmw->data.b, rmw->flags);
 		}
-	}
+	#endif
 	
-	*rmw->data.b = data;
+	#ifdef AVR_FAST_CORE_READ_MODIFY_WRITE
+		**(uint8_t **)rmw = data;
+	#else
+		*rmw->data.b = data;
+	#endif
 }
 
 static inline uint16_t _avr_fast_core_rmw16_ptr_set_fetch(avr_rmw_p rmw, uint16_t *data)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(!rmw) {
 			printf("FAST-CORE (%s): null pointer\n", __FUNCTION__);
 			abort();
 		}
 		
 		rmw->flags = 16;
-	}
+	#endif
 	
-	rmw->data.w = data;
+	#ifdef AVR_FAST_CORE_READ_MODIFY_WRITE
+		*(uint16_t **)rmw = data;
+	#else
+		rmw->data.w = data;
+	#endif
 
 	return(*data);
 }
 
 static inline void _avr_fast_core_rmw16le_store(avr_rmw_p rmw, uint16_t data)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(!rmw) {
 			printf("FAST-CORE (%s): null pointer\n", __FUNCTION__);
 			abort();
@@ -1016,9 +1055,13 @@ static inline void _avr_fast_core_rmw16le_store(avr_rmw_p rmw, uint16_t data)
 			printf("FAST-CORE (%s): get from invalid set pointer type, %p[.data: %p .flags: 0x%04x]\n",
 				__FUNCTION__, rmw, rmw->data.w, rmw->flags);
 		}
-	}
+	#endif
 	
-	*rmw->data.w = data;
+	#ifdef AVR_FAST_CORE_READ_MODIFY_WRITE
+		**(uint16_t **)rmw = data;
+	#else
+		*rmw->data.w = data;
+	#endif
 }
 
 static inline uint_fast16_t _avr_fast_core_rmw_fetch16(void * p, uint_fast16_t addr, avr_rmw_p ptr_data)
@@ -1031,31 +1074,35 @@ static inline uint_fast16_t _avr_fast_core_rmw_fetch16(void * p, uint_fast16_t a
 
 static inline uint_fast8_t _avr_fast_core_data_rmw(avr_t* avr, uint_fast16_t addr, avr_rmw_p ptr_reg)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(addr > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
 			CRASH();
 		}
-	}
+	#endif
 	
-	if(_AVR_FAST_CORE_READ_MODIFY_WRITE)
+	#ifndef AVR_FAST_CORE_READ_MODIFY_WRITE
 		ptr_reg->avr = avr;
+		ptr_reg->addr = addr;
+	#endif
 
 	return(_avr_fast_core_rmw8_ptr_set_fetch(ptr_reg, &avr->data[addr]));
 }
 
 static inline uint_fast16_t _avr_fast_core_data_rmw16le(avr_t* avr, uint_fast16_t addr, avr_rmw_p ptr_reg)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely((addr + 1) > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
 			CRASH();
 		}
-	}
+	#endif
 
-	if(_AVR_FAST_CORE_READ_MODIFY_WRITE)
+	#ifndef AVR_FAST_CORE_READ_MODIFY_WRITE
 		ptr_reg->avr = avr;
-		
+		ptr_reg->addr = addr;
+	#endif
+	
 	return(_avr_bswap16le(_avr_fast_core_rmw_fetch16(avr->data, addr, ptr_reg)));
 }
 
@@ -1066,11 +1113,11 @@ static inline void _avr_fast_core_rmw_store(avr_rmw_p ptr_reg, uint_fast8_t data
 
 static inline void _avr_rmw_write16le(avr_rmw_p ptr_data, uint_fast16_t data)
 {
-	if(_AVR_FAST_CORE_READ_MODIFY_WRITE) {
+	#ifdef AVR_FAST_CORE_READ_MODIFY_WRITE
 		_avr_fast_core_rmw16le_store(ptr_data, _avr_bswap16le(data));
-	} else {
+	#else
 		ptr_data->avr->data[ptr_data->addr] = data;
-	}
+	#endif
 }
 
 /*
@@ -1126,13 +1173,13 @@ static inline void _avr_fast_core_push16xx(avr_t *avr, uint_fast16_t v)
 	avr_rmw_t ptr_sp;
 	uint_fast16_t sp = _avr_fast_core_rmw_sp(avr, &ptr_sp);
 
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(256 > sp)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): stack pointer at 0x%04x, below end of io space, aborting.",
 				__FUNCTION__, sp);
 			CRASH();
 		}
-	}
+	#endif
 
 	if(likely(sp <= avr->ramend)) {
 		_avr_fast_core_data_write16(avr, sp - 1, v);
@@ -1146,28 +1193,28 @@ static inline void _avr_fast_core_push16xx(avr_t *avr, uint_fast16_t v)
 
 static inline void _avr_fast_core_push16be(avr_t *avr, int_fast32_t *count, uint_fast16_t v)
 {
-	if(_AVR_FAST_CORE_COMBINING) {
+	#ifdef AVR_FAST_CORE_COMBINING
 		TSTACK(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
 		STACK("push.w ([%02x]@%04x):([%02x]@%04x)\n", 
 			v >> 8, sp - 1, v & 0xff, sp);
 		_avr_fast_core_push16xx(avr, _avr_bswap16be(v));
-	} else {
+	#else
 		_avr_fast_core_push8(avr, count, v);
 		_avr_fast_core_push8(avr, count, v >> 8);
-	}
+	#endif
 }
 
 static inline void _avr_fast_core_push16le(avr_t *avr, int_fast32_t *count, uint_fast16_t v)
 {
-	if(_AVR_FAST_CORE_COMBINING) {
+	#ifdef AVR_FAST_CORE_COMBINING
 		TSTACK(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
 		STACK("push.w ([%02x]@%04x):([%02x]@%04x)\n", 
 			v & 0xff, sp - 1, v >> 8, sp);
 		_avr_fast_core_push16xx(avr, _avr_bswap16le(v));
-	} else {
+	#else
 		_avr_fast_core_push8(avr, count, v >> 8);
 		_avr_fast_core_push8(avr, count, v);
-	}
+	#endif
 }
 
 static inline uint_fast16_t _avr_fast_core_pop16xx(avr_t *avr)
@@ -1175,13 +1222,13 @@ static inline uint_fast16_t _avr_fast_core_pop16xx(avr_t *avr)
 	avr_rmw_t ptr_sp;
 	uint_fast16_t sp = _avr_fast_core_rmw_sp(avr, &ptr_sp) + 2;
 
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(256 > sp)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): stack pointer at 0x%04x, below end of io space, aborting.",
 				__FUNCTION__, sp);
 			CRASH();
 		}
-	}
+	#endif
 
 	if(likely(sp <= avr->ramend)) {
 		uint_fast16_t data = _avr_fast_core_data_read16(avr, sp - 1);
@@ -1200,15 +1247,15 @@ static inline uint_fast16_t _avr_fast_core_pop16be(avr_t *avr, int_fast32_t *cou
 {
 	uint_fast16_t data;
 	
-	if(_AVR_FAST_CORE_COMBINING) {
+	#ifdef AVR_FAST_CORE_COMBINING
 		TSTACK(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
 		data = _avr_bswap16be(_avr_fast_core_pop16xx(avr));
 		STACK("pop.w ([%02x]@%04x):([%02x]@%04x)\n", 
 			data >> 8, sp + 1, data & 0xff, sp + 2);
-	} else {
+	#else
 		data = _avr_fast_core_pop8(avr, count) << 8;
 		data |= _avr_fast_core_pop8(avr, count);
-	}
+	#endif
 
 	return(data);
 }
@@ -1217,17 +1264,29 @@ static inline uint_fast16_t _avr_fast_core_pop16le(avr_t *avr, int_fast32_t *cou
 {
 	uint_fast16_t data;
 
-	if(_AVR_FAST_CORE_COMBINING) {
+	#ifdef AVR_FAST_CORE_COMBINING
 		TSTACK(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
 		data = _avr_bswap16le(_avr_fast_core_pop16xx(avr));
 		STACK("pop.w ([%02x]@%04x):([%02x]@%04x)\n",
 			data & 0xff, sp + 1, data >> 8, sp + 2);
-	} else {
+	#else
 		data = _avr_fast_core_pop8(avr, count);
 		data |= (_avr_fast_core_pop8(avr, count) << 8);
-	}
+	#endif
 
 	return(data);
+}
+
+static inline void _avr_fast_core_push24be(avr_t *avr, int_fast32_t *count, uint_fast32_t v)
+{
+	_avr_fast_core_push16be(avr, count, v & 0xffff);
+	_avr_fast_core_push8(avr, count, v >> 16);
+}
+
+static inline uint_fast32_t _avr_fast_core_pop24be(avr_t *avr, int_fast32_t *count)
+{
+	uint_fast32_t res = _avr_fast_core_pop8(avr, count) << 16;
+	return(res |= _avr_fast_core_pop16be(avr, count));
 }
 
 static inline int _avr_is_instruction_32_bits(avr_t *avr, avr_flashaddr_t pc)
@@ -1531,8 +1590,12 @@ static inline void _avr_fast_core_flags_sub16_zns16(avr_t* avr, const uint_fast1
 		AVR_FAST_CORE_UINST_ESAC_DEFN(d5r5_16_cpse) \
 		AVR_FAST_CORE_UINST_ESAC_DEFN(d5r5_32_cpse) \
 		AVR_FAST_CORE_UINST_ESAC_DEFN(d5_dec) \
-		AVR_FAST_CORE_UINST_ESAC_DEFN(x_eicall) \
-		AVR_FAST_CORE_UINST_ESAC_DEFN(x_eijmp) \
+		AVR_FAST_CORE_UINST_ESAC_DEFN(x22_eind_call) \
+		AVR_FAST_CORE_UINST_ESAC_DEFN(x_eind_eicall) \
+		AVR_FAST_CORE_UINST_ESAC_DEFN(x_eind_eijmp) \
+		AVR_FAST_CORE_UINST_ESAC_DEFN(o12_eind_rcall) \
+		AVR_FAST_CORE_UINST_ESAC_DEFN(x_eind_ret) \
+		AVR_FAST_CORE_UINST_ESAC_DEFN(x_eind_reti) \
 		AVR_FAST_CORE_UINST_ESAC_DEFN(d5r5_eor) \
 		AVR_FAST_CORE_UINST_ESAC_DEFN(x_icall) \
 		AVR_FAST_CORE_UINST_ESAC_DEFN(x_ijmp) \
@@ -1630,32 +1693,39 @@ enum {
 
 static inline void _avr_fast_core_flash_uflash_write_0(avr_t* avr, avr_flashaddr_t addr, uint_fast32_t data)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(addr > avr->flashend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of flash, aborting.", __FUNCTION__, addr);
 			CRASH();
 		}
-	}
+	#endif
 
-	if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS)
+	#ifdef AVR_FAST_CORE_GLOBAL_FLASH_ACCESS
 		AVR_FAST_CORE_GLOBAL_UFLASH_ADDR_AT(addr) = data;
-	else
+	#elif defined(AVR_FAST_CORE_IO_DISPATCH_TABLES)
 		AVR_FAST_CORE_DATA_UFLASH_ADDR_AT(addr) = data;
+	#else
+		AVR_FAST_CORE_UFLASH_ADDR_AT(addr) = data;
+	#endif
+		
 }
 
 static inline uint_fast32_t _avr_fast_core_flash_uflash_read_0(avr_t* avr, avr_flashaddr_t addr)
 {
-	if(_AVR_FAST_CORE_AGGRESSIVE_CHECKS) {
+	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(addr > avr->flashend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of flash, aborting.", __FUNCTION__, addr);
 			CRASH();
 		}
-	}
+	#endif
 
-	if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS)
+	#ifdef AVR_FAST_CORE_GLOBAL_FLASH_ACCESS
 		return(AVR_FAST_CORE_GLOBAL_UFLASH_ADDR_AT(addr));
-	else
+	#elif defined(AVR_FAST_CORE_IO_DISPATCH_TABLES)
 		return(AVR_FAST_CORE_DATA_UFLASH_ADDR_AT(addr));
+	#else
+		return(AVR_FAST_CORE_UFLASH_ADDR_AT(addr));
+	#endif
 }
 
 #define AVR_FAST_CORE_UINST_DEFN_vIO(io) \
@@ -1907,12 +1977,12 @@ static inline uint_fast8_t _avr_fast_core_inst_decode_r4(const uint_fast16_t o) 
 typedef void (pfnInst_t)(avr_t* avr, int_fast32_t *count, uint_fast32_t u_opcode);
 
 #define AVR_FAST_CORE_INST_DECL(name) \
-	void _avr_fast_core_inst_##name(avr_t *avr, int_fast32_t *count, uint16_t i_opcode)
+	static void _avr_fast_core_inst_##name(avr_t *avr, int_fast32_t *count, uint16_t i_opcode)
 #define AVR_FAST_CORE_INST_CALL(type, name) \
 	_avr_fast_core_inst_##type##_##name(avr, count, i_opcode)
 	
 #define AVR_FAST_CORE_UINST_DECL(name) \
-	void _avr_fast_core_uinst_##name(avr_t *avr, int_fast32_t *count, uint_fast32_t u_opcode)
+	static void _avr_fast_core_uinst_##name(avr_t *avr, int_fast32_t *count, uint_fast32_t u_opcode)
 #define AVR_FAST_CORE_UINST_CALL(name) \
 	_avr_fast_core_uinst_##name(avr, count, u_opcode)
 
@@ -1922,16 +1992,19 @@ typedef void (pfnInst_t)(avr_t* avr, int_fast32_t *count, uint_fast32_t u_opcode
 typedef pfnInst_t * pfnInst_p;
 
 
+#ifdef AVR_FAST_CORE_ITRACE
 #define AVR_FAST_CORE_ITRACE_CALL(combining) \
 	_avr_fast_core_itrace_call(avr, combining, i_opcode, inst_pc, u_opcode, __FUNCTION__)
 	
 static void _avr_fast_core_itrace_call(avr_t *avr, int combining, uint16_t i_opcode,
 		avr_flashaddr_t inst_pc, uint32_t u_opcode, const char *function) {
-	if(_AVR_FAST_CORE_ITRACE)
-		iSTATE("\t\t\t\t\t\t\t\t%s  (0x%04x [0x%08x]) %s\n",
-			(combining ? "combining" : "         "),
-				i_opcode, u_opcode, function);
+	iSTATE("\t\t\t\t\t\t\t\t%s  (0x%04x [0x%08x]) %s\n",
+		(combining ? "combining" : "         "),
+			i_opcode, u_opcode, function);
 }
+#else
+#define AVR_FAST_CORE_ITRACE_CALL(combining)
+#endif
 
 #define AVR_FAST_CORE_INST_XLAT(type, name) \
 	avr_flashaddr_t __attribute__((__unused__)) inst_pc = avr->pc; \
@@ -2122,7 +2195,7 @@ static uint32_t _avr_fast_core_inst_xlat_x22(avr_t *avr, uint8_t r0, uint16_t i_
 	return((x22 << 8) | r0);
 }
 
-#if 0
+#if 1
 #define AVR_FAST_CORE_UINST_STEP_PC_CYCLES(x, y) CYCLES(y); avr->pc += (x);
 #define AVR_FAST_CORE_UINST_JMP_PC_CYCLES(x, y) CYCLES(y); avr->pc = (x);
 #else
@@ -2131,14 +2204,19 @@ static uint32_t _avr_fast_core_inst_xlat_x22(avr_t *avr, uint8_t r0, uint16_t i_
 #endif
 
 static pfnInst_p _avr_fast_core_uinst_op_table[256];
+#ifdef AVR_FAST_CORE_TAIL_CALL
 #define AVR_FAST_CORE_UINST_SPLT_NEXT() \
-	if(_AVR_FAST_CORE_TAIL_CALL && likely(0 < *count)) { \
+	if(likely(0 < *count)) { \
 		AVR_FAST_CORE_UFLASH_OPCODE_FETCH(u_opcode, avr->pc); \
 		AVR_FAST_CORE_UINST_DEFN_R0(u_opcode, u_opcode_op); \
 		pfnInst_p pfn = _avr_fast_core_uinst_op_table[u_opcode_op]; \
 		return(AVR_FAST_CORE_PFN_UINST_CALL(u_opcode)); \
 	} else \
 		return;
+#else
+#define AVR_FAST_CORE_UINST_SPLT_NEXT() \
+	return
+#endif
 
 #define AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(next_pc, next_cycles) \
 	AVR_FAST_CORE_UINST_STEP_PC_CYCLES(next_pc, next_cycles); \
@@ -2223,28 +2301,28 @@ AVR_FAST_CORE_UINST_DECL(d5r5_add_adc)
 	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_v16leR2(u_opcode, d, r);
 	uint_fast16_t res = vd + vr;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		T(uint8_t vdl = vd & 0xff; uint8_t vrl = vr & 0xff);
 		T(uint8_t res0 = vdl + vrl);
 		STATE("add %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vdl, avr_regname(r), vrl, res0);
 		T(_avr_fast_core_flags_add_zns(avr, res0, vdl, vrl));
 		SREG();
-	} else {
+	#else
 	//	STATE("/ add %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vdl, avr_regname(r), vrl, res0);
 		STATE("add.adc %s:%s[%04x], %s:%s[%04x] = %04x\n", avr_regname(d), avr_regname(d + 1), vd, 
 			avr_regname(r), avr_regname(r + 1), vr, res);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
 	
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		T(uint8_t vdh = vd >> 8; uint8_t vrh = vr >> 8);
 		T(uint8_t res1 = vdh + vrh + avr->sreg[S_C]);
 		STATE("addc %s[%02x], %s[%02x] = %02x\n", avr_regname(d + 1), vdh, avr_regname(r + 1), vrh, res1);
-	} else {
+	#else
 	//	STATE("\\ addc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vdh, avr_regname(r), vrh, res1);
-	}
+	#endif
 
 	AVR_FAST_CORE_RMW_STORE_R16LE(d, res);
 
@@ -2274,11 +2352,11 @@ AVR_FAST_CORE_UINST_DECL(p2k6_adiw)
 	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_R2(u_opcode, p, k);
 	uint_fast16_t res = vp + k;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("adiw %s:%s[%04x], 0x%02x = 0x%04x\n", avr_regname(p), avr_regname(p+1), vp, k, res);
-	} else {
+	#else
 		STATE("adiw %s:%s[%04x], 0x%02x\n", avr_regname(p), avr_regname(p+1), vp, k);
-	}
+	#endif
 
 	AVR_FAST_CORE_RMW_STORE_R16LE(p, res);
 
@@ -2322,11 +2400,11 @@ AVR_FAST_CORE_UINST_DECL(h4k8_andi)
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, h, k);
 	uint_fast8_t res = vh & k;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
-	} else {
+	#else
 		STATE("andi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), vh, k, res);
-	}
+	#endif
 
 	AVR_FAST_CORE_RMW_STORE_R(h, res);
 
@@ -2362,17 +2440,17 @@ AVR_FAST_CORE_UINST_DECL(h4k16_andi_andi)
 	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_16R2(u_opcode, h, k);
 	uint_fast16_t res = vh & k;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), vh & 0xff, k & 0xff);
-	} else {
+	#else
 		STATE("andi %s:%s[%04x], 0x%04x\n", avr_regname(h), avr_regname(h + 1), vh, k);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("andi %s[%02x], 0x%02x\n", avr_regname(h + 1), vh >> 8, k >> 8);
-	}
+	#endif
 
 	AVR_FAST_CORE_RMW_STORE_R16LE(h, res);
 	
@@ -2389,11 +2467,11 @@ AVR_FAST_CORE_UINST_DECL(h4r5k8_andi_or)
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2_R3(u_opcode, h, r, andi_k);
 	uint_fast8_t andi_res = vh & andi_k;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), vh, andi_k);
-	} else {
+	#else
 		STATE("/ andi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), vh, andi_k, andi_res);
-	}
+	#endif
 
 	T(_avr_fast_core_flags_znv0s(avr, andi_res));
 	SREG();
@@ -2402,11 +2480,11 @@ AVR_FAST_CORE_UINST_DECL(h4r5k8_andi_or)
 
 	uint_fast8_t res = andi_res | vr;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("or %s[%02x], %s[%02x] = %02x\n", avr_regname(h), andi_res, avr_regname(r), vr, res);
-	} else {
+	#else
 		STATE("\\ or %s[%02x], %s[%02x] = %02x\n", avr_regname(h), andi_res, avr_regname(r), vr, res);
-	}
+	#endif
 
 	AVR_FAST_CORE_RMW_STORE_R(h, res);
 
@@ -2423,11 +2501,11 @@ AVR_FAST_CORE_UINST_DECL(h4k8k8_andi_ori)
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2_R3(u_opcode, h, andi_k, ori_k);
 	uint_fast8_t andi_res = vh & andi_k;
 	
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), vh, andi_k);
-	} else {
+	#else
 		STATE("/ andi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), vh, andi_k, andi_res);
-	}
+	#endif
 
 	T(_avr_fast_core_flags_znv0s(avr, andi_res));
 	SREG();
@@ -2435,11 +2513,11 @@ AVR_FAST_CORE_UINST_DECL(h4k8k8_andi_ori)
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 	uint_fast8_t res = andi_res | ori_k;
 	
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("ori %s[%02x], 0x%02x\n", avr_regname(h), andi_res, ori_k);
-	} else {
+	#else
 		STATE("\\ ori %s[%02x], 0x%02x = 0x%02x\n", avr_regname(h), andi_res, ori_k, res);
-	}
+	#endif
 
 	AVR_FAST_CORE_RMW_STORE_R(h, res);
 
@@ -2496,11 +2574,11 @@ AVR_FAST_CORE_UINST_DECL(d5m8_bld)
 	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, d, mask);
 	
 	uint_fast8_t res;
-	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+	#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 		res = (vd & ~(mask)) | (avr->sreg[S_T] * (mask));
-	} else {
+	#else
 		res = (vd & ~(mask)) | (avr->sreg[S_T] ? (mask) : 0);
-	}
+	#endif
 
 	STATE("bld %s[%02x], 0x%02x = %02x\n", avr_regname(d), vd, mask, res);
 
@@ -2518,11 +2596,11 @@ AVR_FAST_CORE_UINST_DECL(o7_brcc)
 	avr_flashaddr_t new_pc = 2 + avr->pc;
 	
 	avr_flashaddr_t branch_pc;
-	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+	#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 		branch_pc = new_pc + (o * branch);
-	} else {
+	#else
 		branch_pc = new_pc + (branch ? o : 0);
-	}
+	#endif
 
 	STATE("brcc .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
@@ -2537,11 +2615,11 @@ AVR_FAST_CORE_UINST_DECL(o7_brcs)
 	avr_flashaddr_t new_pc = 2 + avr->pc;
 	
 	avr_flashaddr_t branch_pc;
-	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+	#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 		branch_pc = new_pc + (o * branch);
-	} else {
+	#else
 		branch_pc = new_pc + (branch ? o : 0);
-	}
+	#endif
 
 	STATE("brcs .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
@@ -2556,11 +2634,11 @@ AVR_FAST_CORE_UINST_DECL(o7_breq)
 	avr_flashaddr_t new_pc = 2 + avr->pc;
 
 	avr_flashaddr_t branch_pc;
-	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+	#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 		branch_pc = new_pc + (o * branch);
-	} else {
+	#else
 		branch_pc = new_pc + (branch ? o : 0);
-	}
+	#endif
 
 	STATE("breq .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
@@ -2575,11 +2653,11 @@ AVR_FAST_CORE_UINST_DECL(o7_brne)
 	avr_flashaddr_t new_pc = 2 + avr->pc;
 
 	avr_flashaddr_t branch_pc;
-	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+	#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 		branch_pc = new_pc + (o * branch);
-	} else {
+	#else
 		branch_pc = new_pc + (branch ? o : 0);
-	}
+	#endif
 
 	STATE("brne .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
@@ -2594,11 +2672,11 @@ AVR_FAST_CORE_UINST_DECL(o7_brpl)
 	avr_flashaddr_t new_pc = 2 + avr->pc;
 
 	avr_flashaddr_t branch_pc;
-	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+	#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 		branch_pc = new_pc + (o * branch);
-	} else {
+	#else
 		branch_pc = new_pc + (branch ? o : 0);
-	}
+	#endif
 
 	STATE("brpl .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
@@ -2613,11 +2691,11 @@ AVR_FAST_CORE_UINST_DECL(b3o7_brxc)
 	avr_flashaddr_t new_pc = 2 + avr->pc;
 
 	avr_flashaddr_t branch_pc;
-	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+	#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 		branch_pc = new_pc + (o * branch);
-	} else {
+	#else
 		branch_pc = new_pc + (branch ? o : 0);
-	}
+	#endif
 
 	const char *names[8] = {
 		"brcc", "brne", "brpl", "brvc", NULL, "brhc", "brtc", "brid"
@@ -2648,15 +2726,16 @@ AVR_FAST_CORE_UINST_DECL(b3o7_brxs)
 	avr_flashaddr_t new_pc = 2 + avr->pc;
 
 	avr_flashaddr_t branch_pc;
-	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+	#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 		branch_pc = new_pc + (o * branch);
-	} else {
+	#else
 		branch_pc = new_pc + (branch ? o : 0);
-	}
+	#endif
 
 	const char *names[8] = {
 		"brcs", "breq", "brmi", "brvs", NULL, "brhs", "brts", "brie"
 	};
+	
 	if (names[b]) {
 		STATE("%s .%d [%04x]\t; Will%s branch\n", names[b], o >> 1, new_pc + o, branch ? "":" not");
 	} else {
@@ -2719,18 +2798,18 @@ AVR_FAST_CORE_UINST_DECL(x22_call)
 {
 	AVR_FAST_CORE_UINST_DEFN_24R1(u_opcode, x22);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("call 0x%06x\n", x22 >> 1);
-	} else {
+	#else
 		STATE("call 0x%06x\n", x22);
-	}
+	#endif
 
 	_avr_fast_core_push16be(avr, count, 2 + (avr->pc >> 1));
 
 	TRACE_JUMP();
 	STACK_FRAME_PUSH();
 
-	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(x22, 4); // 4 cycles; FIXME 5 on devices with 22 bit PC
+	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(x22, 4);
 }
 AVR_FAST_CORE_INST_DEFN(x22, call)
 
@@ -2841,24 +2920,24 @@ AVR_FAST_CORE_UINST_DECL(d5r5_cp_cpc)
 	AVR_FAST_CORE_UINST_DEFN_v16leR1_v16leR2(u_opcode, d, r);
 	uint_fast16_t res = vd - vr;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		T(uint8_t vdl = vd & 0xff; uint8_t vrl = vr & 0xff);
 		T(uint8_t res0 = vdl  - vrl);
 		STATE("cp %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vdl, avr_regname(r), vrl, res0);
 		T(_avr_fast_core_flags_sub_zns(avr, res0, vdl, vrl));
 		T(SREG());
-	} else {
+	#else
 		STATE("cp.cpc %s:%s[%04x], %s:%s[%04x] = %04x\n", avr_regname(d), avr_regname(d + 1), vd, 
 			avr_regname(r), avr_regname(r + 1), vr, res);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		T(uint8_t vdh = (vd >> 8) & 0xff; uint8_t vrh = (vr >> 8) & 0xff);
 		T(uint8_t res1 = vdh  - vrh);
 		STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(d + 1), vdh, avr_regname(r + 1), vrh, res1);
-	}
+	#endif
 
 	_avr_fast_core_flags_sub16_zns16(avr, res, vd, vr);
 
@@ -2873,24 +2952,24 @@ AVR_FAST_CORE_UINST_DECL(d5r5o7_cp_cpc_brne)
 	AVR_FAST_CORE_UINST_DEFN_v16leR1_v16leR2(u_opcode, d, r);
 	uint_fast16_t res = vd - vr;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		T(uint8_t vdl = vd & 0xff; uint8_t vrl = vr & 0xff);
 		T(uint8_t res0 = vdl  - vrl);
 		STATE("cp %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vdl, avr_regname(r), vrl, res0);
 		T(_avr_fast_core_flags_sub_zns(avr, res0, vdl, vrl));
 		T(SREG());
-	} else {
+	#else
 		STATE("cp.cpc %s:%s[%04x], %s:%s[%04x] = %04x\n", avr_regname(d), avr_regname(d + 1), vd, 
 			avr_regname(r), avr_regname(r + 1), vr, res);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		T(uint8_t vdh = (vd >> 8) & 0xff; uint8_t vrh = (vr >> 8) & 0xff);
 		T(uint8_t res1 = vdh  - vrh);
 		STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(d + 1), vdh, avr_regname(r + 1), vrh, res1);
-	}
+	#endif
 
 	_avr_fast_core_flags_sub16_zns16(avr, res, vd, vr);
 
@@ -2905,11 +2984,11 @@ AVR_FAST_CORE_UINST_DECL(d5r5o7_cp_cpc_brne)
 	NO_T(avr_flashaddr_t new_pc = 2 + 2 + 2 + avr->pc);
 
 	avr_flashaddr_t branch_pc;
-	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+	#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 		branch_pc = new_pc + (o * branch);
-	} else {
+	#else
 		branch_pc = new_pc + (branch ? o : 0);
-	}
+	#endif
 
 	STATE("brne .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
@@ -2937,11 +3016,11 @@ AVR_FAST_CORE_UINST_DECL(h4k8_cpi)
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
-	} else {
+	#else
 		STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
-	}
+	#endif
 
 	_avr_fast_core_flags_sub_zns(avr, res, vh, k);
 
@@ -2992,11 +3071,11 @@ AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brcc)
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
-	} else {
+	#else
 		STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
-	}
+	#endif
 
 	_avr_fast_core_flags_sub_zns(avr, res, vh, k);
 
@@ -3006,27 +3085,26 @@ AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brcc)
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-	if(_AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE) {
+	#ifdef AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE
 		AVR_FAST_CORE_DO_CPI_BRXX_BRANCH("brcc");
-	} else {
-
+	#else
 		AVR_FAST_CORE_UINST_DEFN_iR3(u_opcode, o);
 
 		T(avr_flashaddr_t new_pc = 2 + avr->pc);
 		NO_T(avr_flashaddr_t new_pc = 2 + 2 + avr->pc);
 
 		avr_flashaddr_t branch_pc;
-		if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+		#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 			branch_pc = new_pc + (o * branch);
-		} else {
+		#else
 			branch_pc = new_pc + (branch ? o : 0);
-		}
+		#endif
 
 		STATE("brcc .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
 		T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch));
 		NO_T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + 1 + branch));
-	}
+	#endif
 }
 
 AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brcs)
@@ -3034,11 +3112,11 @@ AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brcs)
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 	
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
-	} else {
+	#else
 		STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
-	}
+	#endif
 
 	_avr_fast_core_flags_sub_zns(avr, res, vh, k);
 
@@ -3048,27 +3126,26 @@ AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brcs)
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-	if(_AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE) {
+	#ifdef AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE
 		AVR_FAST_CORE_DO_CPI_BRXX_BRANCH("brcs");
-	} else {
-
+	#else
 		AVR_FAST_CORE_UINST_DEFN_iR3(u_opcode, o);
 
 		T(avr_flashaddr_t new_pc = 2 + avr->pc);
 		NO_T(avr_flashaddr_t new_pc = 2 + 2 + avr->pc);
 
 		avr_flashaddr_t branch_pc;
-		if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+		#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 			branch_pc = new_pc + (o * branch);
-		} else {
+		#else
 			branch_pc = new_pc + (branch ? o : 0);
-		}
+		#endif
 
 		STATE("brcs .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
 		T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch));
 		NO_T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + 1 + branch));
-	}
+	#endif
 }
 
 static void _avr_uinst_do_cpi_brxx_branch(avr_t *avr, int_fast32_t *count,
@@ -3082,11 +3159,11 @@ static void _avr_uinst_do_cpi_brxx_branch(avr_t *avr, int_fast32_t *count,
 	NO_T(avr_flashaddr_t new_pc = 2 + 2 + avr->pc);
 
 	avr_flashaddr_t branch_pc;
-	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+	#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 		branch_pc = new_pc + (o * branch);
-	} else {
+	#else
 		branch_pc = new_pc + (branch ? o : 0);
-	}
+	#endif
 
 	STATE("%s .%d [%04x]\t; Will%s branch\n", branch_op_string, o >> 1,
 		new_pc + o, branch ? "":" not");
@@ -3100,11 +3177,11 @@ AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_breq)
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 	
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
-	} else {
+	#else
 		STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
-	}
+	#endif
 
 	_avr_fast_core_flags_sub_zns(avr, res, vh, k);
 
@@ -3114,27 +3191,26 @@ AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_breq)
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-	if(_AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE) {
+	#ifdef AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE
 		AVR_FAST_CORE_DO_CPI_BRXX_BRANCH("breq");
-	} else {
-
+	#else
 		AVR_FAST_CORE_UINST_DEFN_iR3(u_opcode, o);
 
 		T(avr_flashaddr_t new_pc = 2 + avr->pc);
 		NO_T(avr_flashaddr_t new_pc = 2 + 2 + avr->pc);
 
 		avr_flashaddr_t branch_pc;
-		if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+		#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 			branch_pc = new_pc + (o * branch);
-		} else {
+		#else
 			branch_pc = new_pc + (branch ? o : 0);
-		}
+		#endif
 
 		STATE("breq .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
 		T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch));
 		NO_T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + 1 + branch));
-	}
+	#endif
 }
 
 AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brne)
@@ -3143,11 +3219,11 @@ AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brne)
 	uint_fast8_t res = vh - k;
 	int branch = (vh != k);
 	
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("cpi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
-	} else {
+	#else
 		STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
-	}
+	#endif
 
 	_avr_fast_core_flags_sub_zns(avr, res, vh, k);
 
@@ -3155,27 +3231,26 @@ AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brne)
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-	if(_AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE) {
+	#ifdef AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE
 		AVR_FAST_CORE_DO_CPI_BRXX_BRANCH("brne");
-	} else {
-
+	#else
 		AVR_FAST_CORE_UINST_DEFN_iR3(u_opcode, o);
 
 		T(avr_flashaddr_t new_pc = 2 + avr->pc);
 		NO_T(avr_flashaddr_t new_pc = 2 + 2 + avr->pc);
 
 		avr_flashaddr_t branch_pc;
-		if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+		#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 			branch_pc = new_pc + (o * branch);
-		} else {
+		#else
 			branch_pc = new_pc + (branch ? o : 0);
-		}
+		#endif
 
 		STATE("brne .%d [%04x]\t; Will%s branch\n", o >> 1, new_pc + o, branch ? "":" not");
 
 		T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + branch));
 		NO_T(AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 1 + 1 + branch));
-	}
+	#endif
 }
 
 AVR_FAST_CORE_UINST_DECL(h4r5k8_cpi_cpc)
@@ -3184,24 +3259,24 @@ AVR_FAST_CORE_UINST_DECL(h4r5k8_cpi_cpc)
 	uint_fast16_t vrk = (vr << 8) | k;
 	uint_fast16_t res = vh - vrk;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		T(uint8_t vhl = vh & 0xff);
 		T(uint8_t res0 = vhl  - k);
 		STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vhl, k);
 		T(_avr_fast_core_flags_sub_zns(avr, res0, vhl, k));
 		T(SREG());
-	} else {
+	#else
 		STATE("cpi.cpc %s:%s[%04x], 0x%04x = %04x\n", avr_regname(h), avr_regname(h + 1), vh, 
 			vrk, res);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		T(uint8_t vhh = (vh >> 8) & 0xff);
 		T(uint8_t res1 = vhh  - vr - avr->sreg[S_C]);
 		STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(h + 1), vhh, avr_regname(r), vr, res1);
-	}
+	#endif
 
 	_avr_fast_core_flags_sub16_zns16(avr, res, vh, vrk);
 
@@ -3218,14 +3293,14 @@ AVR_FAST_CORE_UINST_DECL(d5r5_16_cpse)
 
 	STATE("cpse %s[%02x], %s[%02x]\t; Will%s skip\n", avr_regname(d), vd, avr_regname(r), vr, skip ? "":" not");
 
-	if(_AVR_FAST_CORE_SKIP_SHIFT) {
+	#ifdef AVR_FAST_CORE_SKIP_SHIFT
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 << skip, 1 + skip);
-	} else {
+	#else
 		if (skip) {
 			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
 		}
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-	}
+	#endif
 }
 AVR_FAST_CORE_INST_DEFN(d5r5, 16_cpse)
 
@@ -3236,15 +3311,15 @@ AVR_FAST_CORE_UINST_DECL(d5r5_32_cpse)
 	
 	STATE("cpse %s[%02x], %s[%02x]\t; Will%s skip\n", avr_regname(d), vd, avr_regname(r), vr, skip ? "":" not");
 
-	if(_AVR_FAST_CORE_32_SKIP_SHIFT) {
+	#ifdef AVR_FAST_CORE_32_SKIP_SHIFT
 		int skip_count = skip ? 3 : 1;
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(skip_count << 1, skip_count);
-	} else {
+	#else
 		if (skip) {
 			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(6, 3);
 		}
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-	}
+	#endif
 }
 AVR_FAST_CORE_INST_DEFN(d5r5, 32_cpse)
 
@@ -3267,21 +3342,40 @@ AVR_FAST_CORE_UINST_DECL(d5_dec)
 }
 AVR_FAST_CORE_INST_DEFN(d5, dec)
 
-AVR_FAST_CORE_UINST_DECL(x_eicall)
+AVR_FAST_CORE_UINST_DECL(x22_eind_call)
+{
+	AVR_FAST_CORE_UINST_DEFN_24R1(u_opcode, x22);
+
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
+		STATE("call 0x%06x\n", x22 >> 1);
+	#else
+		STATE("call 0x%06x\n", x22);
+	#endif
+
+	_avr_fast_core_push24be(avr, count, 2 + (avr->pc >> 1));
+
+	TRACE_JUMP();
+	STACK_FRAME_PUSH();
+
+	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(x22, 5);
+}
+AVR_FAST_CORE_INST_DEFN(x22, eind_call)
+
+AVR_FAST_CORE_UINST_DECL(x_eind_eicall)
 {
 	uint_fast32_t z = (_avr_fast_core_fetch_r16le(avr, R_ZL) | avr->data[avr->eind] << 16) << 1;
 
 	STATE("eicall Z[%04x]\n", z);
 
-	_avr_fast_core_push16be(avr, count, 1 + (avr->pc >> 1));
+	_avr_fast_core_push24be(avr, count, 1 + (avr->pc >> 1));
 
 	TRACE_JUMP();
 
 	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(z, 4);  // 4 cycles except 3 cycles on XMEGAs
 }
-AVR_FAST_CORE_INST_DEFN(x, eicall)
+AVR_FAST_CORE_INST_DEFN(x, eind_eicall)
 
-AVR_FAST_CORE_UINST_DECL(x_eijmp)
+AVR_FAST_CORE_UINST_DECL(x_eind_eijmp)
 {
 	uint_fast32_t z = (_avr_fast_core_fetch_r16le(avr, R_ZL) | avr->data[avr->eind] << 16) << 1;
 
@@ -3289,9 +3383,54 @@ AVR_FAST_CORE_UINST_DECL(x_eijmp)
 
 	TRACE_JUMP();
 	
-	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(z, 2); // ??? 3 cycles ???
+	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(z, 2);
 }
-AVR_FAST_CORE_INST_DEFN(x, eijmp)
+AVR_FAST_CORE_INST_DEFN(x, eind_eijmp)
+
+AVR_FAST_CORE_UINST_DECL(o12_eind_rcall)
+{
+	AVR_FAST_CORE_UINST_DEFN_16R2(u_opcode, o);
+	avr_flashaddr_t new_pc = 2 + avr->pc;
+	avr_flashaddr_t branch_pc = new_pc + (int16_t)o;
+
+	STATE("rcall .%d [%04x]\n", (int16_t)o >> 1, branch_pc);
+
+	_avr_fast_core_push24be(avr, count, new_pc >> 1);
+
+	// 'rcall .1' is used as a cheap "push 16 bits of room on the stack"
+	if (o != 0) {
+		TRACE_JUMP();
+		STACK_FRAME_PUSH();
+	}
+
+	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, 4);
+}
+AVR_FAST_CORE_INST_DEFN(o12, eind_rcall)
+
+AVR_FAST_CORE_UINST_DECL(x_eind_ret)
+{
+	STATE("ret\n");
+
+	TRACE_JUMP();
+	STACK_FRAME_POP();
+	
+	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(_avr_fast_core_pop24be(avr, count) << 1, 5);
+}
+AVR_FAST_CORE_INST_DEFN(x, eind_ret)
+
+AVR_FAST_CORE_UINST_DECL(x_eind_reti)
+{
+	*count = 0;
+	avr->sreg[S_I] = 1;
+
+	STATE("reti\n");
+
+	TRACE_JUMP();
+	STACK_FRAME_POP();
+
+	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(_avr_fast_core_pop24be(avr, count) << 1, 5);
+}
+AVR_FAST_CORE_INST_DEFN(x, eind_reti)
 
 AVR_FAST_CORE_UINST_DECL(d5r5_eor)
 {
@@ -3349,12 +3488,12 @@ AVR_FAST_CORE_UINST_DECL(d5a6_in)
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, d, a);
 	AVR_FAST_CORE_UINST_DEFN_vIO(a);
 
-	if(_AVR_CORE_FAST_CORE_BUGS) {
+	#ifdef AVR_CORE_FAST_CORE_BUGS
 		/* CORE TRACE BUG ??? */
 		STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), avr->data[a]);
-	} else {
+	#else
 		STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-	}
+	#endif
 
 	_avr_fast_core_store_r(avr, d, va);
 
@@ -3396,12 +3535,12 @@ AVR_FAST_CORE_UINST_DECL(d5a6k8_in_andi_out)
 	AVR_FAST_CORE_UINST_DEFN_R1_R2_R3(u_opcode, d, a, k);
 	AVR_FAST_CORE_UINST_DEFN_vIO(a);
 	
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		/* CORE TRACE BUG ??? */
 		STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), avr->data[a]);
-	} else {
+	#else
 		STATE("/ in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
@@ -3409,11 +3548,11 @@ AVR_FAST_CORE_UINST_DECL(d5a6k8_in_andi_out)
 
 	uint_fast8_t res = va & k;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("andi %s[%02x], 0x%02x\n", avr_regname(d), va, k);
-	} else {
+	#else
 		STATE("| andi %s[%02x], 0x%02x = 0x%02x\n", avr_regname(d), va, k, res);
-	}
+	#endif
 
 	_avr_fast_core_store_r(avr, d, res);
 	_avr_fast_core_flags_znv0s(avr, res);
@@ -3424,11 +3563,11 @@ AVR_FAST_CORE_UINST_DECL(d5a6k8_in_andi_out)
 
 	/* out d5, a6 */
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), res);
-	} else {
+	#else
 		STATE("\\ out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), res);
-	}
+	#endif
 
 	_avr_fast_core_reg_io_write(avr, count, a, res);
 
@@ -3441,12 +3580,12 @@ AVR_FAST_CORE_UINST_DECL(d5a6k8_in_ori_out)
 	AVR_FAST_CORE_UINST_DEFN_R1_R2_R3(u_opcode, d, a, k);
 	AVR_FAST_CORE_UINST_DEFN_vIO(a);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		/* CORE TRACE BUG ??? */
 		STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), avr->data[a]);
-	} else {
+	#else
 		STATE("/ in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 	
@@ -3454,11 +3593,11 @@ AVR_FAST_CORE_UINST_DECL(d5a6k8_in_ori_out)
 
 	uint_fast8_t res = va | k;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("ori %s[%02x], 0x%02x\n", avr_regname(d), va, k);
-	} else {
+	#else
 		STATE("| ori %s[%02x], 0x%02x\n", avr_regname(d), va, k);
-	}
+	#endif
 
 	_avr_fast_core_store_r(avr, d, res);
 	_avr_fast_core_flags_znv0s(avr, res);
@@ -3469,11 +3608,11 @@ AVR_FAST_CORE_UINST_DECL(d5a6k8_in_ori_out)
 
 	/* out d5, a6 */
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), res);
-	} else {
+	#else
 		STATE("\\ out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), res);
-	}
+	#endif
 
 	_avr_fast_core_reg_io_write(avr, count, a, res);
 
@@ -3486,12 +3625,12 @@ AVR_FAST_CORE_UINST_DECL(d5a6_in_push)
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, d, a);
 	AVR_FAST_CORE_UINST_DEFN_vIO(a);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		/* CORE TRACE BUG ??? */
 		STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), avr->data[a]);
-	} else {
+	#else
 		STATE("/ in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-	}
+	#endif
 
 	_avr_fast_core_store_r(avr, d, va);
 	
@@ -3499,11 +3638,11 @@ AVR_FAST_CORE_UINST_DECL(d5a6_in_push)
 
 	_avr_fast_core_push8(avr, count, va);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STACK_STATE("push %s[%02x] (@%04x)\n", avr_regname(d), va, _avr_fast_core_sp_get(avr));
-	} else {
+	#else
 		STACK_STATE("\\ push %s[%02x] (@%04x)\n", avr_regname(d), va, _avr_fast_core_sp_get(avr));
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2));
 	NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 2));
@@ -3514,12 +3653,12 @@ AVR_FAST_CORE_UINST_DECL(d5a6m8_in_sbrs)
 	AVR_FAST_CORE_UINST_DEFN_R1_R2_R3(u_opcode, d, a, mask);
 	AVR_FAST_CORE_UINST_DEFN_vIO(a);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		/* CORE TRACE BUG ??? */
 		STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), avr->data[a]);
-	} else {
+	#else
 		STATE("/ in %s, %s[%02x]\n", avr_regname(d), avr_regname(a), va);
-	}
+	#endif
 
 	_avr_fast_core_store_r(avr, d, va);
 
@@ -3532,20 +3671,20 @@ AVR_FAST_CORE_UINST_DECL(d5a6m8_in_sbrs)
 	T(int cycles = 1);
 	NO_T(int cycles = 1 + 1);	
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("sbrs %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), va, mask, branch ? "":" not");
-	} else {
+	#else
 		STATE("\\ sbrs %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), va, mask, branch ? "":" not");
-	}
+	#endif
 
 	if (branch) {
 		T(int shift = _avr_is_instruction_32_bits(avr, 2 + branch_pc));
 		NO_T(int shift = _avr_is_instruction_32_bits(avr, 2 + branch_pc));
 
-		if(_AVR_FAST_CORE_SKIP_SHIFT) {
+		#ifdef AVR_FAST_CORE_SKIP_SHIFT
 			branch_pc += (2 << shift);
 			cycles += (1 << shift);
-		} else {		
+		#else		
 			if (shift) {
 				branch_pc += 4;
 				cycles += 2;
@@ -3553,7 +3692,7 @@ AVR_FAST_CORE_UINST_DECL(d5a6m8_in_sbrs)
 				branch_pc += 2;
 				cycles += 1;
 			}
-		}
+		#endif
 	}
 	
 	AVR_FAST_CORE_UINST_NEXT_JMP_PC_CYCLES(branch_pc, cycles);
@@ -3582,11 +3721,11 @@ AVR_FAST_CORE_UINST_DECL(x22_jmp)
 {
 	AVR_FAST_CORE_UINST_DEFN_24R1(u_opcode, x22);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("jmp 0x%06x\n", x22 >> 1);
-	} else {
+	#else
 		STATE("jmp 0x%06x\n", x22);
-	}
+	#endif
 
 	TRACE_JUMP();
 	
@@ -3680,19 +3819,19 @@ AVR_FAST_CORE_UINST_DECL(d5rYZq6_ldd_ldd)
 	
 	_avr_fast_core_store_r16le(avr, d - 1, ivr);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("ld %s, (%c+%d[%04x])=[%02x]\n", avr_regname(d), *avr_regname(r), q, vr, ivr >> 8);
 		T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 2));
 		STATE("ld %s, (%c+%d[%04x])=[%02x]\n", avr_regname(d), *avr_regname(r), q + 1, vr + 1, ivr & 0xff);
 		T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2)); // 2 cycles, 3 for tinyavr
 		NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2)); // 2 cycles, 3 for tinyavr
-	} else {
+	#else
 		STATE("ld.w %s:%s, (%s+%d:%d[%04x:%04x])=[%04x]\n", 
 			avr_regname(d), avr_regname(d - 1), 
 			avr_regname(r), q, q + 1, vr, vr + 1, 
 			ivr);
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2); // 2 cycles, 3 for tinyavr
-	}
+	#endif
 }
 
 AVR_FAST_CORE_UINST_DECL(h4k8_ldi)
@@ -3729,24 +3868,24 @@ AVR_FAST_CORE_UINST_DECL(h4k16_ldi_ldi)
 {
 	AVR_FAST_CORE_UINST_DEFN_R1_16R2(u_opcode, h, k);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		//  For tracing purposes, there is no easier way to get around this...
 		T(AVR_FAST_CORE_FLASH_OPCODE_DEFN(i_opcode_a, avr->pc));
 		T(AVR_FAST_CORE_INST_DEFN_H4(h4a, i_opcode_a));
 		T(AVR_FAST_CORE_INST_DEFN_K8(k8a, i_opcode_a));
 		STATE("ldi %s, 0x%02x\n", avr_regname(h4a), k8a);
-	} else {
+	#else
 		STATE("ldi.w %s:%s, 0x%04x\n", avr_regname(h), avr_regname(h+1), k);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		T(AVR_FAST_CORE_FLASH_OPCODE_DEFN(i_opcode_b, avr->pc));
 		T(AVR_FAST_CORE_INST_DEFN_H4(h4b, i_opcode_b));
 		T(AVR_FAST_CORE_INST_DEFN_K8(k8b, i_opcode_b));
 		STATE("ldi %s, 0x%02x\n", avr_regname(h4b), k8b);
-	}
+	#endif
 
 	_avr_fast_core_store_r16le(avr, h, k);
 
@@ -3758,21 +3897,21 @@ AVR_FAST_CORE_UINST_DECL(h4k8a6_ldi_out)
 {
 	AVR_FAST_CORE_UINST_DEFN_R1_R2_R3(u_opcode, h, k, a);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("ldi %s, 0x%02x\n", avr_regname(h), k);
-	} else {
+	#else
 		STATE("/ ldi %s, 0x%02x\n", avr_regname(h), k);
-	}
+	#endif
 
 	_avr_fast_core_store_r(avr, h, k);
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(h), k);
-	} else {
+	#else
 		STATE("\\ out %s, %s[%02x]\n", avr_regname(a), avr_regname(h), k);
-	}
+	#endif
 
 	_avr_fast_core_reg_io_write(avr, count, a, k);
 
@@ -3786,11 +3925,11 @@ AVR_FAST_CORE_UINST_DECL(d5x16_lds)
 	
 	uint_fast8_t vd = _avr_fast_core_fetch_ram(avr, count, x);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
-	} else {
+	#else
 		STATE("lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vd);
-	}
+	#endif
 
 	_avr_fast_core_store_r(avr, d, vd);
 
@@ -3829,12 +3968,12 @@ AVR_FAST_CORE_UINST_DECL(d5x16_lds_no_io)
 
 	uint_fast8_t vd = _avr_fast_core_data_read(avr, x);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		/* CORE BUG -- TRACE */
 		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
-	} else {
+	#else
 		STATE("lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vd);
-	}
+	#endif
 
 	_avr_fast_core_store_r(avr, d, vd);
 
@@ -3849,21 +3988,21 @@ AVR_FAST_CORE_UINST_DECL(d5x16_lds_lds)
 
 	uint_fast8_t vxl = _avr_fast_core_fetch_ram(avr, count, x);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
-	} else {
+	#else
 		STATE("/ lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vxl);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(4, 2));
 
 	uint_fast8_t vxh = _avr_fast_core_fetch_ram(avr, count, x + 1);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d + 1), _avr_fast_core_fetch_r(avr, d + 1), x + 1);
-	} else {
+	#else
 		STATE("\\ lds %s, 0x%04x[%02x]\n", avr_regname(d + 1), x + 1, vxh);
-	}
+	#endif
 
 	_avr_fast_core_store_r16le(avr, d, (vxh << 8) | vxl);
 
@@ -3880,19 +4019,19 @@ AVR_FAST_CORE_UINST_DECL(d5x16_lds_lds_no_io)
 	T(uint_fast16_t vx = _avr_fast_core_data_read16le(avr, x));
 	NO_T(uint_fast16_t vx = _avr_fast_core_data_read16(avr, x));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
-	} else {
+	#else
 		STATE("/ lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vx & 0xff);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(4, 2));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d + 1), _avr_fast_core_fetch_r(avr, d), x + 1);
-	} else {
+	#else
 		STATE("\\ lds %s, 0x%04x[%02x]\n", avr_regname(d + 1), x + 1, vx > 8);
-	}
+	#endif
 
 	T(_avr_fast_core_store_r16le(avr, d, vx));
 	NO_T(_avr_fast_core_store_r16(avr, d, vx));
@@ -3907,21 +4046,21 @@ AVR_FAST_CORE_UINST_DECL(d5x16_lds_no_io_tst)
 
 	uint_fast8_t vd = _avr_fast_core_data_read(avr, x);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
-	} else {
+	#else
 		STATE("/ lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vd);
-	}
+	#endif
 
 	_avr_fast_core_store_r(avr, d, vd);
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(4, 2)); // 2 cycles
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("tst %s[%02x]\n", avr_regname(d), vd);
-	} else {
+	#else
 		STATE("\\ tst %s[%02x]\n", avr_regname(d), vd);
-	}
+	#endif
 
 	_avr_fast_core_flags_znv0s(avr, vd);
 
@@ -3937,21 +4076,21 @@ AVR_FAST_CORE_UINST_DECL(d5x16_lds_tst)
 	
 	uint_fast8_t vd = _avr_fast_core_fetch_ram(avr, count, x);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), _avr_fast_core_fetch_r(avr, d), x);
-	} else {
+	#else
 		STATE("/ lds %s, 0x%04x[%02x]\n", avr_regname(d), x, vd);
-	}
+	#endif
 
 	_avr_fast_core_store_r(avr, d, vd);
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(4, 2)); // 2 cycles
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("tst %s[%02x]\n", avr_regname(d), vd);
-	} else {
+	#else
 		STATE("\\ tst %s[%02x]\n", avr_regname(d), vd);
-	}
+	#endif
 
 	_avr_fast_core_flags_znv0s(avr, vd);
 
@@ -3966,12 +4105,12 @@ AVR_FAST_CORE_UINST_DECL(d5_lpm_z)
 	AVR_FAST_CORE_UINST_DEFN_R1(u_opcode, d);
 	uint_fast16_t z = _avr_fast_core_fetch_r16le(avr, R_ZL);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		/* CORE TRACE BUG -- LPM will always indicate as Z+ */
 		STATE("lpm %s, (Z[%04x]+)\n", avr_regname(d), z);
-	} else {
+	#else
 		STATE("lpm %s, (Z[%04x])\n", avr_regname(d), z);
-	}
+	#endif
 
 	_avr_fast_core_store_r(avr, d, avr->flash[z]);
 	
@@ -4025,11 +4164,11 @@ AVR_FAST_CORE_UINST_DECL(d5rXYZ_lpm_z_post_inc_st_post_inc)
 
 	uint_fast8_t vd = avr->flash[z];
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("lpm %s, (Z[%04x]+)\n", avr_regname(d), z);
-	} else {
+	#else
 		STATE("/ lpm %s, (Z[%04x]+)\n", avr_regname(d), z);
-	}
+	#endif
 
 	_avr_fast_core_store_r(avr, d, vd);
 	
@@ -4039,13 +4178,13 @@ AVR_FAST_CORE_UINST_DECL(d5rXYZ_lpm_z_post_inc_st_post_inc)
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 3)); // 3 cycles
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("st %c[%04x]++, %s[0x%02x]\n", *avr_regname(r), vr,
 			avr_regname(d), vd);
-	} else {
+	#else
 		STATE("\\ st %c[%04x]++, %s[0x%02x]\n", *avr_regname(r), vr,
 			avr_regname(d), vd);
-	}
+	#endif
 
 	_avr_fast_core_store_ram(avr, count, vr, vd);
 	vr++;
@@ -4066,17 +4205,17 @@ AVR_FAST_CORE_UINST_DECL(d5_lpm16_z_post_inc)
 	T(uint_fast16_t vd = _avr_fast_core_flash_read16le(avr, vz));
 	NO_T(uint_fast16_t vd = _avr_fast_core_fetch16(avr->flash, vz));
 	
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("lpm %s, (Z[%04x]+)\n", avr_regname(d), vz);
-	} else {
+	#else
 		STATE("lpm.w %s:%s, (Z[%04x:%04x]+) = 0x%04x\n", avr_regname(d), avr_regname(d + 1), vz, vz + 1, vd);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 3));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("lpm %s, (Z[%04x]+)\n", avr_regname(d+1), vz + 1);
-	}
+	#endif
 
 	T(_avr_fast_core_store_r16le(avr, d, vd));
 	NO_T(_avr_fast_core_store_r16(avr, d, vd));
@@ -4133,20 +4272,20 @@ AVR_FAST_CORE_UINST_DECL(d5_lsl_rol)
 	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw(u_opcode, d);
 	uint_fast16_t res = vd << 1;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		T(uint8_t vdl = vd & 0xff; uint8_t res0 = res & 0xff);
 		STATE("lsl %s[%02x] = %02x\n", avr_regname(d), vdl, res0);
 		T(_avr_fast_core_flags_add_zns(avr, res0, vdl, vdl));
 		SREG();
-	} else {
+	#else
 		STATE("lsr.w %s:%s[%04x] = [%04x]\n", avr_regname(d), avr_regname(d + 1), vd, res);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 	
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("rol %s[%02x]\n", avr_regname(d), vd >> 8);
-	}
+	#endif
 
 	AVR_FAST_CORE_RMW_STORE_R16LE(d, res);
 
@@ -4222,23 +4361,23 @@ AVR_FAST_CORE_UINST_DECL(d5_lsr_ror)
 	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw(u_opcode, d);
 	uint_fast16_t res = vd >> 1;
 	
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		T(uint8_t vdh = vd >> 8);
 		T(uint8_t res0 = vdh >> 1);
 
 		STATE("lsr %s[%02x]\n", avr_regname(d + 1), vdh);
 		T(_avr_fast_core_flags_zcn0vs(avr, res0, vdh));
 		SREG();
-	} else {
+	#else
 		STATE("lsr.w %s:%s[%04x] = [%04x]\n", avr_regname(d), avr_regname(d + 1), vd, res);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1));
 	
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		T(uint8_t vdl = vd & 0xff);
 		STATE("ror %s[%02x]\n", avr_regname(d), vdl);
-	}
+	#endif
 
 	AVR_FAST_CORE_RMW_STORE_R16LE(d, res);
 
@@ -4256,13 +4395,13 @@ AVR_FAST_CORE_UINST_DECL(d5r5_mov)
 	T(AVR_FAST_CORE_UINST_DEFN_vR2(u_opcode, r));
 	NO_T(AVR_FAST_CORE_UINST_DEFN_R2(u_opcode, r));
 	
-	_avr_mov_r(avr, d, r);
+	_avr_fast_core_mov_r(avr, d, r);
 	
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("mov %s, %s[%02x] = %02x\n", avr_regname(d), avr_regname(r), vr, vr);
-	} else {
+	#else
 		STATE("mov %s, %s[%02x]\n", avr_regname(d), avr_regname(r), vr);
-	}
+	#endif
 
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
 }
@@ -4273,7 +4412,7 @@ AVR_FAST_CORE_UINST_DECL(d4r4_movw)
 	T(AVR_FAST_CORE_UINST_DEFN_R1_v16leR2(u_opcode, d, r));
 	NO_T(AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, d, r));
 	
-	_avr_mov_r16(avr, d, r);
+	_avr_fast_core_mov_r16(avr, d, r);
 
 	STATE("movw %s:%s, %s:%s[%04x]\n", avr_regname(d), avr_regname(d+1), avr_regname(r), avr_regname(r+1), vr);
 
@@ -4470,19 +4609,19 @@ AVR_FAST_CORE_UINST_DECL(d5a6_pop_out)
 	uint_fast8_t vd = _avr_fast_core_pop8(avr, count);
 	_avr_fast_core_store_r(avr, d, vd);
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STACK_STATE("pop %s (@%04x)[%02x]\n", avr_regname(d), _avr_fast_core_sp_get(avr), vd);
-	} else {
+	#else
 		STACK_STATE("/ pop %s (@%04x)[%02x]\n", avr_regname(d), _avr_fast_core_sp_get(avr), vd);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 2));
 	
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), vd);
-	} else {
+	#else
 		STATE("\\ out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), vd);
-	}
+	#endif
 
 	_avr_fast_core_reg_io_write(avr, count, a, vd);
 	
@@ -4497,19 +4636,19 @@ AVR_FAST_CORE_UINST_DECL(d5_pop_pop16be)
 	uint_fast16_t vd = _avr_fast_core_pop16be(avr, count);
 	T(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STACK_STATE("pop %s (@%04x)[%02x]\n", avr_regname(d + 1), sp - 1, vd >> 8);
-	} else {
+	#else
 		STACK_STATE("/ pop %s (@%04x)[%02x]\n", avr_regname(d + 1), sp - 1, vd >> 8);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 2));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STACK_STATE("pop %s (@%04x)[%02x]\n", avr_regname(d), sp, vd & 0xff);
-	} else {
+	#else
 		STACK_STATE("\\ pop %s (@%04x)[%02x]\n", avr_regname(d), sp, vd & 0xff);
-	}
+	#endif
 
 	_avr_fast_core_store_r16le(avr, d, vd);
 
@@ -4524,19 +4663,19 @@ AVR_FAST_CORE_UINST_DECL(d5_pop_pop16le)
 	uint_fast16_t vd = _avr_fast_core_pop16le(avr, count);
 	T(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STACK_STATE("pop %s (@%04x)[%02x]\n", avr_regname(d), sp - 1, vd & 0xff);
-	} else {
+	#else
 		STACK_STATE("/ pop %s (@%04x)[%02x]\n", avr_regname(d), sp - 1, vd & 0xff);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 2));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STACK_STATE("pop %s (@%04x)[%02x]\n", avr_regname(d + 1), sp, vd >> 8);
-	} else {
+	#else
 		STACK_STATE("\\ pop %s (@%04x)[%02x]\n", avr_regname(d + 1), sp, vd >> 8);
-	}
+	#endif
 
 	_avr_fast_core_store_r16le(avr, d, vd);
 
@@ -4574,16 +4713,16 @@ AVR_FAST_CORE_UINST_DECL(d5_push_push16be)
 	_avr_fast_core_push16be(avr, count, vd);
 	T(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STACK_STATE("push %s[%02x] (@%04x)\n", avr_regname(d), vd & 0xff, sp + 1);
 		T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 2));
 		STACK_STATE("push %s[%02x] (@%04x)\n", avr_regname(d + 1), vd >> 8, sp);
 		T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2));
 		NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2));
-	} else {
+	#else
 		STACK_STATE("push.w %s:%s[%04x] (@%04x)\n", avr_regname(d+1), avr_regname(d), vd, sp);
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2);
-	}
+	#endif
 }
 
 AVR_FAST_CORE_UINST_DECL(d5_push_push16le)
@@ -4593,16 +4732,16 @@ AVR_FAST_CORE_UINST_DECL(d5_push_push16le)
 	_avr_fast_core_push16le(avr, count, vd);
 	T(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STACK_STATE("push %s[%02x] (@%04x)\n", avr_regname(d + 1), vd >> 8, sp + 1);
 		T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2));
 		STACK_STATE("push %s[%02x] (@%04x)\n", avr_regname(d), vd & 0xff, sp);
 		T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2));
 		NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2));
-	} else {
+	#else
 		STACK_STATE("push.w %s:%s[%04x] (@%04x)\n", avr_regname(d+1), avr_regname(d), vd, sp);
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 2 + 2)
-	}
+	#endif
 }
 
 AVR_FAST_CORE_UINST_DECL(o12_rcall)
@@ -4686,11 +4825,11 @@ AVR_FAST_CORE_UINST_DECL(d5_ror)
 	
 	uint_fast8_t res;
 	
-	if(_AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY) {
+	#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 		res = (avr->sreg[S_C] * 0x80) | vd >> 1;
-	} else {
+	#else
 		res = (avr->sreg[S_C] ? 0x80 : 0) | vd >> 1;
-	}
+	#endif
 
 	STATE("ror %s[%02x]\n", avr_regname(d), vd);
 
@@ -4730,13 +4869,13 @@ AVR_FAST_CORE_UINST_DECL(h4k8_sbci)
 
 	AVR_FAST_CORE_RMW_STORE_R(h, res);
 
-	if(_AVR_CORE_FAST_CORE_BUGS) {
+	#ifdef AVR_CORE_FAST_CORE_BUGS
 		// CORE BUG -- standard core does not calculate H and V flags.
 		avr->sreg[S_C] = (k + avr->sreg[S_C]) > vh;
 		_avr_fast_core_flags_Rzns(avr, res);
-	} else {
+	#else
 		_avr_fast_core_flags_sub_Rzns(avr, res, vh, k);
-	}
+	#endif
 
 	SREG();
 
@@ -4764,20 +4903,20 @@ AVR_FAST_CORE_UINST_DECL(a5m8_16_sbic)
 	AVR_FAST_CORE_UINST_DEFN_vIO(io);
 	uint_fast8_t skip = (0 == (vio & mask));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("sbic %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), vio, mask, skip ? "":" not");
-	} else {
+	#else
 		STATE("sbic %s[%04x], 0x%02x\t; Will%s skip\n", avr_regname(io), vio, mask, skip ? "":" not");
-	}
+	#endif
 
-	if(_AVR_FAST_CORE_SKIP_SHIFT) {
+	#ifdef AVR_FAST_CORE_SKIP_SHIFT
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 << skip, 1 + skip);
-	} else {
+	#else
 		if (skip) {
 			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
 		}
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-	}
+	#endif
 }
 AVR_FAST_CORE_INST_DEFN(a5m8, 16_sbic)
 
@@ -4788,21 +4927,21 @@ AVR_FAST_CORE_UINST_DECL(a5m8_32_sbic)
 	
 	uint_fast8_t skip = (0 == (vio & mask));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("sbic %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), vio, mask, skip ? "":" not");
-	} else {
+	#else
 		STATE("sbic %s[%04x], 0x%02x\t; Will%s skip\n", avr_regname(io), vio, mask, skip ? "":" not");
-	}
+	#endif
 
-	if(_AVR_FAST_CORE_32_SKIP_SHIFT) {
+	#ifdef AVR_FAST_CORE_32_SKIP_SHIFT
 		int skip_count = skip ? 3 : 1;
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(skip_count << 1, skip_count);
-	} else {
+	#else
 		if (skip) {
 			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(6, 3);
 		}
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-	}
+	#endif
 }
 AVR_FAST_CORE_INST_DEFN(a5m8, 32_sbic)
 
@@ -4813,20 +4952,20 @@ AVR_FAST_CORE_UINST_DECL(a5m8_16_sbis)
 	
 	uint_fast8_t skip = (0 != (vio & mask));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("sbis %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), vio, mask, skip ? "":" not");
-	} else {
+	#else
 		STATE("sbis %s[%04x], 0x%02x\t; Will%s skip\n", avr_regname(io), vio, mask, skip ? "":" not");
-	}
+	#endif
 
-	if(_AVR_FAST_CORE_SKIP_SHIFT) {
+	#ifdef AVR_FAST_CORE_SKIP_SHIFT
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 << skip, 1 + skip);
-	} else {
+	#else
 		if (skip) {
 			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
 		}
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-	}
+	#endif
 }
 AVR_FAST_CORE_INST_DEFN(a5m8, 16_sbis)
 
@@ -4837,21 +4976,21 @@ AVR_FAST_CORE_UINST_DECL(a5m8_32_sbis)
 	
 	uint_fast8_t skip = (0 != (vio & mask));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("sbis %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), vio, mask, skip ? "":" not");
-	} else {
+	#else
 		STATE("sbis %s[%04x], 0x%02x\t; Will%s skip\n", avr_regname(io), vio, mask, skip ? "":" not");
-	}
+	#endif
 
-	if(_AVR_FAST_CORE_32_SKIP_SHIFT) {
+	#ifdef AVR_FAST_CORE_32_SKIP_SHIFT
 		int skip_count = skip ? 3 : 1;
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(skip_count << 1, skip_count);
-	} else {
+	#else
 		if (skip) {
 			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(6, 3);
 		}
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-	}
+	#endif
 }
 AVR_FAST_CORE_INST_DEFN(a5m8, 32_sbis)
 
@@ -4880,20 +5019,20 @@ AVR_FAST_CORE_UINST_DECL(d5m8_16_sbrc)
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, mask);
 	int	skip = (0 == (vd & (mask)));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("sbrc %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), vd, mask, skip ? "":" not");
-	} else {
+	#else
 		STATE("sbrc %s[%02x], 0x%02x\t; Will%s skip\n", avr_regname(d), vd, mask, skip ? "":" not");
-	}
+	#endif
 
-	if(_AVR_FAST_CORE_SKIP_SHIFT) {
+	#ifdef AVR_FAST_CORE_SKIP_SHIFT
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 << skip, 1 + skip);
-	} else {
+	#else
 		if (skip) {
 			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
 		}
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-	}
+	#endif
 }
 AVR_FAST_CORE_INST_DEFN(d5m8, 16_sbrc)
 
@@ -4902,21 +5041,21 @@ AVR_FAST_CORE_UINST_DECL(d5m8_32_sbrc)
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, mask);
 	int	skip = (0 == (vd & (mask)));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("sbrc %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), vd, mask, skip ? "":" not");
-	} else {
+	#else
 		STATE("sbrc %s[%02x], 0x%02x\t; Will%s skip\n", avr_regname(d), vd, mask, skip ? "":" not");
-	}
+	#endif
 
-	if(_AVR_FAST_CORE_32_SKIP_SHIFT) {
+	#ifdef AVR_FAST_CORE_32_SKIP_SHIFT
 		int skip_count = skip ? 3 : 1;
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(skip_count << 1, skip_count);
-	} else {
+	#else
 		if (skip) {
 			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(6, 3);
 		}
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-	}
+	#endif
 }
 AVR_FAST_CORE_INST_DEFN(d5m8, 32_sbrc)
 
@@ -4925,20 +5064,20 @@ AVR_FAST_CORE_UINST_DECL(d5m8_16_sbrs)
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, mask);
 	int	skip = (0 != (vd & (mask)));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("sbrs %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), vd, mask, skip ? "":" not");
-	} else {
+	#else
 		STATE("sbrs %s[%02x], 0x%02x\t; Will%s skip\n", avr_regname(d), vd, mask, skip ? "":" not");
-	}
+	#endif
 
-	if(_AVR_FAST_CORE_SKIP_SHIFT) {
+	#ifdef AVR_FAST_CORE_SKIP_SHIFT
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 << skip, 1 + skip);
-	} else {
+	#else
 		if (skip) {
 			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(4, 2);
 		}
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-	}
+	#endif
 }
 AVR_FAST_CORE_INST_DEFN(d5m8, 16_sbrs)
 
@@ -4947,21 +5086,21 @@ AVR_FAST_CORE_UINST_DECL(d5m8_32_sbrs)
 	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, mask);
 	int	skip = (0 != (vd & (mask)));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("sbrs %s[%02x], 0x%02x\t; Will%s branch\n", avr_regname(d), vd, mask, skip ? "":" not");
-	} else {
+	#else
 		STATE("sbrs %s[%02x], 0x%02x\t; Will%s skip\n", avr_regname(d), vd, mask, skip ? "":" not");
-	}
+	#endif
 
-	if(_AVR_FAST_CORE_32_SKIP_SHIFT) {
+	#ifdef AVR_FAST_CORE_32_SKIP_SHIFT
 		int skip_count = skip ? 3 : 1;
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(skip_count << 1, skip_count);
-	} else {
+	#else
 		if (skip) {
 			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(6, 3);
 		}
 		AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-	}
+	#endif
 }
 AVR_FAST_CORE_INST_DEFN(d5m8, 32_sbrs)
 
@@ -4997,17 +5136,17 @@ AVR_FAST_CORE_UINST_DECL(sei_sleep)
 
 	if(!avr_has_pending_interrupts(avr)) {
 		avr->state = cpu_Sleeping;
-		if(_AVR_FAST_CORE_SLEEP_PREPROCESS_TIMERS_AND_INTERRUPTS) {
+		#ifdef AVR_FAST_CORE_SLEEP_PREPROCESS_TIMERS_AND_INTERRUPTS
 			CYCLES(1);
 			T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, *count));
 			NO_T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2 + 2, *count));
 			_avr_fast_core_cycle_timer_process(avr, 0);
 			_avr_fast_core_service_interrupts(avr);
-		} else {
+		#else
 			*count = 0;
 			T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1));
 			NO_T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2 + 2, 1 + 1));
-		}
+		#endif
 	}
 }
 
@@ -5020,15 +5159,15 @@ AVR_FAST_CORE_UINST_DECL(x_sleep)
 	 * details, see the commit message. */
 	if(!avr_has_pending_interrupts(avr) || !avr->sreg[S_I]) {
 		avr->state = cpu_Sleeping;
-		if(_AVR_FAST_CORE_SLEEP_PREPROCESS_TIMERS_AND_INTERRUPTS) {
+		#ifdef AVR_FAST_CORE_SLEEP_PREPROCESS_TIMERS_AND_INTERRUPTS
 			CYCLES(1);
 			AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, *count);
 			_avr_fast_core_cycle_timer_process(avr, 0);
 			_avr_fast_core_service_interrupts(avr);
-		} else {
+		#else
 			*count = 0;
 			AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
-		}
+		#endif
 	}
 }
 AVR_FAST_CORE_INST_DEFN(x, sleep)
@@ -5105,18 +5244,18 @@ AVR_FAST_CORE_UINST_DECL(d5rYZq6_std_std_hhll)
 	AVR_FAST_CORE_UINST_DEFN_v16leR1_v16leR2_R3(u_opcode, d, r, q);
 	vr += q;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("st (%c+%d[%04x]), %s[%02x]\n", *avr_regname(r), q + 1, vr + 1, avr_regname(d), vd >> 8);
-	} else {
+	#else
 		STATE("st (%c+%d:%d[%04x:%04x]), %s:%s[%04x]\n", *avr_regname(r),
 			q, q + 1, vr, vr + 1, avr_regname(d), avr_regname(d + 1), vd);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2)); // 2 cycles, except tinyavr
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("st (%c+%d[%04x]), %s[%02x]\n", *avr_regname(r), q, vr, avr_regname(d), vd & 0xff);
-	}
+	#endif
 
 	if(likely(0xff < vr)) {
 		_avr_fast_core_data_write16le(avr, vr, vd);
@@ -5134,18 +5273,18 @@ AVR_FAST_CORE_UINST_DECL(d5rYZq6_std_std_hllh)
 	AVR_FAST_CORE_UINST_DEFN_v16leR1_v16leR2_R3(u_opcode, d, r, q);
 	vr += q;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("st (%c+%d[%04x]), %s[%02x]\n", *avr_regname(r), q + 1, vr + 1, avr_regname(d), vd & 0xff);
-	} else {
+	#else
 		STATE("st (%c+%d:%d[%04x:%04x]), %s:%s[%04x]\n", *avr_regname(r),
 			q + 1, q , vr + 1, vr, avr_regname(d), avr_regname(d + 1), vd);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2)); // 2 cycles, except tinyavr
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("st (%c+%d[%04x]), %s[%02x]\n", *avr_regname(r), q, vr, avr_regname(d), vd >> 8);
-	}
+	#endif
 
 	if(likely(0xff < vr)) {
 		_avr_fast_core_data_write16be(avr, vr, vd);
@@ -5205,13 +5344,13 @@ AVR_FAST_CORE_UINST_DECL(d5x16_sts_sts)
 
 	uint_fast8_t vdh = vd >> 8;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("sts 0x%04x, %s[%02x]\n", x + 1, avr_regname(d), vdh);
-	} else {
+	#else
 		STATE("sts.w 0x%04x:0x%04x, %s:%s[%04x]\n", x, x + 1,
 			avr_regname(d), avr_regname(d + 1),
 			_avr_fast_core_fetch_r16(avr, d));
-	}
+	#endif
 
 	_avr_fast_core_store_ram(avr, count, x + 1, vdh);
 
@@ -5219,9 +5358,9 @@ AVR_FAST_CORE_UINST_DECL(d5x16_sts_sts)
 
 	uint_fast8_t vdl = vd & 0xff;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), vdl);
-	}
+	#endif
 
 	_avr_fast_core_store_ram(avr, count, x, vdl);
 
@@ -5237,19 +5376,19 @@ AVR_FAST_CORE_UINST_DECL(d5x16_sts_sts_no_io)
 	/* lds low:high, sts high:low ...
 		normally, replicate order incase in the instance io is accessed. */
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		T(uint_fast8_t vdh = vd >> 8);
 		STATE("sts 0x%04x, %s[%02x]\n", x + 1, avr_regname(d), vdh);
-	} else {
+	#else
 		STATE("sts.w 0x%04x:0x%04x, %s:%s[%04x]\n", x, x + 1, avr_regname(d), avr_regname(d + 1), vd);
-	}
+	#endif
 
 	T(AVR_FAST_CORE_UINST_STEP_PC_CYCLES(4, 2));
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		T(uint_fast8_t vdl = vd & 0xff);
 		STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), vdl);
-	}
+	#endif
 
 	T(_avr_fast_core_data_write16le(avr, x, vd));
 	NO_T(_avr_fast_core_data_write16(avr, x, vd));
@@ -5284,13 +5423,13 @@ AVR_FAST_CORE_UINST_DECL(h4k8_subi)
 
 	AVR_FAST_CORE_RMW_STORE_R(h, res);
 
-	if(_AVR_CORE_FAST_CORE_BUGS) {
+	#ifdef AVR_CORE_FAST_CORE_BUGS
 		// CORE BUG -- standard core does not calculate H and V flags.
 		avr->sreg[S_C] = k > vh;
 		_avr_fast_core_flags_zns(avr, res);
-	} else {
+	#else
 		_avr_fast_core_flags_sub_zns(avr, res, vh, k);
-	}
+	#endif
 
 	SREG();
 
@@ -5312,18 +5451,18 @@ AVR_FAST_CORE_UINST_DECL(h4k16_subi_sbci)
 	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_16R2(u_opcode, h, k);
 	uint_fast16_t res = vh - k;
 
-	if(_AVR_CORE_FAST_CORE_DIFF_TRACE) {
+	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
 		T(uint8_t vhl = vh & 0xff; uint8_t vkl = k & 0xff);
 		T(uint8_t res0 = vhl - vkl);
 		STATE("subi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vhl, vkl, res0);
 
-		if(_AVR_CORE_FAST_CORE_BUGS) {
+		#ifdef AVR_CORE_FAST_CORE_BUGS
 			// CORE BUG -- standard core does not calculate H and V flags.
 			T(avr->sreg[S_C] = vkl > vhl);
 			T(_avr_fast_core_flags_zns(avr, res0));
-		} else {
+		#else
 			T(_avr_fast_core_flags_sub_zns(avr, res0, vhl, vkl));
-		}
+		#endif
 
 		SREG();
 
@@ -5332,19 +5471,19 @@ AVR_FAST_CORE_UINST_DECL(h4k16_subi_sbci)
 		T(uint8_t vhh = vh >> 8; uint8_t vkh = k >> 8);
 		T(uint8_t res1 = vhh - vkh - avr->sreg[S_C]);
 		STATE("sbci %s[%02x], 0x%02x = %02x\n", avr_regname(h + 1), vhh, vkh, res1);
-	} else {
+	#else
 		STATE("subi.sbci %s:%s[%04x], 0x%04x = %04x\n", avr_regname(h), avr_regname(h + 1), vh, k, res);
-	}
+	#endif
 	
 	AVR_FAST_CORE_RMW_STORE_R16LE(h, res);
 
-	if(_AVR_CORE_FAST_CORE_BUGS) {
+	#ifdef AVR_CORE_FAST_CORE_BUGS
 		// CORE BUG -- standard core does not calculate H and V flags.
 		avr->sreg[S_C] = k > vh;
 		_avr_fast_core_flags_zns16(avr, res);
-	} else {
+	#else
 		_avr_fast_core_flags_sub16_zns16(avr, res, vh, k);
-	}
+	#endif
 
 	SREG();
 
@@ -5377,7 +5516,6 @@ AVR_FAST_CORE_UINST_DECL(d5_tst)
 	
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 1);
 }
-AVR_FAST_CORE_INST_DEFN(d5, tst)
 
 /*
  * Called when an invalid opcode is decoded
@@ -5428,6 +5566,15 @@ static int _avr_fast_core_inst_decode_one(avr_t *avr, int_fast32_t *count)
 	}
 	avr->trace_data->touched[0] = avr->trace_data->touched[1] = avr->trace_data->touched[2] = 0;
 #endif
+
+	#ifdef AVR_FAST_CORE_TAIL_CALL
+	/* !!!! DANGER !!!!
+	 * tail call observed nesting funcitons before unnesting during itrace.
+	 *	setting count to zero keeps decoding in order and
+	 *	prevents errant tracing.
+	 */
+		*count = 0;
+	#endif
 
 	AVR_FAST_CORE_FLASH_OPCODE_DEFN(i_opcode, avr->pc);
 
@@ -5616,7 +5763,7 @@ static int _avr_fast_core_inst_decode_one(avr_t *avr, int_fast32_t *count)
 						_avr_fast_core_invalid_opcode(avr);
 						AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1);
 					} else
-						AVR_FAST_CORE_INST_CALL(x, eijmp);
+						AVR_FAST_CORE_INST_CALL(x, eind_eijmp);
 				}	break;
 				case 0x9509: {  // ICALL Indirect Call to Subroutine		1001 0101 0000 1001
 					AVR_FAST_CORE_INST_CALL(x, icall);
@@ -5626,13 +5773,19 @@ static int _avr_fast_core_inst_decode_one(avr_t *avr, int_fast32_t *count)
 						_avr_fast_core_invalid_opcode(avr);
 						AVR_FAST_CORE_UINST_STEP_PC_CYCLES(2, 1);
 					} else
-						AVR_FAST_CORE_INST_CALL(x, eicall);
+						AVR_FAST_CORE_INST_CALL(x, eind_eicall);
 				}	break;
 				case 0x9518: {	// RETI
-					AVR_FAST_CORE_INST_CALL(x, reti);
+					if(avr->eind)
+						AVR_FAST_CORE_INST_CALL(x, eind_reti);
+					else	
+						AVR_FAST_CORE_INST_CALL(x, reti);
 				}	break;
 				case 0x9508: {	// RET
-					AVR_FAST_CORE_INST_CALL(x, ret);
+					if(avr->eind)
+						AVR_FAST_CORE_INST_CALL(x, eind_ret);
+					else	
+						AVR_FAST_CORE_INST_CALL(x, ret);
 				}	break;
 				case 0x95c8: {	// LPM Load Program Memory R0 <- (Z) 1001 0101 1100 1000
 					i_opcode = 0x9004;
@@ -5748,7 +5901,10 @@ static int _avr_fast_core_inst_decode_one(avr_t *avr, int_fast32_t *count)
 						}	break;
 						case 0x940e:
 						case 0x940f: {	// CALL Long Call to sub, 32 bits
-							AVR_FAST_CORE_INST_CALL(x22, call);
+							if(avr->eind)
+								AVR_FAST_CORE_INST_CALL(x22, eind_call);
+							else	
+								AVR_FAST_CORE_INST_CALL(x22, call);
 						}	break;
 
 						default: {
@@ -5756,7 +5912,7 @@ static int _avr_fast_core_inst_decode_one(avr_t *avr, int_fast32_t *count)
 								case 0x9600: {	// ADIW - Add Immediate to Word 1001 0110 KKdd KKKK
 									AVR_FAST_CORE_INST_CALL(p2k6, adiw);
 								}	break;
-								case 0x9700: {	// SBIW - Subtract Immediate from Word 1001 0110 KKdd KKKK
+								case 0x9700: {	// SBIW - Subtract Immediate from Word 1001 0111 KKdd KKKK
 									AVR_FAST_CORE_INST_CALL(p2k6, sbiw);
 								}	break;
 								case 0x9800: {	// CBI - Clear Bit in I/O Register 1001 1000 AAAA Abbb
@@ -5806,7 +5962,10 @@ static int _avr_fast_core_inst_decode_one(avr_t *avr, int_fast32_t *count)
 		}	break;
 		case 0xd000: {
 			// RCALL 1100 kkkk kkkk kkkk
-			AVR_FAST_CORE_INST_CALL(o12, rcall);
+			if(avr->eind)
+				AVR_FAST_CORE_INST_CALL(o12, eind_rcall);
+			else	
+				AVR_FAST_CORE_INST_CALL(o12, rcall);
 		}	break;
 		case 0xe000: {	// LDI Rd, K 1110 KKKK RRRR KKKK -- aka SER (LDI r, 0xff)
 			AVR_FAST_CORE_INST_CALL(h4k8, ldi);
@@ -5875,7 +6034,7 @@ static int _avr_fast_core_run_one(avr_t* avr, int_fast32_t *count)
 
 	pfnInst_p pfn = _avr_fast_core_uinst_op_table[u_opcode_op];
 
-	AVR_FAST_CORE_PFN_UINST_CALL(u_opcode);
+	AVR_FAST_CORE_PROFILER_PROFILE(uinst[u_opcode_op], AVR_FAST_CORE_PFN_UINST_CALL(u_opcode));
 
 	return(*count);
 }
@@ -5898,12 +6057,11 @@ void avr_fast_core_run_many(avr_t* avr)
 
 interrupts_disabled:
 			_avr_fast_core_cycle_timer_process(avr, 0);
-		} else
-			if(cpu_Sleeping == avr->state) {
-			if (avr->log)
-				AVR_LOG(avr, LOG_TRACE, "simavr: sleeping with interrupts off, quitting gracefully\n");
-			avr->state = cpu_Done;
-			return;
+		} else if(cpu_Sleeping == avr->state) {
+				if (avr->log)
+					AVR_LOG(avr, LOG_TRACE, "simavr: sleeping with interrupts off, quitting gracefully\n");
+				avr->state = cpu_Done;
+				return;
 		}
 	} else {
 /* slow(er) run with interrupt check */
@@ -5938,8 +6096,9 @@ void avr_fast_core_init(avr_t* avr)
 
 	uint32_t uflashsize = AVR_CORE_FLASH_UFLASH_SIZE_SHIFT(flashsize);
 
-	if(!_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS && _AVR_FAST_CORE_IO_DISPATCH_TABLES)
+	#if !defined(AVR_FAST_CORE_GLOBAL_FLASH_ACCESS) && defined(AVR_FAST_CORE_IO_DISPATCH_TABLES)
 		uflashsize += sizeof(_avr_fast_core_data_t);
+	#endif
 
 	avr->flash = realloc(avr->flash, flashsize + uflashsize);
 	assert(0 != avr->flash);
@@ -5958,8 +6117,9 @@ void avr_fast_core_init(avr_t* avr)
 	AVR_FAST_CORE_PROFILER_PROFILE_ISEQ_FLUSH(d5m8_16_sbrs);
 	AVR_FAST_CORE_PROFILER_PROFILE_ISEQ_FLUSH(d5m8_32_sbrs);
 
-	if(_AVR_FAST_CORE_GLOBAL_FLASH_ACCESS)
-		_avr_fast_core_uflash = &AVR_FAST_CORE_DATA_UFLASH_ADDR_AT(0);
+	#ifdef AVR_FAST_CORE_GLOBAL_FLASH_ACCESS
+		_avr_fast_core_uflash = AVR_CORE_FLASH_FAST_CORE_UFLASH;
+	#endif
 }
 
 avr_flashaddr_t avr_fast_core_run_one(avr_t *avr)
@@ -5980,4 +6140,5 @@ avr_flashaddr_t avr_fast_core_run_one(avr_t *avr)
 	return(new_pc);
 }
 
-#endif
+#endif /* #ifndef __SIM_FAST_CORE_C */
+

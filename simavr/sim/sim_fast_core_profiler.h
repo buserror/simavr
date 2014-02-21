@@ -19,10 +19,10 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//#define AVR_FAST_CORE_UINST_PROFILING
+//#define CONFIG_AVR_FAST_CORE_UINST_PROFILING
 
-#ifndef __AVR_FAST_CORE_PROFILER
-#define __AVR_FAST_CORE_PROFILER
+#ifndef __SIM_FAST_CORE_PROFILER_H
+#define __SIM_FAST_CORE_PROFILER_H
 
 #include <sys/time.h>
 
@@ -32,7 +32,10 @@ extern "C" {
 
 uint64_t avr_fast_core_profiler_dtime_calibrate(void);
 
-#if 1
+/* CONFIG_SIMAVR_FAST_CORE_DTIME_RDTSC
+ *	platform specific option, set in makefile if desired. */
+//#define CONFIG_SIMAVR_FAST_CORE_DTIME_RDTSC
+#ifdef CONFIG_SIMAVR_FAST_CORE_DTIME_RDTSC
 static inline uint64_t avr_fast_core_profiler_get_dtime(void) {
    	uint32_t hi, lo;
    	
@@ -59,7 +62,7 @@ static inline uint64_t avr_fast_core_profiler_get_dtime(void) {
 #endif
 
 
-#ifndef AVR_FAST_CORE_UINST_PROFILING
+#ifndef CONFIG_AVR_FAST_CORE_UINST_PROFILING
 
 
 #define AVR_FAST_CORE_PROFILER_INIT(_avr_fast_core_uinst_op_names)
@@ -84,8 +87,10 @@ static inline uint64_t avr_fast_core_profiler_get_dtime(void) {
 #define AVR_FAST_CORE_PROFILER_PROFILE_IPS() avr_fast_core_profiler_core_profile.ips.count++
 
 #define AVR_FAST_CORE_PROFILER_PROFILE_ISEQ(_iseq_opcode_op) { \
-	avr_fast_core_profiler_core_profile.iseq_profile[(avr_fast_core_profiler_core_profile.iseq_cache << 8) + _iseq_opcode_op]++; \
+	uint16_t _iseq_cache_op = (avr_fast_core_profiler_core_profile.iseq_cache << 8) + _iseq_opcode_op; \
+	avr_fast_core_profiler_core_profile.iseq_profile[_iseq_cache_op]++; \
 	avr_fast_core_profiler_core_profile.iseq_cache = _iseq_opcode_op; }
+	
 #define AVR_FAST_CORE_PROFILER_PROFILE_ISEQ_FLUSH(op) avr_fast_core_profiler_iseq_flush(_avr_fast_core_uinst_##op##_k)
 
 #define AVR_FAST_CORE_PROFILER_PROFILE(x, y) { \
@@ -95,8 +100,9 @@ static inline uint64_t avr_fast_core_profiler_get_dtime(void) {
 #define AVR_FAST_CORE_PROFILER_PROFILE_START(x) \
 	avr_fast_core_profiler_core_profile.x.count++; \
 	uint64_t start = avr_fast_core_profiler_get_dtime();
+	
 #define AVR_FAST_CORE_PROFILER_PROFILE_STOP(x) \
-	avr_fast_core_profiler_core_profile.x.elapsed += avr_fast_core_profiler_get_dtime() - start;
+	avr_fast_core_profiler_core_profile.x.elapsed += (avr_fast_core_profiler_get_dtime() - start);
 
 
 typedef struct avr_fast_core_profiler_profile_t * avr_fast_core_profiler_profile_p;
@@ -117,6 +123,7 @@ typedef struct avr_fast_core_profiler_core_profile_t {
 
 	avr_fast_core_profiler_profile_t isr;
 
+	/* io read */
 	avr_fast_core_profiler_profile_t ior;
 	avr_fast_core_profiler_profile_t ior_data;
 	avr_fast_core_profiler_profile_t ior_irq;
@@ -124,6 +131,7 @@ typedef struct avr_fast_core_profiler_core_profile_t {
 	avr_fast_core_profiler_profile_t ior_rc_irq;
 	avr_fast_core_profiler_profile_t ior_sreg;
 
+	/* io write */
 	avr_fast_core_profiler_profile_t iow;
 	avr_fast_core_profiler_profile_t iow_data;
 	avr_fast_core_profiler_profile_t iow_irq;
@@ -132,9 +140,11 @@ typedef struct avr_fast_core_profiler_core_profile_t {
 	avr_fast_core_profiler_profile_t iow_sreg;
 
 	avr_fast_core_profiler_profile_t timer;
-	
+
+	/* instructions per second */
 	avr_fast_core_profiler_profile_t ips;
 	
+	/* instruction sequence */
 	uint64_t iseq_profile[65536];
 	uint8_t iseq_flush[256];
 	uint8_t iseq_cache;
@@ -143,6 +153,7 @@ typedef struct avr_fast_core_profiler_core_profile_t {
 extern struct avr_fast_core_profiler_core_profile_t avr_fast_core_profiler_core_profile;
 
 void avr_fast_core_profiler_init(const char *uinst_op_names[256]);
+void avr_fast_core_profiler_generate_report(void);
 
 static inline void avr_fast_core_profiler_iseq_flush(uint8_t op) {
 	avr_fast_core_profiler_core_profile.iseq_flush[op] = 0;
@@ -152,6 +163,6 @@ static inline void avr_fast_core_profiler_iseq_flush(uint8_t op) {
 extern "C" {
 #endif
 
-#endif
-#endif
+#endif /* #ifdef CONFIG_AVR_FAST_CORE_UINST_PROFILING */
+#endif /* #ifNdef __SIM_FAST_CORE_PROFILER_H */
 
