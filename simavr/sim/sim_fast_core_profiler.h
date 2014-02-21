@@ -19,15 +19,21 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//#define FAST_CORE_UINST_PROFILING
+//#define AVR_FAST_CORE_UINST_PROFILING
+
+#ifndef __AVR_FAST_CORE_PROFILER
+#define __AVR_FAST_CORE_PROFILER
 
 #include <sys/time.h>
 
-#define KHz(hz) ((hz)*1000ULL)
-#define MHz(hz) KHz(KHz(hz))
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#if 0
-static inline uint64_t get_cycles(void) {
+uint64_t avr_fast_core_profiler_dtime_calibrate(void);
+
+#if 1
+static inline uint64_t avr_fast_core_profiler_get_dtime(void) {
    	uint32_t hi, lo;
    	
 	__asm__ __volatile__ ("xorl %%eax,%%edx" : : : "%eax", "%edx");
@@ -36,113 +42,116 @@ static inline uint64_t get_cycles(void) {
 	__asm__ __volatile__ ("xorl %%edx,%%eax" : : : "%eax", "%edx");
 	__asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
 	
-	return(((uint64_t)hi << 32)|(uint64_t)lo);
+	return(((uint64_t)hi << 32) | (uint64_t)lo);
 }
-static inline uint64_t get_dtime(void) { return(get_cycles()); }
 #else
-static inline uint64_t get_dtime(void) {
+static inline uint64_t avr_fast_core_profiler_get_dtime(void) {
 	struct timeval	t;
 	uint64_t	dsec;
 	uint64_t	dusec;
 
 	gettimeofday(&t, (struct timezone *)NULL);
-	dsec=MHz(KHz(t.tv_sec));
-	dusec=((uint64_t)t.tv_usec);
+	dsec = t.tv_sec * 1000ULL * 1000ULL;
+	dusec = ((uint64_t)t.tv_usec);
 
 	return(dsec + dusec);
 }
 #endif
 
-extern uint64_t calibrate_get_dtime_cycles(void);
-extern uint64_t calibrate_get_dtime(void);
-extern uint64_t calibrate(void);
 
-#ifndef FAST_CORE_UINST_PROFILING
-#define PROFILE_INIT()
-#define PROFILE(x,y) y
-#define PROFILE_START(x)
-#define PROFILE_STOP(x)
-#define PROFILE_IPS()
-#define PROFILE_ISEQ(u_opcode)
-#define PROFILE_ISEQ_FLUSH(name)
+#ifndef AVR_FAST_CORE_UINST_PROFILING
+
+
+#define AVR_FAST_CORE_PROFILER_INIT(_avr_fast_core_uinst_op_names)
+
+#define AVR_FAST_CORE_PROFILER_PROFILE(x,y) y
+
+#define AVR_FAST_CORE_PROFILER_PROFILE_START(x)
+#define AVR_FAST_CORE_PROFILER_PROFILE_STOP(x)
+
+#define AVR_FAST_CORE_PROFILER_PROFILE_IPS()
+
+#define AVR_FAST_CORE_PROFILER_PROFILE_ISEQ(u_opcode)
+#define AVR_FAST_CORE_PROFILER_PROFILE_ISEQ_FLUSH(name)
+
+
 #else
 
-typedef struct profile_t * profile_p;
-typedef struct profile_t {
+
+#define AVR_FAST_CORE_PROFILER_INIT(_avr_fast_core_uinst_op_names) \
+	avr_fast_core_profiler_init(_avr_fast_core_uinst_op_names)
+
+#define AVR_FAST_CORE_PROFILER_PROFILE_IPS() avr_fast_core_profiler_core_profile.ips.count++
+
+#define AVR_FAST_CORE_PROFILER_PROFILE_ISEQ(_iseq_opcode_op) { \
+	avr_fast_core_profiler_core_profile.iseq_profile[(avr_fast_core_profiler_core_profile.iseq_cache << 8) + _iseq_opcode_op]++; \
+	avr_fast_core_profiler_core_profile.iseq_cache = _iseq_opcode_op; }
+#define AVR_FAST_CORE_PROFILER_PROFILE_ISEQ_FLUSH(op) avr_fast_core_profiler_iseq_flush(_avr_fast_core_uinst_##op##_k)
+
+#define AVR_FAST_CORE_PROFILER_PROFILE(x, y) { \
+	AVR_FAST_CORE_PROFILER_PROFILE_START(x); \
+	y; AVR_FAST_CORE_PROFILER_PROFILE_STOP(x); }
+
+#define AVR_FAST_CORE_PROFILER_PROFILE_START(x) \
+	avr_fast_core_profiler_core_profile.x.count++; \
+	uint64_t start = avr_fast_core_profiler_get_dtime();
+#define AVR_FAST_CORE_PROFILER_PROFILE_STOP(x) \
+	avr_fast_core_profiler_core_profile.x.elapsed += avr_fast_core_profiler_get_dtime() - start;
+
+
+typedef struct avr_fast_core_profiler_profile_t * avr_fast_core_profiler_profile_p;
+typedef struct avr_fast_core_profiler_profile_t {
 	const char * name;
 	uint64_t count;
 	uint64_t elapsed;
 	double average;
 	double percentage;
-}profile_t;
+}avr_fast_core_profiler_profile_t;
 
-typedef struct core_profile_t * core_profile_p;
-typedef struct core_profile_t {
-	profile_t uinst[256];
+typedef struct avr_fast_core_profiler_core_profile_t * avr_fast_core_profiler_core_profile_p;
+typedef struct avr_fast_core_profiler_core_profile_t {
+	avr_fast_core_profiler_profile_t uinst[256];
 
-	profile_t core_loop;
-	profile_t uinst_total;
+	avr_fast_core_profiler_profile_t core_loop;
+	avr_fast_core_profiler_profile_t uinst_total;
 
-	profile_t isr;
+	avr_fast_core_profiler_profile_t isr;
 
-	profile_t ior;
-	profile_t ior_data;
-	profile_t ior_irq;
-	profile_t ior_rc;
-	profile_t ior_rc_irq;
-	profile_t ior_sreg;
+	avr_fast_core_profiler_profile_t ior;
+	avr_fast_core_profiler_profile_t ior_data;
+	avr_fast_core_profiler_profile_t ior_irq;
+	avr_fast_core_profiler_profile_t ior_rc;
+	avr_fast_core_profiler_profile_t ior_rc_irq;
+	avr_fast_core_profiler_profile_t ior_sreg;
 
-	profile_t iow;
-	profile_t iow_data;
-	profile_t iow_irq;
-	profile_t iow_wc;
-	profile_t iow_wc_irq;
-	profile_t iow_sreg;
+	avr_fast_core_profiler_profile_t iow;
+	avr_fast_core_profiler_profile_t iow_data;
+	avr_fast_core_profiler_profile_t iow_irq;
+	avr_fast_core_profiler_profile_t iow_wc;
+	avr_fast_core_profiler_profile_t iow_wc_irq;
+	avr_fast_core_profiler_profile_t iow_sreg;
 
-	profile_t timer;
+	avr_fast_core_profiler_profile_t timer;
 	
-	profile_t ips;
+	avr_fast_core_profiler_profile_t ips;
 	
 	uint64_t iseq_profile[65536];
 	uint8_t iseq_flush[256];
 	uint8_t iseq_cache;
-}core_profile_t;
+}avr_fast_core_profiler_core_profile_t;
 
-extern core_profile_t core_profile;
-extern const char *uinst_op_profile_names[256];
+extern struct avr_fast_core_profiler_core_profile_t avr_fast_core_profiler_core_profile;
 
-#define PROFILE_START(x) \
-	core_profile.x.count++; \
-	uint64_t start = get_dtime();
-#define PROFILE_STOP(x) \
-	core_profile.x.elapsed += get_dtime() - start;
+void avr_fast_core_profiler_init(const char *uinst_op_names[256]);
 
-#define PROFILE(x, y) { \
-	PROFILE_START(x); \
-	y; PROFILE_STOP(x); }
-
-extern void fast_core_profiler_init(void);
-#define PROFILE_INIT() fast_core_profiler_init()
-
-#define PROFILE_IPS() core_profile.ips.count++
-
-#define PROFILE_ISEQ() { \
-	UINST_GET_OP(u_opcode_op, u_opcode); \
-	core_profile.iseq_profile[(core_profile.iseq_cache << 8) + u_opcode_op]++; \
-	core_profile.iseq_cache = u_opcode_op; }
-
-static inline void fast_core_profiler_iseq_flush(uint8_t op) {
-	core_profile.iseq_flush[op] = 0;
+static inline void avr_fast_core_profiler_iseq_flush(uint8_t op) {
+	avr_fast_core_profiler_core_profile.iseq_flush[op] = 0;
 }
 
-#define PROFILE_ISEQ_FLUSH(op) fast_core_profiler_iseq_flush(k_avr_uinst_##op)
-
-#define AVERAGE(x) ((double)core_profile.x.elapsed/(double)core_profile.x.count)
-
-#define PERCENTAGE(x, y) (((double)core_profile.x.elapsed/(double)core_profile.y.elapsed)*100.0)
-
-#define MAXixy(x, y, ix, iy) ((x > y) ? ix : iy)
-#define MINixy(x, y, ix, iy) ((x < y) ? ix : iy)
-
-extern void fast_core_profiler_init(void);
+#ifdef __cplusplus
+extern "C" {
 #endif
+
+#endif
+#endif
+

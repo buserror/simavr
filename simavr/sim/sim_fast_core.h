@@ -20,8 +20,8 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern void avr_fast_core_init(avr_t * avr);
-extern void avr_fast_core_run_many(avr_t * avr);
+void avr_fast_core_init(avr_t * avr);
+void avr_fast_core_run_many(avr_t * avr);
 
-extern avr_flashaddr_t avr_fast_core_run_one(avr_t * avr);
+avr_flashaddr_t avr_fast_core_run_one(avr_t * avr);
 

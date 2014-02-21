@@ -25,32 +25,35 @@
 
 #include "sim_fast_core_profiler.h"
 
-extern uint64_t calibrate_get_dtime_cycles(void) {
+#define KHz(hz) ((hz)*1000ULL)
+#define MHz(hz) KHz(KHz(hz))
+
+static uint64_t _avr_fast_core_profiler_calibrate_get_dtime_loop(void) {
    	uint64_t start, elapsedTime;
 
-	start = get_dtime();
-	elapsedTime = get_dtime() - start;
+	start = avr_fast_core_profiler_get_dtime();
+	elapsedTime = avr_fast_core_profiler_get_dtime() - start;
 
 	int i;
 	for(i=2; i<=1024; i++) {
-		start = get_dtime();
-		elapsedTime += get_dtime() - start;
+		start = avr_fast_core_profiler_get_dtime();
+		elapsedTime += avr_fast_core_profiler_get_dtime() - start;
 	}
 		
 	return(elapsedTime / i);
 	
 }
 
-extern uint64_t calibrate_get_dtime(void) {
-   	uint64_t start = get_dtime();
+static uint64_t _avr_fast_core_profiler_calibrate_get_dtime_sleep(void) {
+   	uint64_t start = avr_fast_core_profiler_get_dtime();
 	
 	sleep(1);
 		
-	return(get_dtime() - start);
+	return(avr_fast_core_profiler_get_dtime() - start);
 }
 
-extern uint64_t calibrate(void) {
-	uint64_t cycleTime = calibrate_get_dtime_cycles();
+extern uint64_t avr_fast_core_profiler_dtime_calibrate(void) {
+	uint64_t cycleTime = _avr_fast_core_profiler_calibrate_get_dtime_loop();
 	uint64_t elapsedTime, ecdt;
 	double emhz;
 
@@ -59,7 +62,7 @@ extern uint64_t calibrate(void) {
 	elapsedTime = 0;
 
 	for(int i = 1; i <= 3; i++) {
-		elapsedTime += calibrate_get_dtime() - cycleTime;
+		elapsedTime += _avr_fast_core_profiler_calibrate_get_dtime_sleep() - cycleTime;
 
 		ecdt = elapsedTime / i;
 		emhz = ecdt / MHz(1);
@@ -68,12 +71,21 @@ extern uint64_t calibrate(void) {
 	return(ecdt);
 }
 
-#ifdef FAST_CORE_UINST_PROFILING
+#ifdef AVR_FAST_CORE_UINST_PROFILING
 
-extern void fast_core_profiler_generate_report(void) {
-	profile_p sorted_list0[256];
-	profile_p sorted_list1[256];
-	
+#define AVERAGE(x) ((double)avr_fast_core_profiler_core_profile.x.elapsed/(double)avr_fast_core_profiler_core_profile.x.count)
+
+#define PERCENTAGE(x, y) (((double)avr_fast_core_profiler_core_profile.x.elapsed/(double)avr_fast_core_profiler_core_profile.y.elapsed)*100.0)
+
+#define MAXixy(x, y, ix, iy) ((x > y) ? ix : iy)
+#define MINixy(x, y, ix, iy) ((x < y) ? ix : iy)
+
+struct avr_fast_core_profiler_core_profile_t avr_fast_core_profiler_core_profile;
+
+extern void avr_fast_core_profiler_generate_report(void) {
+	avr_fast_core_profiler_profile_p sorted_list0[256];
+	avr_fast_core_profiler_profile_p sorted_list1[256];
+	avr_fast_core_profiler_core_profile_p core_profile = &avr_fast_core_profiler_core_profile;
 
 	printf("\n\n>> fast core profile report\n");
 	printf(">> raw profile list\n");
@@ -81,11 +93,11 @@ extern void fast_core_profiler_generate_report(void) {
 	for(int i = 0; i < 256; i++) {
 		sorted_list0[i] = 0;
 		
-		profile_p uopd = &core_profile.uinst[i];
+		avr_fast_core_profiler_profile_p uopd = &core_profile->uinst[i];
 				
 		if(uopd && uopd->name && uopd->count) {
-			core_profile.uinst_total.count += uopd->count;
-			core_profile.uinst_total.elapsed += uopd->elapsed;
+			core_profile->uinst_total.count += uopd->count;
+			core_profile->uinst_total.elapsed += uopd->elapsed;
 			
 			uopd->average = (double)uopd->elapsed/(double)uopd->count;
 			printf("name: %46s -- count: %012llu, elapsed: %016llu, avg: %012.4f\n", 
@@ -106,7 +118,7 @@ extern void fast_core_profiler_generate_report(void) {
 	printf("\n\n>> instructions not called\n");
 	
 	for(int i = 0; i < 256; i++) {
-		profile_p uopd = &core_profile.uinst[i];
+		avr_fast_core_profiler_profile_p uopd = &core_profile->uinst[i];
 
 		if(uopd && uopd->name) {
 			if(!uopd->count)
@@ -121,7 +133,7 @@ extern void fast_core_profiler_generate_report(void) {
 	
 	for(int i = 0; i < 256; i++) {
 		sorted_list1[i] = 0;
-		profile_p uopd = sorted_list0[i];
+		avr_fast_core_profiler_profile_p uopd = sorted_list0[i];
 		if(uopd && uopd->name && uopd->count) {
 			printf("name: %46s -- count: %012llu, elapsed: %016llu, avg: %012.4f, pctg: %%%08.4f\n", 
 				uopd->name, uopd->count, uopd->elapsed, uopd->average, uopd->percentage);
@@ -142,7 +154,7 @@ extern void fast_core_profiler_generate_report(void) {
 	
 	for(int i = 0; i < 256; i++) {
 		sorted_list0[i] = 0;
-		profile_p uopd = sorted_list1[i];
+		avr_fast_core_profiler_profile_p uopd = sorted_list1[i];
 		if(uopd && uopd->name && uopd->count) {
 			printf("name: %46s -- count: %012llu, elapsed: %016llu, avg: %012.4f, pctg: %%%08.4f\n", 
 				uopd->name, uopd->count, uopd->elapsed, uopd->average, uopd->percentage);
@@ -162,7 +174,7 @@ extern void fast_core_profiler_generate_report(void) {
 	printf("\n\n>> sorted by percentage impact\n");
 	
 	for(int i = 0; i < 256; i++) {
-		profile_p uopd = sorted_list0[i];
+		avr_fast_core_profiler_profile_p uopd = sorted_list0[i];
 		if(uopd && uopd->name && uopd->count) {
 			printf("name: %46s -- count: %012llu, elapsed: %016llu, avg: %012.4f, pctg: %%%08.4f\n", 
 				uopd->name, uopd->count, uopd->elapsed, uopd->average, uopd->percentage);
@@ -175,90 +187,90 @@ extern void fast_core_profiler_generate_report(void) {
 	const char *status_line = "%32s -- cycles: %016llu count: %016llu average: %012.4f\n";
 	const char *percentage_status_line = "%32s -- cycles: %016llu count: %016llu average: %012.4f %%%09.4f\n";
 
-	printf(status_line, "core loop", core_profile.core_loop.elapsed, core_profile.core_loop.count, AVERAGE(core_loop));
-	printf(percentage_status_line, "instruction <<", core_profile.uinst_total.elapsed,  core_profile.uinst_total.count,
+	printf(status_line, "core loop", core_profile->core_loop.elapsed, core_profile->core_loop.count, AVERAGE(core_loop));
+	printf(percentage_status_line, "instruction <<", core_profile->uinst_total.elapsed,  core_profile->uinst_total.count,
 		AVERAGE(uinst_total), PERCENTAGE(uinst_total, core_loop));
-	printf(percentage_status_line, "isr <<", core_profile.isr.elapsed, core_profile.isr.count,
+	printf(percentage_status_line, "isr <<", core_profile->isr.elapsed, core_profile->isr.count,
 		AVERAGE(isr), PERCENTAGE(isr, core_loop));
-	printf(percentage_status_line, "timer <<", core_profile.timer.elapsed, core_profile.timer.count,
+	printf(percentage_status_line, "timer <<", core_profile->timer.elapsed, core_profile->timer.count,
 		AVERAGE(timer), PERCENTAGE(timer, core_loop));
 
 	printf("\n");
 
-	printf(status_line, "instruction", core_profile.uinst_total.elapsed,  core_profile.uinst_total.count,
+	printf(status_line, "instruction", core_profile->uinst_total.elapsed,  core_profile->uinst_total.count,
 		AVERAGE(uinst_total));
-	printf(percentage_status_line, "io write <<", core_profile.iow.elapsed, core_profile.iow.count,
+	printf(percentage_status_line, "io write <<", core_profile->iow.elapsed, core_profile->iow.count,
 		AVERAGE(iow), PERCENTAGE(iow, uinst_total));
-	printf(percentage_status_line, "io read <<", core_profile.ior.elapsed, core_profile.ior.count,
+	printf(percentage_status_line, "io read <<", core_profile->ior.elapsed, core_profile->ior.count,
 		AVERAGE(ior), PERCENTAGE(ior, uinst_total));
 		
 	printf("\n");
 
-	printf(status_line, "io read", core_profile.ior.elapsed, core_profile.ior.count,
+	printf(status_line, "io read", core_profile->ior.elapsed, core_profile->ior.count,
 		AVERAGE(ior));
-	if(core_profile.ior_rc.count) {
+	if(core_profile->ior_rc.count) {
 		printf(percentage_status_line, "callback no irq <<",
-			core_profile.ior_rc.elapsed, core_profile.ior_rc.count,
+			core_profile->ior_rc.elapsed, core_profile->ior_rc.count,
 			AVERAGE(ior_rc), PERCENTAGE(ior_rc, ior));
 	}
-	if(core_profile.ior_rc_irq.count) {
+	if(core_profile->ior_rc_irq.count) {
 		printf(percentage_status_line, "callback and irq <<",
-			core_profile.ior_rc_irq.elapsed, core_profile.ior_rc_irq.count,
+			core_profile->ior_rc_irq.elapsed, core_profile->ior_rc_irq.count,
 			AVERAGE(ior_rc_irq), PERCENTAGE(ior_rc_irq, ior));
 	}
-	if(core_profile.ior_data.count) {
+	if(core_profile->ior_data.count) {
 		printf(percentage_status_line, "data <<",
-			core_profile.ior_data.elapsed, core_profile.ior_data.count,
+			core_profile->ior_data.elapsed, core_profile->ior_data.count,
 			AVERAGE(ior_data), PERCENTAGE(ior_data, ior));
 	}
-	if(core_profile.ior_irq.count) {
+	if(core_profile->ior_irq.count) {
 		printf(percentage_status_line, "irq <<",
-			core_profile.ior_irq.elapsed, core_profile.ior_irq.count,
+			core_profile->ior_irq.elapsed, core_profile->ior_irq.count,
 			AVERAGE(ior_irq), PERCENTAGE(ior_irq, ior));
 	}
-	if(core_profile.ior_sreg.count) {
+	if(core_profile->ior_sreg.count) {
 		printf(percentage_status_line, "sreg <<",
-			core_profile.ior_sreg.elapsed, core_profile.ior_sreg.count,
+			core_profile->ior_sreg.elapsed, core_profile->ior_sreg.count,
 			AVERAGE(ior_sreg), PERCENTAGE(ior_sreg, ior));
 	}
 
 	printf("\n");
 
-	printf(status_line, "io write", core_profile.iow.elapsed, core_profile.iow.count,
+	printf(status_line, "io write", core_profile->iow.elapsed, core_profile->iow.count,
 		AVERAGE(iow));
-	if(core_profile.iow_wc.count) {
+	if(core_profile->iow_wc.count) {
 		printf(percentage_status_line, "callback no irq <<",
-			core_profile.iow_wc.elapsed, core_profile.iow_wc.count,
+			core_profile->iow_wc.elapsed, core_profile->iow_wc.count,
 			AVERAGE(iow_wc), PERCENTAGE(iow_wc, iow));
 	}
-	if(core_profile.iow_wc_irq.count) {
+	if(core_profile->iow_wc_irq.count) {
 		printf(percentage_status_line, "callback and irq <<",
-			core_profile.iow_wc_irq.elapsed, core_profile.iow_wc_irq.count,
+			core_profile->iow_wc_irq.elapsed, core_profile->iow_wc_irq.count,
 			AVERAGE(iow_wc_irq), PERCENTAGE(iow_wc_irq, iow));
 	}
-	if(core_profile.iow_data.count) {
+	if(core_profile->iow_data.count) {
 		printf(percentage_status_line, "data <<",
-			core_profile.iow_data.elapsed, core_profile.iow_data.count,
+			core_profile->iow_data.elapsed, core_profile->iow_data.count,
 			AVERAGE(iow_data), PERCENTAGE(iow_data, iow));
 	}
-	if(core_profile.iow_irq.count) {
+	if(core_profile->iow_irq.count) {
 		printf(percentage_status_line, "irq <<",
-			core_profile.iow_irq.elapsed, core_profile.iow_irq.count,
+			core_profile->iow_irq.elapsed, core_profile->iow_irq.count,
 			AVERAGE(iow_irq), PERCENTAGE(iow_irq, iow));
 	}
-	if(core_profile.iow_sreg.count) {
+	if(core_profile->iow_sreg.count) {
 		printf(percentage_status_line, "sreg <<",
-			core_profile.iow_sreg.elapsed, core_profile.iow_sreg.count,
+			core_profile->iow_sreg.elapsed, core_profile->iow_sreg.count,
 			AVERAGE(iow_sreg), PERCENTAGE(iow_sreg, iow));
 	}
 
 	printf("\n\n>> top instruction sequence combinations\n");
 
 	for(int x = 0; x < 256; x++) {
-		if(0 == core_profile.iseq_flush[x]) {
+		if(0 == core_profile->iseq_flush[x]) {
 			int ix = x << 8;
 			for(int  y = 0; y < 256; y++) {
-				core_profile.iseq_profile[ix++] = 0;
+				core_profile->iseq_profile[ix++] = 0;
 			}
 		}
 	}	
@@ -266,30 +278,32 @@ extern void fast_core_profiler_generate_report(void) {
 	for(int  i = 0; i<50; i++) {
 		int maxiy = 0;
 		for(int  ix = 0; ix < 65536; ix++) {
-			maxiy = MAXixy(core_profile.iseq_profile[ix], core_profile.iseq_profile[maxiy], ix, maxiy);
+			maxiy = MAXixy(core_profile->iseq_profile[ix], core_profile->iseq_profile[maxiy], ix, maxiy);
 		}
 		
-		profile_t *from = &core_profile.uinst[maxiy >> 8];
-		profile_t *tooo = &core_profile.uinst[maxiy & 0xff];
-		printf("%32s -- %32s count: 0x%016llu %04x\n", from->name, tooo->name, core_profile.iseq_profile[maxiy], maxiy);
-		core_profile.iseq_profile[maxiy] = 0;
+		avr_fast_core_profiler_profile_t *from = &core_profile->uinst[maxiy >> 8];
+		avr_fast_core_profiler_profile_t *tooo = &core_profile->uinst[maxiy & 0xff];
+		printf("%32s -- %32s count: 0x%016llu %04x\n", from->name, tooo->name, core_profile->iseq_profile[maxiy], maxiy);
+		core_profile->iseq_profile[maxiy] = 0;
 	}
 }
 
 #define CLEAR_PROFILE_DATA(x) \
-	core_profile.x.count = 0; \
-	core_profile.x.elapsed = 0; \
-	core_profile.x.average =0; \
-	core_profile.x.percentage =0; \
+	core_profile->x.count = 0; \
+	core_profile->x.elapsed = 0; \
+	core_profile->x.average =0; \
+	core_profile->x.percentage =0; \
 
-extern void fast_core_profiler_init(void) {
+extern void avr_fast_core_profiler_init(const char *uinst_op_names[256]) {
+	avr_fast_core_profiler_core_profile_p core_profile = &avr_fast_core_profiler_core_profile;
+
 	for(int i=0; i<256 ;i++) {
-		core_profile.uinst[i].name = uinst_op_profile_names[i];
+		core_profile->uinst[i].name = uinst_op_names[i];
 		CLEAR_PROFILE_DATA(uinst[i]);
 	}
 	
 	for(int i = 0; i < (256 >> 3); i++)
-		core_profile.iseq_flush[i] = 1;
+		core_profile->iseq_flush[i] = 1;
 	
 	CLEAR_PROFILE_DATA(core_loop);
 	
