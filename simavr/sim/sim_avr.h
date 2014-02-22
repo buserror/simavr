@@ -398,7 +398,7 @@ avr_global_logger_set(
 		avr_logger_p logger);
 /* Gets the current global logger function */
 avr_logger_p
-avr_global_logger_get();
+avr_global_logger_get(void);
 #endif
 
 /*
