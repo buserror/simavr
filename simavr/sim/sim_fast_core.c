@@ -78,6 +78,7 @@
 #define AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 static const int _AVR_FAST_CORE_COMBINING = 1;
 static const int _AVR_FAST_CORE_COMPLEX = 1;
+#define AVR_FAST_CORE_COMMON_DATA
 static const int _AVR_FAST_CORE_CPI_BRXX = 1;
 #define AVR_FAST_CORE_CPI_BRXX_COMMON_BRANCH_CODE
 #define AVR_FAST_CORE_IO_DISPATCH_TABLES
@@ -262,7 +263,7 @@ typedef void (*_avr_fast_core_io_write_fn_t)(avr_t *avr, int_fast32_t *count, ui
 
 #endif
 
-#define CYCLES(x) { if(1==(x)) { avr->cycle++; (*count)--; } else { avr->cycle += (x); (*count) -= (x); }}
+#define CYCLES(x) { if(1 == (x)) { avr->cycle++; (*count)--; } else { avr->cycle += (x); (*count) -= (x); }}
 
 #ifdef AVR_FAST_CORE_BRANCH_HINTS
 #define likely(x) __builtin_expect(!!(x),1)
@@ -1731,20 +1732,56 @@ static inline uint_fast32_t _avr_fast_core_flash_uflash_read_0(avr_t* avr, avr_f
 #define AVR_FAST_CORE_UINST_DEFN_vIO(io) \
 	uint_fast8_t v##io = _avr_fast_core_reg_io_read(avr, count, io)
 
-#define AVR_FAST_CORE_UINST_DEFN_vR(rx) \
+#define AVR_FAST_CORE_UINST_DEFN_Rv(rx) \
 	uint_fast8_t v##rx = _avr_fast_core_fetch_r(avr, rx)
 
-#define AVR_FAST_CORE_UINST_DEFN_vRrmw(rx) \
-	avr_rmw_t rmw_##rx; uint_fast8_t v##rx = _avr_fast_core_rmw_fetch_r(avr, rx, &rmw_##rx); \
+#ifdef AVR_FAST_CORE_COMMON_DATA
+#define AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv(rx) \
+	uint_fast8_t v##rx = data[rx]
+#else
+#define AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv(rx) \
+	AVR_FAST_CORE_UINST_DEFN_Rv(rx)
+#endif
 
-#define AVR_FAST_CORE_UINST_DEFN_v16R(rx) \
-	uint_fast8_t v##rx = _avr_fast_core_fetch_r16(avr, rx)
+#define AVR_FAST_CORE_UINST_DEFN_rmwRv(rx) \
+	avr_rmw_t rmw_##rx; \
+	uint_fast8_t v##rx = _avr_fast_core_rmw_fetch_r(avr, rx, &rmw_##rx);
 
-#define AVR_FAST_CORE_UINST_DEFN_v16leR(rx) \
+#ifdef AVR_FAST_CORE_COMMON_DATA
+#define AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_rmwRv(rx) \
+	avr_rmw_t rmw_##rx; \
+	uint_fast8_t v##rx = _avr_fast_core_rmw8_ptr_set_fetch(&rmw_##rx, &data[rx]);
+#else
+#define AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_rmwRv(rx) \
+	AVR_FAST_CORE_UINST_DEFN_rmwRv(rx)
+#endif
+
+#define AVR_FAST_CORE_UINST_DEFN_Rv16(rx) \
+	uint_fast16_t v##rx = _avr_fast_core_fetch_r16(avr, rx)
+
+#define AVR_FAST_CORE_UINST_DEFN_Rv16le(rx) \
 	uint_fast16_t v##rx = _avr_fast_core_fetch_r16le(avr, rx)
 
-#define AVR_FAST_CORE_UINST_DEFN_v16leRrmw(rx) \
-	avr_rmw_t rmw_##rx; uint_fast16_t v##rx = _avr_fast_core_rmw_fetch_r16le(avr, rx, &rmw_##rx); \
+#ifdef AVR_FAST_CORE_COMMON_DATA
+#define AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv16le(rx) \
+	uint_fast16_t v##rx = _avr_bswap16le(*((uint16_t *)&data[rx]))
+#else
+#define AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv16le(rx) \
+	AVR_FAST_CORE_UINST_DEFN_Rv16le(rx)
+#endif
+
+#define AVR_FAST_CORE_UINST_DEFN_rmwRv16le(rx) \
+	avr_rmw_t rmw_##rx; \
+	uint_fast16_t v##rx = _avr_fast_core_rmw_fetch_r16le(avr, rx, &rmw_##rx);
+
+#ifdef AVR_FAST_CORE_COMMON_DATA
+#define AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_rmwRv16le(rx) \
+	avr_rmw_t rmw_##rx = (avr_rmw_p)&data[rx]; \
+	uint_fast16_t v##rx = _avr_bswap16le(_avr_fast_core_rmw16_ptr_set_fetch(&rmw_##rx, (uint16_t *)&data[rx]));
+#else
+#define AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_rmwRv16le(rx) \
+	AVR_FAST_CORE_UINST_DEFN_rmwRv16le(rx)
+#endif
 
 #define AVR_FAST_CORE_RMW_STORE_R(r0, data) \
 	_avr_fast_core_rmw_store(&rmw_##r0, data)
@@ -1789,143 +1826,187 @@ static inline uint_fast32_t _avr_fast_core_flash_uflash_read_0(avr_t* avr, avr_f
 	AVR_FAST_CORE_UINST_DEFN_R3(xu_opcode, r3)
 
 
-#define AVR_FAST_CORE_UINST_DEFN_vR1(xu_opcode, r1) \
+#define AVR_FAST_CORE_UINST_DEFN_R1v(xu_opcode, r1) \
 	AVR_FAST_CORE_UINST_DEFN_R1(xu_opcode, r1); \
-	AVR_FAST_CORE_UINST_DEFN_vR(r1)
+	AVR_FAST_CORE_UINST_DEFN_Rv(r1)
 
-#define AVR_FAST_CORE_UINST_DEFN_vR2(xu_opcode, r2) \
+#define AVR_FAST_CORE_UINST_DEFN_R2v(xu_opcode, r2) \
 	AVR_FAST_CORE_UINST_DEFN_R2(xu_opcode, r2); \
-	AVR_FAST_CORE_UINST_DEFN_vR(r2)
+	AVR_FAST_CORE_UINST_DEFN_Rv(r2)
 
 
-#define AVR_FAST_CORE_UINST_DEFN_vR1_16R2(xu_opcode, r1, r2) \
-	AVR_FAST_CORE_UINST_DEFN_vR1(xu_opcode, r1); \
+#define AVR_FAST_CORE_UINST_DEFN_R1v_16R2(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_DEFN_R1v(xu_opcode, r1); \
 	AVR_FAST_CORE_UINST_DEFN_16R2(xu_opcode, r2)
 
-#define AVR_FAST_CORE_UINST_DEFN_vR1_R2(xu_opcode, r1, r2) \
+#define AVR_FAST_CORE_UINST_DEFN_R1v_R2(xu_opcode, r1, r2) \
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_vR(r1)
+	AVR_FAST_CORE_UINST_DEFN_Rv(r1)
 
+#ifdef AVR_FAST_CORE_COMMON_DATA
+#define AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_R1v_R2(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_DEFN_R1_R2(xu_opcode, r1, r2); \
+	uint8_t *data = avr->data; \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv(r1)
+#else
+#define AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_R1v_R2(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_DEFN_R1_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv(r1)
+#endif
 
-#define AVR_FAST_CORE_UINST_DEFN_vR1_vR2(xu_opcode, r1, r2) \
-	AVR_FAST_CORE_UINST_DEFN_vR1_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_vR(r2)
+#define AVR_FAST_CORE_UINST_DEFN_R1v_R2v(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_R1v_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv(r2)
 
-#define AVR_FAST_CORE_UINST_DEFN_vR1_vR2_R3(xu_opcode, r1, r2, r3) \
-	AVR_FAST_CORE_UINST_DEFN_vR1_vR2(xu_opcode, r1, r2); \
+#define AVR_FAST_CORE_UINST_DEFN_R1v_R2v_R3(xu_opcode, r1, r2, r3) \
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2v(xu_opcode, r1, r2); \
 	AVR_FAST_CORE_UINST_DEFN_R3(xu_opcode, r3)
 
-#define AVR_FAST_CORE_UINST_DEFN_vR1_vR2_vR3(xu_opcode, r1, r2, r3) \
-	AVR_FAST_CORE_UINST_DEFN_vR1_vR2_R3(xu_opcode, r1, r2, r3); \
-	AVR_FAST_CORE_UINST_DEFN_vR(r3)
+#define AVR_FAST_CORE_UINST_DEFN_R1v_R2v_R3v(xu_opcode, r1, r2, r3) \
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2v_R3(xu_opcode, r1, r2, r3); \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv(r3)
 
-#define AVR_FAST_CORE_UINST_DEFN_vR1_v16leR2(xu_opcode, r1, r2) \
-	AVR_FAST_CORE_UINST_DEFN_vR1_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_v16leR(r2)
+#define AVR_FAST_CORE_UINST_DEFN_R1v_R2v16le(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_R1v_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv16le(r2)
 
-#define AVR_FAST_CORE_UINST_DEFN_vR1_v16leR2_R3(xu_opcode, r1, r2, r3) \
-	AVR_FAST_CORE_UINST_DEFN_vR1_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_v16leR(r2); \
+
+#define AVR_FAST_CORE_UINST_DEFN_R1v_R2v16le_R3(xu_opcode, r1, r2, r3) \
+	AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_R1v_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv16le(r2); \
 	AVR_FAST_CORE_UINST_DEFN_R3(xu_opcode, r3)
 
-#define AVR_FAST_CORE_UINST_DEFN_vR1_v16leR2rmw(xu_opcode, r1, r2) \
-	AVR_FAST_CORE_UINST_DEFN_vR1_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_v16leRrmw(r2)
+#define AVR_FAST_CORE_UINST_DEFN_R1v_rmwR2v16le(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_R1v_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_rmwRv16le(r2)
 
-
-#define AVR_FAST_CORE_UINST_DEFN_vR1rmw(xu_opcode, r1) \
+#define AVR_FAST_CORE_UINST_DEFN_rmwR1v(xu_opcode, r1) \
 	AVR_FAST_CORE_UINST_DEFN_R1(xu_opcode, r1); \
-	AVR_FAST_CORE_UINST_DEFN_vRrmw(r1)
+	AVR_FAST_CORE_UINST_DEFN_rmwRv(r1)
 
-#define AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(xu_opcode, r1, r2) \
+#ifdef AVR_FAST_CORE_COMMON_DATA
+#define AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_rmwR1v_R2(xu_opcode, r1, r2) \
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_vRrmw(r1)
+	uint8_t *data = avr->data; \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_rmwRv(r1)
+#else
+#define AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_rmwR1v_R2(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_DEFN_R1_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_rmwRv(r1)
+#endif
 
-#define AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2_R3(xu_opcode, r1, r2, r3) \
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(xu_opcode, r1, r2); \
+#define AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_DEFN_R1_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_rmwRv(r1)
+
+#define AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2_R3(xu_opcode, r1, r2, r3) \
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2(xu_opcode, r1, r2); \
 	AVR_FAST_CORE_UINST_DEFN_R3(xu_opcode, r3)
 
 
-#define AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(xu_opcode, r1, r2) \
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_vR(r2)
+#define AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2v(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_rmwR1v_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv(r2)
 
-#define AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2_R3(xu_opcode, r1, r2, r3) \
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(xu_opcode, r1, r2); \
+#define AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2v_R3(xu_opcode, r1, r2, r3) \
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2v(xu_opcode, r1, r2); \
 	AVR_FAST_CORE_UINST_DEFN_R3(xu_opcode, r3)
 
 
 #define AVR_FAST_CORE_UINST_DEFN_v16R1_16R2(xu_opcode, r1, r2) \
 	AVR_FAST_CORE_UINST_DEFN_R1(xu_opcode, r1); \
-	AVR_FAST_CORE_UINST_DEFN_v16R(r1); \
+	AVR_FAST_CORE_UINST_DEFN_Rv16(r1); \
 	AVR_FAST_CORE_UINST_DEFN_16R2(xu_opcode, r2)
 
-#define AVR_FAST_CORE_UINST_DEFN_v16leR1(xu_opcode, r1) \
+#define AVR_FAST_CORE_UINST_DEFN_R1v16le(xu_opcode, r1) \
 	AVR_FAST_CORE_UINST_DEFN_R1(xu_opcode, r1); \
-	AVR_FAST_CORE_UINST_DEFN_v16leR(r1)
+	AVR_FAST_CORE_UINST_DEFN_Rv16le(r1)
 
-#define AVR_FAST_CORE_UINST_DEFN_v16leR2(xu_opcode, r2) \
+#define AVR_FAST_CORE_UINST_DEFN_R2v16le(xu_opcode, r2) \
 	AVR_FAST_CORE_UINST_DEFN_R2(xu_opcode, r2); \
-	AVR_FAST_CORE_UINST_DEFN_v16leR(r2)
+	AVR_FAST_CORE_UINST_DEFN_Rv16le(r2)
 
 
-#define AVR_FAST_CORE_UINST_DEFN_v16leR1rmw(xu_opcode, r1) \
+#define AVR_FAST_CORE_UINST_DEFN_rmwR1v16le(xu_opcode, r1) \
 	AVR_FAST_CORE_UINST_DEFN_R1(xu_opcode, r1); \
-	AVR_FAST_CORE_UINST_DEFN_v16leRrmw(r1)
+	AVR_FAST_CORE_UINST_DEFN_rmwRv16le(r1)
 
-#define AVR_FAST_CORE_UINST_DEFN_v16leR1_16R2(xu_opcode, r1, r2) \
-	AVR_FAST_CORE_UINST_DEFN_v16leR1(xu_opcode, r1); \
+#define AVR_FAST_CORE_UINST_DEFN_R1v16le_16R2(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_DEFN_R1v16le(xu_opcode, r1); \
 	AVR_FAST_CORE_UINST_DEFN_16R2(xu_opcode, r2)
 
-#define AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_R2(xu_opcode, r1, r2) \
+#define AVR_FAST_CORE_UINST_DEFN_rmwR1v16le_R2(xu_opcode, r1, r2) \
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_v16leRrmw(r1)
+	AVR_FAST_CORE_UINST_DEFN_rmwRv16le(r1)
 
-
-#define AVR_FAST_CORE_UINST_DEFN_v16leR1_R2(xu_opcode, r1, r2) \
+#ifdef AVR_FAST_CORE_COMMON_DATA
+#define AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_rmwR1v16le_R2(xu_opcode, r1, r2) \
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_v16leR(r1)
+	uint8_t *data = avr->data; \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_rmwRv16le(r1)
+#else
+#define AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_rmwR1v16le_R2(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_DEFN_R1_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_rmwRv16le(r1)
+#endif
 
-#define AVR_FAST_CORE_UINST_DEFN_v16leR1_vR2(xu_opcode, r1, r2) \
-	AVR_FAST_CORE_UINST_DEFN_v16leR1_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_vR(r2)
+#define AVR_FAST_CORE_UINST_DEFN_R1v16le_R2(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_DEFN_R1_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_Rv16le(r1)
 
-#define AVR_FAST_CORE_UINST_DEFN_v16leR1_vR2_R3(xu_opcode, r1, r2, r3) \
-	AVR_FAST_CORE_UINST_DEFN_v16leR1_vR2(xu_opcode, r1, r2); \
+#ifdef AVR_FAST_CORE_COMMON_DATA
+#define AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_R1v16le_R2(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_DEFN_R1_R2(xu_opcode, r1, r2); \
+	uint8_t *data = avr->data; \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv16le(r1)
+#else
+#define AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_R1v16le_R2(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_DEFN_R1_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv16le(r1)
+#endif
+
+#define AVR_FAST_CORE_UINST_DEFN_R1v16le_R2v(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_R1v16le_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv(r2)
+
+#define AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_R1v16le_R2v(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_R1v16le_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv(r2)
+
+#define AVR_FAST_CORE_UINST_DEFN_R1v16le_R2v_R3(xu_opcode, r1, r2, r3) \
+	AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_R1v16le_R2v(xu_opcode, r1, r2); \
 	AVR_FAST_CORE_UINST_DEFN_R3(xu_opcode, r3)
 
+#define AVR_FAST_CORE_UINST_DEFN_R1v16le_R2v16le(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_R1v16le_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv16le(r2)
 
-#define AVR_FAST_CORE_UINST_DEFN_v16leR1_v16leR2(xu_opcode, r1, r2) \
-	AVR_FAST_CORE_UINST_DEFN_v16leR1_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_v16leR(r2)
-
-#define AVR_FAST_CORE_UINST_DEFN_v16leR1_v16leR2_R3(xu_opcode, r1, r2, r3) \
-	AVR_FAST_CORE_UINST_DEFN_v16leR1_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_v16leR(r2); \
+#define AVR_FAST_CORE_UINST_DEFN_R1v16le_R2v16le_R3(xu_opcode, r1, r2, r3) \
+	AVR_FAST_CORE_UINST_DEFN_R1v16le_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_Rv16le(r2); \
 	AVR_FAST_CORE_UINST_DEFN_R3(xu_opcode, r3)
 
-#define AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_v16leR2(xu_opcode, r1, r2) \
-	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_v16leR(r2)
+#define AVR_FAST_CORE_UINST_DEFN_rmwR1v16le_R2v16le(xu_opcode, r1, r2) \
+	AVR_FAST_CORE_UINST_COMMON_DATA_DEFN_rmwR1v16le_R2(xu_opcode, r1, r2); \
+	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv16le(r2)
 
-
-#define AVR_FAST_CORE_UINST_DEFN_R1_v16leR2(xu_opcode, r1, r2) \
+#define AVR_FAST_CORE_UINST_DEFN_R1_R2v16le(xu_opcode, r1, r2) \
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_v16leR(r2)
+	AVR_FAST_CORE_UINST_DEFN_Rv16le(r2)
 
-#define AVR_FAST_CORE_UINST_DEFN_R1_v16leR2_R3(xu_opcode, r1, r2, r3) \
+#define AVR_FAST_CORE_UINST_DEFN_R1_R2v16le_R3(xu_opcode, r1, r2, r3) \
 	AVR_FAST_CORE_UINST_DEFN_R1_R2_R3(xu_opcode, r1, r2, r3); \
-	AVR_FAST_CORE_UINST_DEFN_v16leR(r2)
+	AVR_FAST_CORE_UINST_DEFN_Rv16le(r2)
 
-#define AVR_FAST_CORE_UINST_DEFN_R1_v16leR2rmw(xu_opcode, r1, r2) \
+#define AVR_FAST_CORE_UINST_DEFN_R1_rmwR2v16le(xu_opcode, r1, r2) \
 	AVR_FAST_CORE_UINST_DEFN_R1_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_v16leRrmw(r2)
+	AVR_FAST_CORE_UINST_DEFN_rmwRv16le(r2)
 
 
-#define AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_16R2(xu_opcode, r1, r2) \
+#define AVR_FAST_CORE_UINST_DEFN_rmwR1v16le_16R2(xu_opcode, r1, r2) \
 	AVR_FAST_CORE_UINST_DEFN_R1(xu_opcode, r1); \
 	AVR_FAST_CORE_UINST_DEFN_16R2(xu_opcode, r2); \
-	AVR_FAST_CORE_UINST_DEFN_v16leRrmw(r1)
+	AVR_FAST_CORE_UINST_DEFN_rmwRv16le(r1)
 
 #define AVR_FAST_CORE_UFLASH_OPCODE_FETCH(xxu_opcode, addr) xxu_opcode = _avr_fast_core_flash_uflash_read_0(avr, addr)
 
@@ -1977,12 +2058,12 @@ static inline uint_fast8_t _avr_fast_core_inst_decode_r4(const uint_fast16_t o) 
 typedef void (pfnInst_t)(avr_t* avr, int_fast32_t *count, uint_fast32_t u_opcode);
 
 #define AVR_FAST_CORE_INST_DECL(name) \
-	static void _avr_fast_core_inst_##name(avr_t *avr, int_fast32_t *count, uint16_t i_opcode)
+	void _avr_fast_core_inst_##name(avr_t *avr, int_fast32_t *count, uint16_t i_opcode)
 #define AVR_FAST_CORE_INST_CALL(type, name) \
 	_avr_fast_core_inst_##type##_##name(avr, count, i_opcode)
 	
 #define AVR_FAST_CORE_UINST_DECL(name) \
-	static void _avr_fast_core_uinst_##name(avr_t *avr, int_fast32_t *count, uint_fast32_t u_opcode)
+	void _avr_fast_core_uinst_##name(avr_t *avr, int_fast32_t *count, uint_fast32_t u_opcode)
 #define AVR_FAST_CORE_UINST_CALL(name) \
 	_avr_fast_core_uinst_##name(avr, count, u_opcode)
 
@@ -2228,7 +2309,7 @@ static pfnInst_p _avr_fast_core_uinst_op_table[256];
 
 AVR_FAST_CORE_UINST_DECL(d5r5_adc)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2v(u_opcode, d, r);
 	uint_fast8_t res = vd + vr + avr->sreg[S_C];
 
 	if (r == d) {
@@ -2252,7 +2333,7 @@ AVR_FAST_CORE_END_COMPLEX_INST_DEFN
 
 AVR_FAST_CORE_UINST_DECL(d5r5_add)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2v(u_opcode, d, r);
 	uint_fast8_t res = vd + vr;
 
 	if (r == d) {
@@ -2298,7 +2379,7 @@ AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
 AVR_FAST_CORE_UINST_DECL(d5r5_add_adc)
 {
-	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_v16leR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v16le_R2v16le(u_opcode, d, r);
 	uint_fast16_t res = vd + vr;
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -2349,7 +2430,7 @@ AVR_FAST_CORE_UINST_DECL(d5r5_add_adc)
 
 AVR_FAST_CORE_UINST_DECL(p2k6_adiw)
 {
-	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_R2(u_opcode, p, k);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v16le_R2(u_opcode, p, k);
 	uint_fast16_t res = vp + k;
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -2373,7 +2454,7 @@ AVR_FAST_CORE_INST_DEFN(p2k6, adiw)
 
 AVR_FAST_CORE_UINST_DECL(d5r5_and)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2v(u_opcode, d, r);
 	uint_fast8_t res = vd & vr;
 
 	if (r == d) {
@@ -2397,7 +2478,7 @@ AVR_FAST_CORE_END_COMPLEX_INST_DEFN
 
 AVR_FAST_CORE_UINST_DECL(h4k8_andi)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, h, k);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2(u_opcode, h, k);
 	uint_fast8_t res = vh & k;
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -2437,7 +2518,7 @@ AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
 AVR_FAST_CORE_UINST_DECL(h4k16_andi_andi)
 {
-	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_16R2(u_opcode, h, k);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v16le_16R2(u_opcode, h, k);
 	uint_fast16_t res = vh & k;
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -2464,7 +2545,7 @@ AVR_FAST_CORE_UINST_DECL(h4k16_andi_andi)
 
 AVR_FAST_CORE_UINST_DECL(h4r5k8_andi_or)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2_R3(u_opcode, h, r, andi_k);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2v_R3(u_opcode, h, r, andi_k);
 	uint_fast8_t andi_res = vh & andi_k;
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -2498,7 +2579,7 @@ AVR_FAST_CORE_UINST_DECL(h4r5k8_andi_or)
 
 AVR_FAST_CORE_UINST_DECL(h4k8k8_andi_ori)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2_R3(u_opcode, h, andi_k, ori_k);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2_R3(u_opcode, h, andi_k, ori_k);
 	uint_fast8_t andi_res = vh & andi_k;
 	
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -2531,7 +2612,7 @@ AVR_FAST_CORE_UINST_DECL(h4k8k8_andi_ori)
 
 AVR_FAST_CORE_UINST_DECL(d5_asr)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v(u_opcode, d);
 	
 	uint_fast8_t neg = vd & 0x80;
 	uint_fast8_t res = (vd >> 1) | neg;
@@ -2571,7 +2652,7 @@ AVR_FAST_CORE_INST_DEFN(b3, bclr)
 
 AVR_FAST_CORE_UINST_DECL(d5m8_bld)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, d, mask);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2(u_opcode, d, mask);
 	
 	uint_fast8_t res;
 	#ifdef AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
@@ -2781,7 +2862,7 @@ AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
 AVR_FAST_CORE_UINST_DECL(d5b3_bst)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, b);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2(u_opcode, d, b);
 	uint_fast8_t res = (vd >> b) & 1;
 
 	STATE("bst %s[%02x], 0x%02x = %02x\n", avr_regname(d), vd, (1 << b), res);
@@ -2850,7 +2931,7 @@ AVR_FAST_CORE_UINST_DECL(cli)
 
 AVR_FAST_CORE_UINST_DECL(d5_clr)
 {
-	T(AVR_FAST_CORE_UINST_DEFN_vR1(u_opcode, d));
+	T(AVR_FAST_CORE_UINST_DEFN_R1v(u_opcode, d));
 	NO_T(AVR_FAST_CORE_UINST_DEFN_R1(u_opcode, d));
 
 	STATE("clr %s[%02x]\n", avr_regname(d), vd);
@@ -2869,7 +2950,7 @@ AVR_FAST_CORE_UINST_DECL(d5_clr)
 
 AVR_FAST_CORE_UINST_DECL(d5_com)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v(u_opcode, d);
 	uint_fast8_t res = 0xff - vd;
 
 	STATE("com %s[%02x] = %02x\n", avr_regname(d), vd, res);
@@ -2888,7 +2969,7 @@ AVR_FAST_CORE_INST_DEFN(d5, com)
 
 AVR_FAST_CORE_UINST_DECL(d5r5_cp)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_vR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2v(u_opcode, d, r);
 	uint_fast8_t res = vd - vr;
 
 	STATE("cp %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
@@ -2917,7 +2998,7 @@ AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
 AVR_FAST_CORE_UINST_DECL(d5r5_cp_cpc)
 {
-	AVR_FAST_CORE_UINST_DEFN_v16leR1_v16leR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_R1v16le_R2v16le(u_opcode, d, r);
 	uint_fast16_t res = vd - vr;
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -2949,7 +3030,7 @@ AVR_FAST_CORE_UINST_DECL(d5r5_cp_cpc)
 
 AVR_FAST_CORE_UINST_DECL(d5r5o7_cp_cpc_brne)
 {
-	AVR_FAST_CORE_UINST_DEFN_v16leR1_v16leR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_R1v16le_R2v16le(u_opcode, d, r);
 	uint_fast16_t res = vd - vr;
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -2998,7 +3079,7 @@ AVR_FAST_CORE_UINST_DECL(d5r5o7_cp_cpc_brne)
 
 AVR_FAST_CORE_UINST_DECL(d5r5_cpc)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_vR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2v(u_opcode, d, r);
 	uint_fast8_t res = vd - vr - avr->sreg[S_C];
 
 	STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
@@ -3013,7 +3094,7 @@ AVR_FAST_CORE_INST_DEFN(d5r5, cpc)
 
 AVR_FAST_CORE_UINST_DECL(h4k8_cpi)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, h, k);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -3068,7 +3149,7 @@ static void _avr_uinst_do_cpi_brxx_branch(avr_t *avr, int_fast32_t *count, uint_
 
 AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brcc)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, h, k);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -3109,7 +3190,7 @@ AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brcc)
 
 AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brcs)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, h, k);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 	
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -3174,7 +3255,7 @@ static void _avr_uinst_do_cpi_brxx_branch(avr_t *avr, int_fast32_t *count,
 
 AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_breq)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, h, k);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 	
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -3215,7 +3296,7 @@ AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_breq)
 
 AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brne)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, h, k);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 	int branch = (vh != k);
 	
@@ -3255,7 +3336,7 @@ AVR_FAST_CORE_UINST_DECL(h4k8o7_cpi_brne)
 
 AVR_FAST_CORE_UINST_DECL(h4r5k8_cpi_cpc)
 {
-	AVR_FAST_CORE_UINST_DEFN_v16leR1_vR2_R3(u_opcode, h, r, k);
+	AVR_FAST_CORE_UINST_DEFN_R1v16le_R2v_R3(u_opcode, h, r, k);
 	uint_fast16_t vrk = (vr << 8) | k;
 	uint_fast16_t res = vh - vrk;
 
@@ -3288,7 +3369,7 @@ AVR_FAST_CORE_UINST_DECL(h4r5k8_cpi_cpc)
 
 AVR_FAST_CORE_UINST_DECL(d5r5_16_cpse)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_vR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2v(u_opcode, d, r);
 	uint_fast8_t skip = vd == vr;
 
 	STATE("cpse %s[%02x], %s[%02x]\t; Will%s skip\n", avr_regname(d), vd, avr_regname(r), vr, skip ? "":" not");
@@ -3306,7 +3387,7 @@ AVR_FAST_CORE_INST_DEFN(d5r5, 16_cpse)
 
 AVR_FAST_CORE_UINST_DECL(d5r5_32_cpse)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_vR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2v(u_opcode, d, r);
 	uint_fast8_t skip = (vd == vr);
 	
 	STATE("cpse %s[%02x], %s[%02x]\t; Will%s skip\n", avr_regname(d), vd, avr_regname(r), vr, skip ? "":" not");
@@ -3325,7 +3406,7 @@ AVR_FAST_CORE_INST_DEFN(d5r5, 32_cpse)
 
 AVR_FAST_CORE_UINST_DECL(d5_dec)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v(u_opcode, d);
 	uint_fast8_t res = vd - 1;
 
 	STATE("dec %s[%02x] = %02x\n", avr_regname(d), vd, res);
@@ -3434,7 +3515,7 @@ AVR_FAST_CORE_INST_DEFN(x, eind_reti)
 
 AVR_FAST_CORE_UINST_DECL(d5r5_eor)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2v(u_opcode, d, r);
 	uint_fast8_t res = vd ^ vr;
 
 	if (r==d) {
@@ -3700,7 +3781,7 @@ AVR_FAST_CORE_UINST_DECL(d5a6m8_in_sbrs)
 
 AVR_FAST_CORE_UINST_DECL(d5_inc)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v(u_opcode, d);
 	uint_fast8_t res = vd + 1;
 
 	STATE("inc %s[%02x] = %02x\n", avr_regname(d), vd, res);
@@ -3735,7 +3816,7 @@ AVR_FAST_CORE_INST_DEFN(x22, jmp)
 
 AVR_FAST_CORE_UINST_DECL(d5rXYZ_ld_no_op)
 {
-	AVR_FAST_CORE_UINST_DEFN_R1_v16leR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_R1_R2v16le(u_opcode, d, r);
 
 	uint_fast8_t ivr = _avr_fast_core_fetch_ram(avr, count, vr);
 	_avr_fast_core_store_r(avr, d, ivr);
@@ -3748,7 +3829,7 @@ AVR_FAST_CORE_INST_DEFN(d5rXYZ, ld_no_op)
 
 AVR_FAST_CORE_UINST_DECL(d5rXYZ_ld_pre_dec)
 {
-	AVR_FAST_CORE_UINST_DEFN_R1_v16leR2rmw(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_R1_rmwR2v16le(u_opcode, d, r);
 
 	vr--;
 
@@ -3765,7 +3846,7 @@ AVR_FAST_CORE_INST_DEFN(d5rXYZ, ld_pre_dec)
 
 AVR_FAST_CORE_UINST_DECL(d5rXYZ_ld_post_inc)
 {
-	AVR_FAST_CORE_UINST_DEFN_R1_v16leR2rmw(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_R1_rmwR2v16le(u_opcode, d, r);
 
 	uint_fast8_t ivr = _avr_fast_core_fetch_ram(avr, count, vr);
 	_avr_fast_core_store_r(avr, d, ivr);
@@ -3782,7 +3863,7 @@ AVR_FAST_CORE_INST_DEFN(d5rXYZ, ld_post_inc)
 
 AVR_FAST_CORE_UINST_DECL(d5rYZq6_ldd)
 {
-	AVR_FAST_CORE_UINST_DEFN_R1_v16leR2_R3(u_opcode, d, r, q);
+	AVR_FAST_CORE_UINST_DEFN_R1_R2v16le_R3(u_opcode, d, r, q);
 	vr += q;
 	
 	uint_fast8_t ivr = _avr_fast_core_fetch_ram(avr, count, vr);
@@ -3805,7 +3886,7 @@ AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
 AVR_FAST_CORE_UINST_DECL(d5rYZq6_ldd_ldd)
 {
-	AVR_FAST_CORE_UINST_DEFN_R1_v16leR2_R3(u_opcode, d, r, q);
+	AVR_FAST_CORE_UINST_DEFN_R1_R2v16le_R3(u_opcode, d, r, q);
 	vr += q;
 
 	uint16_t ivr;
@@ -4122,7 +4203,7 @@ AVR_FAST_CORE_UINST_DECL(d5_lpm_z_post_inc)
 {
 	AVR_FAST_CORE_UINST_DEFN_R1(u_opcode, d);
 	uint_fast8_t z = R_ZL;
-	AVR_FAST_CORE_UINST_DEFN_v16leRrmw(z);
+	AVR_FAST_CORE_UINST_DEFN_rmwRv16le(z);
 
 	STATE("lpm %s, (Z[%04x]+)\n", avr_regname(d), vz);
 
@@ -4158,9 +4239,9 @@ AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
 AVR_FAST_CORE_UINST_DECL(d5rXYZ_lpm_z_post_inc_st_post_inc)
 {
-	AVR_FAST_CORE_UINST_DEFN_R1_v16leR2rmw(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_R1_rmwR2v16le(u_opcode, d, r);
 	uint_fast8_t z = R_ZL;
-	AVR_FAST_CORE_UINST_DEFN_v16leRrmw(z);
+	AVR_FAST_CORE_UINST_DEFN_rmwRv16le(z);
 
 	uint_fast8_t vd = avr->flash[z];
 
@@ -4200,7 +4281,7 @@ AVR_FAST_CORE_UINST_DECL(d5_lpm16_z_post_inc)
 {
 	AVR_FAST_CORE_UINST_DEFN_R1(u_opcode, d);
 	uint_fast8_t z = R_ZL;
-	AVR_FAST_CORE_UINST_DEFN_v16leRrmw(z);
+	AVR_FAST_CORE_UINST_DEFN_rmwRv16le(z);
 
 	T(uint_fast16_t vd = _avr_fast_core_flash_read16le(avr, vz));
 	NO_T(uint_fast16_t vd = _avr_fast_core_fetch16(avr->flash, vz));
@@ -4230,7 +4311,7 @@ AVR_FAST_CORE_UINST_DECL(d5_lpm16_z_post_inc)
 
 AVR_FAST_CORE_UINST_DECL(d5_lsl)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v(u_opcode, d);
 	uint_fast8_t res = vd << 1;
 
 	STATE("lsl %s[%02x] = %02x\n", avr_regname(d), vd, res);
@@ -4248,7 +4329,7 @@ AVR_FAST_CORE_UINST_DECL(d5_lsl)
 
 AVR_FAST_CORE_UINST_DECL(d5r5_lsl_lsl)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2(u_opcode, d, r);
 	uint_fast8_t res = vd << r;
 
 	STATE("lsl %s[%02x] = %02x\n", avr_regname(d), vd, res);
@@ -4269,7 +4350,7 @@ AVR_FAST_CORE_UINST_DECL(d5r5_lsl_lsl)
 
 AVR_FAST_CORE_UINST_DECL(d5_lsl_rol)
 {
-	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v16le(u_opcode, d);
 	uint_fast16_t res = vd << 1;
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -4306,7 +4387,7 @@ AVR_FAST_CORE_UINST_DECL(d5_lsl_rol)
 
 AVR_FAST_CORE_UINST_DECL(d5_lsr)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v(u_opcode, d);
 	uint_fast8_t res = vd >> 1;
 
 	STATE("lsr %s[%02x]\n", avr_regname(d), vd);
@@ -4341,7 +4422,7 @@ AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
 AVR_FAST_CORE_UINST_DECL(d5r5_lsr_lsr)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2(u_opcode, d, r);
 	uint_fast8_t res = vd >> r;
 
 	STATE("lsr %s[%02x]\n", avr_regname(d), vd);
@@ -4358,7 +4439,7 @@ AVR_FAST_CORE_UINST_DECL(d5r5_lsr_lsr)
 
 AVR_FAST_CORE_UINST_DECL(d5_lsr_ror)
 {
-	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v16le(u_opcode, d);
 	uint_fast16_t res = vd >> 1;
 	
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -4392,7 +4473,7 @@ AVR_FAST_CORE_UINST_DECL(d5_lsr_ror)
 AVR_FAST_CORE_UINST_DECL(d5r5_mov)
 {
 	AVR_FAST_CORE_UINST_DEFN_R1(u_opcode, d);
-	T(AVR_FAST_CORE_UINST_DEFN_vR2(u_opcode, r));
+	T(AVR_FAST_CORE_UINST_DEFN_R2v(u_opcode, r));
 	NO_T(AVR_FAST_CORE_UINST_DEFN_R2(u_opcode, r));
 	
 	_avr_fast_core_mov_r(avr, d, r);
@@ -4409,7 +4490,7 @@ AVR_FAST_CORE_INST_DEFN(d5r5, mov)
 
 AVR_FAST_CORE_UINST_DECL(d4r4_movw)
 {
-	T(AVR_FAST_CORE_UINST_DEFN_R1_v16leR2(u_opcode, d, r));
+	T(AVR_FAST_CORE_UINST_DEFN_R1_R2v16le(u_opcode, d, r));
 	NO_T(AVR_FAST_CORE_UINST_DEFN_R1_R2(u_opcode, d, r));
 	
 	_avr_fast_core_mov_r16(avr, d, r);
@@ -4422,7 +4503,7 @@ AVR_FAST_CORE_INST_DEFN(d4r4, movw)
 
 AVR_FAST_CORE_UINST_DECL(d5r5_mul)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_vR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2v(u_opcode, d, r);
 	uint_least16_t res = vd * vr;
 
 	STATE("mul %s[%02x], %s[%02x] = %04x\n", avr_regname(d), vd, avr_regname(r), vr, res);
@@ -4457,7 +4538,7 @@ AVR_FAST_CORE_INST_DEFN(d16r16, muls)
 
 AVR_FAST_CORE_UINST_DECL(d5_neg)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v(u_opcode, d);
 	uint_fast8_t res = 0x00 - vd;
 
 	STATE("neg %s[%02x] = %02x\n", avr_regname(d), vd, res);
@@ -4485,7 +4566,7 @@ AVR_FAST_CORE_INST_DEFN(x, nop)
 
 AVR_FAST_CORE_UINST_DECL(d5r5_or)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2v(u_opcode, d, r);
 	uint_fast8_t res = vd | vr;
 
 	STATE("or %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
@@ -4501,7 +4582,7 @@ AVR_FAST_CORE_INST_DEFN(d5r5, or)
 
 AVR_FAST_CORE_UINST_DECL(h4k8_ori)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, h, k);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2(u_opcode, h, k);
 	uint_fast8_t res = vh | k;
 
 	STATE("ori %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
@@ -4517,7 +4598,7 @@ AVR_FAST_CORE_INST_DEFN(h4k8, ori)
 
 AVR_FAST_CORE_UINST_DECL(d5a6_out)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, a);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2(u_opcode, d, a);
 
 	STATE("out %s, %s[%02x]\n", avr_regname(a), avr_regname(d), vd);
 
@@ -4548,7 +4629,7 @@ AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
 AVR_FAST_CORE_UINST_DECL(d5r5_out_sph_sreg_spl)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_vR2_vR3(u_opcode, d, r, d2);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2v_R3v(u_opcode, d, r, d2);
 
 	/* R_SPH */
 	STATE("out %s, %s[%02x]\n", avr_regname(R_SPH), avr_regname(d), vd);
@@ -4684,7 +4765,7 @@ AVR_FAST_CORE_UINST_DECL(d5_pop_pop16le)
 }
 
 AVR_FAST_CORE_UINST_DECL(d5_push) {
-	AVR_FAST_CORE_UINST_DEFN_vR1(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_R1v(u_opcode, d);
 
 	_avr_fast_core_push8(avr, count, vd);
 
@@ -4708,7 +4789,7 @@ AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
 AVR_FAST_CORE_UINST_DECL(d5_push_push16be)
 {
-	AVR_FAST_CORE_UINST_DEFN_v16leR1(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_R1v16le(u_opcode, d);
 
 	_avr_fast_core_push16be(avr, count, vd);
 	T(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
@@ -4727,7 +4808,7 @@ AVR_FAST_CORE_UINST_DECL(d5_push_push16be)
 
 AVR_FAST_CORE_UINST_DECL(d5_push_push16le)
 {
-	AVR_FAST_CORE_UINST_DEFN_v16leR1(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_R1v16le(u_opcode, d);
 
 	_avr_fast_core_push16le(avr, count, vd);
 	T(uint_fast16_t sp = _avr_fast_core_sp_get(avr));
@@ -4805,7 +4886,7 @@ AVR_FAST_CORE_INST_DEFN(o12, rjmp)
 
 AVR_FAST_CORE_UINST_DECL(d5_rol)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v(u_opcode, d);
 	uint_fast8_t res = (vd << 1) + avr->sreg[S_C];
 
 	STATE("rol %s[%02x] = %02x\n", avr_regname(d), vd, res);
@@ -4821,7 +4902,7 @@ AVR_FAST_CORE_UINST_DECL(d5_rol)
 
 AVR_FAST_CORE_UINST_DECL(d5_ror)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v(u_opcode, d);
 	
 	uint_fast8_t res;
 	
@@ -4845,7 +4926,7 @@ AVR_FAST_CORE_INST_DEFN(d5, ror)
 
 AVR_FAST_CORE_UINST_DECL(d5r5_sbc)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2v(u_opcode, d, r);
 	uint_fast8_t res = vd - vr - avr->sreg[S_C];
 
 	STATE("sbc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
@@ -4862,7 +4943,7 @@ AVR_FAST_CORE_INST_DEFN(d5r5, sbc)
 
 AVR_FAST_CORE_UINST_DECL(h4k8_sbci)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, h, k);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k - avr->sreg[S_C];
 
 	STATE("sbci %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
@@ -4996,7 +5077,7 @@ AVR_FAST_CORE_INST_DEFN(a5m8, 32_sbis)
 
 AVR_FAST_CORE_UINST_DECL(p2k6_sbiw)
 {
-	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_R2(u_opcode, p, k);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v16le_R2(u_opcode, p, k);
 	uint_fast16_t res = vp - k;
 
 	STATE("sbiw %s:%s[%04x], 0x%02x\n", avr_regname(p), avr_regname(p+1), vp, k);
@@ -5016,7 +5097,7 @@ AVR_FAST_CORE_INST_DEFN(p2k6, sbiw)
 
 AVR_FAST_CORE_UINST_DECL(d5m8_16_sbrc)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, mask);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2(u_opcode, d, mask);
 	int	skip = (0 == (vd & (mask)));
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -5038,7 +5119,7 @@ AVR_FAST_CORE_INST_DEFN(d5m8, 16_sbrc)
 
 AVR_FAST_CORE_UINST_DECL(d5m8_32_sbrc)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, mask);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2(u_opcode, d, mask);
 	int	skip = (0 == (vd & (mask)));
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -5061,7 +5142,7 @@ AVR_FAST_CORE_INST_DEFN(d5m8, 32_sbrc)
 
 AVR_FAST_CORE_UINST_DECL(d5m8_16_sbrs)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, mask);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2(u_opcode, d, mask);
 	int	skip = (0 != (vd & (mask)));
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -5083,7 +5164,7 @@ AVR_FAST_CORE_INST_DEFN(d5m8, 16_sbrs)
 
 AVR_FAST_CORE_UINST_DECL(d5m8_32_sbrs)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_R2(u_opcode, d, mask);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2(u_opcode, d, mask);
 	int	skip = (0 != (vd & (mask)));
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -5174,7 +5255,7 @@ AVR_FAST_CORE_INST_DEFN(x, sleep)
 
 AVR_FAST_CORE_UINST_DECL(d5rXYZ_st_no_op)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_v16leR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2v16le(u_opcode, d, r);
 
 	STATE("st %c[%04x], %s[%02x] \n", *avr_regname(r), vr, avr_regname(d), vd);
 
@@ -5186,7 +5267,7 @@ AVR_FAST_CORE_INST_DEFN(d5rXYZ, st_no_op)
 
 AVR_FAST_CORE_UINST_DECL(d5rXYZ_st_pre_dec)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_v16leR2rmw(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_R1v_rmwR2v16le(u_opcode, d, r);
 
 	STATE("st --%c[%04x], %s[%02x] \n", *avr_regname(r), vr, avr_regname(d), vd);
 
@@ -5201,7 +5282,7 @@ AVR_FAST_CORE_INST_DEFN(d5rXYZ, st_pre_dec)
 
 AVR_FAST_CORE_UINST_DECL(d5rXYZ_st_post_inc)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_v16leR2rmw(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_R1v_rmwR2v16le(u_opcode, d, r);
 
 	STATE("st %c[%04x]++, %s[%02x] \n", *avr_regname(r), vr, avr_regname(d), vd);
 
@@ -5216,7 +5297,7 @@ AVR_FAST_CORE_INST_DEFN(d5rXYZ, st_post_inc)
 
 AVR_FAST_CORE_UINST_DECL(d5rYZq6_std)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_v16leR2_R3(u_opcode, d, r, q);
+	AVR_FAST_CORE_UINST_DEFN_R1v_R2v16le_R3(u_opcode, d, r, q);
 	vr += q;
 
 	STATE("st (%c+%d[%04x]), %s[%02x]\n", *avr_regname(r), q, vr, avr_regname(d), vd);
@@ -5241,7 +5322,7 @@ AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
 AVR_FAST_CORE_UINST_DECL(d5rYZq6_std_std_hhll)
 {
-	AVR_FAST_CORE_UINST_DEFN_v16leR1_v16leR2_R3(u_opcode, d, r, q);
+	AVR_FAST_CORE_UINST_DEFN_R1v16le_R2v16le_R3(u_opcode, d, r, q);
 	vr += q;
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -5270,7 +5351,7 @@ AVR_FAST_CORE_UINST_DECL(d5rYZq6_std_std_hhll)
 
 AVR_FAST_CORE_UINST_DECL(d5rYZq6_std_std_hllh)
 {
-	AVR_FAST_CORE_UINST_DEFN_v16leR1_v16leR2_R3(u_opcode, d, r, q);
+	AVR_FAST_CORE_UINST_DEFN_R1v16le_R2v16le_R3(u_opcode, d, r, q);
 	vr += q;
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -5299,7 +5380,7 @@ AVR_FAST_CORE_UINST_DECL(d5rYZq6_std_std_hllh)
 
 AVR_FAST_CORE_UINST_DECL(d5x16_sts)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_16R2(u_opcode, d, x);
+	AVR_FAST_CORE_UINST_DEFN_R1v_16R2(u_opcode, d, x);
 
 	STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), vd);
 
@@ -5327,7 +5408,7 @@ AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
 AVR_FAST_CORE_UINST_DECL(d5x16_sts_no_io)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1_16R2(u_opcode, d, x);
+	AVR_FAST_CORE_UINST_DEFN_R1v_16R2(u_opcode, d, x);
 
 	STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), vd);
 
@@ -5338,7 +5419,7 @@ AVR_FAST_CORE_UINST_DECL(d5x16_sts_no_io)
 
 AVR_FAST_CORE_UINST_DECL(d5x16_sts_sts)
 {
-	AVR_FAST_CORE_UINST_DEFN_v16leR1_16R2(u_opcode, d, x);
+	AVR_FAST_CORE_UINST_DEFN_R1v16le_16R2(u_opcode, d, x);
 
 	/* lds low:high, sts high:low ... replicate order incase in the instance io is accessed. */
 
@@ -5370,7 +5451,7 @@ AVR_FAST_CORE_UINST_DECL(d5x16_sts_sts)
 
 AVR_FAST_CORE_UINST_DECL(d5x16_sts_sts_no_io)
 {
-	T(AVR_FAST_CORE_UINST_DEFN_v16leR1_16R2(u_opcode, d, x));
+	T(AVR_FAST_CORE_UINST_DEFN_R1v16le_16R2(u_opcode, d, x));
 	NO_T(AVR_FAST_CORE_UINST_DEFN_v16R1_16R2(u_opcode, d, x));
 	
 	/* lds low:high, sts high:low ...
@@ -5399,7 +5480,7 @@ AVR_FAST_CORE_UINST_DECL(d5x16_sts_sts_no_io)
 
 AVR_FAST_CORE_UINST_DECL(d5r5_sub)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_vR2(u_opcode, d, r);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2v(u_opcode, d, r);
 	uint_fast8_t res = vd - vr;
 
 	STATE("sub %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
@@ -5416,7 +5497,7 @@ AVR_FAST_CORE_INST_DEFN(d5r5, sub)
 
 AVR_FAST_CORE_UINST_DECL(h4k8_subi)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw_R2(u_opcode, h, k);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v_R2(u_opcode, h, k);
 	uint_fast8_t res = vh - k;
 
 	STATE("subi %s[%02x], 0x%02x = %02x\n", avr_regname(h), vh, k, res);
@@ -5448,7 +5529,7 @@ AVR_FAST_CORE_END_COMBINING_INST_DEFN
 
 AVR_FAST_CORE_UINST_DECL(h4k16_subi_sbci)
 {
-	AVR_FAST_CORE_UINST_DEFN_v16leR1rmw_16R2(u_opcode, h, k);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v16le_16R2(u_opcode, h, k);
 	uint_fast16_t res = vh - k;
 
 	#ifdef AVR_CORE_FAST_CORE_DIFF_TRACE
@@ -5493,7 +5574,7 @@ AVR_FAST_CORE_UINST_DECL(h4k16_subi_sbci)
 
 AVR_FAST_CORE_UINST_DECL(d5_swap)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1rmw(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_rmwR1v(u_opcode, d);
 	uint_fast8_t res = (vd >> 4) | (vd << 4);
 
 	STATE("swap %s[%02x] = %02x\n", avr_regname(d), vd, res);
@@ -5506,7 +5587,7 @@ AVR_FAST_CORE_INST_DEFN(d5, swap)
 
 AVR_FAST_CORE_UINST_DECL(d5_tst)
 {
-	AVR_FAST_CORE_UINST_DEFN_vR1(u_opcode, d);
+	AVR_FAST_CORE_UINST_DEFN_R1v(u_opcode, d);
 
 	STATE("tst %s[%02x]\n", avr_regname(d), vd);
 

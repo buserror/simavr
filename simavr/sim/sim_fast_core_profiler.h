@@ -164,5 +164,5 @@ extern "C" {
 #endif
 
 #endif /* #ifdef CONFIG_AVR_FAST_CORE_UINST_PROFILING */
-#endif /* #ifNdef __SIM_FAST_CORE_PROFILER_H */
+#endif /* #ifndef __SIM_FAST_CORE_PROFILER_H */
 
