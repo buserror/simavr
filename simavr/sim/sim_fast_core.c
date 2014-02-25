@@ -1982,8 +1982,7 @@ static inline uint_fast32_t _avr_fast_core_flash_uflash_read_0(avr_t* avr, avr_f
 	AVR_FAST_CORE_UINST_DEFN_COMMON_DATA_Rv16le(r2)
 
 #define AVR_FAST_CORE_UINST_DEFN_R1v16le_R2v16le_R3(xu_opcode, r1, r2, r3) \
-	AVR_FAST_CORE_UINST_DEFN_R1v16le_R2(xu_opcode, r1, r2); \
-	AVR_FAST_CORE_UINST_DEFN_Rv16le(r2); \
+	AVR_FAST_CORE_UINST_DEFN_R1v16le_R2v16le(xu_opcode, r1, r2); \
 	AVR_FAST_CORE_UINST_DEFN_R3(xu_opcode, r3)
 
 #define AVR_FAST_CORE_UINST_DEFN_rmwR1v16le_R2v16le(xu_opcode, r1, r2) \
