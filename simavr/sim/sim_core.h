@@ -19,6 +19,10 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+	PATCH 20130523; bsekisser - patched for core versions 2 and 3.
+*/
+
 #ifndef __SIM_CORE_H__
 #define __SIM_CORE_H__
 
@@ -40,6 +44,9 @@ extern "C" {
  * Instruction decoder, run ONE instruction
  */
 avr_flashaddr_t avr_run_one(avr_t * avr);
+avr_flashaddr_t avr_run_one_v2(avr_t * avr);
+avr_flashaddr_t avr_run_one_v3(avr_t * avr);
+
 
 /*
  * These are for internal access to the stack (for interrupts)

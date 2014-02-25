@@ -270,7 +270,7 @@ typedef struct avr_t {
 	// DEBUG ONLY -- value ignored if CONFIG_SIMAVR_TRACE = 0
 	uint8_t	trace : 1,
 			log : 2; // log level, default to 1
-	
+
 	// Only used if CONFIG_SIMAVR_TRACE is defined
 	struct avr_trace_data_t *trace_data;
 

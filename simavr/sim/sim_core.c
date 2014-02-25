@@ -64,8 +64,9 @@ int donttrace = 0;
 
 #define STATE(_f, args...) { \
 	if (avr->trace) {\
-		if (avr->trace_data->codeline && avr->trace_data->codeline[avr->pc>>1]) {\
-			const char * symn = avr->trace_data->codeline[avr->pc>>1]->symbol; \
+		avr_symbol_t*	symbol = avr_symbol_for_address(avr, avr->pc >> 1); \
+		if (symbol) {\
+			const char * symn = symbol->symbol; \
 			int dont = 0 && dont_trace(symn);\
 			if (dont!=donttrace) { \
 				donttrace = dont;\
@@ -84,10 +85,24 @@ int donttrace = 0;
 	printf("\n");\
 }
 #else
+#if 1
+#define T(w) w
+#define REG_TOUCH(a, r)
+#define STATE(_f, args...) { \
+	printf("%06x: " _f, avr->pc, ## args);\
+	}
+#define SREG() {\
+	printf("%06x: \t\t\t\t\t\t\t\t\tSREG = ", avr->pc); \
+	for (int _sbi = 0; _sbi < 8; _sbi++)\
+		printf("%c", avr->sreg[_sbi] ? toupper(_sreg_bit_name[_sbi]) : '.');\
+	printf("\n");\
+}
+#else
 #define T(w)
 #define REG_TOUCH(a, r)
 #define STATE(_f, args...)
 #define SREG()
+#endif
 #endif
 
 void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
@@ -281,7 +296,8 @@ static void _avr_invalid_opcode(avr_t * avr)
 {
 #if CONFIG_SIMAVR_TRACE
 	printf( FONT_RED "*** %04x: %-25s Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
-			avr->pc, avr->trace_data->codeline[avr->pc>>1]->symbol, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
+			avr->pc, avr_symbol_name_for_address(avr, avr->pc >> 1),
+			_avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
 #else
 	AVR_LOG(avr, LOG_ERROR, FONT_RED "CORE: *** %04x: Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
 			avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));

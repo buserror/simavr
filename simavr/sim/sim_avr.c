@@ -68,8 +68,24 @@ avr_global_logger_get()
 
 int avr_init(avr_t * avr)
 {
-	avr->flash = malloc(avr->flashend + 1);
-	memset(avr->flash, 0xff, avr->flashend + 1);
+	uint32_t flashsize = avr->flashend + 1;
+#ifdef CONFIG_SIMAVR_FAST_CORE
+	/* gets cleared on each reset...  just to be sure! */
+	/*	avr addresses program memory by words...
+		simavr uses byte addressing...
+		fast core uses long word addressing (uint32_t)...
+		we trade off extra space to trim off a few cycles.
+	*/
+	uint32_t uflashsize = flashsize << 2;
+#ifdef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
+	/* due to a possible bug, piggyback onto existing flash buffer */
+	flashsize += uflashsize;
+#else
+	avr->uflash = malloc(uflashsize);
+#endif
+#endif
+	avr->flash = malloc(flashsize);
+	memset(avr->flash, 0xff, flashsize);
 	avr->data = malloc(avr->ramend + 1);
 	memset(avr->data, 0, avr->ramend + 1);
 #ifdef CONFIG_SIMAVR_TRACE
@@ -109,6 +125,9 @@ void avr_terminate(avr_t * avr)
 	}
 	avr_deallocate_ios(avr);
 
+#if defined(CONFIG_SIMAVR_FAST_CORE) && !defined(CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED)
+	if (avr->uflash) free(avr->uflash)
+#endif
 	if (avr->flash) free(avr->flash);
 	if (avr->data) free(avr->data);
 	avr->flash = avr->data = NULL;
@@ -118,7 +137,22 @@ void avr_reset(avr_t * avr)
 {
 	AVR_LOG(avr, LOG_TRACE, "%s reset\n", avr->mmcu);
 
-	memset(avr->data, 0x0, avr->ramend + 1);
+#ifdef CONFIG_SIMAVR_FAST_CORE
+	uint32_t flashsize = avr->flashend + 1;
+	/* gets cleared on each reset...  just to be sure! */
+	/*	avr addresses program memory by words...
+		simavr uses byte addressing...
+		fast core uses long word addressing (uint32_t)...
+		we trade off extra space to trim off a few cycles.
+	*/
+	uint32_t uflashsize = flashsize << 2;
+#ifdef CONFIG_SIMAVR_FAST_CORE_PIGGYBACKED
+	memset(avr->flash + flashsize, 0, uflashsize);
+#else
+	memset(avr->uflash, 0, uflashsize);
+#endif
+#endif
+	memset(avr->data, 0, avr->ramend + 1);
 	_avr_sp_set(avr, avr->ramend);
 	avr->pc = 0;
 	for (int i = 0; i < 8; i++)
@@ -304,12 +338,19 @@ void avr_callback_sleep_raw(avr_t * avr, avr_cycle_count_t howLong)
 	}
 }
 
+extern avr_flashaddr_t avr_fast_core_run_one(avr_t* avr);
+
 void avr_callback_run_raw(avr_t * avr)
 {
 	avr_flashaddr_t new_pc = avr->pc;
 
 	if (avr->state == cpu_Running) {
+#ifdef CONFIG_SIMAVR_FAST_CORE
+		new_pc = avr_fast_core_run_one(avr);
+#else
 		new_pc = avr_run_one(avr);
+#endif
+
 #if CONFIG_SIMAVR_TRACE
 		avr_dump_state(avr);
 #endif
