@@ -28,10 +28,6 @@
 #include "sim_avr.h"
 #include "sim_core.h"
 
-// modulo a cursor value on the pending interrupt fifo
-#define INT_FIFO_SIZE (sizeof(table->pending) / sizeof(avr_int_vector_t *))
-#define INT_FIFO_MOD(_v) ((_v) &  (INT_FIFO_SIZE - 1))
-
 void
 avr_interrupt_init(
 		avr_t * avr )
@@ -46,10 +42,11 @@ avr_interrupt_reset(
 {
 	printf("%s\n", __func__);
 	avr_int_table_p table = &avr->interrupts;
-	table->pending_r = table->pending_w = 0;
 	table->pending_wait = 0;
-	for (int i = 0; i < table->vector_count; i++)
-		table->vector[i]->pending = 0;
+	for (int i = 0; i < 64; i++)
+		if(table->vector[i])
+			table->vector[i]->pending = 0;
+	table->pending_vector_bitmap = 0;
 }
 
 void
@@ -63,7 +60,9 @@ avr_register_vector(
 	avr_int_table_p table = &avr->interrupts;
 
 	vector->irq.irq = vector->vector;
-	table->vector[table->vector_count++] = vector;
+	vector->table = table;
+	table->vector[vector->vector] = vector;
+	
 	if (vector->trace)
 		printf("%s register vector %d (enabled %04x:%d)\n", __FUNCTION__, vector->vector, vector->enable.reg, vector->enable.bit);
 
@@ -76,7 +75,7 @@ avr_has_pending_interrupts(
 		avr_t * avr)
 {
 	avr_int_table_p table = &avr->interrupts;
-	return table->pending_r != table->pending_w;
+	return (0 != table->pending_vector_bitmap);
 }
 
 int
@@ -124,9 +123,9 @@ avr_raise_interrupt(
 
 		avr_int_table_p table = &avr->interrupts;
 
-		table->pending[table->pending_w++] = vector;
-		table->pending_w = INT_FIFO_MOD(table->pending_w);
-
+		table->pending_vector_bitmap |= 1 << vector->vector;
+		table->vector[vector->vector] = vector;
+		
 		if (!table->pending_wait)
 			table->pending_wait = 1;		// latency on interrupts ??
 		if (avr->state == cpu_Sleeping) {
@@ -149,6 +148,9 @@ avr_clear_interrupt(
 	if (vector->trace)
 		printf("%s cleared %d\n", __FUNCTION__, vector->vector);
 	vector->pending = 0;
+
+	vector->table->pending_vector_bitmap &= ~(1 << vector->vector);
+
 	avr_raise_irq(&vector->irq, 0);
 	if (vector->raised.reg && !vector->raise_sticky)
 		avr_regbit_clear(avr, vector->raised);
@@ -174,9 +176,11 @@ avr_get_interrupt_irq(
 		uint8_t v)
 {
 	avr_int_table_p table = &avr->interrupts;
-	for (int i = 0; i < table->vector_count; i++)
-		if (table->vector[i]->vector == v)
-			return &table->vector[i]->irq;
+	
+	avr_int_vector_t *vector = table->vector[v];
+	if(vector)
+		return &vector->irq;
+
 	return NULL;
 }
 
@@ -204,39 +208,20 @@ avr_service_interrupts(
 	if (table->pending_wait)
 		return;
 
-	// how many are pending...
-	int cnt = table->pending_w > table->pending_r ?
-			table->pending_w - table->pending_r :
-			(table->pending_w + INT_FIFO_SIZE) - table->pending_r;
-	// locate the highest priority one
-	int min = 0xff;
-	int mini = 0;
-	for (int ii = 0; ii < cnt; ii++) {
-		int vi = INT_FIFO_MOD(table->pending_r + ii);
-		avr_int_vector_t * v = table->pending[vi];
-		if (v->vector < min) {
-			min = v->vector;
-			mini = vi;
+	int pos = ffs(table->pending_vector_bitmap >> 1);
+
+	avr_int_vector_t * vector = table->vector[pos];
+
+	if (vector) {
+		if(avr_regbit_get(avr, vector->enable)) {
+			if (vector->trace)
+				printf("%s calling %d\n", __FUNCTION__, (int)vector->vector);
+			
+			_avr_push16(avr, avr->pc >> 1);
+			avr->sreg[S_I] = 0;
+			avr->pc = vector->vector * avr->vector_size;
 		}
-	}
-	avr_int_vector_t * vector = table->pending[mini];
-
-	// now move the one at the front of the fifo in the slot of
-	// the one we service
-	table->pending[mini] = table->pending[table->pending_r++];
-	table->pending_r = INT_FIFO_MOD(table->pending_r);
-
-	// if that single interrupt is masked, ignore it and continue
-	// could also have been disabled, or cleared
-	if (!avr_regbit_get(avr, vector->enable) || !vector->pending) {
-		vector->pending = 0;
-	} else {
-		if (vector && vector->trace)
-			printf("%s calling %d\n", __FUNCTION__, (int)vector->vector);
-		_avr_push16(avr, avr->pc >> 1);
-		avr->sreg[S_I] = 0;
-		avr->pc = vector->vector * avr->vector_size;
-
+		
 		avr_clear_interrupt(avr, vector);
 	}
 }
