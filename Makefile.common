@@ -96,6 +96,7 @@ LIBDIR		= ${shell pwd}/${SIMAVR}/${OBJ}
 LDFLAGS 	+= -L${LIBDIR} -lsimavr 
 
 LDFLAGS 	+= -lelf 
+LDFLAGS 	+= -ldl 
 
 ifeq (${WIN}, Msys)
 LDFLAGS      += -lws2_32

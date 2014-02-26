@@ -17,6 +17,8 @@
 
 	You should have received a copy of the GNU General Public License
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
+
+	simulation component dynamic loading by Yann GOUY <yann_gouy@yahoo.fr>
  */
 
 #include <stdlib.h>
@@ -24,6 +26,8 @@
 #include <libgen.h>
 #include <string.h>
 #include <signal.h>
+#include <dlfcn.h>	// dlopen(),...
+
 #include "sim_avr.h"
 #include "sim_elf.h"
 #include "sim_core.h"
@@ -32,14 +36,18 @@
 
 #include "sim_core_decl.h"
 
+#define COMPONENT_MAX_NB	50  // it would be clever to allow a dynamic size
+
+
 void display_usage(char * app)
 {
-	printf("Usage: %s [-t] [-g] [-v] [-m <device>] [-f <frequency>] firmware\n", app);
+	printf("Usage: %s [-t] [-g] [-v] [-m <device>] [-f <frequency>] [-s <simulation.so>] firmware\n", app);
 	printf("       -t: Run full scale decoder trace\n"
 		   "       -g: Listen for gdb connection on port 1234\n"
 		   "       -ff: Load next .hex file as flash\n"
 		   "       -ee: Load next .hex file as eeprom\n"
 		   "       -v: Raise verbosity level (can be passed more than once)\n"
+		   "       -s: load next .so as component simulation\n"
 		   "   Supported AVR cores:\n");
 	for (int i = 0; avr_kind[i]; i++) {
 		printf("       ");
@@ -73,6 +81,11 @@ int main(int argc, char *argv[])
 	uint32_t loadBase = AVR_SEGMENT_OFFSET_FLASH;
 	int trace_vectors[8] = {0};
 	int trace_vectors_count = 0;
+	struct {
+		int nb;
+		char* name[COMPONENT_MAX_NB];
+		void* fd[COMPONENT_MAX_NB];
+	} simu_component = {0, {0}, {0}};
 
 	if (argc == 1)
 		display_usage(basename(argv[0]));
@@ -99,6 +112,16 @@ int main(int argc, char *argv[])
 			gdb++;
 		} else if (!strcmp(argv[pi], "-v")) {
 			log++;
+		} else if (!strcmp(argv[pi], "-s")) {
+			if (pi < argc-1) {
+				simu_component.name[simu_component.nb] = argv[++pi];
+				simu_component.nb++;
+				if ( simu_component.nb >= COMPONENT_MAX_NB ) {
+					fprintf(stderr, "max number of component simulations reached (%d)\n", COMPONENT_MAX_NB);
+					display_usage(basename(argv[0]));
+				}
+			} else
+				display_usage(basename(argv[0]));
 		} else if (!strcmp(argv[pi], "-ee")) {
 			loadBase = AVR_SEGMENT_OFFSET_EEPROM;
 		} else if (!strcmp(argv[pi], "-ff")) {
@@ -177,11 +200,48 @@ int main(int argc, char *argv[])
 	signal(SIGINT, sig_int);
 	signal(SIGTERM, sig_int);
 
+	// load component simulations
+	for (int comp = 0; comp < simu_component.nb; comp++) {
+		// load the simulation
+		simu_component.fd[comp] = dlopen(simu_component.name[comp], RTLD_LAZY|RTLD_GLOBAL);
+		if (simu_component.fd[comp] == NULL) {
+			fprintf(stderr, "component simulation <%s> will not be used: %s\n", simu_component.name[comp], dlerror());
+            continue;
+        }
+
+		// retrieve and call the mandatory init function
+		dlerror();
+		int (*simu_component_init)(struct avr_t * avr);
+		*(void**)(&simu_component_init) = dlsym(simu_component.fd[comp], "simu_component_init");
+		char* error;
+		if (( error = dlerror()) != NULL)  {
+			fprintf(stderr, "%s\n", error);
+            continue;
+		}
+		(*simu_component_init)(avr);
+	}
+
+	// run the AVR
 	for (;;) {
 		int state = avr_run(avr);
 		if ( state == cpu_Done || state == cpu_Crashed)
 			break;
 	}
-	
+
+	// clean the component simulations
+	for (int comp = 0; comp < simu_component.nb; comp++) {
+		dlerror();
+		int (*simu_component_fini)(struct avr_t * avr);
+		*(void**)(&simu_component_fini) = dlsym(simu_component.fd[comp], "simu_component_fini");
+		char* error;
+		if (( error = dlerror()) != NULL)  {
+			fprintf(stderr, "%s\n", error);
+		}
+		(*simu_component_fini)(avr);
+		if (0 != dlclose(simu_component.fd[comp])) {
+			fprintf(stderr, "%s\n", dlerror());
+		}
+	}
+
 	avr_terminate(avr);
 }
