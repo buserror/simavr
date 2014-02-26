@@ -27,6 +27,8 @@
 #include "sim_avr.h"
 #include "sim_elf.h"
 #include "sim_core.h"
+#include "sim_fast_core.h"
+#include "sim_fast_core_profiler.h"
 #include "sim_gdb.h"
 #include "sim_hex.h"
 
@@ -34,12 +36,13 @@
 
 void display_usage(char * app)
 {
-	printf("Usage: %s [-t] [-g] [-v] [-m <device>] [-f <frequency>] firmware\n", app);
+	printf("Usage: %s [-t] [-g] [-v] [-m <device>] [-f <frequency>] [-fast-core] firmware\n", app);
 	printf("       -t: Run full scale decoder trace\n"
 		   "       -g: Listen for gdb connection on port 1234\n"
 		   "       -ff: Load next .hex file as flash\n"
 		   "       -ee: Load next .hex file as eeprom\n"
 		   "       -v: Raise verbosity level (can be passed more than once)\n"
+		   "-fast-core: Run using fast core\n"
 		   "   Supported AVR cores:\n");
 	for (int i = 0; avr_kind[i]; i++) {
 		printf("       ");
@@ -57,6 +60,22 @@ sig_int(
 		int sign)
 {
 	printf("signal caught, simavr terminating\n");
+
+#ifdef CONFIG_AVR_FAST_CORE_UINST_PROFILING
+	avr_fast_core_profiler_generate_report();
+#endif
+
+	if (avr)
+		avr_terminate(avr);
+	exit(0);
+}
+
+void
+sig_term(
+		int sign)
+{
+	printf("signal caught, simavr terminating\n");
+
 	if (avr)
 		avr_terminate(avr);
 	exit(0);
@@ -73,7 +92,8 @@ int main(int argc, char *argv[])
 	uint32_t loadBase = AVR_SEGMENT_OFFSET_FLASH;
 	int trace_vectors[8] = {0};
 	int trace_vectors_count = 0;
-
+	int fast_core = 0;
+	
 	if (argc == 1)
 		display_usage(basename(argv[0]));
 
@@ -103,6 +123,8 @@ int main(int argc, char *argv[])
 			loadBase = AVR_SEGMENT_OFFSET_EEPROM;
 		} else if (!strcmp(argv[pi], "-ff")) {
 			loadBase = AVR_SEGMENT_OFFSET_FLASH;			
+		} else if (!strcmp(argv[pi], "-fast-core")) {
+			fast_core++;
 		} else if (argv[pi][0] != '-') {
 			char * filename = argv[pi];
 			char * suffix = strrchr(filename, '.');
@@ -154,6 +176,10 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	avr_init(avr);
+	if(fast_core) {
+		avr_fast_core_init(avr);
+		avr->run = avr_fast_core_run_many;
+	}
 	avr_load_firmware(avr, &f);
 	if (f.flashbase) {
 		printf("Attempted to load a bootloader at %04x\n", f.flashbase);
@@ -174,14 +200,19 @@ int main(int argc, char *argv[])
 		avr_gdb_init(avr);
 	}
 
-	signal(SIGINT, sig_int);
-	signal(SIGTERM, sig_int);
+	signal(SIGINT, sig_int);	/* C-c -- Control C -- Interrupt program execution signal. */
+	signal(SIGQUIT, sig_term);	/* C-\ -- Control \ -- Quit...  Error detected by user */
+	signal(SIGTERM, sig_term);	/* default program termination signal. */
 
 	for (;;) {
 		int state = avr_run(avr);
 		if ( state == cpu_Done || state == cpu_Crashed)
 			break;
 	}
+
+#ifdef CONFIG_AVR_FAST_CORE_UINST_PROFILING
+	avr_fast_core_profiler_generate_report();
+#endif
 	
 	avr_terminate(avr);
 }
