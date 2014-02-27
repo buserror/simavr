@@ -60,14 +60,11 @@ avr_cycle_timer_insert(
 	when += avr->cycle;
 
 	// find its place in the list
-	int inserti = 0;
-	while (inserti < pool->count && pool->timer[inserti].when > when)
-		inserti++;
-	// make a hole
-	int cnt = pool->count - inserti;
-	if (cnt)
-		memmove(&pool->timer[inserti + 1], &pool->timer[inserti],
-				cnt * sizeof(avr_cycle_timer_slot_t));
+	int inserti = pool->count;
+	while((inserti > 0) && (pool->timer[inserti - 1].when < when)) {
+		memcpy(&pool->timer[inserti], &pool->timer[inserti-1], sizeof(avr_cycle_timer_slot_t));
+		inserti--;
+	}
 
 	pool->timer[inserti].timer = timer;
 	pool->timer[inserti].param = param;
