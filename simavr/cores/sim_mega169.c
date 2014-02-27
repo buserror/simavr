@@ -374,8 +374,3 @@ void m169p_reset(struct avr_t * avr)
 //	struct mcu_t * mcu = (struct mcu_t*)avr;
 }
 
-struct avr_adc_t* m169p_getadc(struct avr_t * avr)
-{
-	struct mcu_t * mcu = (struct mcu_t*)avr;
-    return &mcu->adc;
-}
