@@ -26,18 +26,15 @@
 #include "sim_time.h"
 #include "sim_cycle_timers.h"
 
-#if 0
-#define DEBUG(__w) __w
-#define DUMP(_pool,_w) { \
-	printf("%s:%d %s ",__func__,__LINE__, _w);\
-	for (int _i=0;_i<_pool->count;_i++) \
-		printf("[%2d:%7d] ",_i,(int)_pool->timer[_i].when);\
-	printf("\n");\
-}
-#else
-#define DEBUG(__w)
-#define DUMP(_pool,_w)
-#endif
+#define QUEUE(__q, __e) { (__e)->next = (__q); (__q) = __e; }
+#define DETACH(__q, __l, __e) { \
+		if ((__l)) (__l)->next = (__e)->next; \
+		else (__q) = (__e)->next; \
+	}
+#define INSERT(__q, __l, __e) { \
+		if ((__l)) (__e)->next = (__l)->next; \
+		else { (__e)->next = (__q); (__q) = (__e); } \
+	}
 
 void
 avr_cycle_timer_reset(
@@ -45,6 +42,11 @@ avr_cycle_timer_reset(
 {
 	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
 	memset(pool, 0, sizeof(*pool));
+	// queue all slots into the free queue
+	for (int i = 0; i < MAX_CYCLE_TIMERS; i++) {
+		avr_cycle_timer_slot_p t = &pool->timer_slots[i];
+		QUEUE(pool->timer_free, t);
+	}
 }
 
 // no sanity checks checking here, on purpose
@@ -59,22 +61,28 @@ avr_cycle_timer_insert(
 
 	when += avr->cycle;
 
-	// find its place in the list
-	int inserti = 0;
-	while (inserti < pool->count && pool->timer[inserti].when > when)
-		inserti++;
-	// make a hole
-	int cnt = pool->count - inserti;
-	if (cnt)
-		memmove(&pool->timer[inserti + 1], &pool->timer[inserti],
-				cnt * sizeof(avr_cycle_timer_slot_t));
+	avr_cycle_timer_slot_p t = pool->timer_free;
 
-	pool->timer[inserti].timer = timer;
-	pool->timer[inserti].param = param;
-	pool->timer[inserti].when = when;
-	pool->count++;
-	DEBUG(printf("%s %2d/%2d when %7d %p/%p\n", __func__, inserti, pool->count, (int)(when - avr->cycle), timer, param);)
-	DUMP(pool, "after");
+	if (!t) {
+		AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: ran out of timers (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+		return;
+	}
+	// detach head
+	pool->timer_free = t->next;
+	t->next = NULL;
+	t->timer = timer;
+	t->param = param;
+	t->when = when;
+	
+	// find its place in the list
+	avr_cycle_timer_slot_p loop = pool->timer, last = NULL;
+	while (loop) {
+		if (loop->when > when)
+			break;
+		last = loop;
+		loop = loop->next;
+	}
+	INSERT(pool->timer, last, t);
 }
 
 void
@@ -89,7 +97,7 @@ avr_cycle_timer_register(
 	// remove it if it was already scheduled
 	avr_cycle_timer_cancel(avr, timer, param);
 
-	if (pool->count == MAX_CYCLE_TIMERS) {
+	if (!pool->timer_free) {
 		AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
 		return;
 	}
@@ -114,17 +122,17 @@ avr_cycle_timer_cancel(
 {
 	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
 
-	for (int i = 0; i < pool->count; i++)
-		if (pool->timer[i].timer == timer && pool->timer[i].param == param) {
-			int cnt = pool->count - i - 1;
-			DEBUG(printf("%s %2d when %7d %p/%p\n", __func__, i, (int)(pool->timer[i].when - avr->cycle), timer, param);)
-			if (cnt)
-				memmove(&pool->timer[i], &pool->timer[i+1],
-						cnt * sizeof(avr_cycle_timer_slot_t));
-			pool->count--;
-			DUMP(pool, "after");
-			return;
+	// find its place in the list
+	avr_cycle_timer_slot_p t = pool->timer, last = NULL;
+	while (t) {
+		if (t->timer == timer && t->param == param) {
+			DETACH(pool->timer, last, t);
+			QUEUE(pool->timer_free, t);
+			break;
 		}
+		last = t;
+		t = t->next;
+	}
 }
 
 /*
@@ -139,11 +147,14 @@ avr_cycle_timer_status(
 {
 	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
 
-	for (int i = 0; i < pool->count; i++)
-		if (pool->timer[i].timer == timer && pool->timer[i].param == param) {
-			return 1 + (pool->timer[i].when - avr->cycle);
+	// find its place in the list
+	avr_cycle_timer_slot_p t = pool->timer;
+	while (t) {
+		if (t->timer == timer && t->param == param) {
+			return 1 + (t->when - avr->cycle);
 		}
-
+		t->next = pool->timer_free;
+	}
 	return 0;
 }
 
@@ -158,25 +169,29 @@ avr_cycle_timer_process(
 {
 	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
 
-	if (!pool->count)
+	if (!pool->timer)
 		return (avr_cycle_count_t)1000;
 
-	do {
-		// copy it, since the array is volatile
-		avr_cycle_timer_slot_t  timer = pool->timer[pool->count-1];
-		avr_cycle_count_t when = timer.when;
-		if (when > avr->cycle)
-			return when - avr->cycle;
-		pool->count--; // remove the top element now
+	avr_cycle_timer_slot_p t = pool->timer, last = NULL;
+	while (t) {
+		avr_cycle_timer_slot_p next = t->next;
+		if (t->when > avr->cycle)
+			return t->when - avr->cycle;
+
+		// detach from active timers
+		DETACH(pool->timer, last, t);
+		avr_cycle_count_t when = 0;
 		do {
-			DEBUG(printf("%s %2d when %7d %p/%p\n", __func__, pool->count, (int)(when), timer.timer, timer.param););
-			when = timer.timer(avr, when, timer.param);
+			when = t->timer(avr, when, t->param);
 		} while (when && when <= avr->cycle);
-		if (when) {
-			DEBUG(printf("%s %2d reschedule when %7d %p/%p\n", __func__, pool->count, (int)(when), timer.timer, timer.param);)
-			avr_cycle_timer_insert(avr, when - avr->cycle, timer.timer, timer.param);
+		if (when) {	// reschedule then
+			avr_cycle_timer_insert(avr, when - avr->cycle, t->timer, t->param);
 		}
-	} while (pool->count);
+		// requeue this one into the free ones
+		QUEUE(pool->timer_free, t);
+		last = t;
+		t = next;
+	};
 
 	return (avr_cycle_count_t)1000;
 }
