@@ -156,7 +156,7 @@ void avr_special_init( avr_t * avr, void * data)
 {
 	struct avr_flash *flash_data = (struct avr_flash *)data;
 	// open the file
-	avr_flash_fd = open(flash_data->avr_flash_path, O_RDWR|O_CREAT, 0644);
+	flash_data->avr_flash_fd = open(flash_data->avr_flash_path, O_RDWR|O_CREAT, 0644);
 	if (flash_data->avr_flash_fd < 0) {
 		perror(flash_data->avr_flash_path);
 		exit(1);
