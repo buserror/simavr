@@ -73,7 +73,7 @@ avr_cycle_timer_insert(
 	t->timer = timer;
 	t->param = param;
 	t->when = when;
-	
+
 	// find its place in the list
 	avr_cycle_timer_slot_p loop = pool->timer, last = NULL;
 	while (loop) {
@@ -153,7 +153,7 @@ avr_cycle_timer_status(
 		if (t->timer == timer && t->param == param) {
 			return 1 + (t->when - avr->cycle);
 		}
-		t->next = pool->timer_free;
+		t = t->next;
 	}
 	return 0;
 }
@@ -172,15 +172,15 @@ avr_cycle_timer_process(
 	if (!pool->timer)
 		return (avr_cycle_count_t)1000;
 
-	avr_cycle_timer_slot_p t = pool->timer, last = NULL;
-	while (t) {
-		avr_cycle_timer_slot_p next = t->next;
+	do {
+		avr_cycle_timer_slot_p t = pool->timer;
 		if (t->when > avr->cycle)
 			return t->when - avr->cycle;
 
 		// detach from active timers
-		DETACH(pool->timer, last, t);
-		avr_cycle_count_t when = 0;
+		pool->timer = t->next;
+		t->next = NULL;
+		avr_cycle_count_t when = t->when;
 		do {
 			when = t->timer(avr, when, t->param);
 		} while (when && when <= avr->cycle);
@@ -189,9 +189,7 @@ avr_cycle_timer_process(
 		}
 		// requeue this one into the free ones
 		QUEUE(pool->timer_free, t);
-		last = t;
-		t = next;
-	};
+	} while (pool->timer);
 
 	return (avr_cycle_count_t)1000;
 }
