@@ -26,14 +26,30 @@
 #include "sim_time.h"
 #include "sim_cycle_timers.h"
 
+static inline void 
+QUEUE_POP(
+		avr_cycle_timer_slot_p * queue,
+		avr_cycle_timer_slot_p * elem)
+{
+	if(elem)
+		*elem = *queue;
+
+	if(queue)
+		*queue = (*queue)->next;
+}
+
 #define QUEUE(__q, __e) { (__e)->next = (__q); (__q) = __e; }
 #define DETACH(__q, __l, __e) { \
 		if ((__l)) (__l)->next = (__e)->next; \
 		else (__q) = (__e)->next; \
 	}
 #define INSERT(__q, __l, __e) { \
-		if ((__l)) (__e)->next = (__l)->next; \
-		else { (__e)->next = (__q); (__q) = (__e); } \
+		if ((__l)) { \
+			(__e)->next = (__l)->next; \
+			(__l)->next = (__e); \
+		} else { \
+			QUEUE(__q, __e); \
+		} \
 	}
 
 void
@@ -61,14 +77,14 @@ avr_cycle_timer_insert(
 
 	when += avr->cycle;
 
-	avr_cycle_timer_slot_p t = pool->timer_free;
-
+	avr_cycle_timer_slot_p t = NULL;
+	// detach head
+	QUEUE_POP(&pool->timer_free, &t);
+	
 	if (!t) {
 		AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: ran out of timers (%d)!\n", __func__, MAX_CYCLE_TIMERS);
 		return;
 	}
-	// detach head
-	pool->timer_free = t->next;
 	t->next = NULL;
 	t->timer = timer;
 	t->param = param;
@@ -76,9 +92,7 @@ avr_cycle_timer_insert(
 
 	// find its place in the list
 	avr_cycle_timer_slot_p loop = pool->timer, last = NULL;
-	while (loop) {
-		if (loop->when > when)
-			break;
+	while (loop && (loop->when < when)) {
 		last = loop;
 		loop = loop->next;
 	}
@@ -174,13 +188,13 @@ avr_cycle_timer_process(
 
 	do {
 		avr_cycle_timer_slot_p t = pool->timer;
-		if (t->when > avr->cycle)
-			return t->when - avr->cycle;
+		avr_cycle_count_t when = t->when;
+		if (when > avr->cycle)
+			return when - avr->cycle;
 
 		// detach from active timers
-		pool->timer = t->next;
+		QUEUE_POP(&pool->timer, NULL);
 		t->next = NULL;
-		avr_cycle_count_t when = t->when;
 		do {
 			when = t->timer(avr, when, t->param);
 		} while (when && when <= avr->cycle);
