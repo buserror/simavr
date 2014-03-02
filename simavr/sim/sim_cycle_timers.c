@@ -49,15 +49,13 @@ avr_cycle_timer_reset(
 
 // no sanity checks checking here, on purpose
 static void
-avr_cycle_timer_insert(
+avr_cycle_timer_insert_at_when(
 		avr_t * avr,
 		avr_cycle_count_t when,
 		avr_cycle_timer_t timer,
 		void * param)
 {
 	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
-
-	when += avr->cycle;
 
 	// find its place in the list
 	int inserti = pool->count;
@@ -72,6 +70,17 @@ avr_cycle_timer_insert(
 	pool->count++;
 	DEBUG(printf("%s %2d/%2d when %7d %p/%p\n", __func__, inserti, pool->count, (int)(when - avr->cycle), timer, param);)
 	DUMP(pool, "after");
+}
+
+// no sanity checks checking here, on purpose
+static void
+avr_cycle_timer_insert(
+		avr_t * avr,
+		avr_cycle_count_t when,
+		avr_cycle_timer_t timer,
+		void * param)
+{
+	return(avr_cycle_timer_insert_at_when(avr, when + avr->cycle, timer, param));
 }
 
 void
@@ -159,19 +168,24 @@ avr_cycle_timer_process(
 		return (avr_cycle_count_t)1000;
 
 	do {
-		// copy it, since the array is volatile
-		avr_cycle_timer_slot_t  timer = pool->timer[pool->count-1];
-		avr_cycle_count_t when = timer.when;
+		avr_cycle_timer_slot_t *t = &pool->timer[pool->count-1];
+		avr_cycle_count_t when = t->when;
+		
 		if (when > avr->cycle)
 			return when - avr->cycle;
+
+		// copy it, since the array is volatile
+		avr_cycle_timer_t timer = t->timer;
+		void *param = t->param;
+
 		pool->count--; // remove the top element now
 		do {
-			DEBUG(printf("%s %2d when %7d %p/%p\n", __func__, pool->count, (int)(when), timer.timer, timer.param););
-			when = timer.timer(avr, when, timer.param);
+			DEBUG(printf("%s %2d when %7d %p/%p\n", __func__, pool->count, (int)(when), timer, param););
+			when = timer(avr, when, param);
 		} while (when && when <= avr->cycle);
 		if (when) {
-			DEBUG(printf("%s %2d reschedule when %7d %p/%p\n", __func__, pool->count, (int)(when), timer.timer, timer.param);)
-			avr_cycle_timer_insert(avr, when - avr->cycle, timer.timer, timer.param);
+			DEBUG(printf("%s %2d reschedule when %7d %p/%p\n", __func__, pool->count, (int)(when), timer, param);)
+			avr_cycle_timer_insert_at_when(avr, when, timer, param);
 		}
 	} while (pool->count);
 
