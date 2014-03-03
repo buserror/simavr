@@ -83,11 +83,33 @@ int donttrace = 0;
 		printf("%c", avr->sreg[_sbi] ? toupper(_sreg_bit_name[_sbi]) : '.');\
 	printf("\n");\
 }
+
+void crash(avr_t* avr)
+{
+	DUMP_REG();
+	printf("*** CYCLE %" PRI_avr_cycle_count "PC %04x\n", avr->cycle, avr->pc);
+
+	for (int i = OLD_PC_SIZE-1; i > 0; i--) {
+		int pci = (avr->trace_data->old_pci + i) & 0xf;
+		printf(FONT_RED "*** %04x: %-25s RESET -%d; sp %04x\n" FONT_DEFAULT,
+				avr->trace_data->old[pci].pc, avr->trace_data->codeline ? avr->trace_data->codeline[avr->trace_data->old[pci].pc>>1]->symbol : "unknown", OLD_PC_SIZE-i, avr->trace_data->old[pci].sp);
+	}
+
+	printf("Stack Ptr %04x/%04x = %d \n", _avr_sp_get(avr), avr->ramend, avr->ramend - _avr_sp_get(avr));
+	DUMP_STACK();
+
+	avr_sadly_crashed(avr, 0);
+}
 #else
 #define T(w)
 #define REG_TOUCH(a, r)
 #define STATE(_f, args...)
 #define SREG()
+
+void crash(avr_t* avr)
+{
+	avr_sadly_crashed(avr, 0);
+}
 #endif
 
 void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
@@ -95,12 +117,12 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 	if (addr > avr->ramend) {
 		AVR_LOG(avr, LOG_ERROR, "CORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x out of ram\n",
 				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, v);
-		CRASH();
+		crash(avr);
 	}
 	if (addr < 32) {
 		AVR_LOG(avr, LOG_ERROR, "CORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x low registers\n",
 				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, v);
-		CRASH();
+		crash(avr);
 	}
 #if AVR_STACK_WATCH
 	/*
@@ -125,7 +147,7 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 	if (addr > avr->ramend) {
 		AVR_LOG(avr, LOG_ERROR, FONT_RED "CORE: *** Invalid read address PC=%04x SP=%04x O=%04x Address %04x out of ram (%04x)\n" FONT_DEFAULT,
 				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, avr->ramend);
-		CRASH();
+		crash(avr);
 	}
 
 	if (avr->gdb) {
@@ -245,6 +267,21 @@ inline void _avr_push16(avr_t * avr, uint16_t v)
 static inline uint16_t _avr_pop16(avr_t * avr)
 {
 	uint16_t res = _avr_pop8(avr) << 8;
+	res |= _avr_pop8(avr);
+	return res;
+}
+
+inline void _avr_push24(avr_t * avr, uint32_t v)
+{
+	_avr_push8(avr, v);
+	_avr_push8(avr, v >> 8);
+	_avr_push8(avr, v >> 16);
+}
+
+static inline uint32_t _avr_pop24(avr_t * avr)
+{
+	uint32_t res = _avr_pop8(avr) << 16;
+	res |= _avr_pop8(avr) << 8;
 	res |= _avr_pop8(avr);
 	return res;
 }
@@ -456,10 +493,10 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 	/*
 	 * this traces spurious reset or bad jumps
 	 */
-	if ((avr->pc == 0 && avr->cycle > 0) || avr->pc >= avr->codeend) {
+	if ((avr->pc == 0 && avr->cycle > 0) || avr->pc >= avr->codeend || _avr_sp_get(avr) > avr->ramend) {
 		avr->trace = 1;
 		STATE("RESET\n");
-		CRASH();
+		crash(avr);
 	}
 	avr->trace_data->touched[0] = avr->trace_data->touched[1] = avr->trace_data->touched[2] = 0;
 #endif
@@ -852,8 +889,13 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 						z |= avr->data[avr->eind] << 16;
 					STATE("%si%s Z[%04x]\n", e?"e":"", p?"call":"jmp", z << 1);
 					if (p) {
-						cycle++;
-						_avr_push16(avr, new_pc >> 1);
+						if (!avr->eind) {
+							_avr_push16(avr, new_pc >> 1);
+							cycle++;
+						} else {
+							_avr_push24(avr, new_pc >> 1);
+							cycle += 2;
+						}
 					}
 					new_pc = z << 1;
 					cycle++;
@@ -862,9 +904,15 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 				case 0x9518: 	// RETI
 				case 0x9508: {	// RET
 					new_pc = _avr_pop16(avr) << 1;
+					if (!avr->eind) {
+						new_pc = _avr_pop16(avr);
+						cycle += 3;
+					} else {
+						new_pc = _avr_pop24(avr);
+						cycle += 4;
+					}
 					if (opcode & 0x10)	// reti
 						avr->sreg[S_I] = 1;
-					cycle += 3;
 					STATE("ret%s\n", opcode & 0x10 ? "i" : "");
 					TRACE_JUMP();
 					STACK_FRAME_POP();
@@ -1152,9 +1200,14 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							a = (a << 16) | x;
 							STATE("call 0x%06x\n", a);
 							new_pc += 2;
-							_avr_push16(avr, new_pc >> 1);
+							if (!avr->eind) {
+								_avr_push16(avr, new_pc >> 1);
+								cycle += 3;
+							} else {
+								_avr_push24(avr, new_pc >> 1);
+								cycle += 4;
+							}
 							new_pc = a << 1;
-							cycle += 3;	// 4 cycles; FIXME 5 on devices with 22 bit PC
 							TRACE_JUMP();
 							STACK_FRAME_PUSH();
 						}	break;
@@ -1290,11 +1343,16 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 		case 0xd000: {
 			// RCALL 1100 kkkk kkkk kkkk
 //			int16_t o = ((int16_t)(opcode << 4)) >> 4; // CLANG BUG!
-			int16_t o = ((int16_t)((opcode << 4)&0xffff)) >> 4;
+			int16_t o = ((int16_t)((opcode << 4) & 0xffff)) >> 4;
 			STATE("rcall .%d [%04x]\n", o, new_pc + (o << 1));
-			_avr_push16(avr, new_pc >> 1);
+			if (!avr->eind) {
+				_avr_push16(avr, new_pc >> 1);
+				cycle += 2;
+			} else {
+				_avr_push24(avr, new_pc >> 1);
+				cycle += 3;
+			}
 			new_pc = new_pc + (o << 1);
-			cycle += 2;
 			// 'rcall .1' is used as a cheap "push 16 bits of room on the stack"
 			if (o != 0) {
 				TRACE_JUMP();

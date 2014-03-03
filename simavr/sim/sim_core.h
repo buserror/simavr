@@ -47,6 +47,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr);
 uint16_t _avr_sp_get(avr_t * avr);
 void _avr_sp_set(avr_t * avr, uint16_t sp);
 void _avr_push16(avr_t * avr, uint16_t v);
+void _avr_push24(avr_t * avr, uint32_t v);
 
 #if CONFIG_SIMAVR_TRACE
 
@@ -83,23 +84,8 @@ void avr_dump_state(avr_t * avr);
 #define DUMP_STACK()
 #endif
 
-#define CRASH()  {\
-		DUMP_REG();\
-		printf("*** CYCLE %" PRI_avr_cycle_count "PC %04x\n", avr->cycle, avr->pc);\
-		for (int i = OLD_PC_SIZE-1; i > 0; i--) {\
-			int pci = (avr->trace_data->old_pci + i) & 0xf;\
-			printf(FONT_RED "*** %04x: %-25s RESET -%d; sp %04x\n" FONT_DEFAULT,\
-					avr->trace_data->old[pci].pc, avr->trace_data->codeline ? avr->trace_data->codeline[avr->trace_data->old[pci].pc>>1]->symbol : "unknown", OLD_PC_SIZE-i, avr->trace_data->old[pci].sp);\
-		}\
-		printf("Stack Ptr %04x/%04x = %d \n", _avr_sp_get(avr), avr->ramend, avr->ramend - _avr_sp_get(avr));\
-		DUMP_STACK();\
-		avr_sadly_crashed(avr, 0);\
-	}
 #else /* CONFIG_SIMAVR_TRACE */
 
-#define CRASH() { \
-		avr_sadly_crashed(avr, 0);\
-	}
 #define DUMP_STACK()
 #define DUMP_REG();
 
