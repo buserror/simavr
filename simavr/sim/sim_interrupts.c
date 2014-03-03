@@ -233,7 +233,10 @@ avr_service_interrupts(
 	} else {
 		if (vector && vector->trace)
 			printf("%s calling %d\n", __FUNCTION__, (int)vector->vector);
-		_avr_push16(avr, avr->pc >> 1);
+		if (!avr->eind)
+			_avr_push16(avr, avr->pc >> 1);
+		else
+			_avr_push24(avr, avr->pc >> 1);
 		avr->sreg[S_I] = 0;
 		avr->pc = vector->vector * avr->vector_size;
 

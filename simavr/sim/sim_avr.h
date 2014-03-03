@@ -108,7 +108,7 @@ struct avr_trace_data_t {
 	 * allows dumping of a meaningful data even if the stack is
 	 * munched and so on
 	 */
-	#define OLD_PC_SIZE	32
+	#define OLD_PC_SIZE	128
 	struct {
 		uint32_t pc;
 		uint16_t sp;
