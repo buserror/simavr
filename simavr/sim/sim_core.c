@@ -83,11 +83,33 @@ int donttrace = 0;
 		printf("%c", avr->sreg[_sbi] ? toupper(_sreg_bit_name[_sbi]) : '.');\
 	printf("\n");\
 }
+
+void crash(avr_t* avr)
+{
+	DUMP_REG();
+	printf("*** CYCLE %" PRI_avr_cycle_count "PC %04x\n", avr->cycle, avr->pc);
+
+	for (int i = OLD_PC_SIZE-1; i > 0; i--) {
+		int pci = (avr->trace_data->old_pci + i) & 0xf;
+		printf(FONT_RED "*** %04x: %-25s RESET -%d; sp %04x\n" FONT_DEFAULT,
+				avr->trace_data->old[pci].pc, avr->trace_data->codeline ? avr->trace_data->codeline[avr->trace_data->old[pci].pc>>1]->symbol : "unknown", OLD_PC_SIZE-i, avr->trace_data->old[pci].sp);
+	}
+
+	printf("Stack Ptr %04x/%04x = %d \n", _avr_sp_get(avr), avr->ramend, avr->ramend - _avr_sp_get(avr));
+	DUMP_STACK();
+
+	avr_sadly_crashed(avr, 0);
+}
 #else
 #define T(w)
 #define REG_TOUCH(a, r)
 #define STATE(_f, args...)
 #define SREG()
+
+void crash(avr_t* avr)
+{
+	avr_sadly_crashed(avr, 0);
+}
 #endif
 
 void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
@@ -95,12 +117,12 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 	if (addr > avr->ramend) {
 		AVR_LOG(avr, LOG_ERROR, "CORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x out of ram\n",
 				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, v);
-		CRASH();
+		crash(avr);
 	}
 	if (addr < 32) {
 		AVR_LOG(avr, LOG_ERROR, "CORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x low registers\n",
 				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, v);
-		CRASH();
+		crash(avr);
 	}
 #if AVR_STACK_WATCH
 	/*
@@ -125,7 +147,7 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 	if (addr > avr->ramend) {
 		AVR_LOG(avr, LOG_ERROR, FONT_RED "CORE: *** Invalid read address PC=%04x SP=%04x O=%04x Address %04x out of ram (%04x)\n" FONT_DEFAULT,
 				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, avr->ramend);
-		CRASH();
+		crash(avr);
 	}
 
 	if (avr->gdb) {
@@ -456,10 +478,10 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 	/*
 	 * this traces spurious reset or bad jumps
 	 */
-	if ((avr->pc == 0 && avr->cycle > 0) || avr->pc >= avr->codeend) {
+	if ((avr->pc == 0 && avr->cycle > 0) || avr->pc >= avr->codeend || _avr_sp_get(avr) > avr->ramend) {
 		avr->trace = 1;
 		STATE("RESET\n");
-		CRASH();
+		crash(avr);
 	}
 	avr->trace_data->touched[0] = avr->trace_data->touched[1] = avr->trace_data->touched[2] = 0;
 #endif
