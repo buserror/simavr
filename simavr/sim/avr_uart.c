@@ -144,34 +144,39 @@ static void avr_uart_baud_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 	AVR_LOG(avr, LOG_TRACE, "UART: Roughly %d usec per bytes\n", (int)p->usec_per_byte);
 }
 
+static void avr_uart_udr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+{
+	avr_uart_t * p = (avr_uart_t *)param;
+
+	avr_core_watch_write(avr, addr, v);
+
+	if ( p->udrc.vector)
+		avr_regbit_clear(avr, p->udrc.raised);
+	avr_cycle_timer_register_usec(avr,
+			p->usec_per_byte, avr_uart_txc_raise, p); // should be uart speed dependent
+
+	if (p->flags & AVR_UART_FLAG_STDIO) {
+		const int maxsize = 256;
+		if (!p->stdio_out)
+			p->stdio_out = malloc(maxsize);
+		p->stdio_out[p->stdio_len++] = v < ' ' ? '.' : v;
+		p->stdio_out[p->stdio_len] = 0;
+		if (v == '\n' || p->stdio_len == maxsize) {
+			p->stdio_len = 0;
+			AVR_LOG(avr, LOG_TRACE, FONT_GREEN "%s\n" FONT_DEFAULT, p->stdio_out);
+		}
+	}
+	TRACE(printf("UDR%c(%02x) = %02x\n", p->name, addr, v);)
+	// tell other modules we are "outputting" a byte
+	if (avr_regbit_get(avr, p->txen))
+		avr_raise_irq(p->io.irq + UART_IRQ_OUTPUT, v);
+}
+
+
 static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 
-	if (addr == p->r_udr) {
-		avr_core_watch_write(avr, addr, v);
-
-		if ( p->udrc.vector)
-			avr_regbit_clear(avr, p->udrc.raised);
-		avr_cycle_timer_register_usec(avr,
-				p->usec_per_byte, avr_uart_txc_raise, p); // should be uart speed dependent
-
-		if (p->flags & AVR_UART_FLAG_STDIO) {
-			const int maxsize = 256;
-			if (!p->stdio_out)
-				p->stdio_out = malloc(maxsize);
-			p->stdio_out[p->stdio_len++] = v < ' ' ? '.' : v;
-			p->stdio_out[p->stdio_len] = 0;
-			if (v == '\n' || p->stdio_len == maxsize) {
-				p->stdio_len = 0;
-				AVR_LOG(avr, LOG_TRACE, FONT_GREEN "%s\n" FONT_DEFAULT, p->stdio_out);
-			}
-		}
-		TRACE(printf("UDR%c(%02x) = %02x\n", p->name, addr, v);)
-		// tell other modules we are "outputting" a byte
-		if (avr_regbit_get(avr, p->txen))
-			avr_raise_irq(p->io.irq + UART_IRQ_OUTPUT, v);
-	}
 	if (p->udrc.vector && addr == p->udrc.enable.reg) {
 		/*
 		 * If enabling the UDRC interrupt, raise it immediately if FIFO is empty
@@ -294,7 +299,7 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 	// Only call callbacks when the value change...
 	p->io.irq[UART_IRQ_OUT_XOFF].flags |= IRQ_FLAG_FILTERED;
 
-	avr_register_io_write(avr, p->r_udr, avr_uart_write, p);
+	avr_register_io_write(avr, p->r_udr, avr_uart_udr_write, p);
 	avr_register_io_read(avr, p->r_udr, avr_uart_read, p);
 	// monitor code that reads the rxc flag, and delay it a bit
 	avr_register_io_read(avr, p->rxc.raised.reg, avr_uart_rxc_read, p);
