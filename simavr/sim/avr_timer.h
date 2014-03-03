@@ -88,6 +88,15 @@ typedef struct avr_timer_wgm_t {
 #define AVR_TIMER_WGM_OCPWM() { .kind = avr_timer_wgm_pwm, .top = avr_timer_wgm_reg_ocra }
 #define AVR_TIMER_WGM_ICPWM() { .kind = avr_timer_wgm_pwm, .top = avr_timer_wgm_reg_icr }
 
+typedef struct avr_timer_comp_t {
+		avr_int_vector_t	interrupt;		// interrupt vector
+		struct avr_timer_t	*timer;			// parent timer
+		avr_io_addr_t		r_ocr;			// comparator register low byte
+		avr_io_addr_t		r_ocrh;			// comparator register hi byte
+		avr_regbit_t		com;			// comparator output mode registers
+		avr_regbit_t		com_pin;		// where comparator output is connected
+		uint64_t		comp_cycles;
+} avr_timer_comp_t, *avr_timer_comp_p;
 
 typedef struct avr_timer_t {
 	avr_io_t	io;
@@ -107,14 +116,7 @@ typedef struct avr_timer_t {
 	avr_regbit_t	icp;		// input capture pin, to link IRQs
 	avr_regbit_t	ices;		// input capture edge select
 
-	struct {
-		avr_int_vector_t	interrupt;		// interrupt vector
-		avr_io_addr_t		r_ocr;			// comparator register low byte
-		avr_io_addr_t		r_ocrh;			// comparator register hi byte
-		avr_regbit_t		com;			// comparator output mode registers
-		avr_regbit_t		com_pin;		// where comparator output is connected
-		uint64_t			comp_cycles;
-	} comp[AVR_TIMER_COMP_COUNT];
+	avr_timer_comp_t comp[AVR_TIMER_COMP_COUNT];
 
 	avr_int_vector_t overflow;	// overflow
 	avr_int_vector_t icr;	// input capture
