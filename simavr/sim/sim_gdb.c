@@ -33,7 +33,7 @@
 #include "avr_eeprom.h"
 #include "sim_gdb.h"
 
-#define DBG(w)
+#define DBG(w) w
 
 #define WATCH_LIMIT (32)
 
@@ -117,8 +117,8 @@ static int gdb_watch_add_or_update(avr_gdb_watchpoints_t * w, enum avr_gdb_watch
 
 	w->len++;
 
-	/* Make space for new element. */
-	for (int j = i + 1; j < w->len; j++) {
+	/* Make space for new element pushing from end first. */
+	for (int j = w->len - 1; j > i; j--) {
 		w->points[j] = w->points[j - 1];
 	}
 
@@ -188,7 +188,7 @@ static void gdb_send_quick_status(avr_gdb_t * g, uint8_t signal)
 static int gdb_change_breakpoint(avr_gdb_watchpoints_t * w, int set, enum avr_gdb_watch_type kind,
 		uint32_t addr, uint32_t size)
 {
-	DBG(printf("set %d kind %d addr %08x len %d\n", set, kind, addr, len);)
+	DBG(printf("set %d kind %d addr %08x len %d\n", set, kind, addr, w->len);)
 
 	if (set) {
 		return gdb_watch_add_or_update(w, kind, addr, size);
