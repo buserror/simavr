@@ -134,7 +134,7 @@ static uint16_t _avr_timer_get_current_tcnt(avr_timer_t * p)
 	return 0;
 }
 
-static uint8_t avr_timer_tcnt_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
+static uint8_t avr_timer_tcnt_read8(struct avr_t * avr, avr_io_addr_t addr, void * param)
 {
 	avr_timer_t * p = (avr_timer_t *)param;
 	// made to trigger potential watchpoints
@@ -142,9 +142,32 @@ static uint8_t avr_timer_tcnt_read(struct avr_t * avr, avr_io_addr_t addr, void 
 	uint16_t tcnt = _avr_timer_get_current_tcnt(p);
 
 	avr->data[p->r_tcnt] = tcnt;
-	if (p->r_tcnth)
-		avr->data[p->r_tcnth] = tcnt >> 8;
-	
+
+	return avr_core_watch_read(avr, addr);
+}
+
+static uint8_t avr_timer_tcnt_read16(struct avr_t * avr, avr_io_addr_t addr, void * param)
+{
+	avr_timer_t * p = (avr_timer_t *)param;
+	// made to trigger potential watchpoints
+
+	uint16_t tcnt = _avr_timer_get_current_tcnt(p);
+
+	avr->data[p->r_tcnt] = tcnt;
+	avr->data[p->r_tcnth] = tcnt >> 8;
+
+	return avr_core_watch_read(avr, addr);
+}
+
+static uint8_t avr_timer_tcnt_read16fast(struct avr_t * avr, avr_io_addr_t addr, void * param)
+{
+	avr_timer_t * p = (avr_timer_t *)param;
+	// made to trigger potential watchpoints
+
+	uint16_t tcnt = _avr_timer_get_current_tcnt(p);
+
+	((uint16_t *)&avr->data)[p->r_tcnt] = tcnt;
+
 	return avr_core_watch_read(avr, addr);
 }
 
@@ -484,5 +507,12 @@ void avr_timer_init(avr_t * avr, avr_timer_t * p)
 			avr_register_io_write(avr, p->comp[compi].r_ocr, avr_timer_write_ocr, p);
 	}
 	avr_register_io_write(avr, p->r_tcnt, avr_timer_tcnt_write, p);
-	avr_register_io_read(avr, p->r_tcnt, avr_timer_tcnt_read, p);
+
+	if (p->r_tcnth) {
+		if((p->r_tcnt + 1) == p->r_tcnth)
+			avr_register_io_read(avr, p->r_tcnt, avr_timer_tcnt_read16fast, p);
+		else
+			avr_register_io_read(avr, p->r_tcnt, avr_timer_tcnt_read16, p);
+	} else
+		avr_register_io_read(avr, p->r_tcnt, avr_timer_tcnt_read8, p);
 }
