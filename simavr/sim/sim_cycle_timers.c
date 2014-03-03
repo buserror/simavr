@@ -26,14 +26,24 @@
 #include "sim_time.h"
 #include "sim_cycle_timers.h"
 
-#define QUEUE(__q, __e) { (__e)->next = (__q); (__q) = __e; }
+#define QUEUE(__q, __e) { \
+		(__e)->next = (__q); \
+		(__q) = __e; \
+	}
 #define DETACH(__q, __l, __e) { \
-		if ((__l)) (__l)->next = (__e)->next; \
-		else (__q) = (__e)->next; \
+		if (__l) \
+			(__l)->next = (__e)->next; \
+		else \
+			(__q) = (__e)->next; \
 	}
 #define INSERT(__q, __l, __e) { \
-		if ((__l)) (__e)->next = (__l)->next; \
-		else { (__e)->next = (__q); (__q) = (__e); } \
+		if (__l) { \
+			(__e)->next = (__l)->next; \
+			(__l)->next = (__e); \
+		} else { \
+			(__e)->next = (__q); \
+			(__q) = (__e); \
+		} \
 	}
 
 void
@@ -174,19 +184,24 @@ avr_cycle_timer_process(
 
 	do {
 		avr_cycle_timer_slot_p t = pool->timer;
-		if (t->when > avr->cycle)
+		avr_cycle_count_t when = t->when;
+
+		if (when > avr->cycle)
 			return t->when - avr->cycle;
 
 		// detach from active timers
 		pool->timer = t->next;
 		t->next = NULL;
-		avr_cycle_count_t when = t->when;
 		do {
-			when = t->timer(avr, when, t->param);
+			avr_cycle_count_t w = t->timer(avr, when, t->param);
+			// make sure the return value is either zero, or greater
+			// than the last one to prevent infinite loop here
+			when = w > when ? w : 0;
 		} while (when && when <= avr->cycle);
-		if (when) {	// reschedule then
+		
+		if (when) // reschedule then
 			avr_cycle_timer_insert(avr, when - avr->cycle, t->timer, t->param);
-		}
+		
 		// requeue this one into the free ones
 		QUEUE(pool->timer_free, t);
 	} while (pool->timer);
