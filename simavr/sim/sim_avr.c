@@ -90,6 +90,8 @@ int avr_init(avr_t * avr)
 	avr->run = avr_callback_run_raw;
 	avr->sleep = avr_callback_sleep_raw;
 	avr->state = cpu_Running;
+	// number of address bytes to push/pull on/off the stack
+	avr->address_size = avr->eind ? 3 : 2;
 	avr->log = 1;
 	avr_reset(avr);	
 	return 0;

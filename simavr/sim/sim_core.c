@@ -241,7 +241,7 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 }
 
 /*
- * Stack push accessors. Push/pop 8 and 16 bits
+ * Stack push accessors.
  */
 static inline void _avr_push8(avr_t * avr, uint16_t v)
 {
@@ -258,16 +258,26 @@ static inline uint8_t _avr_pop8(avr_t * avr)
 	return res;
 }
 
-inline void _avr_push16(avr_t * avr, uint16_t v)
+int _avr_push_addr(avr_t * avr, avr_flashaddr_t addr)
 {
-	_avr_push8(avr, v);
-	_avr_push8(avr, v >> 8);
+	uint16_t sp = _avr_sp_get(avr);
+	addr >>= 1;
+	for (int i = 0; i < avr->address_size; i++, addr >>= 8, sp--) {
+		_avr_set_ram(avr, sp, addr);	
+	}
+	_avr_sp_set(avr, sp);
+	return avr->address_size;
 }
 
-static inline uint16_t _avr_pop16(avr_t * avr)
+avr_flashaddr_t _avr_pop_addr(avr_t * avr)
 {
-	uint16_t res = _avr_pop8(avr) << 8;
-	res |= _avr_pop8(avr);
+	uint16_t sp = _avr_sp_get(avr) + 1;
+	avr_flashaddr_t res = 0;
+	for (int i = 0; i < avr->address_size; i++, sp++) {
+		res = (res << 8) | _avr_get_ram(avr, sp);
+	}
+	res <<= 1;
+	_avr_sp_set(avr, sp -1);
 	return res;
 }
 
@@ -873,20 +883,18 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					if (e)
 						z |= avr->data[avr->eind] << 16;
 					STATE("%si%s Z[%04x]\n", e?"e":"", p?"call":"jmp", z << 1);
-					if (p) {
-						cycle++;
-						_avr_push16(avr, new_pc >> 1);
-					}
+					if (p)
+						cycle += _avr_push_addr(avr, new_pc) - 1;
 					new_pc = z << 1;
 					cycle++;
 					TRACE_JUMP();
 				}	break;
 				case 0x9518: 	// RETI
 				case 0x9508: {	// RET
-					new_pc = _avr_pop16(avr) << 1;
+					new_pc = _avr_pop_addr(avr);
+					cycle += 1 + avr->address_size;
 					if (opcode & 0x10)	// reti
 						avr->sreg[S_I] = 1;
-					cycle += 3;
 					STATE("ret%s\n", opcode & 0x10 ? "i" : "");
 					TRACE_JUMP();
 					STACK_FRAME_POP();
@@ -1174,9 +1182,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							a = (a << 16) | x;
 							STATE("call 0x%06x\n", a);
 							new_pc += 2;
-							_avr_push16(avr, new_pc >> 1);
+							cycle += 1 + _avr_push_addr(avr, new_pc);
 							new_pc = a << 1;
-							cycle += 3;	// 4 cycles; FIXME 5 on devices with 22 bit PC
 							TRACE_JUMP();
 							STACK_FRAME_PUSH();
 						}	break;
@@ -1312,11 +1319,10 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 		case 0xd000: {
 			// RCALL 1100 kkkk kkkk kkkk
 //			int16_t o = ((int16_t)(opcode << 4)) >> 4; // CLANG BUG!
-			int16_t o = ((int16_t)((opcode << 4)&0xffff)) >> 4;
+			int16_t o = ((int16_t)((opcode << 4) & 0xffff)) >> 4;
 			STATE("rcall .%d [%04x]\n", o, new_pc + (o << 1));
-			_avr_push16(avr, new_pc >> 1);
+			cycle += _avr_push_addr(avr, new_pc) - 1;
 			new_pc = new_pc + (o << 1);
-			cycle += 2;
 			// 'rcall .1' is used as a cheap "push 16 bits of room on the stack"
 			if (o != 0) {
 				TRACE_JUMP();

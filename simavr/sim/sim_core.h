@@ -46,7 +46,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr);
  */
 uint16_t _avr_sp_get(avr_t * avr);
 void _avr_sp_set(avr_t * avr, uint16_t sp);
-void _avr_push16(avr_t * avr, uint16_t v);
+int _avr_push_addr(avr_t * avr, avr_flashaddr_t addr);
 
 #if CONFIG_SIMAVR_TRACE
 
