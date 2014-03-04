@@ -60,7 +60,7 @@ avr_global_logger_set(
 }
 
 avr_logger_p
-avr_global_logger_get()
+avr_global_logger_get(void)
 {
 	return _avr_global_logger;
 }
