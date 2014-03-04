@@ -127,8 +127,8 @@ gdb_watch_add_or_update(
 
 	w->len++;
 
-	/* Make space for new element. */
-	for (int j = i + 1; j < w->len; j++) {
+	/* Make space for new element, moving old ones from the end. */
+	for (int j = w->len; j > i; j--) {
 		w->points[j] = w->points[j - 1];
 	}
 
