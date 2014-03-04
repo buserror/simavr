@@ -68,6 +68,7 @@ const struct mcu_t {
 		.reset = m2560_reset,
 
 		.rampz = RAMPZ, // extended program memory access
+		.eind = EIND,	// extended index register
 	},
 	AVR_EEPROM_DECLARE(EE_READY_vect),
 	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
