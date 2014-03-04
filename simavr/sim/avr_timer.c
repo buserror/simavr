@@ -247,44 +247,29 @@ static void avr_timer_reconfigure(avr_timer_t * p)
 	
 	avr_timer_cancel_all_cycle_timers(avr, p);
 
-	long clock = avr->frequency;
-
-	// only can exists on "asynchronous" 8 bits timers
-	if (avr_regbit_get(avr, p->as2))
-		clock = 32768;
-
-	uint8_t cs = avr_regbit_get_array(avr, p->cs, ARRAY_SIZE(p->cs));
-	if (cs == 0) {
-		AVR_LOG(avr, LOG_TRACE, "TIMER: %s-%c clock turned off\n", __FUNCTION__, p->name);
-		return;
-	}
-
-	uint8_t mode = avr_regbit_get_array(avr, p->wgm, ARRAY_SIZE(p->wgm));
-	uint8_t cs_div = p->cs_div[cs];
-	uint32_t f = clock >> cs_div;
-
-	p->mode = p->wgm_op[mode];
-	//printf("%s-%c clock %d, div %d(/%d) = %d ; mode %d\n", __FUNCTION__, p->name, clock, cs, 1 << cs_div, f, mode);
-	switch (p->mode.kind) {
+	switch (p->wgm_op_mode_kind) {
 		case avr_timer_wgm_normal:
-			avr_timer_configure(p, f, (1 << p->mode.size) - 1);
+			avr_timer_configure(p, p->cs_div_clock, p->wgm_op_mode_size);
 			break;
 		case avr_timer_wgm_fc_pwm:
-			avr_timer_configure(p, f, (1 << p->mode.size) - 1);
+			avr_timer_configure(p, p->cs_div_clock, p->wgm_op_mode_size);
 			break;
 		case avr_timer_wgm_ctc: {
-			avr_timer_configure(p, f, _timer_get_ocr(p, AVR_TIMER_COMPA));
+			avr_timer_configure(p, p->cs_div_clock, _timer_get_ocr(p, AVR_TIMER_COMPA));
 		}	break;
 		case avr_timer_wgm_pwm: {
-			uint16_t top = p->mode.top == avr_timer_wgm_reg_ocra ? _timer_get_ocr(p, AVR_TIMER_COMPA) : _timer_get_icr(p);
-			avr_timer_configure(p, f, top);
+			uint16_t top = p->mode.top == (avr_timer_wgm_reg_ocra ?
+				_timer_get_ocr(p, AVR_TIMER_COMPA) : _timer_get_icr(p));
+			avr_timer_configure(p, p->cs_div_clock, top);
 		}	break;
 		case avr_timer_wgm_fast_pwm:
-			avr_timer_configure(p, f, (1 << p->mode.size) - 1);
+			avr_timer_configure(p, p->cs_div_clock, p->wgm_op_mode_size);
 			break;
-		default:
+		default: {
+			uint8_t mode = avr_regbit_get_array(avr, p->wgm, ARRAY_SIZE(p->wgm));
 			AVR_LOG(avr, LOG_WARNING, "TIMER: %s-%c unsupported timer mode wgm=%d (%d)\n",
 					__FUNCTION__, p->name, mode, p->mode.kind);
+		}
 	}	
 }
 
@@ -298,7 +283,7 @@ static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 	oldv = _timer_get_comp_ocr(avr, comp);
 	avr_core_watch_write(avr, addr, v);
 
-	switch (timer->mode.kind) {
+	switch (timer->wgm_op_mode_kind) {
 		case avr_timer_wgm_normal:
 			avr_timer_reconfigure(timer);
 			break;
@@ -337,12 +322,46 @@ static void avr_timer_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, v
 
 	avr_core_watch_write(avr, addr, v);
 
+	uint8_t new_as2 = avr_regbit_get(avr, p->as2);
+	uint8_t new_cs = avr_regbit_get_array(avr, p->cs, ARRAY_SIZE(p->cs));
+	uint8_t new_mode = avr_regbit_get_array(avr, p->wgm, ARRAY_SIZE(p->wgm));
+
 	// only reconfigure the timer if "relevant" bits have changed
 	// this prevent the timer reset when changing the edge detector
 	// or other minor bits
-	if (avr_regbit_get_array(avr, p->cs, ARRAY_SIZE(p->cs)) != cs ||
-			avr_regbit_get_array(avr, p->wgm, ARRAY_SIZE(p->wgm)) != mode ||
-					avr_regbit_get(avr, p->as2) != as2) {
+	if (new_cs != cs || new_mode != mode || new_as2 != as2) {
+	/* as2 */
+		long clock;
+
+		// only can exists on "asynchronous" 8 bits timers
+		if (new_as2)
+			clock = 32768;
+		else
+			clock = avr->frequency;
+
+	/* cs */
+		if (new_cs == 0) {
+			// cancel everything
+			p->comp[AVR_TIMER_COMPA].comp_cycles = 0;
+			p->comp[AVR_TIMER_COMPB].comp_cycles = 0;
+			p->comp[AVR_TIMER_COMPC].comp_cycles = 0;
+			p->tov_cycles = 0;
+	
+			avr_cycle_timer_cancel(avr, avr_timer_tov, p);
+			avr_cycle_timer_cancel(avr, avr_timer_compa, p);
+			avr_cycle_timer_cancel(avr, avr_timer_compb, p);
+			avr_cycle_timer_cancel(avr, avr_timer_compc, p);
+
+			AVR_LOG(avr, LOG_TRACE, "TIMER: %s-%c clock turned off\n", __FUNCTION__, p->name);
+			return;
+		}
+		p->cs_div_clock = clock >> p->cs_div[new_cs];
+
+	/* mode */
+		p->mode = p->wgm_op[new_mode];
+		p->wgm_op_mode_kind = p->mode.kind;
+		p->wgm_op_mode_size = (1 << p->mode.size) - 1;
+
 		avr_timer_reconfigure(p);
 	}
 }
@@ -464,7 +483,23 @@ void avr_timer_init(avr_t * avr, avr_timer_t * p)
 
 	if (p->wgm[0].reg) // these are not present on older AVRs
 		avr_register_io_write(avr, p->wgm[0].reg, avr_timer_write, p);
+	if(p->wgm[1].reg && (p->wgm[1].reg != p->wgm[0].reg))
+		avr_register_io_write(avr, p->wgm[1].reg, avr_timer_write, p);
+	if(p->wgm[2].reg && (p->wgm[2].reg != p->wgm[0].reg) && (p->wgm[2].reg != p->wgm[1].reg))
+		avr_register_io_write(avr, p->wgm[2].reg, avr_timer_write, p);
+	if(p->wgm[3].reg && (p->wgm[3].reg != p->wgm[0].reg) && (p->wgm[3].reg != p->wgm[1].reg) && (p->wgm[3].reg != p->wgm[2].reg))
+		avr_register_io_write(avr, p->wgm[3].reg, avr_timer_write, p);
+
 	avr_register_io_write(avr, p->cs[0].reg, avr_timer_write, p);
+	if(p->cs[1].reg && (p->cs[1].reg != p->cs[0].reg))
+		avr_register_io_write(avr, p->cs[1].reg, avr_timer_write, p);
+	if(p->cs[2].reg && (p->cs[2].reg != p->cs[0].reg) && (p->cs[2].reg != p->cs[1].reg))
+		avr_register_io_write(avr, p->cs[2].reg, avr_timer_write, p);
+	if(p->cs[3].reg && (p->cs[3].reg != p->cs[0].reg) && (p->cs[3].reg != p->cs[1].reg) && (p->cs[3].reg != p->cs[2].reg))
+		avr_register_io_write(avr, p->cs[3].reg, avr_timer_write, p);
+
+	if(p->as2.reg) // as2 signifies timer/counter 2... therefore must check for register.
+		avr_register_io_write(avr, p->as2.reg, avr_timer_write, p);
 
 	// this assumes all the "pending" interrupt bits are in the same
 	// register. Might not be true on all devices ?
