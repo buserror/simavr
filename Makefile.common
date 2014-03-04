@@ -27,7 +27,7 @@
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
 # simavr directory
-SIMAVR		:= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && echo $$p/simavr; done}
+SIMAVR		?= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && echo $$p/simavr; done}
 
 # You can override the build settings with local changes in this file
 # for example:
