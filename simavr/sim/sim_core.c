@@ -979,10 +979,11 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							STATE("ld %s, %sX[%04x]%s\n", avr_regname(r), op == 2 ? "--" : "", x, op == 1 ? "++" : "");
 							cycle++; // 2 cycles (1 for tinyavr, except with inc/dec 2)
 							if (op == 2) x--;
-							_avr_set_r(avr, r, _avr_get_ram(avr, x));
+							uint8_t vr = _avr_get_ram(avr, x);
 							if (op == 1) x++;
 							_avr_set_r(avr, R_XH, x >> 8);
 							_avr_set_r(avr, R_XL, x);
+							_avr_set_r(avr, r, vr);
 						}	break;
 						case 0x920c:
 						case 0x920d:
@@ -1006,10 +1007,11 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							STATE("ld %s, %sY[%04x]%s\n", avr_regname(r), op == 2 ? "--" : "", y, op == 1 ? "++" : "");
 							cycle++; // 2 cycles, except tinyavr
 							if (op == 2) y--;
-							_avr_set_r(avr, r, _avr_get_ram(avr, y));
+							uint8_t vr = _avr_get_ram(avr, y);
 							if (op == 1) y++;
 							_avr_set_r(avr, R_YH, y >> 8);
 							_avr_set_r(avr, R_YL, y);
+							_avr_set_r(avr, r, vr);
 						}	break;
 						case 0x9209:
 						case 0x920a: {	// ST Store Indirect Data Space Y 1001 001r rrrr 10oo
@@ -1040,10 +1042,11 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							STATE("ld %s, %sZ[%04x]%s\n", avr_regname(r), op == 2 ? "--" : "", z, op == 1 ? "++" : "");
 							cycle++;; // 2 cycles, except tinyavr
 							if (op == 2) z--;
-							_avr_set_r(avr, r, _avr_get_ram(avr, z));
+							uint8_t vr = _avr_get_ram(avr, z);
 							if (op == 1) z++;
 							_avr_set_r(avr, R_ZH, z >> 8);
 							_avr_set_r(avr, R_ZL, z);
+							_avr_set_r(avr, r, vr);
 						}	break;
 						case 0x9201:
 						case 0x9202: {	// ST Store Indirect Data Space Z 1001 001r rrrr 00oo
