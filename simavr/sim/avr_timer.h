@@ -91,6 +91,8 @@ typedef struct avr_timer_wgm_t {
 typedef struct avr_timer_comp_t {
 		avr_int_vector_t	interrupt;		// interrupt vector
 		struct avr_timer_t	*timer;			// parent timer
+		struct avr_irq_t	*irq;			// parent timer comparator io->irq
+		avr_cycle_timer_t	handler;		// comparator timer handler
 		avr_io_addr_t		r_ocr;			// comparator register low byte
 		avr_io_addr_t		r_ocrh;			// comparator register hi byte
 		avr_regbit_t		com;			// comparator output mode registers
