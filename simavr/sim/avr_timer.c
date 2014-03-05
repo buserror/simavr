@@ -54,52 +54,88 @@ static uint16_t _timer_get_icr(avr_timer_t * p)
 	return p->io.avr->data[p->r_icr] |
 				(p->r_tcnth ? (p->io.avr->data[p->r_icrh] << 8) : 0);
 }
-static avr_cycle_count_t avr_timer_comp(avr_timer_t *p, avr_cycle_count_t when, uint8_t comp)
-{
-	avr_t * avr = p->io.avr;
-	avr_raise_interrupt(avr, &p->comp[comp].interrupt);
 
-	// check output compare mode and set/clear pins
-	uint8_t mode = avr_regbit_get(avr, p->comp[comp].com);
-	avr_irq_t * irq = &p->io.irq[TIMER_IRQ_OUT_COMP + comp];
+static avr_cycle_count_t avr_timer_comp_com_normal(struct avr_t * avr,
+		avr_cycle_count_t when, void * param) {
+	avr_timer_comp_p comp = (avr_timer_comp_p)param;
+	avr_timer_t *timer = comp->timer;
+	
+	avr_raise_interrupt(avr, &comp->interrupt);
+	
+	uint64_t comp_cycles = comp->comp_cycles;
 
-	switch (mode) {
-		case avr_timer_com_normal: // Normal mode OCnA disconnected
-			break;
-		case avr_timer_com_toggle: // Toggle OCnA on compare match
-			if (p->comp[comp].com_pin.reg)	// we got a physical pin
-				avr_raise_irq(irq,
-						AVR_IOPORT_OUTPUT | (avr_regbit_get(avr, p->comp[comp].com_pin) ? 0 : 1));
-			else // no pin, toggle the IRQ anyway
-				avr_raise_irq(irq,
-						p->io.irq[TIMER_IRQ_OUT_COMP + comp].value ? 0 : 1);
-			break;
-		case avr_timer_com_clear:
-			avr_raise_irq(irq, 0);
-			break;
-		case avr_timer_com_set:
-			avr_raise_irq(irq, 1);
-			break;
-	}
-
-	return p->tov_cycles ? 0 :
-				p->comp[comp].comp_cycles ?
-						when + p->comp[comp].comp_cycles : 0;
+	return timer->tov_cycles ? 0 :
+				comp_cycles ?
+						when + comp_cycles : 0;
 }
 
-static avr_cycle_count_t avr_timer_compa(struct avr_t * avr, avr_cycle_count_t when, void * param)
-{
-	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPA);
+static avr_cycle_count_t avr_timer_comp_com_toggle(struct avr_t * avr,
+		avr_cycle_count_t when, void * param) {
+
+	avr_timer_comp_p comp = (avr_timer_comp_p)param;
+	avr_timer_t *timer = comp->timer;
+	
+	avr_raise_interrupt(avr, &comp->interrupt);
+	avr_irq_t *irq = comp->irq;
+
+	if (comp->com_pin.reg)	// we got a physical pin
+		avr_raise_irq(irq,
+				AVR_IOPORT_OUTPUT | (avr_regbit_get(avr, comp->com_pin) ? 0 : 1));
+	else // no pin, toggle the IRQ anyway
+		avr_raise_irq(irq, irq->value ? 0 : 1);
+	
+	uint64_t comp_cycles = comp->comp_cycles;
+
+	return timer->tov_cycles ? 0 :
+				comp_cycles ?
+						when + comp_cycles : 0;
 }
 
-static avr_cycle_count_t avr_timer_compb(struct avr_t * avr, avr_cycle_count_t when, void * param)
-{
-	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPB);
+static avr_cycle_count_t avr_timer_comp_com_clear(struct avr_t * avr,
+		avr_cycle_count_t when, void * param) {
+	
+	avr_timer_comp_p comp = (avr_timer_comp_p)param;
+	avr_timer_t *timer = comp->timer;
+	
+	avr_raise_interrupt(avr, &comp->interrupt);
+	avr_irq_t *irq = comp->irq;
+
+	avr_raise_irq(irq, 0);
+
+	uint64_t comp_cycles = comp->comp_cycles;
+
+	return timer->tov_cycles ? 0 :
+				comp_cycles ?
+						when + comp_cycles : 0;
 }
 
-static avr_cycle_count_t avr_timer_compc(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t avr_timer_comp_com_set(struct avr_t * avr,
+		avr_cycle_count_t when, void * param) {
+		
+	avr_timer_comp_p comp = (avr_timer_comp_p)param;
+	avr_timer_t *timer = comp->timer;
+	
+	avr_raise_interrupt(avr, &comp->interrupt);
+	avr_irq_t *irq = comp->irq;
+
+	avr_raise_irq(irq, 1);
+
+	uint64_t comp_cycles = comp->comp_cycles;
+
+	return timer->tov_cycles ? 0 :
+				comp_cycles ?
+						when + comp_cycles : 0;
+}
+
+static avr_cycle_count_t avr_timer_comp(struct avr_t *avr, avr_cycle_count_t when, void *param)
 {
-	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPC);
+	avr_timer_comp_p comp = (avr_timer_comp_p)param;
+
+	static const avr_cycle_timer_t handler[4] =
+		{ avr_timer_comp_com_normal, avr_timer_comp_com_toggle,
+			avr_timer_comp_com_clear, avr_timer_comp_com_set };
+
+	return(handler[avr_regbit_get(avr, comp->com)](avr, when, param));
 }
 
 // timer overflow
@@ -112,17 +148,19 @@ static avr_cycle_count_t avr_timer_tov(struct avr_t * avr, avr_cycle_count_t whe
 		avr_raise_interrupt(avr, &p->overflow);
 	p->tov_base = when;
 
-	static const avr_cycle_timer_t dispatch[AVR_TIMER_COMP_COUNT] =
-		{ avr_timer_compa, avr_timer_compb, avr_timer_compc };
+	static const avr_cycle_timer_t handler[4] =
+		{ avr_timer_comp_com_normal, avr_timer_comp_com_toggle,
+			avr_timer_comp_com_clear, avr_timer_comp_com_set };
 
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
-		if (p->comp[compi].comp_cycles) {
-			if (p->comp[compi].comp_cycles < p->tov_cycles)
-				avr_cycle_timer_register(avr,
-					p->comp[compi].comp_cycles,
-					dispatch[compi], p);
-			else if (p->tov_cycles == p->comp[compi].comp_cycles && !start)
-				dispatch[compi](avr, when, param);
+		avr_timer_comp_p comp = &p->comp[compi];
+		avr_cycle_count_t comp_cycles = comp->comp_cycles;
+		if (comp_cycles) {
+			if (comp_cycles < p->tov_cycles)
+				avr_cycle_timer_register(avr, comp_cycles,
+					avr_timer_comp, comp);
+			else if (p->tov_cycles == comp_cycles && !start)
+				handler[avr_regbit_get(avr, comp->com)](avr, when, comp);
 		}
 	}
 
@@ -154,6 +192,15 @@ static uint8_t avr_timer_tcnt_read(struct avr_t * avr, avr_io_addr_t addr, void 
 	return avr_core_watch_read(avr, addr);
 }
 
+static void avr_timer_cancel_all_cycle_timers(struct avr_t *avr, avr_timer_t *timer)
+{
+	avr_cycle_timer_cancel(avr, avr_timer_tov, timer);
+	avr_timer_comp_p comp;
+	comp = &timer->comp[AVR_TIMER_COMPA]; avr_cycle_timer_cancel(avr, comp->handler, comp);
+	comp = &timer->comp[AVR_TIMER_COMPB]; avr_cycle_timer_cancel(avr, comp->handler, comp);
+	comp = &timer->comp[AVR_TIMER_COMPC]; avr_cycle_timer_cancel(avr, comp->handler, comp);
+}
+
 static void avr_timer_tcnt_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_timer_t * p = (avr_timer_t *)param;
@@ -170,10 +217,7 @@ static void avr_timer_tcnt_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t
 	// cancel the current timers, recalculate the "base" we should be at, reset the
 	// timer base as it should, and re-schedule the timers using that base.
 	
-	avr_cycle_timer_cancel(avr, avr_timer_tov, p);
-	avr_cycle_timer_cancel(avr, avr_timer_compa, p);
-	avr_cycle_timer_cancel(avr, avr_timer_compb, p);
-	avr_cycle_timer_cancel(avr, avr_timer_compc, p);
+	avr_timer_cancel_all_cycle_timers(avr, p);
 
 	uint64_t cycles = (tcnt * p->tov_cycles) / p->tov_top;
 
@@ -241,10 +285,7 @@ static void avr_timer_reconfigure(avr_timer_t * p)
 	p->comp[AVR_TIMER_COMPC].comp_cycles = 0;
 	p->tov_cycles = 0;
 	
-	avr_cycle_timer_cancel(avr, avr_timer_tov, p);
-	avr_cycle_timer_cancel(avr, avr_timer_compa, p);
-	avr_cycle_timer_cancel(avr, avr_timer_compb, p);
-	avr_cycle_timer_cancel(avr, avr_timer_compc, p);
+	avr_timer_cancel_all_cycle_timers(avr, p);
 
 	long clock = avr->frequency;
 
@@ -401,10 +442,8 @@ static void avr_timer_irq_icp(struct avr_irq_t * irq, uint32_t value, void * par
 static void avr_timer_reset(avr_io_t * port)
 {
 	avr_timer_t * p = (avr_timer_t *)port;
-	avr_cycle_timer_cancel(p->io.avr, avr_timer_tov, p);
-	avr_cycle_timer_cancel(p->io.avr, avr_timer_compa, p);
-	avr_cycle_timer_cancel(p->io.avr, avr_timer_compb, p);
-	avr_cycle_timer_cancel(p->io.avr, avr_timer_compc, p);
+	
+	avr_timer_cancel_all_cycle_timers(p->io.avr, p);
 
 	// check to see if the comparators have a pin output. If they do,
 	// (try) to get the ioport corresponding IRQ and connect them
@@ -478,6 +517,8 @@ void avr_timer_init(avr_t * avr, avr_timer_t * p)
 	 * the trigger.
 	 */
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
+		p->comp[compi].handler = avr_timer_comp;
+		p->comp[compi].irq = &p->io.irq[TIMER_IRQ_OUT_COMP + compi];
 		p->comp[compi].timer = p;
 		
 		avr_register_vector(avr, &p->comp[compi].interrupt);
