@@ -37,6 +37,8 @@ typedef struct avr_flash_t {
 	avr_io_t	io;
 
 	uint16_t	flags;
+	uint16_t	*tmppage;
+	uint8_t	*tmppage_used;
 	uint16_t	spm_pagesize;
 	uint8_t r_spm;
 	avr_regbit_t selfprgen;

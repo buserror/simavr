@@ -45,6 +45,14 @@ static void avr_flash_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void * p
 		avr_cycle_timer_register(avr, 4, avr_progen_clear, p); // 4 cycles is very little!
 }
 
+static void avr_flash_clear_temppage(avr_flash_t *p)
+{
+	for (int i = 0; i < p->spm_pagesize / 2; i++) {
+		p->tmppage[i] = 0xff;
+		p->tmppage_used[i] = 0;
+	}
+}
+
 static int avr_flash_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
 {
 	if (ctl != AVR_IOCTL_FLASH_SPM)
@@ -59,29 +67,64 @@ static int avr_flash_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param
 	uint16_t r01 = avr->data[0] | (avr->data[1] << 8);
 
 //	printf("AVR_IOCTL_FLASH_SPM %02x Z:%04x R01:%04x\n", avr->data[p->r_spm], z,r01);
-	avr_cycle_timer_cancel(avr, avr_progen_clear, p);
-	avr_regbit_clear(avr, p->selfprgen);
-	if (avr_regbit_get(avr, p->pgers)) {
-		z &= ~1;
-		AVR_LOG(avr, LOG_TRACE, "FLASH: Erasing page %04x (%d)\n", (z / p->spm_pagesize), p->spm_pagesize);
-		for (int i = 0; i < p->spm_pagesize; i++)
-			avr->flash[z++] = 0xff;
-	} else if (avr_regbit_get(avr, p->pgwrt)) {
-		z &= ~1;
-		AVR_LOG(avr, LOG_TRACE, "FLASH: Writing page %04x (%d)\n", (z / p->spm_pagesize), p->spm_pagesize);
-	} else if (avr_regbit_get(avr, p->blbset)) {
-		AVR_LOG(avr, LOG_TRACE, "FLASH: Setting lock bits (ignored)\n");
-	} else {
-		z &= ~1;
-		avr->flash[z++] = r01;
-		avr->flash[z] = r01 >> 8;
+	if (avr_regbit_get(avr, p->selfprgen)) {
+		avr_cycle_timer_cancel(avr, avr_progen_clear, p);
+
+		if (avr_regbit_get(avr, p->pgers)) {
+			z &= ~1;
+			AVR_LOG(avr, LOG_TRACE, "FLASH: Erasing page %04x (%d)\n", (z / p->spm_pagesize), p->spm_pagesize);
+			for (int i = 0; i < p->spm_pagesize; i++)
+				avr->flash[z++] = 0xff;
+		} else if (avr_regbit_get(avr, p->pgwrt)) {
+			z &= ~1;
+			for (int i = 0; i < p->spm_pagesize / 2; i++) {
+				avr->flash[z++] = p->tmppage[i];
+				avr->flash[z++] = p->tmppage[i] >> 8;
+			}
+			avr_flash_clear_temppage(p);
+			AVR_LOG(avr, LOG_TRACE, "FLASH: Writing page %08x (%d)\n", z, p->spm_pagesize);
+		} else if (avr_regbit_get(avr, p->blbset)) {
+			AVR_LOG(avr, LOG_TRACE, "FLASH: Setting lock bits (ignored)\n");
+		} else if (p->flags & AVR_SELFPROG_HAVE_RWW && avr_regbit_get(avr, p->rwwsre)) {
+			avr_flash_clear_temppage(p);
+		} else {
+			AVR_LOG(avr, LOG_TRACE, "FLASH: Writing temppage %08x (%04x)\n", z, r01);
+			z >>= 1;
+			if (!p->tmppage_used[z % (p->spm_pagesize / 2)]) {
+				p->tmppage[z % (p->spm_pagesize / 2)] = r01;
+				p->tmppage_used[z % (p->spm_pagesize / 2)] = 1;
+			}
+		}
 	}
+	avr_regbit_clear(avr, p->selfprgen);
 	return 0;
+}
+
+static void
+avr_flash_reset(avr_io_t * port)
+{
+	avr_flash_t * p = (avr_flash_t *) port;
+
+	avr_flash_clear_temppage(p);
+}
+
+static void
+avr_flash_dealloc(struct avr_io_t * port)
+{
+	avr_flash_t * p = (avr_flash_t *) port;
+
+	if (p->tmppage)
+		free(p->tmppage);
+
+	if (p->tmppage_used)
+		free(p->tmppage_used);
 }
 
 static	avr_io_t	_io = {
 	.kind = "flash",
 	.ioctl = avr_flash_ioctl,
+	.reset = avr_flash_reset,
+	.dealloc = avr_flash_dealloc,
 };
 
 void avr_flash_init(avr_t * avr, avr_flash_t * p)
@@ -89,9 +132,14 @@ void avr_flash_init(avr_t * avr, avr_flash_t * p)
 	p->io = _io;
 //	printf("%s init SPM %04x\n", __FUNCTION__, p->r_spm);
 
+	if (!p->tmppage)
+		p->tmppage = malloc(p->spm_pagesize);
+
+	if (!p->tmppage_used)
+		p->tmppage_used = malloc(p->spm_pagesize / 2);
+
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->flash);
 
 	avr_register_io_write(avr, p->r_spm, avr_flash_write, p);
 }
-
