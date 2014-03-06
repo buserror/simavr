@@ -41,7 +41,7 @@ int avr_vcd_init(struct avr_t * avr, const char * filename, avr_vcd_t * vcd, uin
 
 	// No longer initializes the IRQs here, they can be initialized on the
 	// fly when traces are added
-	
+
 	return 0;
 }
 
@@ -83,13 +83,30 @@ void _avr_vcd_notify(struct avr_irq_t * irq, uint32_t value, void * param)
 	l->value = value;
 }
 
+
+static char * _avr_vcd_get_float_signal_text(avr_vcd_signal_t * s, char * out)
+{
+	char * dst = out;
+
+	if (s->size > 1)
+		*dst++ = 'b';
+
+	for (int i = s->size; i > 0; i--)
+		*dst++ = 'x';
+	if (s->size > 1)
+		*dst++ = ' ';
+	*dst++ = s->alias;
+	*dst = 0;
+	return out;
+}
+
 static char * _avr_vcd_get_signal_text(avr_vcd_signal_t * s, char * out, uint32_t value)
 {
 	char * dst = out;
-		
+
 	if (s->size > 1)
 		*dst++ = 'b';
-	
+
 	for (int i = s->size; i > 0; i--)
 		*dst++ = value & (1 << (i-1)) ? '1' : '0';
 	if (s->size > 1)
@@ -121,11 +138,11 @@ static void avr_vcd_flush_log(avr_vcd_t * vcd)
 		// if that trace was seen in this nsec already, we fudge the base time
 		// to make sure the new value is offset by one nsec, to make sure we get
 		// at least a small pulse on the waveform
-		// This is a bit of a fudge, but it is the only way to represent very 
+		// This is a bit of a fudge, but it is the only way to represent very
 		// short"pulses" that are still visible on the waveform.
 		if (base == oldbase && seen & (1 << l->signal->irq.irq))
 			base++;	// this forces a new timestamp
-			
+
 		if (base > oldbase || li == 0) {
 			seen = 0;
 			fprintf(vcd->output, "#%" PRIu64  "\n", base);
@@ -144,7 +161,7 @@ static avr_cycle_count_t _avr_vcd_timer(struct avr_t * avr, avr_cycle_count_t wh
 	return when + vcd->period;
 }
 
-int avr_vcd_add_signal(avr_vcd_t * vcd, 
+int avr_vcd_add_signal(avr_vcd_t * vcd,
 	avr_irq_t * signal_irq,
 	int signal_bit_size,
 	const char * name )
@@ -194,16 +211,16 @@ int avr_vcd_start(avr_vcd_t * vcd)
 
 	fprintf(vcd->output, "$upscope $end\n");
 	fprintf(vcd->output, "$enddefinitions $end\n");
-	
+
 	fprintf(vcd->output, "$dumpvars\n");
 	for (int i = 0; i < vcd->signal_count; i++) {
 		avr_vcd_signal_t * s = &vcd->signal[i];
 		char out[48];
-		fprintf(vcd->output, "%s\n", _avr_vcd_get_signal_text(s, out, s->irq.value));
+		fprintf(vcd->output, "%s\n", _avr_vcd_get_float_signal_text(s, out));
 	}
 	fprintf(vcd->output, "$end\n");
 	vcd->start = vcd->avr->cycle;
-	avr_cycle_timer_register(vcd->avr, vcd->period, _avr_vcd_timer, vcd);	
+	avr_cycle_timer_register(vcd->avr, vcd->period, _avr_vcd_timer, vcd);
 	return 0;
 }
 
@@ -212,7 +229,7 @@ int avr_vcd_stop(avr_vcd_t * vcd)
 	avr_cycle_timer_cancel(vcd->avr, _avr_vcd_timer, vcd);
 
 	avr_vcd_flush_log(vcd);
-	
+
 	if (vcd->output)
 		fclose(vcd->output);
 	vcd->output = NULL;
