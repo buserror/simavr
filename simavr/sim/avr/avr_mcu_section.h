@@ -187,9 +187,9 @@ struct avr_mmcu_vcd_trace_t {
  */
 #define AVR_MCU_EXTERNAL_PORT_PULL(_port, _mask, _val) \
 	AVR_MCU_LONG(AVR_MMCU_TAG_PORT_EXTERNAL_PULL, \
-		(((unsigned long)(_port) << 16) | \
-		((unsigned long)(_mask) << 8) | \
-		(_val)));
+		(((unsigned long)((_port)&0xff) << 16) | \
+		((unsigned long)((_mask)&0xff) << 8) | \
+		((_val)&0xff)));
 
 /*!
  * This tag allows you to specify the voltages used by your board
