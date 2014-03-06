@@ -154,6 +154,13 @@ static uint8_t avr_timer_tcnt_read(struct avr_t * avr, avr_io_addr_t addr, void 
 	return avr_core_watch_read(avr, addr);
 }
 
+static void avr_timer_cancel_all_cycle_timers(struct avr_t * avr, avr_timer_t *timer) {
+	avr_cycle_timer_cancel(avr, avr_timer_tov, timer);
+	avr_cycle_timer_cancel(avr, avr_timer_compa, timer);
+	avr_cycle_timer_cancel(avr, avr_timer_compb, timer);
+	avr_cycle_timer_cancel(avr, avr_timer_compc, timer);
+}
+
 static void avr_timer_tcnt_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_timer_t * p = (avr_timer_t *)param;
@@ -170,10 +177,7 @@ static void avr_timer_tcnt_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t
 	// cancel the current timers, recalculate the "base" we should be at, reset the
 	// timer base as it should, and re-schedule the timers using that base.
 	
-	avr_cycle_timer_cancel(avr, avr_timer_tov, p);
-	avr_cycle_timer_cancel(avr, avr_timer_compa, p);
-	avr_cycle_timer_cancel(avr, avr_timer_compb, p);
-	avr_cycle_timer_cancel(avr, avr_timer_compc, p);
+	avr_timer_cancel_all_cycle_timers(avr, p);
 
 	uint64_t cycles = (tcnt * p->tov_cycles) / p->tov_top;
 
@@ -241,10 +245,7 @@ static void avr_timer_reconfigure(avr_timer_t * p)
 	p->comp[AVR_TIMER_COMPC].comp_cycles = 0;
 	p->tov_cycles = 0;
 	
-	avr_cycle_timer_cancel(avr, avr_timer_tov, p);
-	avr_cycle_timer_cancel(avr, avr_timer_compa, p);
-	avr_cycle_timer_cancel(avr, avr_timer_compb, p);
-	avr_cycle_timer_cancel(avr, avr_timer_compc, p);
+	avr_timer_cancel_all_cycle_timers(avr, p);
 
 	long clock = avr->frequency;
 
@@ -401,10 +402,7 @@ static void avr_timer_irq_icp(struct avr_irq_t * irq, uint32_t value, void * par
 static void avr_timer_reset(avr_io_t * port)
 {
 	avr_timer_t * p = (avr_timer_t *)port;
-	avr_cycle_timer_cancel(p->io.avr, avr_timer_tov, p);
-	avr_cycle_timer_cancel(p->io.avr, avr_timer_compa, p);
-	avr_cycle_timer_cancel(p->io.avr, avr_timer_compb, p);
-	avr_cycle_timer_cancel(p->io.avr, avr_timer_compc, p);
+	avr_timer_cancel_all_cycle_timers(p->io.avr, p);
 
 	// check to see if the comparators have a pin output. If they do,
 	// (try) to get the ioport corresponding IRQ and connect them
