@@ -22,7 +22,13 @@
 #include <stdio.h>
 #include "avr_ioport.h"
 
-static uint8_t avr_ioport_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
+#define D(_w)
+
+static uint8_t
+avr_ioport_read(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		void * param)
 {
 	avr_ioport_t * p = (avr_ioport_t *)param;
 	uint8_t ddr = avr->data[p->r_ddr];
@@ -30,12 +36,15 @@ static uint8_t avr_ioport_read(struct avr_t * avr, avr_io_addr_t addr, void * pa
 	avr->data[addr] = v;
 	// made to trigger potential watchpoints
 	v = avr_core_watch_read(avr, addr);
-//		printf("** PIN%c(%02x) = %02x\n", p->name, addr, v);
+	avr_raise_irq(p->io.irq + IOPORT_IRQ_REG_PIN, v);
+	D(if (avr->data[addr] != v) printf("** PIN%c(%02x) = %02x\r\n", p->name, addr, v);)
 
 	return v;
 }
 
-static void avr_ioport_update_irqs(avr_ioport_t * p)
+static void
+avr_ioport_update_irqs(
+		avr_ioport_t * p)
 {
 	avr_t * avr = p->io.avr;
 	uint8_t ddr = avr->data[p->r_ddr];
@@ -56,13 +65,18 @@ static void avr_ioport_update_irqs(avr_ioport_t * p)
 	avr_raise_irq(p->io.irq + IOPORT_IRQ_PIN_ALL, pin);
 }
 
-static void avr_ioport_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+static void
+avr_ioport_write(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	avr_ioport_t * p = (avr_ioport_t *)param;
 
+	D(if (avr->data[addr] != v) printf("** PORT%c(%02x) = %02x\r\n", p->name, addr, v);)
 	avr_core_watch_write(avr, addr, v);
-	//	printf("PORT%c(%02x) = %02x (was %02x)\n", p->name, addr, v, oldv);
-
+	avr_raise_irq(p->io.irq + IOPORT_IRQ_REG_PORT, v);
 	avr_ioport_update_irqs(p);
 }
 
@@ -70,7 +84,12 @@ static void avr_ioport_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, 
  * This is a reasonably new behaviour for the io-ports. Writing 1's to the PIN register
  * toggles the PORT equivalent bit (regardless of direction
  */
-static void avr_ioport_pin_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+static void
+avr_ioport_pin_write(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	avr_ioport_t * p = (avr_ioport_t *)param;
 
@@ -82,10 +101,16 @@ static void avr_ioport_pin_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t
  * from triggering an IRQ in case any 'client' code is interested in the information,
  * and restoring all PIN bits marked as output to PORT values.
  */
-static void avr_ioport_ddr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+static void
+avr_ioport_ddr_write(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	avr_ioport_t * p = (avr_ioport_t *)param;
 
+	D(if (avr->data[addr] != v) printf("** DDR%c(%02x) = %02x\r\n", p->name, addr, v);)
 	avr_raise_irq(p->io.irq + IOPORT_IRQ_DIRECTION_ALL, v);
 	avr_core_watch_write(avr, addr, v);
 
@@ -97,7 +122,11 @@ static void avr_ioport_ddr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t
  * AVR code, or any external piece of code that see fit to do it.
  * Either way, this will raise pin change interrupts, if needed
  */
-void avr_ioport_irq_notify(struct avr_irq_t * irq, uint32_t value, void * param)
+void
+avr_ioport_irq_notify(
+		struct avr_irq_t * irq,
+		uint32_t value,
+		void * param)
 {
 	avr_ioport_t * p = (avr_ioport_t *)param;
 	avr_t * avr = p->io.avr;
@@ -121,14 +150,20 @@ void avr_ioport_irq_notify(struct avr_irq_t * irq, uint32_t value, void * param)
 	}
 }
 
-static void avr_ioport_reset(avr_io_t * port)
+static void
+avr_ioport_reset(
+		avr_io_t * port)
 {
 	avr_ioport_t * p = (avr_ioport_t *)port;
 	for (int i = 0; i < IOPORT_IRQ_PIN_ALL; i++)
 		avr_irq_register_notify(p->io.irq + i, avr_ioport_irq_notify, p);
 }
 
-static int avr_ioport_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
+static int
+avr_ioport_ioctl(
+		struct avr_io_t * port,
+		uint32_t ctl,
+		void * io_param)
 {
 	avr_ioport_t * p = (avr_ioport_t *)port;
 	avr_t * avr = p->io.avr;
@@ -195,6 +230,8 @@ static const char * irq_names[IOPORT_IRQ_COUNT] = {
 	[IOPORT_IRQ_PIN7] = "=pin7",
 	[IOPORT_IRQ_PIN_ALL] = "8=all",
 	[IOPORT_IRQ_DIRECTION_ALL] = "8>ddr",
+	[IOPORT_IRQ_REG_PORT] = "8>port",
+	[IOPORT_IRQ_REG_PIN] = "8>pin",
 };
 
 static	avr_io_t	_io = {
