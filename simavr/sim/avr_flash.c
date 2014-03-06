@@ -53,7 +53,7 @@ static int avr_flash_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param
 	avr_flash_t * p = (avr_flash_t *)port;
 	avr_t * avr = p->io.avr;
 
-	uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
+	avr_flashaddr_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
 	if (avr->rampz)
 		z |= avr->data[avr->rampz] << 16;
 	uint16_t r01 = avr->data[0] | (avr->data[1] << 8);
