@@ -73,7 +73,11 @@ const struct mcu_t SIM_CORENAME = {
 		.reset = mx8_reset,
 	},
 	AVR_EEPROM_DECLARE(EE_READY_vect),
+#ifdef RWWSRE
 	AVR_SELFPROG_DECLARE(SPMCSR, SELFPRGEN, SPM_READY_vect),
+#else
+	AVR_SELFPROG_DECLARE_NORWW(SPMCSR, SELFPRGEN, SPM_READY_vect),
+#endif
 	AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
 	.extint = {
 		AVR_EXTINT_DECLARE(0, 'D', 2),
