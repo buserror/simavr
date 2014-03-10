@@ -496,6 +496,15 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 	avr->trace_data->touched[0] = avr->trace_data->touched[1] = avr->trace_data->touched[2] = 0;
 #endif
 
+	/* Ensure we don't crash simavr due to a bad instruction reading past
+	 * the end of the flash.
+	 */
+	if (unlikely(avr->pc >= avr->flashend)) {
+		STATE("CRASH\n");
+		crash(avr);
+		return 0;
+	}
+
 	uint32_t		opcode = (avr->flash[avr->pc + 1] << 8) | avr->flash[avr->pc];
 	avr_flashaddr_t	new_pc = avr->pc + 2;	// future "default" pc
 	int 			cycle = 1;
