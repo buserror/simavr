@@ -70,6 +70,7 @@ int avr_init(avr_t * avr)
 {
 	avr->flash = malloc(avr->flashend + 1);
 	memset(avr->flash, 0xff, avr->flashend + 1);
+	avr->codeend = avr->flashend;
 	avr->data = malloc(avr->ramend + 1);
 	memset(avr->data, 0, avr->ramend + 1);
 #ifdef CONFIG_SIMAVR_TRACE

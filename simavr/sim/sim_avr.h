@@ -427,5 +427,27 @@ avr_pending_sleep_usec(
 #include "sim_io.h"
 #include "sim_regbit.h"
 
+#ifdef __GNUC__
+
+# ifndef likely
+#  define likely(x) __builtin_expect(!!(x), 1)
+# endif
+
+# ifndef unlikely
+#  define unlikely(x) __builtin_expect(!!(x), 0)
+# endif
+
+#else /* ! __GNUC__ */
+
+# ifndef likely
+#  define likely(x) x
+# endif
+
+# ifndef unlikely
+#  define unlikely(x) x
+# endif
+
+#endif /* __GNUC__ */
+
 #endif /*__SIM_AVR_H__*/
 
