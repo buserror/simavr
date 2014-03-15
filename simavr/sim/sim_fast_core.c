@@ -44,10 +44,6 @@
 	 in sim_fast_core_profiling.h */
 #include "sim_fast_core_profiler.h"
 
-/* AVR_FAST_CORE_BRANCH_HINTS
-	via likely() and unlikely() macros provide the compiler (and possibly passed 
-	onto the processor) hints to help reduce pipeline stalls due to 
-	misspredicted branches. USE WITH CARE! :) */
 /* AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 	for processors with fast multiply, helps reduce branches in comparisons 
 	some processors may have specialized instructions making this slower */
@@ -74,7 +70,6 @@
 /* AVR_FAST_CORE_SLEEP_PREPROCESS_TIMERS_AND_INTERRUPTS
 	fast forwards avr->cycle then calls timer and interrupt service routines in sleep functions */
 
-#define AVR_FAST_CORE_BRANCH_HINTS
 #define AVR_FAST_CORE_BRANCHLESS_WITH_MULTIPLY
 static const int _AVR_FAST_CORE_COMBINING = 1;
 static const int _AVR_FAST_CORE_COMPLEX = 1;
@@ -274,28 +269,14 @@ typedef void (*_avr_fast_core_io_write_fn_t)(avr_t *avr, int_fast32_t *count, ui
 
 #define CYCLES(x) { if(1 == (x)) { avr->cycle++; (*count)--; } else { avr->cycle += (x); (*count) -= (x); }}
 
-#ifdef AVR_FAST_CORE_BRANCH_HINTS
-#define likely(x) __builtin_expect(!!(x),1)
-#define unlikely(x) __builtin_expect(!!(x),0)
-#else
-#define likely(x) x
-#define unlikely(x) x
-#endif
-
-
 #ifdef CONFIG_AVR_FAST_CORE_UINST_PROFILING
 static avr_cycle_count_t _avr_fast_core_cycle_timer_process(avr_t *avr, avr_cycle_count_t count)
 {
 	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
-	uint_fast8_t pool_count = pool->count;
 	avr_cycle_count_t new_count = count;
 
-	if(pool_count) {
-		avr_cycle_timer_slot_t  cycle_timer = pool->timer[pool_count-1];
-		avr_cycle_count_t when = cycle_timer.when;
-		if (when < avr->cycle) {
+	if(pool->timer && pool->timer->when <= avr->cycle) {
 			AVR_FAST_CORE_PROFILER_PROFILE(timer, new_count = avr_cycle_timer_process(avr));
-		}
 	}
 
 	return(new_count);
@@ -346,6 +327,8 @@ static void _avr_fast_core_service_interrupts(avr_t *avr) {
 #define STACK_STATE(_f, args...) STATE(_f, ## args)
 #endif
 
+extern void crash(struct avr_t * avr);
+
 // SREG bit names
 extern const char * _sreg_bit_name;
 
@@ -374,7 +357,7 @@ static inline uint_fast8_t _avr_fast_core_data_read(avr_t* avr, uint_fast16_t ad
 	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(addr > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.\n", __FUNCTION__, addr);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 
@@ -386,7 +369,7 @@ static inline void _avr_fast_core_data_write(avr_t* avr, uint_fast16_t addr, uin
 	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(addr > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.\n", __FUNCTION__, addr);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 
@@ -441,7 +424,7 @@ static inline uint_fast16_t _avr_fast_core_data_read16(avr_t* avr, uint_fast16_t
 	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely((addr + 1) > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 
@@ -453,7 +436,7 @@ static inline void _avr_fast_core_data_write16(avr_t* avr, uint_fast16_t addr, u
 	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely((addr + 1) > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 
@@ -465,7 +448,7 @@ static inline uint_fast16_t _avr_fast_core_data_read16be(avr_t* avr, uint_fast16
 	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely((addr + 1) > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 	
@@ -477,7 +460,7 @@ static inline uint_fast16_t _avr_fast_core_data_read16le(avr_t* avr, uint_fast16
 	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely((addr + 1) > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 
@@ -489,7 +472,7 @@ static inline void _avr_fast_core_data_write16be(avr_t* avr, uint_fast16_t addr,
 	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely((addr + 1) > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 
@@ -501,7 +484,7 @@ static inline void _avr_fast_core_data_write16le(avr_t* avr, uint_fast16_t addr,
 	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely((addr + 1) > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 
@@ -806,7 +789,7 @@ static inline void _avr_fast_core_reg_io_write(avr_t *avr, int_fast32_t *count, 
 	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(addr > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 
@@ -940,7 +923,7 @@ static inline uint_fast8_t _avr_fast_core_reg_io_read(avr_t *avr, int_fast32_t *
 	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(addr > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 
@@ -1087,7 +1070,7 @@ static inline uint_fast8_t _avr_fast_core_data_rmw(avr_t* avr, uint_fast16_t add
 	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(addr > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 	
@@ -1104,7 +1087,7 @@ static inline uint_fast16_t _avr_fast_core_data_rmw16le(avr_t* avr, uint_fast16_
 	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely((addr + 1) > avr->ramend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of ram, aborting.", __FUNCTION__, addr);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 
@@ -1187,7 +1170,7 @@ static inline void _avr_fast_core_push16xx(avr_t *avr, uint_fast16_t v)
 		if(unlikely(256 > sp)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): stack pointer at 0x%04x, below end of io space, aborting.",
 				__FUNCTION__, sp);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 
@@ -1197,7 +1180,7 @@ static inline void _avr_fast_core_push16xx(avr_t *avr, uint_fast16_t v)
 	} else {
 		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): stack pointer at 0x%04x, above ramend... aborting.",
 			__FUNCTION__, sp);
-		CRASH();
+		crash(avr);
 	}
 }
 
@@ -1236,7 +1219,7 @@ static inline uint_fast16_t _avr_fast_core_pop16xx(avr_t *avr)
 		if(unlikely(256 > sp)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): stack pointer at 0x%04x, below end of io space, aborting.",
 				__FUNCTION__, sp);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 
@@ -1247,7 +1230,7 @@ static inline uint_fast16_t _avr_fast_core_pop16xx(avr_t *avr)
 	} else {
 		AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): stack pointer at 0x%04x, above ramend... aborting.",
 			__FUNCTION__, sp);
-		CRASH();
+		crash(avr);
 	}
 
 	return(0);
@@ -1706,7 +1689,7 @@ static inline void _avr_fast_core_flash_uflash_write_0(avr_t* avr, avr_flashaddr
 	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(addr > avr->flashend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of flash, aborting.", __FUNCTION__, addr);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 
@@ -1725,7 +1708,7 @@ static inline uint_fast32_t _avr_fast_core_flash_uflash_read_0(avr_t* avr, avr_f
 	#ifdef AVR_FAST_CORE_AGRESSIVE_CHECKS
 		if(unlikely(addr > avr->flashend)) {
 			AVR_LOG(avr, LOG_ERROR, "FAST-CORE (%s): access at 0x%04x past end of flash, aborting.", __FUNCTION__, addr);
-			CRASH();
+			crash(avr);
 		}
 	#endif
 
@@ -3842,11 +3825,11 @@ AVR_FAST_CORE_UINST_DECL(d5rXYZ_ld_pre_dec)
 	vr--;
 
 	uint_fast8_t ivr = _avr_fast_core_fetch_ram(avr, count, vr);
-	_avr_fast_core_store_r(avr, d, ivr);
 	
 	STATE("ld %s, --%c[%04x]\n", avr_regname(d), *avr_regname(r), vr);
 
 	AVR_FAST_CORE_RMW_STORE_R16LE(r, vr);
+	_avr_fast_core_store_r(avr, d, ivr);
 
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2); // 2 cycles (1 for tinyavr, except with inc/dec 2)
 }
@@ -3857,13 +3840,13 @@ AVR_FAST_CORE_UINST_DECL(d5rXYZ_ld_post_inc)
 	AVR_FAST_CORE_UINST_DEFN_R1_rmwR2v16le(u_opcode, d, r);
 
 	uint_fast8_t ivr = _avr_fast_core_fetch_ram(avr, count, vr);
-	_avr_fast_core_store_r(avr, d, ivr);
 	
 	vr++;
 	
 	STATE("ld %s, %c[%04x]++\n", avr_regname(d), *avr_regname(r), vr);
 
 	AVR_FAST_CORE_RMW_STORE_R16LE(r, vr);
+	_avr_fast_core_store_r(avr, d, ivr);
 
 	AVR_FAST_CORE_UINST_NEXT_PC_CYCLES(2, 2); // 2 cycles (1 for tinyavr, except with inc/dec 2)
 }
@@ -5651,7 +5634,7 @@ static int _avr_fast_core_inst_decode_one(avr_t *avr, int_fast32_t *count)
 	if ((avr->pc == 0 && avr->cycle > 0) || avr->pc >= avr->codeend) {
 		avr->trace = 1;
 		STATE("RESET\n");
-		CRASH();
+		crash(avr);
 	}
 	avr->trace_data->touched[0] = avr->trace_data->touched[1] = avr->trace_data->touched[2] = 0;
 #endif
