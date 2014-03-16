@@ -287,6 +287,16 @@ gdb_handle_command(
 	char rep[1024];
 	uint8_t command = *cmd++;
 	switch (command) {
+		case 'q':
+			if (strncmp(cmd, "Attached", 8) == 0) {
+				/* Respond that we are attached to an existing process..
+				 * ourselves!
+				 */
+				gdb_send_reply(g, "1");
+				break;
+			}
+			gdb_send_reply(g, "");
+			break;
 		case '?':
 			gdb_send_quick_status(g, 0);
 			break;
