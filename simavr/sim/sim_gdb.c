@@ -294,7 +294,9 @@ gdb_handle_command(
 				 */
 				gdb_send_reply(g, "1");
 				break;
-			}
+			} else if (strncmp(cmd, "Offsets", 7) == 0) {
+				gdb_send_reply(g, "Text=0;Data=800000;Bss=800000");
+				break;
 			gdb_send_reply(g, "");
 			break;
 		case '?':
