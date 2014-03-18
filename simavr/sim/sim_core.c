@@ -352,17 +352,52 @@ void avr_dump_state(avr_t * avr)
 }
 #endif
 
-#define get_r_d_10(o) \
+#define get_d5(o) \
+		const uint8_t d = (o >> 4) & 0x1f; \
+
+#define get_r5(o) \
 		const uint8_t r = ((o >> 5) & 0x10) | (o & 0xf); \
-		const uint8_t d = (o >> 4) & 0x1f;\
+
+#define get_d5_a6(o) \
+		get_d5(o); \
+		const uint8_t A = ((((o >> 9) & 3) << 4) | ((o) & 0xf)) + 32;
+
+#define get_d5_s3(o) \
+		get_d5(o); \
+		const uint8_t s = o & 7;
+
+#define get_vd5_vr5(o) \
+		get_r5(o); \
+		get_d5(o); \
 		const uint8_t vd = avr->data[d], vr = avr->data[r];
-#define get_r_dd_10(o) \
-		const uint8_t r = ((o >> 5) & 0x10) | (o & 0xf); \
-		const uint8_t d = (o >> 4) & 0x1f;\
+
+#define get_d5_vr5(o) \
+		get_d5(o); \
+		get_r5(o); \
 		const uint8_t vr = avr->data[r];
-#define get_k_r16(o) \
-		const uint8_t r = 16 + ((o >> 4) & 0xf); \
+		
+#define get_h4_k16(o) \
+		const uint8_t h = 16 + ((o >> 4) & 0xf); \
 		const uint8_t k = ((o & 0x0f00) >> 4) | (o & 0xf);
+
+#define get_d5_q6(o) \
+		get_d5(o) \
+		const uint8_t q = ((o & 0x2000) >> 8) | ((o & 0x0c00) >> 7) | (o & 0x7);
+
+#define get_io5_b3(o) \
+		const uint8_t io = ((o >> 3) & 0x1f) + 32; \
+		const	uint8_t b = o & 0x7;
+
+//	const int16_t o = ((int16_t)(op << 4)) >> 4; // CLANG BUG!
+#define get_o_12(op) \
+			const int16_t o = ((int16_t)((op << 4) & 0xffff)) >> 4;
+
+#define get_p2_k6(o) \
+		const uint8_t p = 24 + ((o >> 3) & 0x6); \
+		const uint8_t k = ((o & 0x00c0) >> 2) | (o & 0xf);
+
+#define get_sreg_bit(o) \
+		const uint8_t b = (o >> 4) & 7;
 
 /*
  * Add a "jump" address to the jump trace buffer
@@ -517,8 +552,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 				}	break;
 				default: {
 					switch (opcode & 0xfc00) {
-						case 0x0400: {	// CPC compare with carry 0000 01rd dddd rrrr
-							get_r_d_10(opcode);
+						case 0x0400: {	// CPC -- Compare with carry -- 0000 01rd dddd rrrr
+							get_vd5_vr5(opcode);
 							uint8_t res = vd - vr - avr->sreg[S_C];
 							STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 							if (res)
@@ -530,8 +565,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 							SREG();
 						}	break;
-						case 0x0c00: {	// ADD without carry 0000 11 rd dddd rrrr
-							get_r_d_10(opcode);
+						case 0x0c00: {	// ADD -- Add without carry -- 0000 11rd dddd rrrr
+							get_vd5_vr5(opcode);
 							uint8_t res = vd + vr;
 							if (r == d) {
 								STATE("lsl %s[%02x] = %02x\n", avr_regname(d), vd, res & 0xff);
@@ -547,8 +582,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 							SREG();
 						}	break;
-						case 0x0800: {	// SBC subtract with carry 0000 10rd dddd rrrr
-							get_r_d_10(opcode);
+						case 0x0800: {	// SBC -- Subtract with carry -- 0000 10rd dddd rrrr
+							get_vd5_vr5(opcode);
 							uint8_t res = vd - vr - avr->sreg[S_C];
 							STATE("sbc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), avr->data[d], avr_regname(r), avr->data[r], res);
 							_avr_set_r(avr, d, res);
@@ -563,14 +598,14 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 						}	break;
 						default:
 							switch (opcode & 0xff00) {
-								case 0x0100: {	// MOVW – Copy Register Word 0000 0001 dddd rrrr
+								case 0x0100: {	// MOVW -- Copy Register Word -- 0000 0001 dddd rrrr
 									uint8_t d = ((opcode >> 4) & 0xf) << 1;
 									uint8_t r = ((opcode) & 0xf) << 1;
 									STATE("movw %s:%s, %s:%s[%02x%02x]\n", avr_regname(d), avr_regname(d+1), avr_regname(r), avr_regname(r+1), avr->data[r+1], avr->data[r]);
 									_avr_set_r(avr, d, avr->data[r]);
 									_avr_set_r(avr, d+1, avr->data[r+1]);
 								}	break;
-								case 0x0200: {	// MULS – Multiply Signed 0000 0010 dddd rrrr
+								case 0x0200: {	// MULS -- Multiply Signed -- 0000 0010 dddd rrrr
 									int8_t r = 16 + (opcode & 0xf);
 									int8_t d = 16 + ((opcode >> 4) & 0xf);
 									int16_t res = ((int8_t)avr->data[r]) * ((int8_t)avr->data[d]);
@@ -582,31 +617,31 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 									cycle++;
 									SREG();
 								}	break;
-								case 0x0300: {	// MUL Multiply 0000 0011 fddd frrr
+								case 0x0300: {	// MUL -- Multiply -- 0000 0011 fddd frrr
 									int8_t r = 16 + (opcode & 0x7);
 									int8_t d = 16 + ((opcode >> 4) & 0x7);
 									int16_t res = 0;
 									uint8_t c = 0;
 									T(const char * name = "";)
 									switch (opcode & 0x88) {
-										case 0x00: 	// MULSU – Multiply Signed Unsigned 0000 0011 0ddd 0rrr
+										case 0x00: 	// MULSU -- Multiply Signed Unsigned -- 0000 0011 0ddd 0rrr
 											res = ((uint8_t)avr->data[r]) * ((int8_t)avr->data[d]);
 											c = (res >> 15) & 1;
 											T(name = "mulsu";)
 											break;
-										case 0x08: 	// FMUL Fractional Multiply Unsigned 0000 0011 0ddd 1rrr
+										case 0x08: 	// FMUL -- Fractional Multiply Unsigned -- 0000 0011 0ddd 1rrr
 											res = ((uint8_t)avr->data[r]) * ((uint8_t)avr->data[d]);
 											c = (res >> 15) & 1;
 											res <<= 1;
 											T(name = "fmul";)
 											break;
-										case 0x80: 	// FMULS – Multiply Signed  0000 0011 1ddd 0rrr
+										case 0x80: 	// FMULS -- Multiply Signed -- 0000 0011 1ddd 0rrr
 											res = ((int8_t)avr->data[r]) * ((int8_t)avr->data[d]);
 											c = (res >> 15) & 1;
 											res <<= 1;
 											T(name = "fmuls";)
 											break;
-										case 0x88: 	// FMULSU – Multiply Signed Unsigned 0000 0011 1ddd 1rrr
+										case 0x88: 	// FMULSU -- Multiply Signed Unsigned -- 0000 0011 1ddd 1rrr
 											res = ((uint8_t)avr->data[r]) * ((int8_t)avr->data[d]);
 											c = (res >> 15) & 1;
 											res <<= 1;
@@ -630,8 +665,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 
 		case 0x1000: {
 			switch (opcode & 0xfc00) {
-				case 0x1800: {	// SUB without carry 0000 10 rd dddd rrrr
-					get_r_d_10(opcode);
+				case 0x1800: {	// SUB -- Subtract without carry -- 0001 10rd dddd rrrr
+					get_vd5_vr5(opcode);
 					uint8_t res = vd - vr;
 					STATE("sub %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 					_avr_set_r(avr, d, res);
@@ -643,8 +678,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 					SREG();
 				}	break;
-				case 0x1000: {	// CPSE Compare, skip if equal 0000 00 rd dddd rrrr
-					get_r_d_10(opcode);
+				case 0x1000: {	// CPSE -- Compare, skip if equal -- 0001 00rd dddd rrrr
+					get_vd5_vr5(opcode);
 					uint16_t res = vd == vr;
 					STATE("cpse %s[%02x], %s[%02x]\t; Will%s skip\n", avr_regname(d), avr->data[d], avr_regname(r), avr->data[r], res ? "":" not");
 					if (res) {
@@ -655,8 +690,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 						}
 					}
 				}	break;
-				case 0x1400: {	// CP Compare 0000 01 rd dddd rrrr
-					get_r_d_10(opcode);
+				case 0x1400: {	// CP -- Compare -- 0001 01rd dddd rrrr
+					get_vd5_vr5(opcode);
 					uint8_t res = vd - vr;
 					STATE("cp %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 					avr->sreg[S_Z] = res == 0;
@@ -667,8 +702,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 					SREG();
 				}	break;
-				case 0x1c00: {	// ADD with carry 0001 11 rd dddd rrrr
-					get_r_d_10(opcode);
+				case 0x1c00: {	// ADD -- Add with carry -- 0001 11rd dddd rrrr
+					get_vd5_vr5(opcode);
 					uint8_t res = vd + vr + avr->sreg[S_C];
 					if (r == d) {
 						STATE("rol %s[%02x] = %02x\n", avr_regname(d), avr->data[d], res);
@@ -690,8 +725,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 
 		case 0x2000: {
 			switch (opcode & 0xfc00) {
-				case 0x2000: {	// AND	0010 00rd dddd rrrr
-					get_r_d_10(opcode);
+				case 0x2000: {	// AND -- Logical AND -- 0010 00rd dddd rrrr
+					get_vd5_vr5(opcode);
 					uint8_t res = vd & vr;
 					if (r == d) {
 						STATE("tst %s[%02x]\n", avr_regname(d), avr->data[d]);
@@ -705,8 +740,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 					SREG();
 				}	break;
-				case 0x2400: {	// EOR	0010 01rd dddd rrrr
-					get_r_d_10(opcode);
+				case 0x2400: {	// EOR -- Logical Exclusive OR -- 0010 01rd dddd rrrr
+					get_vd5_vr5(opcode);
 					uint8_t res = vd ^ vr;
 					if (r==d) {
 						STATE("clr %s[%02x]\n", avr_regname(d), avr->data[d]);
@@ -720,8 +755,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 					SREG();
 				}	break;
-				case 0x2800: {	// OR Logical OR	0010 10rd dddd rrrr
-					get_r_d_10(opcode);
+				case 0x2800: {	// OR -- Logical OR -- 0010 10rd dddd rrrr
+					get_vd5_vr5(opcode);
 					uint8_t res = vd | vr;
 					STATE("or %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 					_avr_set_r(avr, d, res);
@@ -731,8 +766,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 					SREG();
 				}	break;
-				case 0x2c00: {	// MOV	0010 11rd dddd rrrr
-					get_r_dd_10(opcode);
+				case 0x2c00: {	// MOV -- 0010 11rd dddd rrrr
+					get_d5_vr5(opcode);
 					uint8_t res = vr;
 					STATE("mov %s, %s[%02x] = %02x\n", avr_regname(d), avr_regname(r), vr, res);
 					_avr_set_r(avr, d, res);
@@ -741,53 +776,53 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 			}
 		}	break;
 
-		case 0x3000: {	// CPI 0011 KKKK rrrr KKKK
-			get_k_r16(opcode);
-			uint8_t vr = avr->data[r];
-			uint8_t res = vr - k;
-			STATE("cpi %s[%02x], 0x%02x\n", avr_regname(r), vr, k);
+		case 0x3000: {	// CPI -- Compare Immediate -- 0011 kkkk hhhh kkkk
+			get_h4_k16(opcode);
+			uint8_t vh = avr->data[h];
+			uint8_t res = vh - k;
+			STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
 
 			avr->sreg[S_Z] = res == 0;
-			avr->sreg[S_H] = get_compare_carry(res, vr, k, 3);
-			avr->sreg[S_V] = get_compare_overflow(res, vr, k);
+			avr->sreg[S_H] = get_compare_carry(res, vh, k, 3);
+			avr->sreg[S_V] = get_compare_overflow(res, vh, k);
 			avr->sreg[S_N] = (res >> 7) & 1;
-			avr->sreg[S_C] = get_compare_carry(res, vr, k, 7);
+			avr->sreg[S_C] = get_compare_carry(res, vh, k, 7);
 			avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 			SREG();
 		}	break;
 
-		case 0x4000: {	// SBCI Subtract Immediate With Carry 0101 10 kkkk dddd kkkk
-			get_k_r16(opcode);
-			uint8_t vr = avr->data[r];
-			uint8_t res = vr - k - avr->sreg[S_C];
-			STATE("sbci %s[%02x], 0x%02x = %02x\n", avr_regname(r), avr->data[r], k, res);
-			_avr_set_r(avr, r, res);
+		case 0x4000: {	// SBCI -- Subtract Immediate With Carry -- 0100 kkkk hhhh kkkk
+			get_h4_k16(opcode);
+			uint8_t vh = avr->data[h];
+			uint8_t res = vh - k - avr->sreg[S_C];
+			STATE("sbci %s[%02x], 0x%02x = %02x\n", avr_regname(h), avr->data[h], k, res);
+			_avr_set_r(avr, h, res);
 			if (res)
 				avr->sreg[S_Z] = 0;
 			avr->sreg[S_N] = (res >> 7) & 1;
-			avr->sreg[S_C] = (k + avr->sreg[S_C]) > vr;
+			avr->sreg[S_C] = (k + avr->sreg[S_C]) > vh;
 			avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 			SREG();
 		}	break;
 
-		case 0x5000: {	// SUB Subtract Immediate 0101 10 kkkk dddd kkkk
-			get_k_r16(opcode);
-			uint8_t vr = avr->data[r];
-			uint8_t res = vr - k;
-			STATE("subi %s[%02x], 0x%02x = %02x\n", avr_regname(r), avr->data[r], k, res);
-			_avr_set_r(avr, r, res);
+		case 0x5000: {	// SUBI -- Subtract Immediate -- 0101 kkkk hhhh kkkk
+			get_h4_k16(opcode);
+			uint8_t vh = avr->data[h];
+			uint8_t res = vh - k;
+			STATE("subi %s[%02x], 0x%02x = %02x\n", avr_regname(h), avr->data[h], k, res);
+			_avr_set_r(avr, h, res);
 			avr->sreg[S_Z] = res  == 0;
 			avr->sreg[S_N] = (res >> 7) & 1;
-			avr->sreg[S_C] = k > vr;
+			avr->sreg[S_C] = k > vh;
 			avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 			SREG();
 		}	break;
 
-		case 0x6000: {	// ORI aka SBR	Logical AND with Immediate	0110 kkkk dddd kkkk
-			get_k_r16(opcode);
-			uint8_t res = avr->data[r] | k;
-			STATE("ori %s[%02x], 0x%02x\n", avr_regname(r), avr->data[r], k);
-			_avr_set_r(avr, r, res);
+		case 0x6000: {	// ORI aka SBR -- Logical AND with Immediate -- 0110 kkkk hhhh kkkk
+			get_h4_k16(opcode);
+			uint8_t res = avr->data[h] | k;
+			STATE("ori %s[%02x], 0x%02x\n", avr_regname(h), avr->data[h], k);
+			_avr_set_r(avr, h, res);
 			avr->sreg[S_Z] = res == 0;
 			avr->sreg[S_N] = (res >> 7) & 1;
 			avr->sreg[S_V] = 0;
@@ -795,11 +830,11 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 			SREG();
 		}	break;
 
-		case 0x7000: {	// ANDI	Logical AND with Immediate	0111 kkkk dddd kkkk
-			get_k_r16(opcode);
-			uint8_t res = avr->data[r] & k;
-			STATE("andi %s[%02x], 0x%02x\n", avr_regname(r), avr->data[r], k);
-			_avr_set_r(avr, r, res);
+		case 0x7000: {	// ANDI	-- Logical AND with Immediate -- 0111 kkkk hhhh kkkk
+			get_h4_k16(opcode);
+			uint8_t res = avr->data[h] & k;
+			STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), avr->data[h], k);
+			_avr_set_r(avr, h, res);
 			avr->sreg[S_Z] = res == 0;
 			avr->sreg[S_N] = (res >> 7) & 1;
 			avr->sreg[S_V] = 0;
@@ -809,34 +844,38 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 
 		case 0xa000:
 		case 0x8000: {
+			/*
+			 * Load (LDD/STD) store instructions
+			 *
+			 * 10q0 qqsd dddd yqqq
+			 * s = 0 = load, 1 = store
+			 * y = 16 bits register index, 1 = Y, 0 = X
+			 * oo = 1) post increment, 2) pre-decrement
+			 */
 			switch (opcode & 0xd008) {
 				case 0xa000:
-				case 0x8000: {	// LD (LDD) – Load Indirect using Z 10q0 qq0r rrrr 0qqq
+				case 0x8000: {	// LD (LDD) -- Load Indirect using Z -- 10q0 qqsd dddd yqqq
 					uint16_t v = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
-					uint8_t r = (opcode >> 4) & 0x1f;
-					uint8_t q = ((opcode & 0x2000) >> 8) | ((opcode & 0x0c00) >> 7) | (opcode & 0x7);
-
+					get_d5_q6(opcode);
 					if (opcode & 0x0200) {
-						STATE("st (Z+%d[%04x]), %s[%02x]\n", q, v+q, avr_regname(r), avr->data[r]);
-						_avr_set_ram(avr, v+q, avr->data[r]);
+						STATE("st (Z+%d[%04x]), %s[%02x]\n", q, v+q, avr_regname(d), avr->data[d]);
+						_avr_set_ram(avr, v+q, avr->data[d]);
 					} else {
-						STATE("ld %s, (Z+%d[%04x])=[%02x]\n", avr_regname(r), q, v+q, avr->data[v+q]);
-						_avr_set_r(avr, r, _avr_get_ram(avr, v+q));
+						STATE("ld %s, (Z+%d[%04x])=[%02x]\n", avr_regname(d), q, v+q, avr->data[v+q]);
+						_avr_set_r(avr, d, _avr_get_ram(avr, v+q));
 					}
 					cycle += 1; // 2 cycles, 3 for tinyavr
 				}	break;
 				case 0xa008:
-				case 0x8008: {	// LD (LDD) – Load Indirect using Y 10q0 qq0r rrrr 1qqq
+				case 0x8008: {	// LD (LDD) -- Load Indirect using Y -- 10q0 qqsd dddd yqqq
 					uint16_t v = avr->data[R_YL] | (avr->data[R_YH] << 8);
-					uint8_t r = (opcode >> 4) & 0x1f;
-					uint8_t q = ((opcode & 0x2000) >> 8) | ((opcode & 0x0c00) >> 7) | (opcode & 0x7);
-
+					get_d5_q6(opcode);
 					if (opcode & 0x0200) {
-						STATE("st (Y+%d[%04x]), %s[%02x]\n", q, v+q, avr_regname(r), avr->data[r]);
-						_avr_set_ram(avr, v+q, avr->data[r]);
+						STATE("st (Y+%d[%04x]), %s[%02x]\n", q, v+q, avr_regname(d), avr->data[d]);
+						_avr_set_ram(avr, v+q, avr->data[d]);
 					} else {
-						STATE("ld %s, (Y+%d[%04x])=[%02x]\n", avr_regname(r), q, v+q, avr->data[v+q]);
-						_avr_set_r(avr, r, _avr_get_ram(avr, v+q));
+						STATE("ld %s, (Y+%d[%04x])=[%02x]\n", avr_regname(d), q, v+q, avr->data[d+q]);
+						_avr_set_r(avr, d, _avr_get_ram(avr, v+q));
 					}
 					cycle += 1; // 2 cycles, 3 for tinyavr
 				}	break;
@@ -847,12 +886,12 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 		case 0x9000: {
 			/* this is an annoying special case, but at least these lines handle all the SREG set/clear opcodes */
 			if ((opcode & 0xff0f) == 0x9408) {
-				uint8_t b = (opcode >> 4) & 7;
+				get_sreg_bit(opcode);
 				STATE("%s%c\n", opcode & 0x0080 ? "cl" : "se", _sreg_bit_name[b]);
 				avr->sreg[b] = (opcode & 0x0080) == 0;
 				SREG();
 			} else switch (opcode) {
-				case 0x9588: { // SLEEP
+				case 0x9588: { // SLEEP -- 1001 0101 1000 1000
 					STATE("sleep\n");
 					/* Don't sleep if there are interrupts about to be serviced.
 					 * Without this check, it was possible to incorrectly enter a state
@@ -861,7 +900,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					if (!avr_has_pending_interrupts(avr) || !avr->sreg[S_I])
 						avr->state = cpu_Sleeping;
 				}	break;
-				case 0x9598: { // BREAK
+				case 0x9598: { // BREAK -- 1001 0101 1001 1000
 					STATE("break\n");
 					if (avr->gdb) {
 						// if gdb is on, we break here as in here
@@ -872,18 +911,18 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 						cycle = 0;
 					}
 				}	break;
-				case 0x95a8: { // WDR
+				case 0x95a8: { // WDR -- Watchdog Reset -- 1001 0101 1010 1000
 					STATE("wdr\n");
 					avr_ioctl(avr, AVR_IOCTL_WATCHDOG_RESET, 0);
 				}	break;
-				case 0x95e8: { // SPM
+				case 0x95e8: { // SPM -- Store Program Memory -- 1001 0101 1110 1000
 					STATE("spm\n");
 					avr_ioctl(avr, AVR_IOCTL_FLASH_SPM, 0);
 				}	break;
-				case 0x9409:   // IJMP Indirect jump 					1001 0100 0000 1001
-				case 0x9419:   // EIJMP Indirect jump 					1001 0100 0001 1001   bit 4 is "indirect"
-				case 0x9509:   // ICALL Indirect Call to Subroutine		1001 0101 0000 1001
-				case 0x9519: { // EICALL Indirect Call to Subroutine	1001 0101 0001 1001   bit 8 is "push pc"
+				case 0x9409:   // IJMP -- Indirect jump -- 1001 0100 0000 1001
+				case 0x9419:   // EIJMP -- Indirect jump -- 1001 0100 0001 1001   bit 4 is "indirect"
+				case 0x9509:   // ICALL -- Indirect Call to Subroutine -- 1001 0101 0000 1001
+				case 0x9519: { // EICALL -- Indirect Call to Subroutine -- 1001 0101 0001 1001   bit 8 is "push pc"
 					int e = opcode & 0x10;
 					int p = opcode & 0x100;
 					if (e && !avr->eind)
@@ -898,8 +937,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					cycle++;
 					TRACE_JUMP();
 				}	break;
-				case 0x9518: 	// RETI
-				case 0x9508: {	// RET
+				case 0x9518: 	// RETI -- Return from Interrupt -- 1001 0101 0001 1000
+				case 0x9508: {	// RET -- Return -- 1001 0101 0000 1000
 					new_pc = _avr_pop_addr(avr);
 					cycle += 1 + avr->address_size;
 					if (opcode & 0x10)	// reti
@@ -908,7 +947,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					TRACE_JUMP();
 					STACK_FRAME_POP();
 				}	break;
-				case 0x95c8: {	// LPM Load Program Memory R0 <- (Z)
+				case 0x95c8: {	// LPM -- Load Program Memory R0 <- (Z) -- 1001 0101 1100 1000
 					uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
 					STATE("lpm %s, (Z[%04x])\n", avr_regname(0), z);
 					cycle += 2; // 3 cycles
@@ -916,38 +955,38 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 				}	break;
 				case 0x9408:case 0x9418:case 0x9428:case 0x9438:case 0x9448:case 0x9458:case 0x9468:
 				case 0x9478:
-				{	// BSET 1001 0100 0ddd 1000
-					uint8_t b = (opcode >> 4) & 7;
+				{	// BSET -- Set Bit in SREG -- 1001 0100 0bbb 1000
+					get_sreg_bit(opcode);
 					avr->sreg[b] = 1;
 					STATE("bset %c\n", _sreg_bit_name[b]);
 					SREG();
 				}	break;
 				case 0x9488:case 0x9498:case 0x94a8:case 0x94b8:case 0x94c8:case 0x94d8:case 0x94e8:
 				case 0x94f8:	// bit 7 is 'clear vs set'
-				{	// BCLR 1001 0100 1ddd 1000
-					uint8_t b = (opcode >> 4) & 7;
+				{	// BCLR -- Clear Bit in SREG -- 1001 0100 1bbb 1000
+					get_sreg_bit(opcode);
 					avr->sreg[b] = 0;
 					STATE("bclr %c\n", _sreg_bit_name[b]);
 					SREG();
 				}	break;
 				default:  {
 					switch (opcode & 0xfe0f) {
-						case 0x9000: {	// LDS Load Direct from Data Space, 32 bits
-							uint8_t r = (opcode >> 4) & 0x1f;
+						case 0x9000: {	// LDS -- Load Direct from Data Space, 32 bits -- 1001 0000 0000 0000
+							get_d5(opcode);
 							uint16_t x = (avr->flash[new_pc+1] << 8) | avr->flash[new_pc];
 							new_pc += 2;
-							STATE("lds %s[%02x], 0x%04x\n", avr_regname(r), avr->data[r], x);
-							_avr_set_r(avr, r, _avr_get_ram(avr, x));
+							STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), avr->data[d], x);
+							_avr_set_r(avr, d, _avr_get_ram(avr, x));
 							cycle++; // 2 cycles
 						}	break;
 						case 0x9005:
-						case 0x9004: {	// LPM Load Program Memory 1001 000d dddd 01oo
+						case 0x9004: {	// LPM -- Load Program Memory -- 1001 000d dddd 01oo
+							get_d5(opcode);
 							uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
-							uint8_t r = (opcode >> 4) & 0x1f;
-							int op = opcode & 3;
-							STATE("lpm %s, (Z[%04x]%s)\n", avr_regname(r), z, opcode?"+":"");
-							_avr_set_r(avr, r, avr->flash[z]);
-							if (op == 1) {
+							int op = opcode & 1;
+							STATE("lpm %s, (Z[%04x]%s)\n", avr_regname(d), z, op ? "+" : "");
+							_avr_set_r(avr, d, avr->flash[z]);
+							if (op) {
 								z++;
 								_avr_set_r(avr, R_ZH, z >> 8);
 								_avr_set_r(avr, R_ZL, z);
@@ -955,15 +994,15 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							cycle += 2; // 3 cycles
 						}	break;
 						case 0x9006:
-						case 0x9007: {	// ELPM Extended Load Program Memory 1001 000d dddd 01oo
+						case 0x9007: {	// ELPM -- Extended Load Program Memory -- 1001 000d dddd 01oo
 							if (!avr->rampz)
 								_avr_invalid_opcode(avr);
 							uint32_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8) | (avr->data[avr->rampz] << 16);
-							uint8_t r = (opcode >> 4) & 0x1f;
-							int op = opcode & 3;
-							STATE("elpm %s, (Z[%02x:%04x]%s)\n", avr_regname(r), z >> 16, z&0xffff, opcode?"+":"");
-							_avr_set_r(avr, r, avr->flash[z]);
-							if (op == 3) {
+							get_d5(opcode);
+							int op = opcode & 1;
+							STATE("elpm %s, (Z[%02x:%04x]%s)\n", avr_regname(d), z >> 16, z & 0xffff, op ? "+" : "");
+							_avr_set_r(avr, d, avr->flash[z]);
+							if (op) {
 								z++;
 								_avr_set_r(avr, avr->rampz, z >> 16);
 								_avr_set_r(avr, R_ZH, z >> 8);
@@ -976,119 +1015,119 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 						 *
 						 * 1001 00sr rrrr iioo
 						 * s = 0 = load, 1 = store
-						 * ii = 16 bits register index, 11 = Z, 10 = Y, 00 = X
+						 * ii = 16 bits register index, 11 = X, 10 = Y, 00 = Z
 						 * oo = 1) post increment, 2) pre-decrement
 						 */
 						case 0x900c:
 						case 0x900d:
-						case 0x900e: {	// LD Load Indirect from Data using X 1001 000r rrrr 11oo
+						case 0x900e: {	// LD -- Load Indirect from Data using X -- 1001 000d dddd 11oo
 							int op = opcode & 3;
-							uint8_t r = (opcode >> 4) & 0x1f;
+							get_d5(opcode);
 							uint16_t x = (avr->data[R_XH] << 8) | avr->data[R_XL];
-							STATE("ld %s, %sX[%04x]%s\n", avr_regname(r), op == 2 ? "--" : "", x, op == 1 ? "++" : "");
+							STATE("ld %s, %sX[%04x]%s\n", avr_regname(d), op == 2 ? "--" : "", x, op == 1 ? "++" : "");
 							cycle++; // 2 cycles (1 for tinyavr, except with inc/dec 2)
 							if (op == 2) x--;
-							uint8_t vr = _avr_get_ram(avr, x);
+							uint8_t vd = _avr_get_ram(avr, x);
 							if (op == 1) x++;
 							_avr_set_r(avr, R_XH, x >> 8);
 							_avr_set_r(avr, R_XL, x);
-							_avr_set_r(avr, r, vr);
+							_avr_set_r(avr, d, vd);
 						}	break;
 						case 0x920c:
 						case 0x920d:
-						case 0x920e: {	// ST Store Indirect Data Space X 1001 001r rrrr 11oo
+						case 0x920e: {	// ST -- Store Indirect Data Space X -- 1001 001d dddd 11oo
 							int op = opcode & 3;
-							uint8_t r = (opcode >> 4) & 0x1f;
+							get_d5(opcode);
 							uint16_t x = (avr->data[R_XH] << 8) | avr->data[R_XL];
-							STATE("st %sX[%04x]%s, %s[%02x] \n", op == 2 ? "--" : "", x, op == 1 ? "++" : "", avr_regname(r), avr->data[r]);
+							STATE("st %sX[%04x]%s, %s[%02x] \n", op == 2 ? "--" : "", x, op == 1 ? "++" : "", avr_regname(d), avr->data[d]);
 							cycle++; // 2 cycles, except tinyavr
 							if (op == 2) x--;
-							_avr_set_ram(avr, x, avr->data[r]);
+							_avr_set_ram(avr, x, avr->data[d]);
 							if (op == 1) x++;
 							_avr_set_r(avr, R_XH, x >> 8);
 							_avr_set_r(avr, R_XL, x);
 						}	break;
 						case 0x9009:
-						case 0x900a: {	// LD Load Indirect from Data using Y 1001 000r rrrr 10oo
+						case 0x900a: {	// LD -- Load Indirect from Data using Y -- 1001 000d dddd 10oo
 							int op = opcode & 3;
-							uint8_t r = (opcode >> 4) & 0x1f;
+							get_d5(opcode);
 							uint16_t y = (avr->data[R_YH] << 8) | avr->data[R_YL];
-							STATE("ld %s, %sY[%04x]%s\n", avr_regname(r), op == 2 ? "--" : "", y, op == 1 ? "++" : "");
+							STATE("ld %s, %sY[%04x]%s\n", avr_regname(d), op == 2 ? "--" : "", y, op == 1 ? "++" : "");
 							cycle++; // 2 cycles, except tinyavr
 							if (op == 2) y--;
-							uint8_t vr = _avr_get_ram(avr, y);
+							uint8_t vd = _avr_get_ram(avr, y);
 							if (op == 1) y++;
 							_avr_set_r(avr, R_YH, y >> 8);
 							_avr_set_r(avr, R_YL, y);
-							_avr_set_r(avr, r, vr);
+							_avr_set_r(avr, d, vd);
 						}	break;
 						case 0x9209:
-						case 0x920a: {	// ST Store Indirect Data Space Y 1001 001r rrrr 10oo
+						case 0x920a: {	// ST -- Store Indirect Data Space Y -- 1001 001d dddd 10oo
 							int op = opcode & 3;
-							uint8_t r = (opcode >> 4) & 0x1f;
+							get_d5(opcode);
 							uint16_t y = (avr->data[R_YH] << 8) | avr->data[R_YL];
-							STATE("st %sY[%04x]%s, %s[%02x]\n", op == 2 ? "--" : "", y, op == 1 ? "++" : "", avr_regname(r), avr->data[r]);
+							STATE("st %sY[%04x]%s, %s[%02x]\n", op == 2 ? "--" : "", y, op == 1 ? "++" : "", avr_regname(d), avr->data[d]);
 							cycle++;
 							if (op == 2) y--;
-							_avr_set_ram(avr, y, avr->data[r]);
+							_avr_set_ram(avr, y, avr->data[d]);
 							if (op == 1) y++;
 							_avr_set_r(avr, R_YH, y >> 8);
 							_avr_set_r(avr, R_YL, y);
 						}	break;
-						case 0x9200: {	// STS ! Store Direct to Data Space, 32 bits
-							uint8_t r = (opcode >> 4) & 0x1f;
+						case 0x9200: {	// STS -- Store Direct to Data Space, 32 bits -- 1001 0010 0000 0000
+							get_d5(opcode);
 							uint16_t x = (avr->flash[new_pc+1] << 8) | avr->flash[new_pc];
 							new_pc += 2;
-							STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(r), avr->data[r]);
+							STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), avr->data[d]);
 							cycle++;
-							_avr_set_ram(avr, x, avr->data[r]);
+							_avr_set_ram(avr, x, avr->data[d]);
 						}	break;
 						case 0x9001:
-						case 0x9002: {	// LD Load Indirect from Data using Z 1001 001r rrrr 00oo
+						case 0x9002: {	// LD -- Load Indirect from Data using Z -- 1001 001d dddd 00oo
 							int op = opcode & 3;
-							uint8_t r = (opcode >> 4) & 0x1f;
+							get_d5(opcode);
 							uint16_t z = (avr->data[R_ZH] << 8) | avr->data[R_ZL];
 							STATE("ld %s, %sZ[%04x]%s\n", avr_regname(r), op == 2 ? "--" : "", z, op == 1 ? "++" : "");
 							cycle++;; // 2 cycles, except tinyavr
 							if (op == 2) z--;
-							uint8_t vr = _avr_get_ram(avr, z);
+							uint8_t vd = _avr_get_ram(avr, z);
 							if (op == 1) z++;
 							_avr_set_r(avr, R_ZH, z >> 8);
 							_avr_set_r(avr, R_ZL, z);
-							_avr_set_r(avr, r, vr);
+							_avr_set_r(avr, d, vd);
 						}	break;
 						case 0x9201:
-						case 0x9202: {	// ST Store Indirect Data Space Z 1001 001r rrrr 00oo
+						case 0x9202: {	// ST -- Store Indirect Data Space Z -- 1001 001d dddd 00oo
 							int op = opcode & 3;
-							uint8_t r = (opcode >> 4) & 0x1f;
+							get_d5(opcode);
 							uint16_t z = (avr->data[R_ZH] << 8) | avr->data[R_ZL];
 							STATE("st %sZ[%04x]%s, %s[%02x] \n", op == 2 ? "--" : "", z, op == 1 ? "++" : "", avr_regname(r), avr->data[r]);
 							cycle++; // 2 cycles, except tinyavr
 							if (op == 2) z--;
-							_avr_set_ram(avr, z, avr->data[r]);
+							_avr_set_ram(avr, z, avr->data[d]);
 							if (op == 1) z++;
 							_avr_set_r(avr, R_ZH, z >> 8);
 							_avr_set_r(avr, R_ZL, z);
 						}	break;
-						case 0x900f: {	// POP 1001 000d dddd 1111
-							uint8_t r = (opcode >> 4) & 0x1f;
-							_avr_set_r(avr, r, _avr_pop8(avr));
+						case 0x900f: {	// POP -- 1001 000d dddd 1111
+							get_d5(opcode);
+							_avr_set_r(avr, d, _avr_pop8(avr));
 							T(uint16_t sp = _avr_sp_get(avr);)
-							STATE("pop %s (@%04x)[%02x]\n", avr_regname(r), sp, avr->data[sp]);
+							STATE("pop %s (@%04x)[%02x]\n", avr_regname(d), sp, avr->data[sp]);
 							cycle++;
 						}	break;
-						case 0x920f: {	// PUSH 1001 001d dddd 1111
-							uint8_t r = (opcode >> 4) & 0x1f;
-							_avr_push8(avr, avr->data[r]);
+						case 0x920f: {	// PUSH -- 1001 001d dddd 1111
+							get_d5(opcode);
+							_avr_push8(avr, avr->data[d]);
 							T(uint16_t sp = _avr_sp_get(avr);)
-							STATE("push %s[%02x] (@%04x)\n", avr_regname(r), avr->data[r], sp);
+							STATE("push %s[%02x] (@%04x)\n", avr_regname(d), avr->data[d], sp);
 							cycle++;
 						}	break;
-						case 0x9400: {	// COM – One’s Complement
-							uint8_t r = (opcode >> 4) & 0x1f;
-							uint8_t res = 0xff - avr->data[r];
-							STATE("com %s[%02x] = %02x\n", avr_regname(r), avr->data[r], res);
-							_avr_set_r(avr, r, res);
+						case 0x9400: {	// COM -- One’s Complement -- 1001 010d dddd 0000
+							get_d5(opcode);
+							uint8_t res = 0xff - avr->data[d];
+							STATE("com %s[%02x] = %02x\n", avr_regname(d), avr->data[d], res);
+							_avr_set_r(avr, d, res);
 							avr->sreg[S_Z] = res == 0;
 							avr->sreg[S_N] = res >> 7;
 							avr->sreg[S_V] = 0;
@@ -1096,12 +1135,12 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 							SREG();
 						}	break;
-						case 0x9401: {	// NEG – Two’s Complement
-							uint8_t r = (opcode >> 4) & 0x1f;
-							uint8_t rd = avr->data[r];
+						case 0x9401: {	// NEG -- Two’s Complement -- 1001 040d dddd 0001
+							get_d5(opcode);
+							uint8_t rd = avr->data[d];
 							uint8_t res = 0x00 - rd;
-							STATE("neg %s[%02x] = %02x\n", avr_regname(r), rd, res);
-							_avr_set_r(avr, r, res);
+							STATE("neg %s[%02x] = %02x\n", avr_regname(d), rd, res);
+							_avr_set_r(avr, d, res);
 							avr->sreg[S_H] = ((res >> 3) | (rd >> 3)) & 1;
 							avr->sreg[S_Z] = res == 0;
 							avr->sreg[S_N] = res >> 7;
@@ -1110,67 +1149,67 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 							SREG();
 						}	break;
-						case 0x9402: {	// SWAP – Swap Nibbles
-							uint8_t r = (opcode >> 4) & 0x1f;
-							uint8_t res = (avr->data[r] >> 4) | (avr->data[r] << 4) ;
-							STATE("swap %s[%02x] = %02x\n", avr_regname(r), avr->data[r], res);
-							_avr_set_r(avr, r, res);
+						case 0x9402: {	// SWAP -- Swap Nibbles -- 1001 010d dddd 0010
+							get_d5(opcode);
+							uint8_t res = (avr->data[d] >> 4) | (avr->data[d] << 4) ;
+							STATE("swap %s[%02x] = %02x\n", avr_regname(d), avr->data[d], res);
+							_avr_set_r(avr, d, res);
 						}	break;
-						case 0x9403: {	// INC – Increment
-							uint8_t r = (opcode >> 4) & 0x1f;
-							uint8_t res = avr->data[r] + 1;
-							STATE("inc %s[%02x] = %02x\n", avr_regname(r), avr->data[r], res);
-							_avr_set_r(avr, r, res);
+						case 0x9403: {	// INC -- Increment -- 1001 010d dddd 0011
+							get_d5(opcode);
+							uint8_t res = avr->data[d] + 1;
+							STATE("inc %s[%02x] = %02x\n", avr_regname(d), avr->data[d], res);
+							_avr_set_r(avr, d, res);
 							avr->sreg[S_Z] = res == 0;
 							avr->sreg[S_N] = res >> 7;
 							avr->sreg[S_V] = res == 0x80;
 							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 							SREG();
 						}	break;
-						case 0x9405: {	// ASR – Arithmetic Shift Right 1001 010d dddd 0101
-							uint8_t r = (opcode >> 4) & 0x1f;
-							uint8_t vr = avr->data[r];
-							uint8_t res = (vr >> 1) | (vr & 0x80);
-							STATE("asr %s[%02x]\n", avr_regname(r), vr);
-							_avr_set_r(avr, r, res);
+						case 0x9405: {	// ASR -- Arithmetic Shift Right -- 1001 010d dddd 0101
+							get_d5(opcode);
+							uint8_t vd = avr->data[d];
+							uint8_t res = (vd >> 1) | (vd & 0x80);
+							STATE("asr %s[%02x]\n", avr_regname(d), vd);
+							_avr_set_r(avr, d, res);
 							avr->sreg[S_Z] = res == 0;
-							avr->sreg[S_C] = vr & 1;
+							avr->sreg[S_C] = vd & 1;
 							avr->sreg[S_N] = res >> 7;
 							avr->sreg[S_V] = avr->sreg[S_N] ^ avr->sreg[S_C];
 							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 							SREG();
 						}	break;
-						case 0x9406: {	// LSR 1001 010d dddd 0110
-							uint8_t r = (opcode >> 4) & 0x1f;
-							uint8_t vr = avr->data[r];
-							uint8_t res = vr >> 1;
-							STATE("lsr %s[%02x]\n", avr_regname(r), vr);
-							_avr_set_r(avr, r, res);
+						case 0x9406: {	// LSR -- Logical Shift Right -- 1001 010d dddd 0110
+							get_d5(opcode);
+							uint8_t vd = avr->data[d];
+							uint8_t res = vd >> 1;
+							STATE("lsr %s[%02x]\n", avr_regname(d), vd);
+							_avr_set_r(avr, d, res);
 							avr->sreg[S_Z] = res == 0;
-							avr->sreg[S_C] = vr & 1;
+							avr->sreg[S_C] = vd & 1;
 							avr->sreg[S_N] = 0;
 							avr->sreg[S_V] = avr->sreg[S_N] ^ avr->sreg[S_C];
 							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 							SREG();
 						}	break;
-						case 0x9407: {	// ROR 1001 010d dddd 0111
-							uint8_t r = (opcode >> 4) & 0x1f;
-							uint8_t vr = avr->data[r];
-							uint8_t res = (avr->sreg[S_C] ? 0x80 : 0) | vr >> 1;
-							STATE("ror %s[%02x]\n", avr_regname(r), vr);
-							_avr_set_r(avr, r, res);
+						case 0x9407: {	// ROR -- Rotate Right -- 1001 010d dddd 0111
+							get_d5(opcode);
+							uint8_t vd = avr->data[d];
+							uint8_t res = (avr->sreg[S_C] ? 0x80 : 0) | vd >> 1;
+							STATE("ror %s[%02x]\n", avr_regname(d), vd);
+							_avr_set_r(avr, d, res);
 							avr->sreg[S_Z] = res == 0;
-							avr->sreg[S_C] = vr & 1;
+							avr->sreg[S_C] = vd & 1;
 							avr->sreg[S_N] = res >> 7;
 							avr->sreg[S_V] = avr->sreg[S_N] ^ avr->sreg[S_C];
 							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 							SREG();
 						}	break;
-						case 0x940a: {	// DEC – Decrement
-							uint8_t r = (opcode >> 4) & 0x1f;
-							uint8_t res = avr->data[r] - 1;
-							STATE("dec %s[%02x] = %02x\n", avr_regname(r), avr->data[r], res);
-							_avr_set_r(avr, r, res);
+						case 0x940a: {	// DEC -- Decrement -- 1001 010d dddd 1010
+							get_d5(opcode);
+							uint8_t res = avr->data[d] - 1;
+							STATE("dec %s[%02x] = %02x\n", avr_regname(d), avr->data[d], res);
+							_avr_set_r(avr, d, res);
 							avr->sreg[S_Z] = res == 0;
 							avr->sreg[S_N] = res >> 7;
 							avr->sreg[S_V] = res == 0x7f;
@@ -1178,7 +1217,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							SREG();
 						}	break;
 						case 0x940c:
-						case 0x940d: {	// JMP Long Call to sub, 32 bits
+						case 0x940d: {	// JMP -- Long Call to sub, 32 bits -- 1001 010a aaaa 110a
 							avr_flashaddr_t a = ((opcode & 0x01f0) >> 3) | (opcode & 1);
 							uint16_t x = (avr->flash[new_pc+1] << 8) | avr->flash[new_pc];
 							a = (a << 16) | x;
@@ -1188,7 +1227,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							TRACE_JUMP();
 						}	break;
 						case 0x940e:
-						case 0x940f: {	// CALL Long Call to sub, 32 bits
+						case 0x940f: {	// CALL -- Long Call to sub, 32 bits -- 1001 010a aaaa 111a
 							avr_flashaddr_t a = ((opcode & 0x01f0) >> 3) | (opcode & 1);
 							uint16_t x = (avr->flash[new_pc+1] << 8) | avr->flash[new_pc];
 							a = (a << 16) | x;
@@ -1202,15 +1241,14 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 
 						default: {
 							switch (opcode & 0xff00) {
-								case 0x9600: {	// ADIW - Add Immediate to Word 1001 0110 KKdd KKKK
-									uint8_t r = 24 + ((opcode >> 3) & 0x6);
-									uint8_t k = ((opcode & 0x00c0) >> 2) | (opcode & 0xf);
-									uint8_t rdl = avr->data[r], rdh = avr->data[r+1];
+								case 0x9600: {	// ADIW -- Add Immediate to Word -- 1001 0110 KKpp KKKK
+									get_p2_k6(opcode);
+									uint8_t rdl = avr->data[p], rdh = avr->data[p+1];
 									uint32_t res = rdl | (rdh << 8);
-									STATE("adiw %s:%s[%04x], 0x%02x\n", avr_regname(r), avr_regname(r+1), res, k);
+									STATE("adiw %s:%s[%04x], 0x%02x\n", avr_regname(p), avr_regname(p+1), res, k);
 									res += k;
-									_avr_set_r(avr, r + 1, res >> 8);
-									_avr_set_r(avr, r, res);
+									_avr_set_r(avr, p + 1, res >> 8);
+									_avr_set_r(avr, p, res);
 									avr->sreg[S_V] = ~(rdh >> 7) & ((res >> 15) & 1);
 									avr->sreg[S_Z] = (res & 0xffff) == 0;
 									avr->sreg[S_N] = (res >> 15) & 1;
@@ -1219,15 +1257,14 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 									SREG();
 									cycle++;
 								}	break;
-								case 0x9700: {	// SBIW - Subtract Immediate from Word 1001 0111 KKdd KKKK
-									uint8_t r = 24 + ((opcode >> 3) & 0x6);
-									uint8_t k = ((opcode & 0x00c0) >> 2) | (opcode & 0xf);
-									uint8_t rdl = avr->data[r], rdh = avr->data[r+1];
+								case 0x9700: {	// SBIW -- Subtract Immediate from Word -- 1001 0111 KKpp KKKK
+									get_p2_k6(opcode);
+									uint8_t rdl = avr->data[p], rdh = avr->data[p+1];
 									uint32_t res = rdl | (rdh << 8);
-									STATE("sbiw %s:%s[%04x], 0x%02x\n", avr_regname(r), avr_regname(r+1), res, k);
+									STATE("sbiw %s:%s[%04x], 0x%02x\n", avr_regname(p), avr_regname(p+1), res, k);
 									res -= k;
-									_avr_set_r(avr, r + 1, res >> 8);
-									_avr_set_r(avr, r, res);
+									_avr_set_r(avr, p + 1, res >> 8);
+									_avr_set_r(avr, p, res);
 									avr->sreg[S_V] = (rdh >> 7) & (~(res >> 15) & 1);
 									avr->sreg[S_Z] = (res & 0xffff) == 0;
 									avr->sreg[S_N] = (res >> 15) & 1;
@@ -1236,17 +1273,15 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 									SREG();
 									cycle++;
 								}	break;
-								case 0x9800: {	// CBI - Clear Bit in I/O Register 1001 1000 AAAA Abbb
-									uint8_t io = ((opcode >> 3) & 0x1f) + 32;
-									uint8_t b = opcode & 0x7;
+								case 0x9800: {	// CBI -- Clear Bit in I/O Register -- 1001 1000 AAAA Abbb
+									get_io5_b3(opcode);
 									uint8_t res = _avr_get_ram(avr, io) & ~(1 << b);
 									STATE("cbi %s[%04x], 0x%02x = %02x\n", avr_regname(io), avr->data[io], 1<<b, res);
 									_avr_set_ram(avr, io, res);
 									cycle++;
 								}	break;
-								case 0x9900: {	// SBIC - Skip if Bit in I/O Register is Cleared 1001 0111 AAAA Abbb
-									uint8_t io = ((opcode >> 3) & 0x1f) + 32;
-									uint8_t b = opcode & 0x7;
+								case 0x9900: {	// SBIC -- Skip if Bit in I/O Register is Cleared -- 1001 1001 AAAA Abbb
+									get_io5_b3(opcode);
 									uint8_t res = _avr_get_ram(avr, io) & (1 << b);
 									STATE("sbic %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), avr->data[io], 1<<b, !res?"":" not");
 									if (!res) {
@@ -1257,17 +1292,15 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 										}
 									}
 								}	break;
-								case 0x9a00: {	// SBI - Set Bit in I/O Register 1001 1000 AAAA Abbb
-									uint8_t io = ((opcode >> 3) & 0x1f) + 32;
-									uint8_t b = opcode & 0x7;
+								case 0x9a00: {	// SBI -- Set Bit in I/O Register -- 1001 1010 AAAA Abbb
+									get_io5_b3(opcode);
 									uint8_t res = _avr_get_ram(avr, io) | (1 << b);
 									STATE("sbi %s[%04x], 0x%02x = %02x\n", avr_regname(io), avr->data[io], 1<<b, res);
 									_avr_set_ram(avr, io, res);
 									cycle++;
 								}	break;
-								case 0x9b00: {	// SBIS - Skip if Bit in I/O Register is Set 1001 1011 AAAA Abbb
-									uint8_t io = ((opcode >> 3) & 0x1f) + 32;
-									uint8_t b = opcode & 0x7;
+								case 0x9b00: {	// SBIS -- Skip if Bit in I/O Register is Set -- 1001 1011 AAAA Abbb
+									get_io5_b3(opcode);
 									uint8_t res = _avr_get_ram(avr, io) & (1 << b);
 									STATE("sbis %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), avr->data[io], 1<<b, res?"":" not");
 									if (res) {
@@ -1280,8 +1313,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 								}	break;
 								default:
 									switch (opcode & 0xfc00) {
-										case 0x9c00: {	// MUL - Multiply Unsigned 1001 11rd dddd rrrr
-											get_r_d_10(opcode);
+										case 0x9c00: {	// MUL -- Multiply Unsigned -- 1001 11rd dddd rrrr
+											get_vd5_vr5(opcode);
 											uint16_t res = vd * vr;
 											STATE("mul %s[%02x], %s[%02x] = %04x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 											cycle++;
@@ -1302,36 +1335,30 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 
 		case 0xb000: {
 			switch (opcode & 0xf800) {
-				case 0xb800: {	// OUT A,Rr 1011 1AAr rrrr AAAA
-					uint8_t r = (opcode >> 4) & 0x1f;
-					uint8_t A = ((((opcode >> 9) & 3) << 4) | ((opcode) & 0xf)) + 32;
-					STATE("out %s, %s[%02x]\n", avr_regname(A), avr_regname(r), avr->data[r]);
-					_avr_set_ram(avr, A, avr->data[r]);
+				case 0xb800: {	// OUT A,Rr -- 1011 1AAd dddd AAAA
+					get_d5_a6(opcode);
+					STATE("out %s, %s[%02x]\n", avr_regname(A), avr_regname(d), avr->data[d]);
+					_avr_set_ram(avr, A, avr->data[d]);
 				}	break;
-				case 0xb000: {	// IN Rd,A 1011 0AAr rrrr AAAA
-					uint8_t r = (opcode >> 4) & 0x1f;
-					uint8_t A = ((((opcode >> 9) & 3) << 4) | ((opcode) & 0xf)) + 32;
-					STATE("in %s, %s[%02x]\n", avr_regname(r), avr_regname(A), avr->data[A]);
-					_avr_set_r(avr, r, _avr_get_ram(avr, A));
+				case 0xb000: {	// IN Rd,A -- 1011 0AAd dddd AAAA
+					get_d5_a6(opcode);
+					STATE("in %s, %s[%02x]\n", avr_regname(d), avr_regname(A), avr->data[A]);
+					_avr_set_r(avr, d, _avr_get_ram(avr, A));
 				}	break;
 				default: _avr_invalid_opcode(avr);
 			}
 		}	break;
 
-		case 0xc000: {
-			// RJMP 1100 kkkk kkkk kkkk
-//			int16_t o = ((int16_t)(opcode << 4)) >> 4; // CLANG BUG!
-			int16_t o = ((int16_t)((opcode << 4)&0xffff)) >> 4;
+		case 0xc000: {	// RJMP -- 1100 kkkk kkkk kkkk
+			get_o_12(opcode);
 			STATE("rjmp .%d [%04x]\n", o, new_pc + (o << 1));
 			new_pc = new_pc + (o << 1);
 			cycle++;
 			TRACE_JUMP();
 		}	break;
 
-		case 0xd000: {
-			// RCALL 1100 kkkk kkkk kkkk
-//			int16_t o = ((int16_t)(opcode << 4)) >> 4; // CLANG BUG!
-			int16_t o = ((int16_t)((opcode << 4) & 0xffff)) >> 4;
+		case 0xd000: {	// RCALL -- 1101 kkkk kkkk kkkk
+			get_o_12(opcode);
 			STATE("rcall .%d [%04x]\n", o, new_pc + (o << 1));
 			cycle += _avr_push_addr(avr, new_pc) - 1;
 			new_pc = new_pc + (o << 1);
@@ -1342,7 +1369,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 			}
 		}	break;
 
-		case 0xe000: {	// LDI Rd, K 1110 KKKK RRRR KKKK -- aka SER (LDI r, 0xff)
+		case 0xe000: {	// LDI Rd, K aka SER (LDI r, 0xff) -- 1110 kkkk dddd kkkk
 			uint8_t d = 16 + ((opcode >> 4) & 0xf);
 			uint8_t k = ((opcode & 0x0f00) >> 4) | (opcode & 0xf);
 			STATE("ldi %s, 0x%02x\n", avr_regname(d), k);
@@ -1354,7 +1381,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 				case 0xf000:
 				case 0xf200:
 				case 0xf400:
-				case 0xf600: {	// All the SREG branches
+				case 0xf600: {	// BRXC/BRXS -- All the SREG branches -- 1111 0Boo oooo osss
 					int16_t o = ((int16_t)(opcode << 6)) >> 9; // offset
 					uint8_t s = opcode & 7;
 					int set = (opcode & 0x0400) == 0;		// this bit means BRXC otherwise BRXS
@@ -1374,28 +1401,25 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					}
 				}	break;
 				case 0xf800:
-				case 0xf900: {	// BLD – Bit Store from T into a Bit in Register 1111 100r rrrr 0bbb
-					uint8_t r = (opcode >> 4) & 0x1f; // register index
-					uint8_t s = opcode & 7;
-					uint8_t v = (avr->data[r] & ~(1 << s)) | (avr->sreg[S_T] ? (1 << s) : 0);
-					STATE("bld %s[%02x], 0x%02x = %02x\n", avr_regname(r), avr->data[r], 1 << s, v);
-					_avr_set_r(avr, r, v);
+				case 0xf900: {	// BLD -- Bit Store from T into a Bit in Register -- 1111 100d dddd 0bbb
+					get_d5_s3(opcode);
+					uint8_t v = (avr->data[d] & ~(1 << s)) | (avr->sreg[S_T] ? (1 << s) : 0);
+					STATE("bld %s[%02x], 0x%02x = %02x\n", avr_regname(d), avr->data[d], 1 << s, v);
+					_avr_set_r(avr, d, v);
 				}	break;
 				case 0xfa00:
-				case 0xfb00:{	// BST – Bit Store into T from bit in Register 1111 100r rrrr 0bbb
-					uint8_t r = (opcode >> 4) & 0x1f; // register index
-					uint8_t s = opcode & 7;
-					STATE("bst %s[%02x], 0x%02x\n", avr_regname(r), avr->data[r], 1 << s);
-					avr->sreg[S_T] = (avr->data[r] >> s) & 1;
+				case 0xfb00:{	// BST -- Bit Store into T from bit in Register -- 1111 101d dddd 0bbb
+					get_d5_s3(opcode)
+					STATE("bst %s[%02x], 0x%02x\n", avr_regname(d), avr->data[d], 1 << s);
+					avr->sreg[S_T] = (avr->data[d] >> s) & 1;
 					SREG();
 				}	break;
 				case 0xfc00:
-				case 0xfe00: {	// SBRS/SBRC – Skip if Bit in Register is Set/Clear 1111 11sr rrrr 0bbb
-					uint8_t r = (opcode >> 4) & 0x1f; // register index
-					uint8_t s = opcode & 7;
+				case 0xfe00: {	// SBRS/SBRC -- Skip if Bit in Register is Set/Clear -- 1111 11sd dddd 0bbb
+					get_d5_s3(opcode)
 					int set = (opcode & 0x0200) != 0;
-					int branch = ((avr->data[r] & (1 << s)) && set) || (!(avr->data[r] & (1 << s)) && !set);
-					STATE("%s %s[%02x], 0x%02x\t; Will%s branch\n", set ? "sbrs" : "sbrc", avr_regname(r), avr->data[r], 1 << s, branch ? "":" not");
+					int branch = ((avr->data[d] & (1 << s)) && set) || (!(avr->data[d] & (1 << s)) && !set);
+					STATE("%s %s[%02x], 0x%02x\t; Will%s branch\n", set ? "sbrs" : "sbrc", avr_regname(d), avr->data[d], 1 << s, branch ? "":" not");
 					if (branch) {
 						if (_avr_is_instruction_32_bits(avr, new_pc)) {
 							new_pc += 4; cycle += 2;
