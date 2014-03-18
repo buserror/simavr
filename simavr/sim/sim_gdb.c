@@ -287,6 +287,38 @@ gdb_handle_command(
 	char rep[1024];
 	uint8_t command = *cmd++;
 	switch (command) {
+		case 'q':
+			if (strncmp(cmd, "Supported", 9) == 0) {
+				/* If GDB asked what features we support, report back
+				 * the features we support, which is just memory layout
+				 * information for now.
+				 */
+				gdb_send_reply(g, "qXfer:memory-map:read+");
+				break;
+			} else if (strncmp(cmd, "Attached", 8) == 0) {
+				/* Respond that we are attached to an existing process..
+				 * ourselves!
+				 */
+				gdb_send_reply(g, "1");
+				break;
+			} else if (strncmp(cmd, "Offsets", 7) == 0) {
+				gdb_send_reply(g, "Text=0;Data=800000;Bss=800000");
+				break;
+			} else if (strncmp(cmd, "Xfer:memory-map:read", 20) == 0) {
+				snprintf(rep, sizeof(rep),
+						"l<memory-map>\n"
+						" <memory type='ram' start='0x800000' length='%#x'/>\n"
+						" <memory type='flash' start='0' length='%#x'>\n"
+						"  <property name='blocksize'>0x80</property>\n"
+						" </memory>\n"
+						"</memory-map>",
+						g->avr->ramend + 1, g->avr->flashend + 1);
+
+				gdb_send_reply(g, rep);
+				break;
+            }
+			gdb_send_reply(g, "");
+			break;
 		case '?':
 			gdb_send_quick_status(g, 0);
 			break;
