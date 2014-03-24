@@ -1360,7 +1360,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 		case 0xd000: {	// RCALL -- 1101 kkkk kkkk kkkk
 			get_o_12(opcode);
 			STATE("rcall .%d [%04x]\n", o, new_pc + (o << 1));
-			cycle += _avr_push_addr(avr, new_pc) - 1;
+			cycle += _avr_push_addr(avr, new_pc);
 			new_pc = new_pc + (o << 1);
 			// 'rcall .1' is used as a cheap "push 16 bits of room on the stack"
 			if (o != 0) {
