@@ -376,7 +376,7 @@ void avr_dump_state(avr_t * avr)
 		get_r5(o); \
 		const uint8_t vr = avr->data[r];
 		
-#define get_h4_k16(o) \
+#define get_h4_k8(o) \
 		const uint8_t h = 16 + ((o >> 4) & 0xf); \
 		const uint8_t k = ((o & 0x0f00) >> 4) | (o & 0xf);
 
@@ -389,7 +389,7 @@ void avr_dump_state(avr_t * avr)
 		const	uint8_t b = o & 0x7;
 
 //	const int16_t o = ((int16_t)(op << 4)) >> 4; // CLANG BUG!
-#define get_o_12(op) \
+#define get_o12(op) \
 			const int16_t o = ((int16_t)((op << 4) & 0xffff)) >> 4;
 
 #define get_p2_k6(o) \
@@ -777,7 +777,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 		}	break;
 
 		case 0x3000: {	// CPI -- Compare Immediate -- 0011 kkkk hhhh kkkk
-			get_h4_k16(opcode);
+			get_h4_k8(opcode);
 			uint8_t vh = avr->data[h];
 			uint8_t res = vh - k;
 			STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
@@ -792,7 +792,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 		}	break;
 
 		case 0x4000: {	// SBCI -- Subtract Immediate With Carry -- 0100 kkkk hhhh kkkk
-			get_h4_k16(opcode);
+			get_h4_k8(opcode);
 			uint8_t vh = avr->data[h];
 			uint8_t res = vh - k - avr->sreg[S_C];
 			STATE("sbci %s[%02x], 0x%02x = %02x\n", avr_regname(h), avr->data[h], k, res);
@@ -806,7 +806,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 		}	break;
 
 		case 0x5000: {	// SUBI -- Subtract Immediate -- 0101 kkkk hhhh kkkk
-			get_h4_k16(opcode);
+			get_h4_k8(opcode);
 			uint8_t vh = avr->data[h];
 			uint8_t res = vh - k;
 			STATE("subi %s[%02x], 0x%02x = %02x\n", avr_regname(h), avr->data[h], k, res);
@@ -818,8 +818,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 			SREG();
 		}	break;
 
-		case 0x6000: {	// ORI aka SBR -- Logical AND with Immediate -- 0110 kkkk hhhh kkkk
-			get_h4_k16(opcode);
+		case 0x6000: {	// ORI aka SBR -- Logical OR with Immediate -- 0110 kkkk hhhh kkkk
+			get_h4_k8(opcode);
 			uint8_t res = avr->data[h] | k;
 			STATE("ori %s[%02x], 0x%02x\n", avr_regname(h), avr->data[h], k);
 			_avr_set_r(avr, h, res);
@@ -831,7 +831,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 		}	break;
 
 		case 0x7000: {	// ANDI	-- Logical AND with Immediate -- 0111 kkkk hhhh kkkk
-			get_h4_k16(opcode);
+			get_h4_k8(opcode);
 			uint8_t res = avr->data[h] & k;
 			STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), avr->data[h], k);
 			_avr_set_r(avr, h, res);
@@ -1087,7 +1087,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							int op = opcode & 3;
 							get_d5(opcode);
 							uint16_t z = (avr->data[R_ZH] << 8) | avr->data[R_ZL];
-							STATE("ld %s, %sZ[%04x]%s\n", avr_regname(r), op == 2 ? "--" : "", z, op == 1 ? "++" : "");
+							STATE("ld %s, %sZ[%04x]%s\n", avr_regname(d), op == 2 ? "--" : "", z, op == 1 ? "++" : "");
 							cycle++;; // 2 cycles, except tinyavr
 							if (op == 2) z--;
 							uint8_t vd = _avr_get_ram(avr, z);
@@ -1101,7 +1101,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							int op = opcode & 3;
 							get_d5(opcode);
 							uint16_t z = (avr->data[R_ZH] << 8) | avr->data[R_ZL];
-							STATE("st %sZ[%04x]%s, %s[%02x] \n", op == 2 ? "--" : "", z, op == 1 ? "++" : "", avr_regname(r), avr->data[r]);
+							STATE("st %sZ[%04x]%s, %s[%02x] \n", op == 2 ? "--" : "", z, op == 1 ? "++" : "", avr_regname(d), avr->data[d]);
 							cycle++; // 2 cycles, except tinyavr
 							if (op == 2) z--;
 							_avr_set_ram(avr, z, avr->data[d]);
@@ -1350,7 +1350,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 		}	break;
 
 		case 0xc000: {	// RJMP -- 1100 kkkk kkkk kkkk
-			get_o_12(opcode);
+			get_o12(opcode);
 			STATE("rjmp .%d [%04x]\n", o, new_pc + (o << 1));
 			new_pc = new_pc + (o << 1);
 			cycle++;
@@ -1358,7 +1358,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 		}	break;
 
 		case 0xd000: {	// RCALL -- 1101 kkkk kkkk kkkk
-			get_o_12(opcode);
+			get_o12(opcode);
 			STATE("rcall .%d [%04x]\n", o, new_pc + (o << 1));
 			cycle += _avr_push_addr(avr, new_pc);
 			new_pc = new_pc + (o << 1);
@@ -1370,10 +1370,9 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 		}	break;
 
 		case 0xe000: {	// LDI Rd, K aka SER (LDI r, 0xff) -- 1110 kkkk dddd kkkk
-			uint8_t d = 16 + ((opcode >> 4) & 0xf);
-			uint8_t k = ((opcode & 0x0f00) >> 4) | (opcode & 0xf);
-			STATE("ldi %s, 0x%02x\n", avr_regname(d), k);
-			_avr_set_r(avr, d, k);
+			get_h4_k8(opcode);
+			STATE("ldi %s, 0x%02x\n", avr_regname(h), k);
+			_avr_set_r(avr, h, k);
 		}	break;
 
 		case 0xf000: {
