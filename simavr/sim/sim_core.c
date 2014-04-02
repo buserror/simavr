@@ -435,58 +435,100 @@ void avr_dump_state(avr_t * avr)
  *
 \****************************************************************************/
 
-static uint8_t
-get_add_carry (uint8_t res, uint8_t rd, uint8_t rr, int b)
+static  void
+_avr_flags_zns (struct avr_t * avr, uint8_t res)
 {
-    uint8_t resb = res >> b & 0x1;
-    uint8_t rdb = rd >> b & 0x1;
-    uint8_t rrb = rr >> b & 0x1;
-    return (rdb & rrb) | (rrb & ~resb) | (~resb & rdb);
+	avr->sreg[S_Z] = res == 0;
+	avr->sreg[S_N] = (res >> 7) & 1;
+	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-static  uint8_t
-get_add_overflow (uint8_t res, uint8_t rd, uint8_t rr)
+static  void
+_avr_flags_zns16 (struct avr_t * avr, uint16_t res)
 {
-    uint8_t res7 = res >> 7 & 0x1;
-    uint8_t rd7 = rd >> 7 & 0x1;
-    uint8_t rr7 = rr >> 7 & 0x1;
-    return (rd7 & rr7 & ~res7) | (~rd7 & ~rr7 & res7);
+	avr->sreg[S_Z] = res == 0;
+	avr->sreg[S_N] = (res >> 15) & 1;
+	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-static  uint8_t
-get_sub_carry (uint8_t res, uint8_t rd, uint8_t rr, int b)
+static  void
+_avr_flags_add_zns (struct avr_t * avr, uint8_t res, uint8_t rd, uint8_t rr)
 {
-    uint8_t resb = res >> b & 0x1;
-    uint8_t rdb = rd >> b & 0x1;
-    uint8_t rrb = rr >> b & 0x1;
-    return (~rdb & rrb) | (rrb & resb) | (resb & ~rdb);
+	/* carry & half carry */
+	uint8_t add_carry = (rd & rr) | (rr & ~res) | (~res & rd);
+	avr->sreg[S_H] = (add_carry >> 3) & 1;
+	avr->sreg[S_C] = (add_carry >> 7) & 1;
+
+	/* overflow */
+	avr->sreg[S_V] = (((rd & rr & ~res) | (~rd & ~rr & res)) >> 7) & 1;
+
+	/* zns */
+	_avr_flags_zns(avr, res);
 }
 
-static  uint8_t
-get_sub_overflow (uint8_t res, uint8_t rd, uint8_t rr)
+
+static  void
+_avr_flags_sub_zns (struct avr_t * avr, uint8_t res, uint8_t rd, uint8_t rr)
 {
-    uint8_t res7 = res >> 7 & 0x1;
-    uint8_t rd7 = rd >> 7 & 0x1;
-    uint8_t rr7 = rr >> 7 & 0x1;
-    return (rd7 & ~rr7 & ~res7) | (~rd7 & rr7 & res7);
+	/* carry & half carry */
+	uint8_t sub_carry = (~rd & rr) | (rr & res) | (res & ~rd);
+	avr->sreg[S_H] = (sub_carry >> 3) & 1;
+	avr->sreg[S_C] = (sub_carry >> 7) & 1;
+
+	/* overflow */
+	avr->sreg[S_V] = (((rd & ~rr & ~res) | (~rd & rr & res)) >> 7) & 1;
+
+	/* zns */
+	_avr_flags_zns(avr, res);
 }
 
-static  uint8_t
-get_compare_carry (uint8_t res, uint8_t rd, uint8_t rr, int b)
+static  void
+_avr_flags_Rzns (struct avr_t * avr, uint8_t res)
 {
-    uint8_t resb = (res >> b) & 0x1;
-    uint8_t rdb = (rd >> b) & 0x1;
-    uint8_t rrb = (rr >> b) & 0x1;
-    return (~rdb & rrb) | (rrb & resb) | (resb & ~rdb);
+	if (res)
+		avr->sreg[S_Z] = 0;
+	avr->sreg[S_N] = (res >> 7) & 1;
+	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 }
 
-static  uint8_t
-get_compare_overflow (uint8_t res, uint8_t rd, uint8_t rr)
+static  void
+_avr_flags_sub_Rzns (struct avr_t * avr, uint8_t res, uint8_t rd, uint8_t rr)
 {
-    res >>= 7; rd >>= 7; rr >>= 7;
-    /* The atmel data sheet says the second term is ~rd7 for CP
-     * but that doesn't make any sense. You be the judge. */
-    return (rd & ~rr & ~res) | (~rd & rr & res);
+	/* carry & half carry */
+	uint8_t sub_carry = (~rd & rr) | (rr & res) | (res & ~rd);
+	avr->sreg[S_H] = (sub_carry >> 3) & 1;
+	avr->sreg[S_C] = (sub_carry >> 7) & 1;
+
+	/* overflow */
+	avr->sreg[S_V] = (((rd & ~rr & ~res) | (~rd & rr & res)) >> 7) & 1;
+
+	_avr_flags_Rzns(avr, res);
+}
+
+static  void
+_avr_flags_zcvs (struct avr_t * avr, uint8_t res, uint8_t vr)
+{
+	avr->sreg[S_Z] = res == 0;
+	avr->sreg[S_C] = vr & 1;
+	avr->sreg[S_V] = avr->sreg[S_N] ^ avr->sreg[S_C];
+	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+}
+
+static  void
+_avr_flags_zcnvs (struct avr_t * avr, uint8_t res, uint8_t vr)
+{
+	avr->sreg[S_Z] = res == 0;
+	avr->sreg[S_C] = vr & 1;
+	avr->sreg[S_N] = res >> 7;
+	avr->sreg[S_V] = avr->sreg[S_N] ^ avr->sreg[S_C];
+	avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+}
+
+static  void
+_avr_flags_znv0s (struct avr_t * avr, uint8_t res)
+{
+	avr->sreg[S_V] = 0;
+	_avr_flags_zns(avr, res);
 }
 
 static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
@@ -556,13 +598,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							get_vd5_vr5(opcode);
 							uint8_t res = vd - vr - avr->sreg[S_C];
 							STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-							if (res)
-								avr->sreg[S_Z] = 0;
-							avr->sreg[S_H] = get_compare_carry(res, vd, vr, 3);
-							avr->sreg[S_V] = get_compare_overflow(res, vd, vr);
-							avr->sreg[S_N] = (res >> 7) & 1;
-							avr->sreg[S_C] = get_compare_carry(res, vd, vr, 7);
-							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+							_avr_flags_sub_Rzns(avr, res, vd, vr);
 							SREG();
 						}	break;
 						case 0x0c00: {	// ADD -- Add without carry -- 0000 11rd dddd rrrr
@@ -574,12 +610,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 								STATE("add %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 							}
 							_avr_set_r(avr, d, res);
-							avr->sreg[S_Z] = res == 0;
-							avr->sreg[S_H] = get_add_carry(res, vd, vr, 3);
-							avr->sreg[S_V] = get_add_overflow(res, vd, vr);
-							avr->sreg[S_N] = (res >> 7) & 1;
-							avr->sreg[S_C] = get_add_carry(res, vd, vr, 7);
-							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+							_avr_flags_add_zns(avr, res, vd, vr);
 							SREG();
 						}	break;
 						case 0x0800: {	// SBC -- Subtract with carry -- 0000 10rd dddd rrrr
@@ -587,13 +618,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							uint8_t res = vd - vr - avr->sreg[S_C];
 							STATE("sbc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), avr->data[d], avr_regname(r), avr->data[r], res);
 							_avr_set_r(avr, d, res);
-							if (res)
-								avr->sreg[S_Z] = 0;
-							avr->sreg[S_H] = get_sub_carry(res, vd, vr, 3);
-							avr->sreg[S_V] = get_sub_overflow(res, vd, vr);
-							avr->sreg[S_N] = (res >> 7) & 1;
-							avr->sreg[S_C] = get_sub_carry(res, vd, vr, 7);
-							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+							_avr_flags_sub_Rzns(avr, res, vd, vr);
 							SREG();
 						}	break;
 						default:
@@ -670,12 +695,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					uint8_t res = vd - vr;
 					STATE("sub %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 					_avr_set_r(avr, d, res);
-					avr->sreg[S_Z] = res == 0;
-					avr->sreg[S_H] = get_sub_carry(res, vd, vr, 3);
-					avr->sreg[S_V] = get_sub_overflow(res, vd, vr);
-					avr->sreg[S_N] = (res >> 7) & 1;
-					avr->sreg[S_C] = get_sub_carry(res, vd, vr, 7);
-					avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+					_avr_flags_sub_zns(avr, res, vd, vr);
 					SREG();
 				}	break;
 				case 0x1000: {	// CPSE -- Compare, skip if equal -- 0001 00rd dddd rrrr
@@ -694,12 +714,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					get_vd5_vr5(opcode);
 					uint8_t res = vd - vr;
 					STATE("cp %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-					avr->sreg[S_Z] = res == 0;
-					avr->sreg[S_H] = get_compare_carry(res, vd, vr, 3);
-					avr->sreg[S_V] = get_compare_overflow(res, vd, vr);
-					avr->sreg[S_N] = res >> 7;
-					avr->sreg[S_C] = get_compare_carry(res, vd, vr, 7);
-					avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+					_avr_flags_sub_zns(avr, res, vd, vr);
 					SREG();
 				}	break;
 				case 0x1c00: {	// ADD -- Add with carry -- 0001 11rd dddd rrrr
@@ -711,12 +726,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 						STATE("addc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), avr->data[d], avr_regname(r), avr->data[r], res);
 					}
 					_avr_set_r(avr, d, res);
-					avr->sreg[S_Z] = res == 0;
-					avr->sreg[S_H] = get_add_carry(res, vd, vr, 3);
-					avr->sreg[S_V] = get_add_overflow(res, vd, vr);
-					avr->sreg[S_N] = (res >> 7) & 1;
-					avr->sreg[S_C] = get_add_carry(res, vd, vr, 7);
-					avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+					_avr_flags_add_zns(avr, res, vd, vr);
 					SREG();
 				}	break;
 				default: _avr_invalid_opcode(avr);
@@ -734,10 +744,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 						STATE("and %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 					}
 					_avr_set_r(avr, d, res);
-					avr->sreg[S_Z] = res == 0;
-					avr->sreg[S_N] = (res >> 7) & 1;
-					avr->sreg[S_V] = 0;
-					avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+					_avr_flags_znv0s(avr, res);
 					SREG();
 				}	break;
 				case 0x2400: {	// EOR -- Logical Exclusive OR -- 0010 01rd dddd rrrr
@@ -749,10 +756,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 						STATE("eor %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 					}
 					_avr_set_r(avr, d, res);
-					avr->sreg[S_Z] = res == 0;
-					avr->sreg[S_N] = (res >> 7) & 1;
-					avr->sreg[S_V] = 0;
-					avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+					_avr_flags_znv0s(avr, res);
 					SREG();
 				}	break;
 				case 0x2800: {	// OR -- Logical OR -- 0010 10rd dddd rrrr
@@ -760,10 +764,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					uint8_t res = vd | vr;
 					STATE("or %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 					_avr_set_r(avr, d, res);
-					avr->sreg[S_Z] = res == 0;
-					avr->sreg[S_N] = (res >> 7) & 1;
-					avr->sreg[S_V] = 0;
-					avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+					_avr_flags_znv0s(avr, res);
 					SREG();
 				}	break;
 				case 0x2c00: {	// MOV -- 0010 11rd dddd rrrr
@@ -781,13 +782,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 			uint8_t vh = avr->data[h];
 			uint8_t res = vh - k;
 			STATE("cpi %s[%02x], 0x%02x\n", avr_regname(h), vh, k);
-
-			avr->sreg[S_Z] = res == 0;
-			avr->sreg[S_H] = get_compare_carry(res, vh, k, 3);
-			avr->sreg[S_V] = get_compare_overflow(res, vh, k);
-			avr->sreg[S_N] = (res >> 7) & 1;
-			avr->sreg[S_C] = get_compare_carry(res, vh, k, 7);
-			avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+			_avr_flags_sub_zns(avr, res, vh, k);
 			SREG();
 		}	break;
 
@@ -797,11 +792,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 			uint8_t res = vh - k - avr->sreg[S_C];
 			STATE("sbci %s[%02x], 0x%02x = %02x\n", avr_regname(h), avr->data[h], k, res);
 			_avr_set_r(avr, h, res);
-			if (res)
-				avr->sreg[S_Z] = 0;
-			avr->sreg[S_N] = (res >> 7) & 1;
-			avr->sreg[S_C] = (k + avr->sreg[S_C]) > vh;
-			avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+			_avr_flags_sub_Rzns(avr, res, vh, k);
 			SREG();
 		}	break;
 
@@ -811,10 +802,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 			uint8_t res = vh - k;
 			STATE("subi %s[%02x], 0x%02x = %02x\n", avr_regname(h), avr->data[h], k, res);
 			_avr_set_r(avr, h, res);
-			avr->sreg[S_Z] = res  == 0;
-			avr->sreg[S_N] = (res >> 7) & 1;
-			avr->sreg[S_C] = k > vh;
-			avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+			_avr_flags_sub_zns(avr, res, vh, k);
 			SREG();
 		}	break;
 
@@ -823,10 +811,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 			uint8_t res = avr->data[h] | k;
 			STATE("ori %s[%02x], 0x%02x\n", avr_regname(h), avr->data[h], k);
 			_avr_set_r(avr, h, res);
-			avr->sreg[S_Z] = res == 0;
-			avr->sreg[S_N] = (res >> 7) & 1;
-			avr->sreg[S_V] = 0;
-			avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+			_avr_flags_znv0s(avr, res);
 			SREG();
 		}	break;
 
@@ -835,10 +820,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 			uint8_t res = avr->data[h] & k;
 			STATE("andi %s[%02x], 0x%02x\n", avr_regname(h), avr->data[h], k);
 			_avr_set_r(avr, h, res);
-			avr->sreg[S_Z] = res == 0;
-			avr->sreg[S_N] = (res >> 7) & 1;
-			avr->sreg[S_V] = 0;
-			avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+			_avr_flags_znv0s(avr, res);
 			SREG();
 		}	break;
 
@@ -1128,11 +1110,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							uint8_t res = 0xff - avr->data[d];
 							STATE("com %s[%02x] = %02x\n", avr_regname(d), avr->data[d], res);
 							_avr_set_r(avr, d, res);
-							avr->sreg[S_Z] = res == 0;
-							avr->sreg[S_N] = res >> 7;
-							avr->sreg[S_V] = 0;
+							_avr_flags_znv0s(avr, res);
 							avr->sreg[S_C] = 1;
-							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
 							SREG();
 						}	break;
 						case 0x9401: {	// NEG -- Two’s Complement -- 1001 040d dddd 0001
@@ -1142,11 +1121,9 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							STATE("neg %s[%02x] = %02x\n", avr_regname(d), rd, res);
 							_avr_set_r(avr, d, res);
 							avr->sreg[S_H] = ((res >> 3) | (rd >> 3)) & 1;
-							avr->sreg[S_Z] = res == 0;
-							avr->sreg[S_N] = res >> 7;
 							avr->sreg[S_V] = res == 0x80;
 							avr->sreg[S_C] = res != 0;
-							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+							_avr_flags_zns(avr, res);
 							SREG();
 						}	break;
 						case 0x9402: {	// SWAP -- Swap Nibbles -- 1001 010d dddd 0010
@@ -1160,10 +1137,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							uint8_t res = avr->data[d] + 1;
 							STATE("inc %s[%02x] = %02x\n", avr_regname(d), avr->data[d], res);
 							_avr_set_r(avr, d, res);
-							avr->sreg[S_Z] = res == 0;
-							avr->sreg[S_N] = res >> 7;
 							avr->sreg[S_V] = res == 0x80;
-							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+							_avr_flags_zns(avr, res);
 							SREG();
 						}	break;
 						case 0x9405: {	// ASR -- Arithmetic Shift Right -- 1001 010d dddd 0101
@@ -1172,11 +1147,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							uint8_t res = (vd >> 1) | (vd & 0x80);
 							STATE("asr %s[%02x]\n", avr_regname(d), vd);
 							_avr_set_r(avr, d, res);
-							avr->sreg[S_Z] = res == 0;
-							avr->sreg[S_C] = vd & 1;
-							avr->sreg[S_N] = res >> 7;
-							avr->sreg[S_V] = avr->sreg[S_N] ^ avr->sreg[S_C];
-							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+							_avr_flags_zcnvs(avr, res, vd);
 							SREG();
 						}	break;
 						case 0x9406: {	// LSR -- Logical Shift Right -- 1001 010d dddd 0110
@@ -1185,11 +1156,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							uint8_t res = vd >> 1;
 							STATE("lsr %s[%02x]\n", avr_regname(d), vd);
 							_avr_set_r(avr, d, res);
-							avr->sreg[S_Z] = res == 0;
-							avr->sreg[S_C] = vd & 1;
 							avr->sreg[S_N] = 0;
-							avr->sreg[S_V] = avr->sreg[S_N] ^ avr->sreg[S_C];
-							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+							_avr_flags_zcvs(avr, res, vd);
 							SREG();
 						}	break;
 						case 0x9407: {	// ROR -- Rotate Right -- 1001 010d dddd 0111
@@ -1198,11 +1166,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							uint8_t res = (avr->sreg[S_C] ? 0x80 : 0) | vd >> 1;
 							STATE("ror %s[%02x]\n", avr_regname(d), vd);
 							_avr_set_r(avr, d, res);
-							avr->sreg[S_Z] = res == 0;
-							avr->sreg[S_C] = vd & 1;
-							avr->sreg[S_N] = res >> 7;
-							avr->sreg[S_V] = avr->sreg[S_N] ^ avr->sreg[S_C];
-							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+							_avr_flags_zcnvs(avr, res, vd);
 							SREG();
 						}	break;
 						case 0x940a: {	// DEC -- Decrement -- 1001 010d dddd 1010
@@ -1210,10 +1174,8 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							uint8_t res = avr->data[d] - 1;
 							STATE("dec %s[%02x] = %02x\n", avr_regname(d), avr->data[d], res);
 							_avr_set_r(avr, d, res);
-							avr->sreg[S_Z] = res == 0;
-							avr->sreg[S_N] = res >> 7;
 							avr->sreg[S_V] = res == 0x7f;
-							avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+							_avr_flags_zns(avr, res);
 							SREG();
 						}	break;
 						case 0x940c:
@@ -1243,33 +1205,27 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 							switch (opcode & 0xff00) {
 								case 0x9600: {	// ADIW -- Add Immediate to Word -- 1001 0110 KKpp KKKK
 									get_p2_k6(opcode);
-									uint8_t rdl = avr->data[p], rdh = avr->data[p+1];
-									uint32_t res = rdl | (rdh << 8);
-									STATE("adiw %s:%s[%04x], 0x%02x\n", avr_regname(p), avr_regname(p+1), res, k);
-									res += k;
+									uint16_t vp = avr->data[p] | (avr->data[p + 1] << 8);
+									uint16_t res = vp + k;
+									STATE("adiw %s:%s[%04x], 0x%02x\n", avr_regname(p), avr_regname(p + 1), vp, k);
 									_avr_set_r(avr, p + 1, res >> 8);
 									_avr_set_r(avr, p, res);
-									avr->sreg[S_V] = ~(rdh >> 7) & ((res >> 15) & 1);
-									avr->sreg[S_Z] = (res & 0xffff) == 0;
-									avr->sreg[S_N] = (res >> 15) & 1;
-									avr->sreg[S_C] = ~((res >> 15) & 1) & (rdh >> 7);
-									avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+									avr->sreg[S_V] = ((~vp & res) >> 15) & 1;
+									avr->sreg[S_C] = ((~res & vp) >> 15) & 1;
+									_avr_flags_zns16(avr, res);
 									SREG();
 									cycle++;
 								}	break;
 								case 0x9700: {	// SBIW -- Subtract Immediate from Word -- 1001 0111 KKpp KKKK
 									get_p2_k6(opcode);
-									uint8_t rdl = avr->data[p], rdh = avr->data[p+1];
-									uint32_t res = rdl | (rdh << 8);
-									STATE("sbiw %s:%s[%04x], 0x%02x\n", avr_regname(p), avr_regname(p+1), res, k);
-									res -= k;
+									uint16_t vp = avr->data[p] | (avr->data[p + 1] << 8);
+									uint16_t res = vp - k;
+									STATE("sbiw %s:%s[%04x], 0x%02x\n", avr_regname(p), avr_regname(p + 1), vp, k);
 									_avr_set_r(avr, p + 1, res >> 8);
 									_avr_set_r(avr, p, res);
-									avr->sreg[S_V] = (rdh >> 7) & (~(res >> 15) & 1);
-									avr->sreg[S_Z] = (res & 0xffff) == 0;
-									avr->sreg[S_N] = (res >> 15) & 1;
-									avr->sreg[S_C] = ((res >> 15) & 1) & (~rdh >> 7);
-									avr->sreg[S_S] = avr->sreg[S_N] ^ avr->sreg[S_V];
+									avr->sreg[S_V] = ((vp & ~res) >> 15) & 1;
+									avr->sreg[S_C] = ((res & ~vp) >> 15) & 1;
+									_avr_flags_zns16(avr, res);
 									SREG();
 									cycle++;
 								}	break;
