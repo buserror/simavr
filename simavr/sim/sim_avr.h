@@ -152,6 +152,7 @@ typedef struct avr_t {
 	uint8_t		vector_size;
 	uint8_t		signature[3];
 	uint8_t		fuse[6];
+	uint8_t		lockbits;
 	avr_io_addr_t	rampz;	// optional, only for ELPM/SPM on >64Kb cores
 	avr_io_addr_t	eind;	// optional, only for EIJMP/EICALL on >64Kb cores
 	uint8_t		address_size;	// 2, or 3 for cores >128KB in flash
