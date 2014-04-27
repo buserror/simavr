@@ -354,6 +354,8 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 			(data_text ? data_text->d_size : 0) +
 			(data_data ? data_data->d_size : 0);
 	firmware->flash = malloc(firmware->flashsize);
+	if (!firmware->flash)
+		return -1;
 
 	// using unsigned int for output, since there is no AVR with 4GB
 	if (data_text) {
@@ -370,15 +372,18 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 		firmware->datasize = data_data->d_size;
 	}
 	if (data_ee) {
-		elf_copy_section(".eeprom", data_ee, &firmware->eeprom);
+		if (elf_copy_section(".eeprom", data_ee, &firmware->eeprom))
+			return -1;
 		firmware->eesize = data_ee->d_size;
 	}
 	if (data_fuse) {
-		elf_copy_section(".fuse", data_fuse, &firmware->fuse);
+		if (elf_copy_section(".fuse", data_fuse, &firmware->fuse))
+			return -1;
         firmware->fusesize = data_fuse->d_size;
 	}
 	if (data_lockbits) {
-		elf_copy_section(".lock", data_fuse, &firmware->lockbits);
+		if (elf_copy_section(".lock", data_fuse, &firmware->lockbits))
+			return -1;
 	}
 //	hdump("flash", avr->flash, offset);
 	elf_end(elf);
