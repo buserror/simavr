@@ -1,6 +1,6 @@
 /*
-	sim_mega128rfa1.c
-	- based on sim_mega1281.c
+	sim_mega128rfr2.c
+	- based on sim_mega128rfa1.c
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 	Copyright 2014 Doug Goldstein <cardoe@cardoe.com>
@@ -34,15 +34,15 @@
 #include "avr_spi.h"
 #include "avr_twi.h"
 
-void m128rfa1_init(struct avr_t * avr);
-void m128rfa1_reset(struct avr_t * avr);
+void m128rfr2_init(struct avr_t * avr);
+void m128rfr2_reset(struct avr_t * avr);
 
 #define _AVR_IO_H_
 #define __ASSEMBLER__
-#include "avr/iom128rfa1.h"
+#include "avr/iom128rfr2.h"
 
 /*
- * This is a template for all of the 128rfa1 devices, hopefully
+ * This is a template for all of the 128rfr2 devices, hopefully
  */
 const struct mcu_t {
 	avr_t          core;
@@ -56,13 +56,13 @@ const struct mcu_t {
 	avr_timer_t		timer0,timer1,timer2,timer3;
 	avr_spi_t		spi;
 	avr_twi_t		twi;
-} mcu_mega128rfa1 = {
+} mcu_mega128rfr2 = {
 	.core = {
-		.mmcu = "atmega128rfa1",
+		.mmcu = "atmega128rfr2",
 		DEFAULT_CORE(4),
 
-		.init = m128rfa1_init,
-		.reset = m128rfa1_reset,
+		.init = m128rfr2_init,
+		.reset = m128rfr2_reset,
 
 		.rampz = RAMPZ,	// extended program memory access
 	},
@@ -510,15 +510,15 @@ const struct mcu_t {
 
 static avr_t * make()
 {
-	return avr_core_allocate(&mcu_mega128rfa1.core, sizeof(struct mcu_t));
+	return avr_core_allocate(&mcu_mega128rfr2.core, sizeof(struct mcu_t));
 }
 
-avr_kind_t mega128rfa1 = {
-        .names = { "atmega128rfa1" },
+avr_kind_t mega128rfr2 = {
+        .names = { "atmega128rfr2" },
         .make = make
 };
 
-void m128rfa1_init(struct avr_t * avr)
+void m128rfr2_init(struct avr_t * avr)
 {
 	struct mcu_t * mcu = (struct mcu_t*)avr;
 
@@ -542,7 +542,7 @@ void m128rfa1_init(struct avr_t * avr)
 	avr_twi_init(avr, &mcu->twi);
 }
 
-void m128rfa1_reset(struct avr_t * avr)
+void m128rfr2_reset(struct avr_t * avr)
 {
 //	struct mcu_t * mcu = (struct mcu_t*)avr;
 }
