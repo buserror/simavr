@@ -48,7 +48,7 @@
 	.fuse = { LFUSE_DEFAULT, HFUSE_DEFAULT, EFUSE_DEFAULT }, \
 	.signature = { SIGNATURE_0,SIGNATURE_1,SIGNATURE_2 }
 #else
-// Disable signature for now, for ubuntu, gentoo and other using old avr toolchain
+// Disable signature when using an old avr toolchain
 #define DEFAULT_CORE(_vector_size) \
 	.ramend = RAMEND, \
 	.flashend = FLASHEND, \

@@ -54,7 +54,7 @@ static const struct mcu_t {
 		.flashend = FLASHEND,
 		.e2end = E2END,
 		.vector_size = 2,
-// Disable signature for now, for ubuntu, gentoo and other using old avr toolchain
+// Disable signature when using an old avr toolchain
 #ifdef SIGNATURE_0
 		.signature = { SIGNATURE_0,SIGNATURE_1,SIGNATURE_2 },
 		.fuse = { LFUSE_DEFAULT, HFUSE_DEFAULT },
