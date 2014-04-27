@@ -50,7 +50,7 @@ const struct mcu_t {
 	avr_flash_t 	selfprog;
 	avr_watchdog_t	watchdog;
 	avr_extint_t	extint;
-	avr_ioport_t	porta, portb, portc, portd, porte, portf, portg;
+	avr_ioport_t	portb, portd, porte, portf, portg;
 	avr_uart_t		uart0,uart1;
 	avr_adc_t		adc;
 	avr_timer_t		timer0,timer1,timer2,timer3;
@@ -79,9 +79,6 @@ const struct mcu_t {
 		AVR_EXTINT_MEGA_DECLARE(6, 'E', PE6, B),
 		AVR_EXTINT_MEGA_DECLARE(7, 'E', PE7, B),
 	},
-	.porta = {
-		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
-	},
 	.portb = {
 		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
 		.pcint = {
@@ -90,9 +87,6 @@ const struct mcu_t {
 			.vector = PCINT0_vect,
 		},
 		.r_pcint = PCMSK0,
-	},
-	.portc = {
-		.name = 'C', .r_port = PORTC, .r_ddr = DDRC, .r_pin = PINC,
 	},
 	.portd = {
 		.name = 'D', .r_port = PORTD, .r_ddr = DDRD, .r_pin = PIND,
@@ -532,9 +526,7 @@ void m128rfa1_init(struct avr_t * avr)
 	avr_flash_init(avr, &mcu->selfprog);
 	avr_extint_init(avr, &mcu->extint);
 	avr_watchdog_init(avr, &mcu->watchdog);
-	avr_ioport_init(avr, &mcu->porta);
 	avr_ioport_init(avr, &mcu->portb);
-	avr_ioport_init(avr, &mcu->portc);
 	avr_ioport_init(avr, &mcu->portd);
 	avr_ioport_init(avr, &mcu->porte);
 	avr_ioport_init(avr, &mcu->portf);
