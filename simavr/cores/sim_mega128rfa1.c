@@ -184,8 +184,13 @@ const struct mcu_t {
 		.adate = AVR_IO_REGBIT(ADCSRA, ADATE),
 		.adps = { AVR_IO_REGBIT(ADCSRA, ADPS0), AVR_IO_REGBIT(ADCSRA, ADPS1), AVR_IO_REGBIT(ADCSRA, ADPS2),},
 
+#ifdef ADCL
+		.r_adch = ADCH,
+		.r_adcl = ADCL,
+#else
 		.r_adch = 0x79, //ADCH,
 		.r_adcl = 0x78, //ADCL,
+#endif
 
 		.r_adcsrb = ADCSRB,
 		.adts = { AVR_IO_REGBIT(ADCSRB, ADTS0), AVR_IO_REGBIT(ADCSRB, ADTS1), AVR_IO_REGBIT(ADCSRB, ADTS2),},
