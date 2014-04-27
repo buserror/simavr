@@ -78,7 +78,8 @@
 	.e2end = E2END, \
 	.vector_size = _vector_size, \
 	.fuse = _FUSE_HELPER, \
-	.signature = { SIGNATURE_0,SIGNATURE_1,SIGNATURE_2 }
+	.signature = { SIGNATURE_0,SIGNATURE_1,SIGNATURE_2 }, \
+	.lockbits = 0xFF
 #else
 // Disable signature when using an old avr toolchain
 #define DEFAULT_CORE(_vector_size) \
