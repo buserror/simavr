@@ -93,6 +93,12 @@ const struct mcu_t {
 	},
 	.porte = {
 		.name = 'E', .r_port = PORTE, .r_ddr = DDRE, .r_pin = PINE,
+		.pcint = {
+			.enable = AVR_IO_REGBIT(PCICR, PCIE1),
+			.raised = AVR_IO_REGBIT(PCIFR, PCIF1),
+			.vector = PCINT1_vect,
+		},
+		.r_pcint = PCMSK1,
 	},
 	.portf = {
 		.name = 'F', .r_port = PORTF, .r_ddr = DDRF, .r_pin = PINF,
