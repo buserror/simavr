@@ -374,16 +374,19 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 		firmware->datasize = data_data->d_size;
 	}
 	if (data_ee) {
-		elf_copy_section(".eeprom", data_ee, &firmware->eeprom);
+		if (elf_copy_section(".eeprom", data_ee, &firmware->eeprom))
+			return -1;
 		firmware->eesize = data_ee->d_size;
 	}
 	if (data_fuse) {
-		elf_copy_section(".fuse", data_fuse, &firmware->fuse);
-		firmware->fusesize = data_fuse->d_size;
+		if (elf_copy_section(".fuse", data_fuse, &firmware->fuse))
+			return -1;
+        firmware->fusesize = data_fuse->d_size;
 	}
-	if (data_lockbits)
-		elf_copy_section(".lock", data_fuse, &firmware->lockbits);
-
+	if (data_lockbits) {
+		if (elf_copy_section(".lock", data_fuse, &firmware->lockbits))
+			return -1;
+	}
 //	hdump("flash", avr->flash, offset);
 	elf_end(elf);
 	close(fd);
