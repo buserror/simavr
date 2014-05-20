@@ -63,10 +63,10 @@ endif
 #
 ${OBJ}/libsimavr.so.1	:	${sim_o}
 ifeq ($(V),1)
-	$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^
+	$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^ $(LDFLAGS)
 else
 	@echo SHARED $@
-	@$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^
+	@$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^ $(LDFLAGS)
 endif
 
 ${OBJ}/libsimavr.so		: ${OBJ}/libsimavr.so.1
