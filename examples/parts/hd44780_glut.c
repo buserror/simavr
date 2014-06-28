@@ -37,13 +37,19 @@ static int charheight = 7;
 void
 hd44780_gl_init()
 {
+	// See: http://www.opengl.org/sdk/docs/man/
+
+	// Generate 1 new texture
 	glGenTextures(1, &font_texture);
+	// Bind the new texture to the target
 	glBindTexture(GL_TEXTURE_2D, font_texture);
+	// Specify a 2D texture image using the font data
 	glTexImage2D(GL_TEXTURE_2D, 0, 4,
 			lcd_font.width,
 			lcd_font.height, 0, GL_RGBA,
 	        GL_UNSIGNED_BYTE,
 	        lcd_font.pixel_data);
+	// Set texture parameters
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 

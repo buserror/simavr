@@ -125,11 +125,13 @@ endif
 	@${AVR}objdump -j .text -j .data -j .bss -d  ${<} > ${@}
 
 # --mcall-prologues can be used here, but messes up debugging a little
+# FIXME:  Below used to be: -mmcu=$$part 
+
 %.axf: %.c 
 	@echo AVR-CC ${<}
 	@part=${<} ; part=$${part/_*}; \
 	${AVR}gcc -Wall -gdwarf-2 -Os -std=gnu99 \
-			-mmcu=$$part \
+			-mmcu=atmega32 \
 			-DF_CPU=8000000 \
 			-fno-inline-small-functions \
 			-ffunction-sections -fdata-sections \

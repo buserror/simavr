@@ -49,7 +49,7 @@ avr_vcd_t vcd_file;
 ac_input_t ac_input;
 hd44780_t hd44780;
 
-int color = 0;
+int disp_color = 0;
 uint32_t colors[][4] = {
 		{ 0x00aa00ff, 0x00cc00ff, 0x000000ff, 0x00000055 },	// fluo green
 		{ 0xaa0000ff, 0xcc0000ff, 0x000000ff, 0x00000055 },	// red
@@ -95,10 +95,10 @@ void displayCB(void)		/* function called whenever redisplay needed */
 
 	hd44780_gl_draw(
 		&hd44780,
-			colors[color][0], /* background */
-			colors[color][1], /* character background */
-			colors[color][2], /* text */
-			colors[color][3] /* shadow */ );
+			colors[disp_color][0], /* background */
+			colors[disp_color][1], /* character background */
+			colors[disp_color][2], /* text */
+			colors[disp_color][3] /* shadow */ );
 	glPopMatrix();
     glutSwapBuffers();
 }
@@ -147,9 +147,9 @@ main(
 {
 	elf_firmware_t f;
 	const char * fname = "atmega48_charlcd.axf";
-//	char path[256];
-//	sprintf(path, "%s/%s", dirname(argv[0]), fname);
-//	printf("Firmware pathname is %s\n", path);
+ 	char path[256];
+	sprintf(path, "%s/%s", dirname(argv[0]), fname);
+	printf("Firmware pathname is %s\n", path);
 	elf_read_firmware(fname, &f);
 
 	printf("firmware %s f=%d mmcu=%s\n", fname, (int) f.frequency, f.mmcu);
