@@ -22,17 +22,17 @@
 #ifndef __SSD1306_GLUT_H__
 #define __SSD1306_GLUT_H__
 
-#include "hd44780.h"
+#include "ssd1306_virt.h"
+
+typedef enum {on, off} pixel_state_t;
 
 void
 ssd1306_gl_draw(
-		hd44780_t *b,
-		uint32_t background,
-		uint32_t character,
-		uint32_t text,
-		uint32_t shadow);
+		ssd1306_t *b,
+		uint32_t background_color,
+		uint32_t pixel_color);
 
 void
-ssd1306_gl_init();
+ssd1306_gl_init(float pix_size);
 
 #endif

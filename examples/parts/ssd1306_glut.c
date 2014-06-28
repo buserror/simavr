@@ -28,133 +28,81 @@
 #include <GL/glut.h>
 #endif
 
-#include "font.h"	// generated with gimp
-
-static GLuint font_texture;
-static int charwidth = 5;
-static int charheight = 7;
+float pix_size_g  = 1.0;
+float pix_gap_g = 0.0;
 
 void
-ssd1306_gl_init()
+ssd1306_gl_init (float pix_size)
 {
-	// See: http://www.opengl.org/sdk/docs/man/
-
-	// Generate 1 new texture
-	glGenTextures(1, &font_texture);
-	// Bind the new texture to the target
-	glBindTexture(GL_TEXTURE_2D, font_texture);
-	// Specify a 2D texture image using the font data
-	glTexImage2D(GL_TEXTURE_2D, 0, 4,
-			lcd_font.width,
-			lcd_font.height, 0, GL_RGBA,
-	        GL_UNSIGNED_BYTE,
-	        lcd_font.pixel_data);
-	// Set texture parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	glMatrixMode(GL_TEXTURE);
-	glLoadIdentity();
-	glScalef(1.0f / (GLfloat) lcd_font.width, 1.0f / (GLfloat) lcd_font.height, 1.0f);
-
-	glMatrixMode(GL_MODELVIEW);
+  pix_size_g = pix_size;
+  //See: http://www.opengl.org/sdk/docs/man/
 }
 
 static inline void
-ssd1306_glColor32U(uint32_t color)
+ssd1306_glColor32U (uint32_t color)
 {
-	glColor4f(
-			(float)((color >> 24) & 0xff) / 255.0f,
-			(float)((color >> 16) & 0xff) / 255.0f,
-			(float)((color >> 8) & 0xff) / 255.0f,
-			(float)((color) & 0xff) / 255.0f );
+  glColor4f ((float) ((color >> 24) & 0xff) / 255.0f,
+	     (float) ((color >> 16) & 0xff) / 255.0f,
+	     (float) ((color >> 8) & 0xff) / 255.0f,
+	     (float) ((color) & 0xff) / 255.0f);
 }
 
 void
-ssd1306_glputchar(char c,
-		uint32_t character,
-		uint32_t text,
-		uint32_t shadow)
+ssd1306_gl_put_pixel_column(uint8_t block_pixel_column, uint32_t pixel_color)
 {
-	int index = c;
-	int left = index * charwidth;
-	int right = index * charwidth + charwidth;
-	int top = 0;
-	int bottom = 7;
-
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-	glDisable(GL_TEXTURE_2D);
-	ssd1306_glColor32U(character);
-	glBegin(GL_QUADS);
-	glVertex3i(5, 7, 0);
-	glVertex3i(0, 7, 0);
-	glVertex3i(0, 0, 0);
-	glVertex3i(5, 0, 0);
-	glEnd();
-
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, font_texture);
-	if (shadow) {
-	    ssd1306_glColor32U(shadow);
-		glPushMatrix();
-		glTranslatef(.2f, .2f, 0);
-		glBegin(GL_QUADS);
-		glTexCoord2i(right, top);		glVertex3i(5, 0, 0);
-		glTexCoord2i(left, top);		glVertex3i(0, 0, 0);
-		glTexCoord2i(left, bottom);		glVertex3i(0, 7, 0);
-		glTexCoord2i(right, bottom);	glVertex3i(5, 7, 0);
-		glEnd();
-		glPopMatrix();
+  glEnable (GL_BLEND);
+  glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBegin (GL_QUADS);
+  ssd1306_glColor32U (pixel_color);
+  block_pixel_column = 0xAA;
+  //printf("Data Byte: %i\n", block_pixel_column);
+  for (int i = 0; i < 8; ++i)
+    {
+      if (block_pixel_column & (1 << i))
+	{
+	  glVertex2f (pix_size_g, pix_size_g * (i + 1));
+	  glVertex2f (0, pix_size_g * (i + 1));
+	  glVertex2f (0, pix_size_g * i);
+	  glVertex2f (pix_size_g, pix_size_g * i);
 	}
-	ssd1306_glColor32U(text);
-	glBegin(GL_QUADS);
-	glTexCoord2i(right, top);		glVertex3i(5, 0, 0);
-	glTexCoord2i(left, top);		glVertex3i(0, 0, 0);
-	glTexCoord2i(left, bottom);		glVertex3i(0, 7, 0);
-	glTexCoord2i(right, bottom);	glVertex3i(5, 7, 0);
-	glEnd();
-
+    }
+  glEnd ();
 }
 
 void
-ssd1306_gl_draw(
-		hd44780_t *b,
-		uint32_t background,
-		uint32_t character,
-		uint32_t text,
-		uint32_t shadow)
+ssd1306_gl_draw (ssd1306_t *b, uint32_t background_color, uint32_t pixel_color)
 {
-	int rows = b->w;
-	int lines = b->h;
-	int border = 3;
+  int columns = b->w;
+  int pages = b->pages;
+  int rows = b->h;
 
-	glDisable(GL_TEXTURE_2D);
-	glDisable(GL_BLEND);
-	ssd1306_glColor32U(background);
-	glTranslatef(border, border, 0);
-	glBegin(GL_QUADS);
-	glVertex3f(rows * charwidth + (rows - 1) + border, -border, 0);
-	glVertex3f(-border, -border, 0);
-	glVertex3f(-border, lines * charheight + (lines - 1) + border, 0);
-	glVertex3f(rows * charwidth + (rows - 1) + border, lines * charheight
-	        + (lines - 1) + border, 0);
-	glEnd();
+  // Draw the background
+  glDisable (GL_TEXTURE_2D);
+  glDisable (GL_BLEND);
+  ssd1306_glColor32U (background_color);
+  glTranslatef (0, 0 , 0);
+  glBegin (GL_QUADS);
+  glVertex2f (rows, 0);
+  glVertex2f (0,0);
+  glVertex2f (0, columns);
+  glVertex2f (rows, columns);
+  glEnd ();
+  glColor3f (1.0f, 1.0f, 1.0f);
 
-	glColor3f(1.0f, 1.0f, 1.0f);
-	const uint8_t offset[] = { 0, 0x40, 0x20, 0x60 };
-	for (int v = 0 ; v < b->h; v++) {
-		glPushMatrix();
-		for (int i = 0; i < b->w; i++) {
-		      ssd1306_glputchar(b->vram[offset[v] + i], character, text, shadow);
-			glTranslatef(6, 0, 0);
-		}
-		glPopMatrix();
-		glTranslatef(0, 8, 0);
+  uint16_t buf_index = 0;
+  for (int p = 0; p < pages; p++)
+    {
+      glPushMatrix ();
+      for (int c = 0; c < columns; c++)
+	{
+	  ssd1306_gl_put_pixel_column(b->vram[buf_index++], pixel_color);
+	  // Next column
+	  glTranslatef (pix_size_g + pix_gap_g, 0, 0);
 	}
-	//hd44780_set_flag(b, HD44780_FLAG_DIRTY, 0);
+      glPopMatrix ();
+      // Next page
+      glTranslatef (0, (rows/pages)*pix_size_g + pix_gap_g, 0);
+    }
+
+  //ssd1306_set_flag(b, HD44780_FLAG_DIRTY, 0);
 }

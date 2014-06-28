@@ -44,7 +44,7 @@ include ${simavr}/Makefile.common
 board = ${OBJ}/${target}.elf
 
 ${board} : ${OBJ}/ac_input.o
-${board} : ${OBJ}/hd44780.o
+${board} : ${OBJ}/ssd1306_virt.o
 ${board} : ${OBJ}/ssd1306_glut.o
 ${board} : ${OBJ}/${target}.o
 

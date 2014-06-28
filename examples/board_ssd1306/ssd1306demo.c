@@ -41,20 +41,22 @@
 #include "ac_input.h"
 #include "ssd1306_glut.h"
 
+uint32_t colors[][2] =
+  {
+    { 0x00aa00ff, 0x00cc00ff},	// fluo green
+    { 0xaa0000ff, 0xcc0000ff},	// red
+    { 0x00000000, 0xffffffff},	// black/white
+  };
+
+enum {green, red, black} disp_color = black;
+
 //float pixsize = 16;
 int window_identifier;
 
 avr_t * avr = NULL;
 avr_vcd_t vcd_file;
 ac_input_t ac_input;
-hd44780_t hd44780;
-
-enum {green, red} disp_color = green;
-uint32_t colors[][4] =
-  {
-    { 0x00aa00ff, 0x00cc00ff, 0x000000ff, 0x00000055 },	// fluo green
-	{ 0xaa0000ff, 0xcc0000ff, 0x000000ff, 0x00000055 },	// red
-    };
+ssd1306_t ssd1306;
 
 void
 keyCB (unsigned char key, int x, int y) /* called on key press */
@@ -78,12 +80,9 @@ displayCB (void)
   glMatrixMode (GL_MODELVIEW); // Select modelview matrix
   glPushMatrix ();
   glLoadIdentity (); // Start with an identity matrix
-  glScalef (3, 3, 1);
+  //glScalef (1, 1, 1);
 
-  ssd1306_gl_draw (&hd44780, colors[disp_color][0], /* background */
-		   colors[disp_color][1], /* character background */
-		   colors[disp_color][2], /* text */
-		   colors[disp_color][3] /* shadow */);
+  ssd1306_gl_draw (&ssd1306, colors[disp_color][0], colors[disp_color][1]);
   glPopMatrix ();
   glutSwapBuffers ();
 }
@@ -99,13 +98,15 @@ timerCB (int i)
 }
 
 int
-initGL (int w, int h)
+initGL (int w, int h, float pix_size)
 {
   // See: http://www.lighthouse3d.com/tutorials/glut-tutorial/initialization/
 
+  w *= pix_size;
+  h *= pix_size;
+
   // Double buffered, RGB disp mode.
   glutInitDisplayMode (GLUT_RGB | GLUT_DOUBLE);
-  // width=400pixels height=500pixels
   glutInitWindowSize (w, h);
   window_identifier = glutCreateWindow ("SSD1306");
 
@@ -132,7 +133,7 @@ initGL (int w, int h)
   glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable (GL_BLEND);
 
-  ssd1306_gl_init();
+  ssd1306_gl_init(pix_size);
 
   return 1;
 }
@@ -146,17 +147,34 @@ main (int argc, char *argv[])
   sprintf (path, "%s/%s", dirname (argv[0]), fname);
   elf_read_firmware (fname, &f);
   avr = avr_make_mcu_by_name (f.mmcu);
-  hd44780_init (avr, &hd44780, 20, 4);
+  ssd1306_init (avr, &ssd1306, 128, 64);
+
+  /*  SSD 1306 CONNECTIONS
+  LCD_RES       PB3	Reset
+  LCD_RS	PB1	Data / Instruction (DC)
+  LCD_E		PB4	Slave select (CS)
+  SCK 		PB7	System clock
+  MOSI 		PB5	Master out, slave in
+  MISO 		NC	Master in, slave out
+  */
+
+  /*
+  avr_connect_irq (avr_io_getirq (avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 3),
+		   ssd1306.irq + IRQ_SSD1306_RESET);
+  avr_connect_irq (avr_io_getirq (avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 4),
+		   ssd1306.irq + IRQ_SSD1306_ENABLE);
+  avr_connect_irq (avr_io_getirq (avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 1),
+		   ssd1306.irq + IRQ_SSD1306_DATA_INSTRUCTION); */
+
 
   printf ("Demo : This is SSD1306 display demo v0.01\n"
 	  "   Press 'q' to quit\n");
 
   // Screen
-  int w = 5 + hd44780.w * 6;
-  int h = 5 + hd44780.h * 8;
-  int pixsize = 3;
+  int w = ssd1306.w;
+  int h = ssd1306.h;
   glutInit (&argc, argv); /* initialize GLUT system */
-  initGL (w * pixsize, h * pixsize);
+  initGL (w, h, 0.5);
 
   glutMainLoop ();
 }
