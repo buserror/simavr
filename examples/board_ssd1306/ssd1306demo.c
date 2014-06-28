@@ -141,7 +141,7 @@ int
 main (int argc, char *argv[])
 {
   elf_firmware_t f;
-  const char * fname = "atmega48_charlcd.axf";
+  const char * fname = "atmega32_ssd1306.axf";
   char path[256];
   sprintf (path, "%s/%s", dirname (argv[0]), fname);
   elf_read_firmware (fname, &f);
