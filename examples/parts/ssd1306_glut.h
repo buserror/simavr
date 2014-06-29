@@ -1,6 +1,7 @@
 /*
 	ssd1306_glut.h
 
+	Copyright 2014 Doug Szumski <d.s.szumski@gmail.com>
 	Copyright Luki <humbell@ethz.ch>
 	Copyright 2011 Michel Pollet <buserror@gmail.com>
 
@@ -23,8 +24,6 @@
 #define __SSD1306_GLUT_H__
 
 #include "ssd1306_virt.h"
-
-typedef enum {on, off} pixel_state_t;
 
 void
 ssd1306_gl_draw(

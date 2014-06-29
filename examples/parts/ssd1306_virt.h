@@ -56,7 +56,8 @@ enum {
     IRQ_SSD1306_DATA_INSTRUCTION,
     IRQ_SSD1306_ENABLE,
     IRQ_SSD1306_SPI_BYTE_IN,
-    IRQ_SSD1306_INPUT_COUNT,
+    //IRQ_SSD1306_INPUT_COUNT,
+    IRQ_SSD1306_ADDR,		//<< For VCD
     IRQ_SSD1306_COUNT
 
     //TODO: Add IRQs for VCD: Internal state etc.
@@ -77,12 +78,10 @@ enum {
     /*
      * Internal flags, not SSD1306
      */
-    SSD1306_FLAG_LOWNIBBLE,		// 1: 4 bits mode, write/read low nibble
     SSD1306_FLAG_BUSY,			// 1: Busy between instruction, 0: ready
     SSD1306_FLAG_REENTRANT,		// 1: Do not update pins
 
     SSD1306_FLAG_DIRTY,			// 1: needs redisplay...
-    SSD1306_FLAG_CRAM_DIRTY,	// 1: Character memory has changed
 };
 
 
@@ -92,7 +91,7 @@ typedef struct ssd1306_t
 	struct avr_t * avr;
 	int	w, h;			// width and height of the LCD
 	uint16_t cursor;		// offset in vram
-	uint8_t  vram[128 * 64];	// p25 ds: GDDRAM = 128x64bit in 8 pages
+	uint8_t  vram[128 * 64];		// p25 ds: GDDRAM = 128x64bit in 8 pages
 	uint16_t flags;			// LCD flags ( SSD1306_FLAG_*)
 	uint8_t pages;
 } ssd1306_t;

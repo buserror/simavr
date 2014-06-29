@@ -58,6 +58,16 @@ avr_vcd_t vcd_file;
 ac_input_t ac_input;
 ssd1306_t ssd1306;
 
+static void *
+avr_run_thread(
+		void * ignore)
+{
+	while (1) {
+		avr_run(avr);
+	}
+	return NULL;
+}
+
 void
 keyCB (unsigned char key, int x, int y) /* called on key press */
 {
@@ -69,19 +79,14 @@ keyCB (unsigned char key, int x, int y) /* called on key press */
     }
 }
 
-
 /* Function called whenever redisplay needed */
 void
 displayCB (void)
 {
-
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
   glMatrixMode (GL_MODELVIEW); // Select modelview matrix
   glPushMatrix ();
   glLoadIdentity (); // Start with an identity matrix
-  //glScalef (1, 1, 1);
-
   ssd1306_gl_draw (&ssd1306, colors[disp_color][0], colors[disp_color][1]);
   glPopMatrix ();
   glutSwapBuffers ();
@@ -91,7 +96,7 @@ displayCB (void)
 void
 timerCB (int i)
 {
-  //static int oldstate = -1;
+  // static int oldstate = -1;
   // restart timer
   glutTimerFunc (1000 / 64, timerCB, 0);
   glutPostRedisplay ();
@@ -101,14 +106,13 @@ int
 initGL (int w, int h, float pix_size)
 {
   // See: http://www.lighthouse3d.com/tutorials/glut-tutorial/initialization/
-
   w *= pix_size;
   h *= pix_size;
 
   // Double buffered, RGB disp mode.
   glutInitDisplayMode (GLUT_RGB | GLUT_DOUBLE);
-  glutInitWindowSize (w, h);
-  window_identifier = glutCreateWindow ("SSD1306");
+  glutInitWindowSize (w*4, h*4);
+  window_identifier = glutCreateWindow ("SSD1306 128x64 OLED");
 
   // Set up projection matrix
   glMatrixMode (GL_PROJECTION); // Select projection matrix
@@ -145,26 +149,42 @@ main (int argc, char *argv[])
   const char * fname = "atmega32_ssd1306.axf";
   char path[256];
   sprintf (path, "%s/%s", dirname (argv[0]), fname);
+  printf ("Firmware pathname is %s\n", path);
   elf_read_firmware (fname, &f);
+
+  printf ("firmware %s f=%d mmcu=%s\n", fname, (int) f.frequency, f.mmcu);
+
   avr = avr_make_mcu_by_name (f.mmcu);
+  if (!avr)
+    {
+      fprintf (stderr, "%s: AVR '%s' not known\n", argv[0], f.mmcu);
+      exit (1);
+    }
+
+  avr_init (avr);
+  avr_load_firmware (avr, &f);
+  ac_input_init (avr, &ac_input);
+  //avr_connect_irq(ac_input.irq + IRQ_AC_OUT, avr_io_getirq(avr,
+  //        AVR_IOCTL_IOPORT_GETIRQ('D'), 2));
+
   ssd1306_init (avr, &ssd1306, 128, 64);
 
   /*  SSD 1306 CONNECTIONS
-  LCD_RES       PB3	Reset
-  LCD_RS	PB1	Data / Instruction (DC)
-  LCD_E		PB4	Slave select (CS)
-  SCK 		PB7	System clock
-  MOSI 		PB5	Master out, slave in
-  MISO 		NC	Master in, slave out
-  */
+   LCD_RES       PB3	Reset
+   LCD_RS	PB1	Data / Instruction (DC)
+   LCD_E		PB4	Slave select (CS)
+   SCK 		PB7	System clock
+   MOSI 		PB5	Master out, slave in
+   MISO 		NC	Master in, slave out */
 
-  /*
   avr_connect_irq (avr_io_getirq (avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 3),
 		   ssd1306.irq + IRQ_SSD1306_RESET);
   avr_connect_irq (avr_io_getirq (avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 4),
-		   ssd1306.irq + IRQ_SSD1306_ENABLE);
+  		   ssd1306.irq + IRQ_SSD1306_ENABLE);
   avr_connect_irq (avr_io_getirq (avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 1),
-		   ssd1306.irq + IRQ_SSD1306_DATA_INSTRUCTION); */
+  		   ssd1306.irq + IRQ_SSD1306_DATA_INSTRUCTION);
+  avr_connect_irq (avr_io_getirq (avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 1),
+    		   ssd1306.irq + IRQ_SSD1306_SPI_BYTE_IN);
 
 
   printf ("Demo : This is SSD1306 display demo v0.01\n"
@@ -175,6 +195,9 @@ main (int argc, char *argv[])
   int h = ssd1306.h;
   glutInit (&argc, argv); /* initialize GLUT system */
   initGL (w, h, 0.5);
+
+  pthread_t run;
+  pthread_create (&run, NULL, avr_run_thread, NULL);
 
   glutMainLoop ();
 }

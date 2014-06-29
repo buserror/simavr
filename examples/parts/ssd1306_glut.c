@@ -1,6 +1,7 @@
 /*
 	ssd1306_glut.c
 
+	Copyright 2014 Doug Szumski <d.s.szumski@gmail.com>
 	Copyright Luki <humbell@ethz.ch>
 	Copyright 2011 Michel Pollet <buserror@gmail.com>
 
@@ -54,7 +55,7 @@ ssd1306_gl_put_pixel_column(uint8_t block_pixel_column, uint32_t pixel_color)
   glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glBegin (GL_QUADS);
   ssd1306_glColor32U (pixel_color);
-  block_pixel_column = 0xAA;
+  //block_pixel_column = 0xAA;
   //printf("Data Byte: %i\n", block_pixel_column);
   for (int i = 0; i < 8; ++i)
     {
@@ -104,5 +105,5 @@ ssd1306_gl_draw (ssd1306_t *b, uint32_t background_color, uint32_t pixel_color)
       glTranslatef (0, (rows/pages)*pix_size_g + pix_gap_g, 0);
     }
 
-  //ssd1306_set_flag(b, HD44780_FLAG_DIRTY, 0);
+  ssd1306_set_flag(b, SSD1306_FLAG_DIRTY, 0);
 }

@@ -28,39 +28,37 @@
 #include "ssd1306_virt.h"
 
 void
-ssd1306_print(
-		ssd1306_t *b)
+ssd1306_print (ssd1306_t *b)
 {
-	printf("/******************\\\n");
-	uint16_t page_offset = 0;
-	for (int i = 0; i < b->pages; i++) {
-		printf("| ");
-		fwrite(b->vram + page_offset, 1, b->w, stdout);
-		printf(" |\n");
-		page_offset += 128;
-	}
-	printf("\\******************/\n");
+  printf ("/******************\\\n");
+  uint16_t page_offset = 0;
+  for (int i = 0; i < b->pages; i++)
+    {
+      printf ("| ");
+      fwrite (b->vram + page_offset, 1, b->w, stdout);
+      printf (" |\n");
+      page_offset += 128;
+    }
+  printf ("\\******************/\n");
 }
 
 
 static void
-_ssd1306_reset_cursor(
-    ssd1306_t *b)
+_ssd1306_reset_cursor (ssd1306_t *b)
 {
-  printf(">> RESET CURSOR\n");
-	b->cursor = 0;
-	//ssd1306_set_flag(b, HD44780_FLAG_DIRTY, 1);
-	//avr_raise_irq(b->irq + IRQ_HD44780_ADDR, b->cursor);
+  printf (">> RESET CURSOR\n");
+  b->cursor = 0;
+  ssd1306_set_flag (b, SSD1306_FLAG_DIRTY, 1);
+  avr_raise_irq (b->irq + IRQ_SSD1306_ADDR, b->cursor);
 }
 
 static void
 _ssd1306_clear_screen (ssd1306_t *b)
 {
-  printf(">> CLEAR SCREEN\n");
-  // TODO: Get rid of these numbers
-  memset (b->vram, ' ', 128 * 64);
-  //hd44780_set_flag(b, HD44780_FLAG_DIRTY, 1);
-  //avr_raise_irq(b->irq + IRQ_HD44780_ADDR, b->cursor);
+  printf (">> CLEAR SCREEN\n");
+  memset (b->vram, 0, b->h * b->w);
+  ssd1306_set_flag (b, SSD1306_FLAG_DIRTY, 1);
+  avr_raise_irq (b->irq + IRQ_SSD1306_ADDR, b->cursor);
 }
 
 /*
@@ -231,14 +229,16 @@ _ssd1306_process_e_pinchange(
 /*
  * Called when a SPI byte is sent
  */
-static void ssd1306_spi_in_hook(struct avr_irq_t * irq, uint32_t value, void * param)
+static void
+ssd1306_spi_in_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 {
-  printf(">> SPI IN\n");
-	//ssd1306_t * p = (ssd1306_t*)param;
-	// send "old value" to any chained one..
-	//avr_raise_irq(p->irq + IRQ_HC595_SPI_BYTE_OUT, p->value);
-	//p->value = (p->value << 8) | (value & 0xff);
-}
+  ssd1306_t * p = (ssd1306_t*) param;
+  printf(">> SPI IN:  %08x\n", value);
+    //p->value = value & 0xff;
+    // send "old value" to any chained one..
+    //avr_raise_irq(p->irq + IRQ_HC595_SPI_BYTE_OUT, p->value);
+    //p->value = (p->value << 8) | (value & 0xff);
+  }
 
 /*
  * Called when a RESET signal is sent
@@ -246,9 +246,15 @@ static void ssd1306_spi_in_hook(struct avr_irq_t * irq, uint32_t value, void * p
 static void ssd1306_reset_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 {
   printf(">> RESET\n");
-	//ssd1306_t * p = (ssd1306_t*)param;
-	//if (irq->value && !value) 	// falling edge
-	  //memset(p, 0, sizeof(*p));????
+  ssd1306_t * p = (ssd1306_t*)param;
+  if (irq->value && !value) {
+      // Falling edge
+      memset(p->vram, 0, 1024);
+      p->cursor = 0;
+      p->flags = 0;
+      // TODO: Check this is all
+  }
+
 }
 
 static const char * irq_names[IRQ_SSD1306_COUNT] =
@@ -256,7 +262,10 @@ static const char * irq_names[IRQ_SSD1306_COUNT] =
       [IRQ_SSD1306_RESET ] = "<ssd1306.RS",
       [IRQ_SSD1306_DATA_INSTRUCTION] = "<ssd1306.RW",
       [IRQ_SSD1306_ENABLE] = "<ssd1306.E",
-      [IRQ_SSD1306_SPI_BYTE_IN] = "=ssd1306.SDIN"};
+      [IRQ_SSD1306_SPI_BYTE_IN] = "=ssd1306.SDIN",
+      [IRQ_SSD1306_ADDR] = "7>hd44780.ADDR"
+  };
+
 
 void
 ssd1306_init(
@@ -274,7 +283,6 @@ ssd1306_init(
 	 * Register callbacks on all our IRQs
 	 */
 	b->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_SSD1306_COUNT, irq_names);
-
 	avr_irq_register_notify(b->irq + IRQ_SSD1306_SPI_BYTE_IN, ssd1306_spi_in_hook, b);
 	avr_irq_register_notify(b->irq + IRQ_SSD1306_RESET, ssd1306_reset_hook, b);
 
