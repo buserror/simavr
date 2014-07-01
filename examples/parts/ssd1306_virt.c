@@ -26,6 +26,8 @@
 #include "sim_time.h"
 
 #include "ssd1306_virt.h"
+#include "avr_spi.h"
+#include "avr_ioport.h"
 
 void
 ssd1306_print (ssd1306_t *b)
@@ -56,7 +58,7 @@ static void
 _ssd1306_clear_screen (ssd1306_t *b)
 {
   printf (">> CLEAR SCREEN\n");
-  memset (b->vram, 0, b->h * b->w);
+  memset (b->vram, 0, b->h * b->pages);
   ssd1306_set_flag (b, SSD1306_FLAG_DIRTY, 1);
   avr_raise_irq (b->irq + IRQ_SSD1306_ADDR, b->cursor);
 }
@@ -233,12 +235,43 @@ static void
 ssd1306_spi_in_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 {
   ssd1306_t * p = (ssd1306_t*) param;
-  printf(">> SPI IN:  %08x\n", value);
+
+  //printf(">> IRQ VALUE:  0x%02x\n", irq->value);
+  printf(">> SPI IN, DI: 0x%02x DATA: 0x%02x\n", p->di, value);
+
+  if (p->di == 1) {
+  p->vram[p->cursor++] = value & 0xFF;
+  if (p->cursor > 1023) {
+      p->cursor = 0;
+  }
+  printf(">> CURSOR: 0x%02x\n", p->cursor);
+  }
+
+
+
+  //p->irq->flags = 0;
+
     //p->value = value & 0xff;
     // send "old value" to any chained one..
     //avr_raise_irq(p->irq + IRQ_HC595_SPI_BYTE_OUT, p->value);
     //p->value = (p->value << 8) | (value & 0xff);
   }
+
+static void
+ssd1306_cs_hook (struct avr_irq_t * irq, uint32_t value, void * param)
+{
+  ssd1306_t * p = (ssd1306_t*) param;
+  //printf (">> CHIP SELECT:  0x%08x\n", value);
+
+}
+
+static void
+ssd1306_di_hook (struct avr_irq_t * irq, uint32_t value, void * param)
+{
+  ssd1306_t * p = (ssd1306_t*) param;
+  p->di = value & 0xFF;
+  printf (">> DATA/ INSTRUCTION:  0x%08x\n", value);
+}
 
 /*
  * Called when a RESET signal is sent
@@ -249,7 +282,7 @@ static void ssd1306_reset_hook(struct avr_irq_t * irq, uint32_t value, void * pa
   ssd1306_t * p = (ssd1306_t*)param;
   if (irq->value && !value) {
       // Falling edge
-      memset(p->vram, 0, 1024);
+      memset(p->vram, 0, p->h * p->pages);
       p->cursor = 0;
       p->flags = 0;
       // TODO: Check this is all
@@ -258,36 +291,55 @@ static void ssd1306_reset_hook(struct avr_irq_t * irq, uint32_t value, void * pa
 }
 
 static const char * irq_names[IRQ_SSD1306_COUNT] =
-  {   [IRQ_SSD1306_ALL] = "7=ssd1306.pins",
+  {   //[IRQ_SSD1306_ALL] = "7=ssd1306.pins",
+      [IRQ_SSD1306_SPI_BYTE_IN] = "=ssd1306.SDIN",
       [IRQ_SSD1306_RESET ] = "<ssd1306.RS",
       [IRQ_SSD1306_DATA_INSTRUCTION] = "<ssd1306.RW",
       [IRQ_SSD1306_ENABLE] = "<ssd1306.E",
-      [IRQ_SSD1306_SPI_BYTE_IN] = "=ssd1306.SDIN",
       [IRQ_SSD1306_ADDR] = "7>hd44780.ADDR"
   };
 
+void
+ssd1306_connect (ssd1306_t * part)
+{
+  avr_connect_irq (avr_io_getirq (part->avr, AVR_IOCTL_SPI_GETIRQ(0), SPI_IRQ_OUTPUT),
+		   part->irq + IRQ_SSD1306_SPI_BYTE_IN);
+  avr_connect_irq (avr_io_getirq (part->avr, AVR_IOCTL_IOPORT_GETIRQ ('B'), 4),
+		   part->irq + IRQ_SSD1306_ENABLE);
+  avr_connect_irq (avr_io_getirq (part->avr, AVR_IOCTL_IOPORT_GETIRQ ('B'), 1),
+		   part->irq + IRQ_SSD1306_DATA_INSTRUCTION);
+  avr_connect_irq (avr_io_getirq (part->avr, AVR_IOCTL_IOPORT_GETIRQ ('B'), 5),
+		   part->irq + IRQ_SSD1306_RESET);
+}
 
 void
 ssd1306_init(
 		struct avr_t *avr,
-		struct ssd1306_t * b,
+		struct ssd1306_t * part,
 		int width,
 		int height )
 {
-	memset(b, 0, sizeof(*b));
-	b->avr = avr;
-	b->w = width;
-	b->h = height;
-	b->pages = 8;
+	if(!avr || !part)
+	  return;
+
+	memset(part, 0, sizeof(*part));
+	part->avr = avr;
+	part->w = width;
+	part->h = height;
+	part->pages = 8;
+	part->cs = 0;
+	part->di = 0;
 	/*
 	 * Register callbacks on all our IRQs
 	 */
-	b->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_SSD1306_COUNT, irq_names);
-	avr_irq_register_notify(b->irq + IRQ_SSD1306_SPI_BYTE_IN, ssd1306_spi_in_hook, b);
-	avr_irq_register_notify(b->irq + IRQ_SSD1306_RESET, ssd1306_reset_hook, b);
+	part->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_SSD1306_COUNT, irq_names);
+	avr_irq_register_notify(part->irq + IRQ_SSD1306_SPI_BYTE_IN, ssd1306_spi_in_hook, part);
+	avr_irq_register_notify(part->irq + IRQ_SSD1306_RESET, ssd1306_reset_hook, part);
+	avr_irq_register_notify(part->irq + IRQ_SSD1306_ENABLE, ssd1306_cs_hook, part);
+	avr_irq_register_notify(part->irq + IRQ_SSD1306_DATA_INSTRUCTION, ssd1306_di_hook, part);
 
-	_ssd1306_reset_cursor(b);
-	_ssd1306_clear_screen(b);
+	_ssd1306_reset_cursor(part);
+	_ssd1306_clear_screen(part);
 
 	printf("SSD1306: %duS is %d cycles for your AVR\n",
 			37, (int)avr_usec_to_cycles(avr, 37));

@@ -51,11 +51,11 @@
 #include "sim_irq.h"
 
 enum {
-    IRQ_SSD1306_ALL = 0,
+    //IRQ_SSD1306_ALL = 0,
+    IRQ_SSD1306_SPI_BYTE_IN,
+    IRQ_SSD1306_ENABLE,
     IRQ_SSD1306_RESET,
     IRQ_SSD1306_DATA_INSTRUCTION,
-    IRQ_SSD1306_ENABLE,
-    IRQ_SSD1306_SPI_BYTE_IN,
     //IRQ_SSD1306_INPUT_COUNT,
     IRQ_SSD1306_ADDR,		//<< For VCD
     IRQ_SSD1306_COUNT
@@ -91,9 +91,11 @@ typedef struct ssd1306_t
 	struct avr_t * avr;
 	int	w, h;			// width and height of the LCD
 	uint16_t cursor;		// offset in vram
-	uint8_t  vram[128 * 64];		// p25 ds: GDDRAM = 128x64bit in 8 pages
+	uint8_t  vram[1024];		// p25 ds: GDDRAM = 128x64bit in 8 pages
 	uint16_t flags;			// LCD flags ( SSD1306_FLAG_*)
 	uint8_t pages;
+	uint8_t cs;
+	uint8_t di;
 } ssd1306_t;
 
 void
@@ -121,5 +123,8 @@ ssd1306_get_flag(
 {
 	return (b->flags &  (1 << bit)) != 0;
 }
+
+void
+ssd1306_connect (ssd1306_t * part);
 
 #endif 

@@ -24,6 +24,9 @@
 #include <util/delay.h>
 #include <avr/pgmspace.h>
 
+#undef F_CPU
+#define F_CPU 7380000
+
 #include "avr_mcu_section.h"
 AVR_MCU(F_CPU, "atmega32");
 
@@ -52,7 +55,6 @@ main ()
   DDRB |= (1 << PB0);
 
   // Initialise display and show startup logo
-
   spi_init ();
   ssd1306_init_display ();
 
@@ -61,10 +63,10 @@ main ()
       PORTB ^= (1 << PB0);
       ssd1306_image_to_buffer (LOGO);
       ssd1306_show_display ();
-      _delay_ms (50);
+      _delay_ms (2000);
       ssd1306_image_to_buffer (COWBOY);
       ssd1306_show_display ();
-      _delay_ms (50);
+      _delay_ms (2000);
     }
 
 }

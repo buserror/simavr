@@ -177,14 +177,7 @@ main (int argc, char *argv[])
    MOSI 		PB5	Master out, slave in
    MISO 		NC	Master in, slave out */
 
-  avr_connect_irq (avr_io_getirq (avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 3),
-		   ssd1306.irq + IRQ_SSD1306_RESET);
-  avr_connect_irq (avr_io_getirq (avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 4),
-  		   ssd1306.irq + IRQ_SSD1306_ENABLE);
-  avr_connect_irq (avr_io_getirq (avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 1),
-  		   ssd1306.irq + IRQ_SSD1306_DATA_INSTRUCTION);
-  avr_connect_irq (avr_io_getirq (avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 1),
-    		   ssd1306.irq + IRQ_SSD1306_SPI_BYTE_IN);
+  ssd1306_connect(&ssd1306);
 
 
   printf ("Demo : This is SSD1306 display demo v0.01\n"
@@ -199,5 +192,6 @@ main (int argc, char *argv[])
   pthread_t run;
   pthread_create (&run, NULL, avr_run_thread, NULL);
 
+  //avr_run_thread(&w);
   glutMainLoop ();
 }
