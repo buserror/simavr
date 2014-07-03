@@ -1,8 +1,8 @@
 /*
 	ssd1306.c
 
-	Copyright Luki <humbell@ethz.ch>
 	Copyright 2011 Michel Pollet <buserror@gmail.com>
+	Copyright 2014 Doug Szumski <d.s.szumski@gmail.com>
 
  	This file is part of simavr.
 
@@ -29,204 +29,158 @@
 #include "avr_spi.h"
 #include "avr_ioport.h"
 
-void
-ssd1306_print (ssd1306_t *b)
-{
-  printf ("/******************\\\n");
-  uint16_t page_offset = 0;
-  for (int i = 0; i < b->pages; i++)
-    {
-      printf ("| ");
-      fwrite (b->vram + page_offset, 1, b->w, stdout);
-      printf (" |\n");
-      page_offset += 128;
-    }
-  printf ("\\******************/\n");
-}
-
 
 static void
-_ssd1306_reset_cursor (ssd1306_t *b)
+_ssd1306_reset_cursor (ssd1306_t *part)
 {
   printf (">> RESET CURSOR\n");
-  b->cursor = 0;
-  ssd1306_set_flag (b, SSD1306_FLAG_DIRTY, 1);
-  avr_raise_irq (b->irq + IRQ_SSD1306_ADDR, b->cursor);
+  part->cursor = 0;
+  ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
+  avr_raise_irq (part->irq + IRQ_SSD1306_ADDR, part->cursor);
 }
 
 static void
-_ssd1306_clear_screen (ssd1306_t *b)
+_ssd1306_clear_screen (ssd1306_t *part)
 {
   printf (">> CLEAR SCREEN\n");
-  memset (b->vram, 0, b->h * b->pages);
-  ssd1306_set_flag (b, SSD1306_FLAG_DIRTY, 1);
-  avr_raise_irq (b->irq + IRQ_SSD1306_ADDR, b->cursor);
+  memset (part->vram, 0, part->h * part->pages);
+  ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
+  avr_raise_irq (part->irq + IRQ_SSD1306_ADDR, part->cursor);
 }
 
 /*
  * current data byte is ready in b->datapins
  */
 static uint32_t
-ssd1306_write_data(
-		ssd1306_t *b)
+ssd1306_write_data (ssd1306_t *part)
 {
-  printf(">> WRITE DATA\n");
-	uint32_t delay = 37; // uS
-	/*
-	b->vram[b->cursor] = b->datapins;
-	printf("hd44780_write_data %02x\n", b->datapins);
-	if (hd44780_get_flag(b, HD44780_FLAG_S_C)) {	// display shift ?
-		// TODO display shift
-	} else {
-		hd44780_kick_cursor(b);
-	}
-	hd44780_set_flag(b, HD44780_FLAG_DIRTY, 1); */
-	return delay;
+  printf (">> SPI DATA: 0x%02x\n", part->spi_data);
+  uint32_t delay = 37; // uS TODO: How long does this take?? -- Depends on internal disp clock?!
+
+  // TODO: Check auto cursor increment
+  part->vram[part->cursor++] = part->spi_data;
+  if (part->cursor > 1023)
+    {
+      part->cursor = 0;
+    }
+  printf (">> CURSOR: 0x%02x\n", part->cursor);
+
+  ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
+  return delay;
+}
+
+uint8_t
+ssd1306_update_command_register (ssd1306_t *part)
+{
+  uint8_t delay = 30;
+
+  // All possible commands
+  switch (part->spi_data)
+    {
+    case SSD1306_VIRT_SET_CONTRAST:
+      part->command_register = part->spi_data;
+      printf (">> CONTRAST SET COMMAND: 0x%02x\n", part->spi_data);
+      return delay;
+    default:
+      // Unknown command
+      return delay;
+    }
+}
+
+uint8_t
+ssd1306_update_setting (ssd1306_t *part)
+{
+  uint8_t delay = 30;
+
+  switch (part->command_register)
+    {
+    case SSD1306_VIRT_SET_CONTRAST:
+      part->contrast_register = part->spi_data;
+      ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
+      part->command_register = 0x00;
+      printf (">> CONTRAST SET: 0x%02x\n", part->contrast_register);
+      return delay;
+    default:
+      return delay;
+    }
 }
 
 /*
  * current command is ready in b->datapins
  */
 static uint32_t
-ssd1306_write_command(
-		ssd1306_t *b)
+ssd1306_write_command(ssd1306_t *part)
 {
-	uint32_t delay = 37; // uS
-	printf("ssd1306_write_command\n");
-	/*
-	int top = 7;	// get highest bit set'm
-	while (top)
-		if (b->datapins & (1 << top))
-			break;
-		else top--;
-	printf("ssd1306_write_command %02x\n", b->datapins);
-	switch (top) {
-		// Set	DDRAM address
-		case 7:		// 1 ADD ADD ADD ADD ADD ADD ADD
-			b->cursor = b->datapins & 0x7f;
-			break;
-		// Set	CGRAM address
-		case 6:		// 0 1 ADD ADD ADD ADD ADD ADD ADD
-			b->cursor = 64 + (b->datapins & 0x3f);
-			break;
-		// Function	set
-		case 5:	{	// 0 0 1 DL N F x x
-			int four = !hd44780_get_flag(b, HD44780_FLAG_D_L);
-			hd44780_set_flag(b, HD44780_FLAG_D_L, b->datapins & 16);
-			hd44780_set_flag(b, HD44780_FLAG_N, b->datapins & 8);
-			hd44780_set_flag(b, HD44780_FLAG_F, b->datapins & 4);
-			if (!four && !hd44780_get_flag(b, HD44780_FLAG_D_L)) {
-				printf("%s activating 4 bits mode\n", __FUNCTION__);
-				hd44780_set_flag(b, HD44780_FLAG_LOWNIBBLE, 0);
-			}
-		}	break;
-		// Cursor display shift
-		case 4:		// 0 0 0 1 S/C R/L x x
-			hd44780_set_flag(b, HD44780_FLAG_S_C, b->datapins & 8);
-			hd44780_set_flag(b, HD44780_FLAG_R_L, b->datapins & 4);
-			break;
-		// Display on/off control
-		case 3:		// 0 0 0 0 1 D C B
-			hd44780_set_flag(b, HD44780_FLAG_D, b->datapins & 4);
-			hd44780_set_flag(b, HD44780_FLAG_C, b->datapins & 2);
-			hd44780_set_flag(b, HD44780_FLAG_B, b->datapins & 1);
-			hd44780_set_flag(b, HD44780_FLAG_DIRTY, 1);
-			break;
-		// Entry mode set
-		case 2:		// 0 0 0 0 0 1 I/D S
-			hd44780_set_flag(b, HD44780_FLAG_I_D, b->datapins & 2);
-			hd44780_set_flag(b, HD44780_FLAG_S, b->datapins & 1);
-			break;
-		// Return home
-		case 1:		// 0 0 0 0 0 0 1 x
-			_hd44780_reset_cursor(b);
-			delay = 1520;
-			break;
-		// Clear display
-		case 0:		// 0 0 0 0 0 0 0 1
-			_hd44780_clear_screen(b);
-			break;
-	} */
-	return delay;
+  uint32_t delay = 37; // uS
+
+  if (!part->command_register)
+    {
+      ssd1306_update_command_register (part);
+    }
+  else
+    {
+      ssd1306_update_setting (part);
+    }
+  /*
+   // If data in command register
+   // It's not a one liner - keep setting flags and clear command register at end
+
+   int top = 7;	// get highest bit set'm
+   while (top)
+   if (b->datapins & (1 << top))
+   break;
+   else top--;
+   printf("ssd1306_write_command %02x\n", b->datapins);
+   switch (top) {
+   // Set	DDRAM address
+   case 7:		// 1 ADD ADD ADD ADD ADD ADD ADD
+   b->cursor = b->datapins & 0x7f;
+   break;
+   // Set	CGRAM address
+   case 6:		// 0 1 ADD ADD ADD ADD ADD ADD ADD
+   b->cursor = 64 + (b->datapins & 0x3f);
+   break;
+   // Function	set
+   case 5:	{	// 0 0 1 DL N F x x
+   int four = !hd44780_get_flag(b, HD44780_FLAG_D_L);
+   hd44780_set_flag(b, HD44780_FLAG_D_L, b->datapins & 16);
+   hd44780_set_flag(b, HD44780_FLAG_N, b->datapins & 8);
+   hd44780_set_flag(b, HD44780_FLAG_F, b->datapins & 4);
+   if (!four && !hd44780_get_flag(b, HD44780_FLAG_D_L)) {
+   printf("%s activating 4 bits mode\n", __FUNCTION__);
+   hd44780_set_flag(b, HD44780_FLAG_LOWNIBBLE, 0);
+   }
+   }	break;
+   // Cursor display shift
+   case 4:		// 0 0 0 1 S/C R/L x x
+   hd44780_set_flag(b, HD44780_FLAG_S_C, b->datapins & 8);
+   hd44780_set_flag(b, HD44780_FLAG_R_L, b->datapins & 4);
+   break;
+   // Display on/off control
+   case 3:		// 0 0 0 0 1 D C B
+   hd44780_set_flag(b, HD44780_FLAG_D, b->datapins & 4);
+   hd44780_set_flag(b, HD44780_FLAG_C, b->datapins & 2);
+   hd44780_set_flag(b, HD44780_FLAG_B, b->datapins & 1);
+   hd44780_set_flag(b, HD44780_FLAG_DIRTY, 1);
+   break;
+   // Entry mode set
+   case 2:		// 0 0 0 0 0 1 I/D S
+   hd44780_set_flag(b, HD44780_FLAG_I_D, b->datapins & 2);
+   hd44780_set_flag(b, HD44780_FLAG_S, b->datapins & 1);
+   break;
+   // Return home
+   case 1:		// 0 0 0 0 0 0 1 x
+   _hd44780_reset_cursor(b);
+   delay = 1520;
+   break;
+   // Clear display
+   case 0:		// 0 0 0 0 0 0 0 1
+   _hd44780_clear_screen(b);
+   break;
+   } */
+   return delay;
 }
 
-/*
- * the E pin went low, and it's a write
- */
-static uint32_t
-ssd1306_process_write(
-    ssd1306_t *b )
-{
-      printf(">> PROCESS WRITE\n");
-	uint32_t delay = 0; // uS
-	/*
-	int four = !hd44780_get_flag(b, HD44780_FLAG_D_L);
-	int comp = four && hd44780_get_flag(b, HD44780_FLAG_LOWNIBBLE);
-	int write = 0;
-
-	if (four) { // 4 bits !
-		if (comp)
-			b->datapins = (b->datapins & 0xf0) | ((b->pinstate >>  IRQ_HD44780_D4) & 0xf);
-		else
-			b->datapins = (b->datapins & 0xf) | ((b->pinstate >>  (IRQ_HD44780_D4-4)) & 0xf0);
-		write = comp;
-		b->flags ^= (1 << HD44780_FLAG_LOWNIBBLE);
-	} else {	// 8 bits
-		b->datapins = (b->pinstate >>  IRQ_HD44780_D0) & 0xff;
-		write++;
-	}
-	avr_raise_irq(b->irq + IRQ_HD44780_DATA_IN, b->datapins);
-
-	// write has 8 bits to process
-	if (write) {
-		if (hd44780_get_flag(b, HD44780_FLAG_BUSY)) {
-			printf("%s command %02x write when still BUSY\n", __FUNCTION__, b->datapins);
-		}
-		if (b->pinstate & (1 << IRQ_HD44780_RS))	// write data
-			delay = hd44780_write_data(b);
-		else										// write command
-			delay = hd44780_write_command(b);
-	}*/
-	return delay;
-}
-
-
-static avr_cycle_count_t
-_ssd1306_process_e_pinchange(
-		struct avr_t * avr,
-        avr_cycle_count_t when, void * param)
-{
-  printf(">> PROCESS PIN CHANGE\n");
-  /*ssd1306_t *b = (ssd1306_t *) param;
-
-
-  ssd1306_set_flag(b, HD44780_FLAG_REENTRANT, 1);
-
-#if 0
-	uint16_t touch = b->oldstate ^ b->pinstate;
-	printf("LCD: %04x %04x %c %c %c %c\n", b->pinstate, touch,
-			b->pinstate & (1 << IRQ_HD44780_RW) ? 'R' : 'W',
-			b->pinstate & (1 << IRQ_HD44780_RS) ? 'D' : 'C',
-			hd44780_get_flag(b, HD44780_FLAG_LOWNIBBLE) ? 'L' : 'H',
-			hd44780_get_flag(b, HD44780_FLAG_BUSY) ? 'B' : ' ');
-#endif
-	int delay = 0; // in uS
-
-	if (b->pinstate & (1 << IRQ_HD44780_RW))	// read !?!
-		delay = hd44780_process_read(b);
-	else										// write
-		delay = hd44780_process_write(b);
-
-	if (delay) {
-		hd44780_set_flag(b, HD44780_FLAG_BUSY, 1);
-		avr_raise_irq(b->irq + IRQ_HD44780_BUSY, 1);
-		avr_cycle_timer_register_usec(b->avr, delay,
-			_hd44780_busy_timer, b);
-	}
-//	b->oldstate = b->pinstate;
-	hd44780_set_flag(b, HD44780_FLAG_REENTRANT, 0); */
-	return 0;
-}
 
 /*
  * Called when a SPI byte is sent
@@ -234,43 +188,50 @@ _ssd1306_process_e_pinchange(
 static void
 ssd1306_spi_in_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 {
-  ssd1306_t * p = (ssd1306_t*) param;
+  ssd1306_t * part = (ssd1306_t*) param;
 
-  //printf(">> IRQ VALUE:  0x%02x\n", irq->value);
-  printf(">> SPI IN, DI: 0x%02x DATA: 0x%02x\n", p->di, value);
+  // Chip select should be pulled low to enable
+  if (part->cs)
+    return;
 
-  if (p->di == 1) {
-  p->vram[p->cursor++] = value & 0xFF;
-  if (p->cursor > 1023) {
-      p->cursor = 0;
-  }
-  printf(">> CURSOR: 0x%02x\n", p->cursor);
-  }
+  part->spi_data = value & 0xFF;
 
+  // FIXME - Don't throw away the delays here
+  switch (part->di)
+    {
+    case SSD1306_VIRT_DATA:
+      ssd1306_write_data (part);
+      break;
+    case SSD1306_VIRT_INSTRUCTION:
+      ssd1306_write_command(part);
+      break;
+    default:
+      // Invalid value
+      break;
+    }
+}
 
-
-  //p->irq->flags = 0;
-
-    //p->value = value & 0xff;
-    // send "old value" to any chained one..
-    //avr_raise_irq(p->irq + IRQ_HC595_SPI_BYTE_OUT, p->value);
-    //p->value = (p->value << 8) | (value & 0xff);
-  }
-
+/*
+ * Called when chip select changes
+ */
 static void
 ssd1306_cs_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 {
   ssd1306_t * p = (ssd1306_t*) param;
-  //printf (">> CHIP SELECT:  0x%08x\n", value);
+  p->cs = value & 0xFF;
+  //printf (">> CHIP SELECT:  0x%02x\n", value);
 
 }
 
+/*
+ * Called when data/instruction changes
+ */
 static void
 ssd1306_di_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 {
   ssd1306_t * p = (ssd1306_t*) param;
   p->di = value & 0xFF;
-  printf (">> DATA/ INSTRUCTION:  0x%08x\n", value);
+  //printf (">> DATA / INSTRUCTION:  0x%08x\n", value);
 }
 
 /*
@@ -286,6 +247,9 @@ static void ssd1306_reset_hook(struct avr_irq_t * irq, uint32_t value, void * pa
       p->cursor = 0;
       p->flags = 0;
       // TODO: Check this is all
+      p->command_register = 0x00;
+      p->contrast_register = 0x7F;
+      //
   }
 
 }
@@ -329,6 +293,7 @@ ssd1306_init(
 	part->pages = 8;
 	part->cs = 0;
 	part->di = 0;
+
 	/*
 	 * Register callbacks on all our IRQs
 	 */
@@ -337,6 +302,8 @@ ssd1306_init(
 	avr_irq_register_notify(part->irq + IRQ_SSD1306_RESET, ssd1306_reset_hook, part);
 	avr_irq_register_notify(part->irq + IRQ_SSD1306_ENABLE, ssd1306_cs_hook, part);
 	avr_irq_register_notify(part->irq + IRQ_SSD1306_DATA_INSTRUCTION, ssd1306_di_hook, part);
+
+	//TODO: Add E/RD and R/W(WR) lines and check they're always low
 
 	_ssd1306_reset_cursor(part);
 	_ssd1306_clear_screen(part);

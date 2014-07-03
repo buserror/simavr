@@ -50,6 +50,56 @@
 
 #include "sim_irq.h"
 
+#define SSD1306_VIRT_DATA		1
+#define SSD1306_VIRT_INSTRUCTION 	0
+
+/* Fundamental commands. */
+#define SSD1306_VIRT_SET_CONTRAST	0x81
+#define SSD1306_VIRT_EON_OFF		0xA4
+#define SSD1306_VIRT_EON_ON		0xA5
+#define SSD1306_VIRT_DISP_NOR		0xA6
+#define SSD1306_VIRT_DISP_REV		0xA7
+#define SSD1306_VIRT_DISP_OFF 		0xAE
+#define SSD1306_VIRT_DISP_ON		0xAF
+
+/* Scrolling commands */
+#define SSD1306_VIRT_SCROLL_RIGHT	0x26
+#define SSD1306_VIRT_SCROLL_LEFT	0x27
+#define SSD1306_VIRT_SCROLL_VR		0x29
+#define SSD1306_VIRT_SCROLL_VL		0x2A
+#define SSD1306_VIRT_SCROLL_OFF		0x2E
+#define SSD1306_VIRT_SCROLL_ON   	0x2F
+#define SSD1306_VIRT_VERT_SCROLL_A  	0xA3
+
+/* Address setting commands */
+#define SSD1306_VIRT_SET_COL_LO		0x00
+#define SSD1306_VIRT_SET_COL_HI		0x10
+#define SSD1306_VIRT_MEM_ADDRESSING 	0x20
+#define SSD1306_VIRT_SET_COL_ADDR	0x21
+#define SSD1306_VIRT_SET_PAGE_ADDR	0x22
+#define SSD1306_VIRT_SET_PAGE		0xB0
+
+/* Hardware config. commands */
+#define SSD1306_VIRT_SET_LINE		0x40
+#define SSD1306_VIRT_SET_SEG_REMAP0  	0xA0
+#define SSD1306_VIRT_SET_SEG_REMAP1	0xA1
+#define SSD1306_VIRT_MULTIPLEX       	0xA8
+#define SSD1306_VIRT_SET_SCAN_FLIP	0xC0
+#define SSD1306_VIRT_SET_SCAN_NOR	0xC8
+#define SSD1306_VIRT_SET_OFFSET		0xD3
+#define SSD1306_VIRT_SET_PADS    	0xDA
+
+/* Timing & driving scheme setting commands */
+#define SSD1306_VIRT_SET_RATIO_OSC	0xD5
+#define SSD1306_VIRT_SET_CHARGE  	0xD9
+#define SSD1306_VIRT_SET_VCOM    	0xDB
+#define SSD1306_VIRT_NOP     		0xE3
+
+/* Charge pump command table */
+#define SSD1306_VIRT_CHARGE_PUMP    	0x8D
+#define SSD1306_VIRT_PUMP_OFF    	0x10
+#define SSD1306_VIRT_PUMP_ON     	0x14
+
 enum {
     //IRQ_SSD1306_ALL = 0,
     IRQ_SSD1306_SPI_BYTE_IN,
@@ -59,28 +109,17 @@ enum {
     //IRQ_SSD1306_INPUT_COUNT,
     IRQ_SSD1306_ADDR,		//<< For VCD
     IRQ_SSD1306_COUNT
-
     //TODO: Add IRQs for VCD: Internal state etc.
 };
 
 enum {
-    SSD1306_FLAG_F = 0,         // 1: 5x10 Font, 0: 5x7 Font
-    SSD1306_FLAG_N,             // 1: 2/4-lines Display, 0: 1-line Display,
-    SSD1306_FLAG_D_L,           // 1: 4-Bit Interface, 0: 8-Bit Interface
-    SSD1306_FLAG_R_L,           // 1: Shift right, 0: shift left
-    SSD1306_FLAG_S_C,           // 1: Display shift, 0: Cursor move
-    SSD1306_FLAG_B,             // 1: Cursor Blink
-    SSD1306_FLAG_C,             // 1: Cursor on
-    SSD1306_FLAG_D,             // 1: Set Entire Display memory (for clear)
-    SSD1306_FLAG_S,             // 1: Follow display shift
-    SSD1306_FLAG_I_D,			// 1: Increment, 0: Decrement
+    SSD1306_FLAG_F = 0,
 
     /*
      * Internal flags, not SSD1306
      */
     SSD1306_FLAG_BUSY,			// 1: Busy between instruction, 0: ready
     SSD1306_FLAG_REENTRANT,		// 1: Do not update pins
-
     SSD1306_FLAG_DIRTY,			// 1: needs redisplay...
 };
 
@@ -93,9 +132,12 @@ typedef struct ssd1306_t
 	uint16_t cursor;		// offset in vram
 	uint8_t  vram[1024];		// p25 ds: GDDRAM = 128x64bit in 8 pages
 	uint16_t flags;			// LCD flags ( SSD1306_FLAG_*)
+	uint8_t command_register;
+	uint8_t contrast_register;
 	uint8_t pages;
 	uint8_t cs;
 	uint8_t di;
+	uint8_t spi_data;
 } ssd1306_t;
 
 void
@@ -104,9 +146,6 @@ ssd1306_init(
 		struct ssd1306_t * b,
 		int width,
 		int height );
-void
-ssd1306_print(
-		struct ssd1306_t *b);
 
 static inline int
 ssd1306_set_flag(

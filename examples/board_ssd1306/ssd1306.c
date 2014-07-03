@@ -16,20 +16,20 @@
 uint8_t display_buffer[SSD1306_PIXELS];
 
 /* Global variables */
-struct FONT_DEF Font_3x6 =
+struct SSD1306_FONT_DEF Font_3x6 =
 { 3, 6, tiny_font };
-struct FONT_DEF Font_11x16 =
+struct SSD1306_FONT_DEF Font_11x16 =
 { 11, 16, liberation_mono };
-struct FONT_DEF *font;
+struct SSD1306_FONT_DEF *font;
 
 SSD1306_CURSOR cursor = {};
 
 void ssd1306_reset_display(void)
 {
 	_delay_us(3);
-	PORTB &= ~(1 << LCD_RESET_PIN);
+	PORTB &= ~(1 << SSD1306_RESET_PIN);
 	_delay_us(3);
-	PORTB |= (1 << LCD_RESET_PIN);
+	PORTB |= (1 << SSD1306_RESET_PIN);
 }
 
 void ssd1306_init_display(void)
@@ -37,36 +37,36 @@ void ssd1306_init_display(void)
 	ssd1306_reset_display();
 
 	// Recommended init sequence
-	ssd1306_write_instruction(LCD_DISP_OFF);
-	ssd1306_write_instruction(LCD_SET_RATIO_OSC);
+	ssd1306_write_instruction(SSD1306_DISP_OFF);
+	ssd1306_write_instruction(SSD1306_SET_RATIO_OSC);
 	ssd1306_write_instruction(0x80);
-	ssd1306_write_instruction(LCD_MULTIPLEX);
+	ssd1306_write_instruction(SSD1306_MULTIPLEX);
 	ssd1306_write_instruction(0x3F);
-	ssd1306_write_instruction(LCD_SET_OFFSET);
+	ssd1306_write_instruction(SSD1306_SET_OFFSET);
 	ssd1306_write_instruction(0x00);
-	ssd1306_write_instruction(LCD_SET_LINE);
-	ssd1306_write_instruction(LCD_CHARGE_PUMP);
-	ssd1306_write_instruction(LCD_PUMP_ON);
-	ssd1306_write_instruction(LCD_SET_SEG_REMAP1);
-	ssd1306_write_instruction(LCD_SET_SCAN_NOR);
-	ssd1306_write_instruction(LCD_SET_PADS);
+	ssd1306_write_instruction(SSD1306_SET_LINE);
+	ssd1306_write_instruction(SSD1306_CHARGE_PUMP);
+	ssd1306_write_instruction(SSD1306_PUMP_ON);
+	ssd1306_write_instruction(SSD1306_SET_SEG_REMAP1);
+	ssd1306_write_instruction(SSD1306_SET_SCAN_NOR);
+	ssd1306_write_instruction(SSD1306_SET_PADS);
 	ssd1306_write_instruction(0x12);
-	ssd1306_set_contrast(LCD_DEFAULT_CONTRAST);
-	ssd1306_write_instruction(LCD_SET_CHARGE);
+	ssd1306_set_contrast(SSD1306_DEFAULT_CONTRAST);
+	ssd1306_write_instruction(SSD1306_SET_CHARGE);
 	ssd1306_write_instruction(0xF1);
-	ssd1306_write_instruction(LCD_SET_VCOM);
+	ssd1306_write_instruction(SSD1306_SET_VCOM);
 	ssd1306_write_instruction(0x40);
-	ssd1306_write_instruction(LCD_EON_OFF);
-	ssd1306_write_instruction(LCD_DISP_NOR);
-	ssd1306_write_instruction(LCD_MEM_ADDRESSING);
+	ssd1306_write_instruction(SSD1306_EON_OFF);
+	ssd1306_write_instruction(SSD1306_DISP_NOR);
+	ssd1306_write_instruction(SSD1306_MEM_ADDRESSING);
 	// Horizontal Addressing mode
 	ssd1306_write_instruction(0x00);
-	ssd1306_write_instruction(LCD_DISP_ON);
+	ssd1306_write_instruction(SSD1306_DISP_ON);
 }
 
 void ssd1306_set_contrast(uint8_t contrast)
 {
-	ssd1306_write_instruction(LCD_SET_CONTRAST);
+	ssd1306_write_instruction(SSD1306_SET_CONTRAST);
 	ssd1306_write_instruction(contrast);
 }
 
@@ -147,25 +147,25 @@ void ssd1306_display_random(void)
 void ssd1306_write_data(unsigned char byte)
 {
 	//Pull Data/Command control pin high
-	PORTB |= (1 << LCD_DATA_INST);
+	PORTB |= (1 << SSD1306_DATA_INST);
 	//Pull down CS
-	PORTB &= ~(1 << LCD_SELECT);
+	PORTB &= ~(1 << SSD1306_SELECT);
 	SPDR = byte;					//Load byte to Data register
 	while (!(SPSR & (1 << SPIF)))
 		; 	// Wait for transmission complete
 	//Set CS high again
-	PORTB |= (1 << LCD_SELECT);
+	PORTB |= (1 << SSD1306_SELECT);
 }
 
 void ssd1306_write_instruction(unsigned char byte)
 {
 	//Pull Data/Command control and CS pins low
-	PORTB &= ~((1 << LCD_DATA_INST) | (1 << LCD_SELECT));
+	PORTB &= ~((1 << SSD1306_DATA_INST) | (1 << SSD1306_SELECT));
 	SPDR = byte;					//Load byte to Data register
 	while (!(SPSR & (1 << SPIF)))
 		; 	// Wait for transmission complete
 	//Set CS high again
-	PORTB |= (1 << LCD_SELECT);
+	PORTB |= (1 << SSD1306_SELECT);
 }
 
 // Clear display buffer
@@ -181,9 +181,9 @@ void ssd1306_show_display(void)
 {
 	uint8_t page, column;
 
-	ssd1306_write_instruction(LCD_SET_PAGE);
-	ssd1306_write_instruction(LCD_SET_COL_HI);
-	ssd1306_write_instruction(LCD_SET_COL_LO);
+	ssd1306_write_instruction(SSD1306_SET_PAGE);
+	ssd1306_write_instruction(SSD1306_SET_COL_HI);
+	ssd1306_write_instruction(SSD1306_SET_COL_LO);
 
 	uint8_t * display_cursor = display_buffer;
 
@@ -214,7 +214,7 @@ void ssd1306_reset_buffer()
 	display_buffer[((uint16_t) (cursor.dispPage << 7)) + (cursor.dispx++)] = 0;
 }
 
-void lcd_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
+void ssd1306_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
 	uint8_t i, dxabs, dyabs, x, y;
 	int8_t dx, dy, stepx, stepy;
@@ -395,21 +395,21 @@ void ssd1306_libmono_char_to_buffer(char character, uint8_t Negative)
 
 
 // Print small font text from program memory
-uint8_t tiny_printp(uint8_t x, uint8_t y, const char *ptr)
+uint8_t ssd1306_tiny_printp(uint8_t x, uint8_t y, const char *ptr)
 {
-	LCD_CURSOR_GOTO(x * 8, y / 8);
+	SSD1306_CURSOR_GOTO(x * 8, y / 8);
 	uint8_t n = 0;
 	while (pgm_read_byte(ptr) != 0x00)
 	{
-		ssd1306_char_to_buffer(pgm_read_byte(ptr++), INVERT_FALSE);
+		ssd1306_char_to_buffer(pgm_read_byte(ptr++), SSD1306_INVERT_FALSE);
 		n++;
 	}
 	return n;
 }
 
-uint8_t medium_printp(const uint8_t x, const uint8_t y, const char *text, const uint8_t invert_char)
+uint8_t ssd1306_medium_printp(const uint8_t x, const uint8_t y, const char *text, const uint8_t invert_char)
 {
-	LCD_CURSOR_GOTO(x * font->u8Width, y);
+	SSD1306_CURSOR_GOTO(x * font->u8Width, y);
 	uint8_t n = 0;
 	while (pgm_read_byte(text) != 0x00)
 	{
@@ -421,7 +421,7 @@ uint8_t medium_printp(const uint8_t x, const uint8_t y, const char *text, const 
 }
 
 /* Prints a number in format ## */
-void zero_padded_double_digit(uint8_t x, uint8_t y, uint8_t digit)
+void ssd1306_padded_double_digit(uint8_t x, uint8_t y, uint8_t digit)
 {
 	uint8_t hundreds = 0x30;
 	uint8_t tens = 0x30; //0x32;
@@ -443,17 +443,17 @@ void zero_padded_double_digit(uint8_t x, uint8_t y, uint8_t digit)
 		units++;
 	}
 
-	LCD_CURSOR_GOTO(x, y);
+	SSD1306_CURSOR_GOTO(x, y);
 	if (hundreds > 0x30)
 	{
-		ssd1306_libmono_char_to_buffer(hundreds, INVERT_FALSE);
+		ssd1306_libmono_char_to_buffer(hundreds, SSD1306_INVERT_FALSE);
 		x += font->u8Width;
-		LCD_CURSOR_GOTO(x, y);
+		SSD1306_CURSOR_GOTO(x, y);
 	}
-	ssd1306_libmono_char_to_buffer(tens, INVERT_FALSE);
+	ssd1306_libmono_char_to_buffer(tens, SSD1306_INVERT_FALSE);
 	x += font->u8Width;
-	LCD_CURSOR_GOTO(x, y);
-	ssd1306_libmono_char_to_buffer(units, INVERT_FALSE);
+	SSD1306_CURSOR_GOTO(x, y);
+	ssd1306_libmono_char_to_buffer(units, SSD1306_INVERT_FALSE);
 
 }
 

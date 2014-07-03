@@ -3,6 +3,7 @@
 
  Copyright Luki <humbell@ethz.ch>
  Copyright 2011 Michel Pollet <buserror@gmail.com>
+ Copyright 2014 Doug Szumski <d.s.szumski@gmail.com>
 
  This file is part of simavr.
 

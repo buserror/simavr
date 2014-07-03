@@ -57,16 +57,15 @@ main ()
   // Initialise display and show startup logo
   spi_init ();
   ssd1306_init_display ();
+  ssd1306_image_to_buffer (LOGO);
+  ssd1306_show_display ();
 
+  uint8_t contrast = 0x00;
   while (1)
     {
       PORTB ^= (1 << PB0);
-      ssd1306_image_to_buffer (LOGO);
-      ssd1306_show_display ();
-      _delay_ms (2000);
-      ssd1306_image_to_buffer (COWBOY);
-      ssd1306_show_display ();
-      _delay_ms (2000);
+      ssd1306_set_contrast(contrast++);
+      _delay_ms(5);
     }
 
 }
