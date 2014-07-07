@@ -2,6 +2,8 @@
 	ssd1306_glut.c
 
 	Copyright 2014 Doug Szumski <d.s.szumski@gmail.com>
+
+	Based on the hd44780 by:
 	Copyright Luki <humbell@ethz.ch>
 	Copyright 2011 Michel Pollet <buserror@gmail.com>
 
@@ -39,28 +41,17 @@ ssd1306_gl_init (float pix_size)
   //See: http://www.opengl.org/sdk/docs/man/
 }
 
-static inline void
-ssd1306_glColor32U (uint32_t color)
-{
-  glColor4f ((float) ((color >> 24) & 0xff) / 255.0f,
-	     (float) ((color >> 16) & 0xff) / 255.0f,
-	     (float) ((color >> 8) & 0xff) / 255.0f,
-	     (float) ((color) & 0xff) / 255.0f);
-}
-
 void
-ssd1306_gl_put_pixel_column(uint8_t block_pixel_column, uint32_t pixel_color)
+ssd1306_gl_put_pixel_column(uint8_t block_pixel_column, float pixel_opacity)
 {
   glEnable (GL_BLEND);
   glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glBegin (GL_QUADS);
-  ssd1306_glColor32U (pixel_color);
-  //block_pixel_column = 0xAA;
-  //printf("Data Byte: %i\n", block_pixel_column);
   for (int i = 0; i < 8; ++i)
     {
       if (block_pixel_column & (1 << i))
 	{
+	  glColor4f (1.0, 1.0, 1.0, pixel_opacity);
 	  glVertex2f (pix_size_g, pix_size_g * (i + 1));
 	  glVertex2f (0, pix_size_g * (i + 1));
 	  glVertex2f (0, pix_size_g * i);
@@ -70,17 +61,25 @@ ssd1306_gl_put_pixel_column(uint8_t block_pixel_column, uint32_t pixel_color)
   glEnd ();
 }
 
-void
-ssd1306_gl_draw (ssd1306_t *b, uint32_t background_color, uint32_t pixel_color)
+float
+ssd1306_get_pixel_opacity(uint8_t contrast)
 {
-  int columns = b->w;
-  int pages = b->pages;
-  int rows = b->h;
+  // Typically the screen will be clearly visible even at 0 contrast
+  return contrast / 512.0 + 0.5;
+}
+
+void
+ssd1306_gl_draw (ssd1306_t *part)
+{
+  int columns = part->w;
+  int pages = part->pages;
+  int rows = part->h;
 
   // Draw the background
   glDisable (GL_TEXTURE_2D);
   glDisable (GL_BLEND);
-  ssd1306_glColor32U (background_color);
+  // Background is always black
+  glColor4f (0.0f, 0.0f, 0.0f, 0.0f);
   glTranslatef (0, 0 , 0);
   glBegin (GL_QUADS);
   glVertex2f (rows, 0);
@@ -96,7 +95,9 @@ ssd1306_gl_draw (ssd1306_t *b, uint32_t background_color, uint32_t pixel_color)
       glPushMatrix ();
       for (int c = 0; c < columns; c++)
 	{
-	  ssd1306_gl_put_pixel_column(b->vram[buf_index++], pixel_color);
+	  ssd1306_gl_put_pixel_column (
+	      part->vram[buf_index++],
+	      ssd1306_get_pixel_opacity (part->contrast_register));
 	  // Next column
 	  glTranslatef (pix_size_g + pix_gap_g, 0, 0);
 	}
@@ -105,5 +106,5 @@ ssd1306_gl_draw (ssd1306_t *b, uint32_t background_color, uint32_t pixel_color)
       glTranslatef (0, (rows/pages)*pix_size_g + pix_gap_g, 0);
     }
 
-  ssd1306_set_flag(b, SSD1306_FLAG_DIRTY, 0);
+  ssd1306_set_flag(part, SSD1306_FLAG_DIRTY, 0);
 }

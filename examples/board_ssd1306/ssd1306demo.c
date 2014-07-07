@@ -42,15 +42,6 @@
 #include "ac_input.h"
 #include "ssd1306_glut.h"
 
-uint32_t colors[][2] =
-  {
-    { 0x00aa00ff, 0x00cc00ff},	// fluo green
-    { 0xaa0000ff, 0xcc0000ff},	// red
-    { 0x00000000, 0xffffffff},	// black/white
-  };
-
-enum {green, red, black} disp_color = black;
-
 //float pixsize = 16;
 int window_identifier;
 
@@ -88,7 +79,7 @@ displayCB (void)
   glMatrixMode (GL_MODELVIEW); // Select modelview matrix
   glPushMatrix ();
   glLoadIdentity (); // Start with an identity matrix
-  ssd1306_gl_draw (&ssd1306, colors[disp_color][0], colors[disp_color][1]);
+  ssd1306_gl_draw (&ssd1306);
   glPopMatrix ();
   glutSwapBuffers ();
 }

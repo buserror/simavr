@@ -2,8 +2,6 @@
 	ssd1306_glut.h
 
 	Copyright 2014 Doug Szumski <d.s.szumski@gmail.com>
-	Copyright Luki <humbell@ethz.ch>
-	Copyright 2011 Michel Pollet <buserror@gmail.com>
 
  	This file is part of simavr.
 
@@ -26,10 +24,7 @@
 #include "ssd1306_virt.h"
 
 void
-ssd1306_gl_draw(
-		ssd1306_t *b,
-		uint32_t background_color,
-		uint32_t pixel_color);
+ssd1306_gl_draw(ssd1306_t *part);
 
 void
 ssd1306_gl_init(float pix_size);
