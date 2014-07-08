@@ -35,9 +35,9 @@ LDFLAGS += -lpthread
 
 include ../Makefile.opengl
 
-all: obj atmega32_ssd1306.axf ${target} 
+all: obj atmega32_ssd1306.axf ${target}
 
-atmega32_ssd1306.axf: atmega32_ssd1306.c
+atmega32_ssd1306.axf: atmega32_ssd1306.c ssd1306.c ssd1306_utils.c
 
 include ${simavr}/Makefile.common
 
