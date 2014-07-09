@@ -57,8 +57,8 @@
 #define SSD1306_VIRT_SET_CONTRAST	0x81
 #define SSD1306_VIRT_EON_OFF		0xA4
 #define SSD1306_VIRT_EON_ON		0xA5
-#define SSD1306_VIRT_DISP_NOR		0xA6
-#define SSD1306_VIRT_DISP_REV		0xA7
+#define SSD1306_VIRT_DISP_NORMAL	0xA6
+#define SSD1306_VIRT_DISP_INVERTED	0xA7
 #define SSD1306_VIRT_DISP_OFF 		0xAE
 #define SSD1306_VIRT_DISP_ON		0xAF
 
@@ -100,6 +100,8 @@
 #define SSD1306_VIRT_PUMP_OFF    	0x10
 #define SSD1306_VIRT_PUMP_ON     	0x14
 
+#define SSD1306_CLEAR_COMMAND_REG 	part->command_register = 0x00
+
 enum {
     //IRQ_SSD1306_ALL = 0,
     IRQ_SSD1306_SPI_BYTE_IN,
@@ -113,7 +115,7 @@ enum {
 };
 
 enum {
-    SSD1306_FLAG_F = 0,
+    SSD1306_FLAG_DISPLAY_INVERTED = 0,
 
     /*
      * Internal flags, not SSD1306

@@ -74,12 +74,24 @@ ssd1306_update_command_register (ssd1306_t *part)
 {
   uint8_t delay = 30;
 
-  // All possible commands
+  // One shot commands and multi-byte commands
   switch (part->spi_data)
     {
     case SSD1306_VIRT_SET_CONTRAST:
       part->command_register = part->spi_data;
       printf (">> CONTRAST SET COMMAND: 0x%02x\n", part->spi_data);
+      return delay;
+    case SSD1306_VIRT_DISP_NORMAL:
+      ssd1306_set_flag (part, SSD1306_FLAG_DISPLAY_INVERTED, 0);
+      ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
+      printf (">> DISPLAY NORMAL\n");
+      SSD1306_CLEAR_COMMAND_REG;
+      return delay;
+    case SSD1306_VIRT_DISP_INVERTED:
+      ssd1306_set_flag (part, SSD1306_FLAG_DISPLAY_INVERTED, 1);
+      ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
+      printf (">> DISPLAY INVERTED\n");
+      SSD1306_CLEAR_COMMAND_REG;
       return delay;
     default:
       // Unknown command
@@ -92,15 +104,17 @@ ssd1306_update_setting (ssd1306_t *part)
 {
   uint8_t delay = 30;
 
+  // Multi-byte commands
   switch (part->command_register)
     {
     case SSD1306_VIRT_SET_CONTRAST:
       part->contrast_register = part->spi_data;
       ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
-      part->command_register = 0x00;
+      SSD1306_CLEAR_COMMAND_REG;
       printf (">> CONTRAST SET: 0x%02x\n", part->contrast_register);
       return delay;
     default:
+      // Command not recognised
       return delay;
     }
 }
@@ -109,7 +123,7 @@ ssd1306_update_setting (ssd1306_t *part)
  * current command is ready in b->datapins
  */
 static uint32_t
-ssd1306_write_command(ssd1306_t *part)
+ssd1306_write_command (ssd1306_t *part)
 {
   uint32_t delay = 37; // uS
 
@@ -121,64 +135,7 @@ ssd1306_write_command(ssd1306_t *part)
     {
       ssd1306_update_setting (part);
     }
-  /*
-   // If data in command register
-   // It's not a one liner - keep setting flags and clear command register at end
-
-   int top = 7;	// get highest bit set'm
-   while (top)
-   if (b->datapins & (1 << top))
-   break;
-   else top--;
-   printf("ssd1306_write_command %02x\n", b->datapins);
-   switch (top) {
-   // Set	DDRAM address
-   case 7:		// 1 ADD ADD ADD ADD ADD ADD ADD
-   b->cursor = b->datapins & 0x7f;
-   break;
-   // Set	CGRAM address
-   case 6:		// 0 1 ADD ADD ADD ADD ADD ADD ADD
-   b->cursor = 64 + (b->datapins & 0x3f);
-   break;
-   // Function	set
-   case 5:	{	// 0 0 1 DL N F x x
-   int four = !hd44780_get_flag(b, HD44780_FLAG_D_L);
-   hd44780_set_flag(b, HD44780_FLAG_D_L, b->datapins & 16);
-   hd44780_set_flag(b, HD44780_FLAG_N, b->datapins & 8);
-   hd44780_set_flag(b, HD44780_FLAG_F, b->datapins & 4);
-   if (!four && !hd44780_get_flag(b, HD44780_FLAG_D_L)) {
-   printf("%s activating 4 bits mode\n", __FUNCTION__);
-   hd44780_set_flag(b, HD44780_FLAG_LOWNIBBLE, 0);
-   }
-   }	break;
-   // Cursor display shift
-   case 4:		// 0 0 0 1 S/C R/L x x
-   hd44780_set_flag(b, HD44780_FLAG_S_C, b->datapins & 8);
-   hd44780_set_flag(b, HD44780_FLAG_R_L, b->datapins & 4);
-   break;
-   // Display on/off control
-   case 3:		// 0 0 0 0 1 D C B
-   hd44780_set_flag(b, HD44780_FLAG_D, b->datapins & 4);
-   hd44780_set_flag(b, HD44780_FLAG_C, b->datapins & 2);
-   hd44780_set_flag(b, HD44780_FLAG_B, b->datapins & 1);
-   hd44780_set_flag(b, HD44780_FLAG_DIRTY, 1);
-   break;
-   // Entry mode set
-   case 2:		// 0 0 0 0 0 1 I/D S
-   hd44780_set_flag(b, HD44780_FLAG_I_D, b->datapins & 2);
-   hd44780_set_flag(b, HD44780_FLAG_S, b->datapins & 1);
-   break;
-   // Return home
-   case 1:		// 0 0 0 0 0 0 1 x
-   _hd44780_reset_cursor(b);
-   delay = 1520;
-   break;
-   // Clear display
-   case 0:		// 0 0 0 0 0 0 0 1
-   _hd44780_clear_screen(b);
-   break;
-   } */
-   return delay;
+  return delay;
 }
 
 

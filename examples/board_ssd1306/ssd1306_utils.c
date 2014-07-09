@@ -11,12 +11,12 @@
 
 #include "ssd1306_utils.h"
 
-/* Global variables */
-struct SSD1306_FONT_DEF Font_3x6 =
+// Fonts
+ssd1306_font_t Font_3x6 =
   { 3, 6, tiny_font };
-struct SSD1306_FONT_DEF Font_11x16 =
+ssd1306_font_t Font_11x16 =
   { 11, 16, liberation_mono };
-struct SSD1306_FONT_DEF *font;
+ssd1306_font_t *font_g;
 
 void
 ssd1306_image_to_buffer (const uint8_t * image_data)
@@ -28,7 +28,7 @@ ssd1306_image_to_buffer (const uint8_t * image_data)
 
   for (page = 0; page < 8; page++)
     {
-      for (column = 0; column < SSD1306_X_PIXEL_ROWS; column++)
+      for (column = 0; column < SSD1306_X_PIXELS; column++)
 	{
 	  if (count == 0)
 	    {
@@ -44,7 +44,7 @@ ssd1306_image_to_buffer (const uint8_t * image_data)
 		}
 	    }
 	  count--;
-	  buf_indx = page * SSD1306_X_PIXEL_ROWS + column;
+	  buf_indx = page * SSD1306_X_PIXELS + column;
 	  display_buffer[buf_indx] = image_byte;
 	}
     }
@@ -78,7 +78,7 @@ ssd1306_clock_char_to_buffer (uint8_t large_char, uint8_t x, uint8_t width,
 		}
 	    }
 	  count--;
-	  display_buffer[page * SSD1306_X_PIXEL_ROWS + column] = ~data;
+	  display_buffer[page * SSD1306_X_PIXELS + column] = ~data;
 	}
     }
 }
@@ -89,7 +89,7 @@ ssd1306_display_random (void)
   uint16_t i;
   uint8_t *p;
   p = &display_buffer[0];
-  for (i = 0; i < SSD1306_PIXELS; i++)
+  for (i = 0; i < SSD1306_PIXEL_BYTES; i++)
     {
       *p++ = rand () % 255;
     }
@@ -161,63 +161,63 @@ ssd1306_char_to_buffer (char character, uint8_t invert_char)
   uint16_t pointer;
   uint8_t data, char_column = 0;
 
-  //Use the small font
-  font = &Font_3x6;
-  cursor_g.dispx = cursor_g.u8CursorX;
+  //Use the small font_g
+  font_g = &Font_3x6;
+  cursor_g.disp_x = cursor_g.x;
   if (character == '\n')
     {	// New line
-      cursor_g.u8CursorX = 0;
-      cursor_g.u8CursorY++;
+      cursor_g.x = 0;
+      cursor_g.y++;
       return;
     }
-  if (character == '.' && font != &Font_3x6)
+  if (character == '.' && font_g != &Font_3x6)
     {		// Small point to Save space
-      ssd1306_byte_to_buffer (96);
-      ssd1306_byte_to_buffer (96);
-      cursor_g.u8CursorX += 2;
+      ssd1306_set_byte (96);
+      ssd1306_set_byte (96);
+      cursor_g.x += 2;
     }
   else
     {
       if (character >= 'a')
 	character -= ('a' - 'A');
-      pointer = (unsigned int) (font->au8FontTable)
-	  + (character - 32) * (font->u8Width);
+      pointer = (unsigned int) (font_g->table)
+	  + (character - 32) * (font_g->width);
       /* Draw a char */
-      while (char_column < (font->u8Width))
+      while (char_column < (font_g->width))
 	{
-	  cursor_g.dispPage = cursor_g.u8CursorY;
+	  cursor_g.disp_page = cursor_g.y;
 	  data = pgm_read_byte_near (pointer++);
 	  if (invert_char)
 	    data = ~data;
-	  ssd1306_byte_to_buffer (data);
+	  ssd1306_set_byte (data);
 	  char_column++;
-	  cursor_g.u8CursorX++;
+	  cursor_g.x++;
 	}
     }
   if (character == '/')
     {
-      ssd1306_byte_to_buffer (0x70);
-      cursor_g.u8CursorX++;
+      ssd1306_set_byte (0x70);
+      cursor_g.x++;
     }
   else if (character == '(')
     {
-      ssd1306_byte_to_buffer (0x70);
-      cursor_g.u8CursorX += 2;
+      ssd1306_set_byte (0x70);
+      cursor_g.x += 2;
     }
   else if (character == '&')
     {
-      ssd1306_byte_to_buffer (0x10);
-      cursor_g.u8CursorX++;
+      ssd1306_set_byte (0x10);
+      cursor_g.x++;
     }
-  else if (cursor_g.u8CursorX < 128)
+  else if (cursor_g.x < 128)
     {
-      cursor_g.dispPage = cursor_g.u8CursorY; // Select the page of the LCD
-      cursor_g.dispx = cursor_g.u8CursorX;
+      cursor_g.disp_page = cursor_g.y; // Select the page of the LCD
+      cursor_g.disp_x = cursor_g.x;
       data = 0;
       if (invert_char)
 	data = 255;
-      ssd1306_byte_to_buffer (data); // if not then insert a space before next letter
-      cursor_g.u8CursorX++;
+      ssd1306_set_byte (data); // if not then insert a space before next letter
+      cursor_g.x++;
     }
 }
 
@@ -228,14 +228,14 @@ ssd1306_libmono_char_to_buffer (char character, uint8_t Negative)
   uint8_t i = 0;
   uint8_t data;
   uint16_t pointer;
-  //Use medium font
-  font = &Font_11x16;
+  //Use medium font_g
+  font_g = &Font_11x16;
   //'CAPS LOCK' as font table doesn't have lowercase
   if (character >= 'a' && character <= 'z')
     {
       character -= ('a' - 'A');
     }
-  //Offset ASCII char to match font table segment start (32)
+  //Offset ASCII char to match font_g table segment start (32)
   if (character >= ' ' && character <= '}')
     {
       character -= 32;
@@ -247,40 +247,41 @@ ssd1306_libmono_char_to_buffer (char character, uint8_t Negative)
       //font segment length (font_segment_end - start + 1)
       character -= (126 - (93 - 32 + 1));
     }
-  //Start address of font table, 22 (font->u8Width*2) is length of each character
-  pointer = (unsigned int) (font->au8FontTable)
-      + (character) * (font->u8Width * 2);
+  //Start address of font_g table, 22 (font_g->u8Width*2) is length of each character
+  pointer = (unsigned int) (font_g->table)
+      + (character) * (font_g->width * 2);
   //Draw the character in two halves as it spans two pages
-  cursor_g.dispPage = cursor_g.u8CursorY;
-  cursor_g.dispx = cursor_g.u8CursorX;
-  while (i < font->u8Width)
+  cursor_g.disp_page = cursor_g.y;
+  cursor_g.disp_x = cursor_g.x;
+  while (i < font_g->width)
     {
       data = pgm_read_byte_near (pointer++);
       if (Negative)
 	data = ~data;
-      ssd1306_byte_to_buffer (data);
+      ssd1306_set_byte (data);
       i++;
     }
   //Draw the second half
   i = 0;
-  cursor_g.dispPage = cursor_g.u8CursorY + 1;
-  cursor_g.dispx = cursor_g.u8CursorX;
-  while (i < font->u8Width)
+  cursor_g.disp_page = cursor_g.y + 1;
+  cursor_g.disp_x = cursor_g.x;
+  while (i < font_g->width)
     {
       data = pgm_read_byte_near (pointer++);
       if (Negative)
 	data = ~data;
-      ssd1306_byte_to_buffer (data);
+      ssd1306_set_byte (data);
       i++;
     }
-  cursor_g.u8CursorX += font->u8Width;
+  cursor_g.x += font_g->width;
 }
 
-// Print small font text from program memory
+// Print small font_g text from program memory
 uint8_t
 ssd1306_tiny_printp (uint8_t x, uint8_t y, const char *ptr)
 {
-  SSD1306_CURSOR_GOTO (x * 8, y / 8);
+  cursor_g.x = x * 8;
+  cursor_g.y = y / 8;
   uint8_t n = 0;
   while (pgm_read_byte (ptr) != 0x00)
     {
@@ -294,7 +295,9 @@ uint8_t
 ssd1306_medium_printp (const uint8_t x, const uint8_t y, const char *text,
 		       const uint8_t invert_char)
 {
-  SSD1306_CURSOR_GOTO (x * font->u8Width, y);
+  cursor_g.x = x * font_g->width;
+  cursor_g.y = y;
+
   uint8_t n = 0;
   while (pgm_read_byte (text) != 0x00)
     {
@@ -312,7 +315,7 @@ ssd1306_padded_double_digit (uint8_t x, uint8_t y, uint8_t digit)
   uint8_t hundreds = 0x30;
   uint8_t tens = 0x30; //0x32;
   uint8_t units = 0x30;
-  //Shift digit to match ASCII position in font table
+  //Shift digit to match ASCII position in font_g table
   while (digit > 99)
     {
       digit -= 100;
@@ -329,16 +332,20 @@ ssd1306_padded_double_digit (uint8_t x, uint8_t y, uint8_t digit)
       units++;
     }
 
-  SSD1306_CURSOR_GOTO (x, y);
+  cursor_g.x = x;
+  cursor_g.y = y;
+
   if (hundreds > 0x30)
     {
       ssd1306_libmono_char_to_buffer (hundreds, SSD1306_INVERT_FALSE);
-      x += font->u8Width;
-      SSD1306_CURSOR_GOTO (x, y);
+      x += font_g->width;
+      cursor_g.x = x;
+      cursor_g.y = y;
     }
   ssd1306_libmono_char_to_buffer (tens, SSD1306_INVERT_FALSE);
-  x += font->u8Width;
-  SSD1306_CURSOR_GOTO (x, y);
+  x += font_g->width;
+  cursor_g.x = x;
+  cursor_g.y = y;
   ssd1306_libmono_char_to_buffer (units, SSD1306_INVERT_FALSE);
 
 }

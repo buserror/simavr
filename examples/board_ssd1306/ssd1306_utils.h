@@ -14,12 +14,12 @@
 #define SSD1306_INVERT_TRUE 	1
 #define SSD1306_INVERT_FALSE 	0
 
-typedef struct SSD1306_FONT_DEF
+typedef struct
 {
-	uint8_t u8Width;     			// Character width for storage
-	uint8_t u8Height;  			    // Character height for storage
-	const uint8_t *au8FontTable;	// Font table start address in memory
-} SSD1306_FONT_DEF;
+	uint8_t width;
+	uint8_t height;
+	const uint8_t *table;
+} ssd1306_font_t;
 
 extern ssd1306_cursor_t cursor_g;
 

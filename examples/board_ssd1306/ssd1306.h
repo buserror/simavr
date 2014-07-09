@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------
- 128x64 Graphic LCD management for SSD1306 driver
+ SPI SSD1306 driver
 
  Copyright Gabriel Anzziani
  Copyright 2014 Doug Szumski <d.s.szumski@gmail.com>
@@ -13,11 +13,15 @@
 // Pin config
 #define SSD1306_RESET_PIN   	PB3
 #define	SSD1306_DATA_INST   	PB1
-#define	SSD1306_SELECT	    	PB4
+#define	SSD1306_CHIP_SELECT	PB4
 
-#define SSD1306_PIXELS 		1024
-#define SSD1306_X_PIXEL_ROWS 	128
-#define SSD1306_Y_PIXEL_PAGES 	8
+#define SSD1306_X_PIXELS 	128
+#define SSD1306_Y_PIXELS 	64
+#define SSD1306_PIXEL_BYTES	1024
+#define SSD1306_PIXEL_PAGES 	8
+
+// Default settings
+#define SSD1306_DEFAULT_CONTRAST 0xD0
 
 // Commands
 #define SSD1306_SET_COL_HI	0x10
@@ -26,8 +30,8 @@
 #define SSD1306_SET_CONTRAST	0x81  // I_seg = contrast/(256*ref*scale_fac)#define SSD1306_SET_SEG_REMAP0  0xA0#define SSD1306_SET_SEG_REMAP1	0xA1
 #define SSD1306_EON_OFF		0xA4
 #define SSD1306_EON_ON		0xA5
-#define SSD1306_DISP_NOR	0xA6
-#define SSD1306_DISP_REV	0xA7
+#define SSD1306_DISP_NORMAL	0xA6
+#define SSD1306_DISP_INVERTED	0xA7
 #define SSD1306_MULTIPLEX       0xA8
 #define SSD1306_CHARGE_PUMP    	0x8D
 #define SSD1306_PUMP_OFF    	0x10
@@ -39,7 +43,7 @@
 #define SSD1306_SET_SCAN_NOR	0xC8
 #define SSD1306_SET_OFFSET	0xD3
 #define SSD1306_SET_RATIO_OSC	0xD5
-#define SSD1306_SET_CHARGE  	0xD9 //p32#define SSD1306_SET_PADS    	0xDA#define SSD1306_SET_VCOM    	0xDB
+#define SSD1306_SET_CHARGE  	0xD9 // p32#define SSD1306_SET_PADS    	0xDA#define SSD1306_SET_VCOM    	0xDB
 #define SSD1306_NOP     	0xE3
 #define SSD1306_SCROLL_RIGHT	0x26
 #define SSD1306_SCROLL_LEFT	0x27
@@ -52,41 +56,38 @@
 #define SSD1306_SET_COL_ADDR	0x21
 #define SSD1306_SET_PAGE_ADDR	0x22
 
-typedef struct SSD1306_CURSOR
+typedef struct
 {
-  uint8_t dispx;
-  uint8_t dispPage;
-  uint8_t u8CursorX;
-  uint8_t u8CursorY;
+  uint8_t disp_x;
+  uint8_t disp_page;
+  uint8_t x;
+  uint8_t y;
 } ssd1306_cursor_t;
 
-// Default settings
-#define SSD1306_DEFAULT_CONTRAST 0x00
+typedef enum {NORMAL, INVERTED} display_mode_t;
 
 extern ssd1306_cursor_t cursor_g;
-extern uint8_t display_buffer[SSD1306_PIXELS];
-
-#define SSD1306_CURSOR_GOTO(x,y) { cursor_g.u8CursorX=(x); cursor_g.u8CursorY=(y); }
+extern uint8_t display_buffer[SSD1306_PIXEL_BYTES];
 
 void
-ssd1306_write_data (uint8_t);
+ssd1306_write_data (const uint8_t);
 void
-ssd1306_write_instruction (uint8_t);
+ssd1306_write_instruction (const uint8_t);
 void
 ssd1306_reset_display (void);
 void
 ssd1306_init_display (void);
 void
-ssd1306_set_contrast (uint8_t contrast);
+ssd1306_set_contrast (const uint8_t contrast);
 void
-ssd1306_clr_display (void);
+ssd1306_clear_display (void);
 void
 ssd1306_show_display (void);
 void
-ssd1306_byte_to_buffer (uint8_t data);
+ssd1306_set_byte (const uint8_t data);
 void
-ssd1306_reset_buffer ();
+ssd1306_set_pixel (const uint8_t x, const uint8_t y);
 void
-ssd1306_set_pixel (uint8_t x, uint8_t y);
+ssd1306_set_display_mode(display_mode_t display_mode);
 
 #endif

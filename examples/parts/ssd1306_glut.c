@@ -42,16 +42,24 @@ ssd1306_gl_init (float pix_size)
 }
 
 void
-ssd1306_gl_put_pixel_column(uint8_t block_pixel_column, float pixel_opacity)
+ssd1306_gl_put_pixel_column(uint8_t block_pixel_column, float pixel_opacity, int invert)
 {
   glEnable (GL_BLEND);
   glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glBegin (GL_QUADS);
+
+  // TODO Clean up
+  if (invert) {
+      glColor4f (0.0f, 0.0f, 0.0f, 1.0f);
+  } else {
+      glColor4f (1.0f, 1.0f, 1.0f, pixel_opacity);
+  }
+
   for (int i = 0; i < 8; ++i)
     {
       if (block_pixel_column & (1 << i))
 	{
-	  glColor4f (1.0, 1.0, 1.0, pixel_opacity);
+	  //glColor4f (1.0, 1.0, 1.0, pixel_opacity);
 	  glVertex2f (pix_size_g, pix_size_g * (i + 1));
 	  glVertex2f (0, pix_size_g * (i + 1));
 	  glVertex2f (0, pix_size_g * i);
@@ -75,11 +83,20 @@ ssd1306_gl_draw (ssd1306_t *part)
   int pages = part->pages;
   int rows = part->h;
 
-  // Draw the background
-  glDisable (GL_TEXTURE_2D);
-  glDisable (GL_BLEND);
-  // Background is always black
-  glColor4f (0.0f, 0.0f, 0.0f, 0.0f);
+  glEnable (GL_BLEND);
+  glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBegin (GL_QUADS);
+
+  // Hack colour
+  // TODO Clean up
+  float opacity = ssd1306_get_pixel_opacity (part->contrast_register);
+  int invert = ssd1306_get_flag(part, SSD1306_FLAG_DISPLAY_INVERTED);
+  if (invert) {
+      glColor4f (1.0f, 1.0f, 1.0f, opacity);
+  } else {
+      glColor4f (0.0f, 0.0f, 0.0f, 1.0f);
+  }
+
   glTranslatef (0, 0 , 0);
   glBegin (GL_QUADS);
   glVertex2f (rows, 0);
@@ -87,7 +104,7 @@ ssd1306_gl_draw (ssd1306_t *part)
   glVertex2f (0, columns);
   glVertex2f (rows, columns);
   glEnd ();
-  glColor3f (1.0f, 1.0f, 1.0f);
+  //glColor4f (1.0f, 1.0f, 1.0f);
 
   uint16_t buf_index = 0;
   for (int p = 0; p < pages; p++)
@@ -97,7 +114,7 @@ ssd1306_gl_draw (ssd1306_t *part)
 	{
 	  ssd1306_gl_put_pixel_column (
 	      part->vram[buf_index++],
-	      ssd1306_get_pixel_opacity (part->contrast_register));
+	      opacity, invert);
 	  // Next column
 	  glTranslatef (pix_size_g + pix_gap_g, 0, 0);
 	}
