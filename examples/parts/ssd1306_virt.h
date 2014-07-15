@@ -1,6 +1,7 @@
 /*
 	SSD1306.h
 
+	Copyright 2014 Doug Szumski <d.s.szumski@gmail.com>
 	Copyright 2011 Michel Pollet <buserror@gmail.com>
 
  	This file is part of simavr.
@@ -20,87 +21,74 @@
  */
 
 /*
- * This "Part" simulates the business end of a SSD1306 LCD display
- * It supports from 8x1 to 20x4 or even 40x4 (not sure that exists)
+ * This "Part" simulates the SSD1306 OLED display driver.
  *
- * It works both in 4 bits and 8 bits mode and supports a "quicky" method
- * of driving that is commonly used on AVR, namely
- * (msb) RW:E:RS:D7:D6:D5:D4 (lsb)
+ * The following functions are currently supported:
  *
- * + As usual, the "RW" pin is optional if you are willing to wait for the
- *   specific number of cycles as per the datasheet (37uS between operations)
- * + If you decide to use the RW pin, the "busy" flag is supported and will
- *   be automaticly cleared on the second read, to exercisee the code a bit.
- * + Cursor is supported, but now "display shift"
- * + The Character RAM is supported, but is not currently drawn.
+ * > Display on / suspend
+ * > Setting of the contrast
+ * > Inversion of the display
+ * > Writing to the VRAM using horizontal addressing mode
  *
- * To interface this part, you can use the "INPUT" IRQs and hook them to the
- * simavr instance, if you use the RW pins or read back frim the display, you
- * can hook the data pins /back/ to the AVR too.
+ * It has been tested on a "JY MCU v1.5 OLED" in 4 wire SPI mode.
  *
- * The "part" also provides various IRQs that are there to be placed in a VCD file
- * to show what is sent, and some of the internal status.
- *
- * This part has been tested with two different implementation of an AVR driver
- * for the SSD1306. The one shipped in this directory is straight out of the
- * avr-libc example code.
  */
 #ifndef __SSD1306_VIRT_H__
 #define __SSD1306_VIRT_H__
 
 #include "sim_irq.h"
 
-#define SSD1306_VIRT_DATA		1
-#define SSD1306_VIRT_INSTRUCTION 	0
+#define SSD1306_VIRT_DATA			1
+#define SSD1306_VIRT_INSTRUCTION 		0
 
 /* Fundamental commands. */
-#define SSD1306_VIRT_SET_CONTRAST	0x81
-#define SSD1306_VIRT_EON_OFF		0xA4
-#define SSD1306_VIRT_EON_ON		0xA5
-#define SSD1306_VIRT_DISP_NORMAL	0xA6
-#define SSD1306_VIRT_DISP_INVERTED	0xA7
-#define SSD1306_VIRT_DISP_OFF 		0xAE
-#define SSD1306_VIRT_DISP_ON		0xAF
+#define SSD1306_VIRT_SET_CONTRAST		0x81
+#define SSD1306_VIRT_RESUME_TO_RAM_CONTENT	0xA4
+#define SSD1306_VIRT_IGNORE_RAM_CONTENT		0xA5
+#define SSD1306_VIRT_DISP_NORMAL		0xA6
+#define SSD1306_VIRT_DISP_INVERTED		0xA7
+#define SSD1306_VIRT_DISP_SUSPEND		0xAE
+#define SSD1306_VIRT_DISP_ON			0xAF
 
 /* Scrolling commands */
-#define SSD1306_VIRT_SCROLL_RIGHT	0x26
-#define SSD1306_VIRT_SCROLL_LEFT	0x27
-#define SSD1306_VIRT_SCROLL_VR		0x29
-#define SSD1306_VIRT_SCROLL_VL		0x2A
-#define SSD1306_VIRT_SCROLL_OFF		0x2E
-#define SSD1306_VIRT_SCROLL_ON   	0x2F
-#define SSD1306_VIRT_VERT_SCROLL_A  	0xA3
+#define SSD1306_VIRT_SCROLL_RIGHT		0x26
+#define SSD1306_VIRT_SCROLL_LEFT		0x27
+#define SSD1306_VIRT_SCROLL_VR			0x29
+#define SSD1306_VIRT_SCROLL_VL			0x2A
+#define SSD1306_VIRT_SCROLL_OFF			0x2E
+#define SSD1306_VIRT_SCROLL_ON   		0x2F
+#define SSD1306_VIRT_VERT_SCROLL_A  		0xA3
 
 /* Address setting commands */
-#define SSD1306_VIRT_SET_COL_LO		0x00
-#define SSD1306_VIRT_SET_COL_HI		0x10
-#define SSD1306_VIRT_MEM_ADDRESSING 	0x20
-#define SSD1306_VIRT_SET_COL_ADDR	0x21
-#define SSD1306_VIRT_SET_PAGE_ADDR	0x22
-#define SSD1306_VIRT_SET_PAGE		0xB0
+#define SSD1306_VIRT_SET_COL_LO			0x00
+#define SSD1306_VIRT_SET_COL_HI			0x10
+#define SSD1306_VIRT_MEM_ADDRESSING 		0x20
+#define SSD1306_VIRT_SET_COL_ADDR		0x21
+#define SSD1306_VIRT_SET_PAGE_ADDR		0x22
+#define SSD1306_VIRT_SET_PAGE			0xB0
 
 /* Hardware config. commands */
-#define SSD1306_VIRT_SET_LINE		0x40
-#define SSD1306_VIRT_SET_SEG_REMAP0  	0xA0
-#define SSD1306_VIRT_SET_SEG_REMAP1	0xA1
-#define SSD1306_VIRT_MULTIPLEX       	0xA8
-#define SSD1306_VIRT_SET_SCAN_FLIP	0xC0
-#define SSD1306_VIRT_SET_SCAN_NOR	0xC8
-#define SSD1306_VIRT_SET_OFFSET		0xD3
-#define SSD1306_VIRT_SET_PADS    	0xDA
+#define SSD1306_VIRT_SET_LINE			0x40
+#define SSD1306_VIRT_SET_SEG_REMAP0  		0xA0
+#define SSD1306_VIRT_SET_SEG_REMAP1		0xA1
+#define SSD1306_VIRT_MULTIPLEX       		0xA8
+#define SSD1306_VIRT_SET_SCAN_FLIP		0xC0
+#define SSD1306_VIRT_SET_SCAN_NOR		0xC8
+#define SSD1306_VIRT_SET_OFFSET			0xD3
+#define SSD1306_VIRT_SET_PADS    		0xDA
 
 /* Timing & driving scheme setting commands */
-#define SSD1306_VIRT_SET_RATIO_OSC	0xD5
-#define SSD1306_VIRT_SET_CHARGE  	0xD9
-#define SSD1306_VIRT_SET_VCOM    	0xDB
-#define SSD1306_VIRT_NOP     		0xE3
+#define SSD1306_VIRT_SET_RATIO_OSC		0xD5
+#define SSD1306_VIRT_SET_CHARGE  		0xD9
+#define SSD1306_VIRT_SET_VCOM    		0xDB
+#define SSD1306_VIRT_NOP     			0xE3
 
 /* Charge pump command table */
-#define SSD1306_VIRT_CHARGE_PUMP    	0x8D
-#define SSD1306_VIRT_PUMP_OFF    	0x10
-#define SSD1306_VIRT_PUMP_ON     	0x14
+#define SSD1306_VIRT_CHARGE_PUMP    		0x8D
+#define SSD1306_VIRT_PUMP_OFF    		0x10
+#define SSD1306_VIRT_PUMP_ON     		0x14
 
-#define SSD1306_CLEAR_COMMAND_REG 	part->command_register = 0x00
+#define SSD1306_CLEAR_COMMAND_REG(part)		part->command_register = 0x00
 
 enum {
     //IRQ_SSD1306_ALL = 0,
@@ -116,6 +104,7 @@ enum {
 
 enum {
     SSD1306_FLAG_DISPLAY_INVERTED = 0,
+    SSD1306_FLAG_DISPLAY_ON,
 
     /*
      * Internal flags, not SSD1306
@@ -130,14 +119,13 @@ typedef struct ssd1306_t
 {
 	avr_irq_t * irq;
 	struct avr_t * avr;
-	int	w, h;			// width and height of the LCD
-	uint16_t cursor;		// offset in vram
-	uint8_t  vram[1024];		// p25 ds: GDDRAM = 128x64bit in 8 pages
+	uint8_t	w, h, pages;		// Width, height and page count of the LCD
+	uint16_t cursor;		// Offset in vram
+	uint8_t  vram[1024];		// 128x64 bits in 8 pages
 	uint16_t flags;			// LCD flags ( SSD1306_FLAG_*)
-	uint8_t command_register;
-	uint8_t contrast_register;
-	uint8_t pages;
-	uint8_t cs;
+	uint8_t command_register;	// Current display command
+	uint8_t contrast_register;	// OLED contrast
+	uint8_t cs;			// TODO Merge into pins with others..
 	uint8_t di;
 	uint8_t spi_data;
 } ssd1306_t;

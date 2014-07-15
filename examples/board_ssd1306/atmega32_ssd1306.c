@@ -60,16 +60,30 @@ demo_show_image (void)
   ssd1306_show_display ();
 }
 
+/* Draw some stripes by writing directly to the VRAM */
+void
+demo_set_byte_direct (void)
+{
+  uint8_t x = 0;
+  for (uint8_t page = 0; page < SSD1306_PIXEL_PAGES; ++page)
+    {
+      for (x = 0; x < SSD1306_X_PIXELS; x+=2)
+	{
+	  ssd1306_set_byte(x, page, 0xFF);
+	}
+    }
+}
+
+/* Draw some stripes by setting individual pixels on the frame buffer */
 void
 demo_set_pixels (void)
 {
-  // Draw some stripes
   uint8_t x = 0;
   for (uint8_t y = 0; y < SSD1306_Y_PIXELS; ++y)
     {
       for (x = 0; x < SSD1306_X_PIXELS; x+=2)
 	{
-	  ssd1306_set_pixel (x, y);
+	  ssd1306_set_pixel_fb (x, y);
 	}
     }
   ssd1306_show_display ();
@@ -88,6 +102,15 @@ demo_clear_screen (void)
   ssd1306_show_display ();
 }
 
+void
+demo_set_power_state (void)
+{
+ ssd1306_set_power_state(SLEEP);
+ _delay_ms (1000);
+ ssd1306_set_power_state(ON);
+ _delay_ms (1000);
+}
+
 int
 main ()
 {
@@ -98,10 +121,18 @@ main ()
   //demo_set_pixels();
   //demo_clear_screen();
   demo_show_image();
-  ssd1306_set_display_mode(INVERTED);
-  demo_set_contrast();
+  //ssd1306_set_display_mode(INVERTED);
+  //demo_set_contrast();
 
-  for(;;){}
+  for(;;){
+     // demo_set_power_state();
+      ssd1306_clear_display ();
+      demo_set_byte_direct();
+      _delay_ms (1000);
+      ssd1306_clear_display ();
+      demo_set_pixels();
+      _delay_ms (1000);
+  }
 
 
 }

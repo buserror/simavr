@@ -32,7 +32,7 @@ ssd1306_init_display (void)
   ssd1306_reset_display ();
 
   // Recommended init sequence
-  ssd1306_write_instruction (SSD1306_DISP_OFF);
+  ssd1306_set_power_state(SLEEP);
 
   ssd1306_write_instruction (SSD1306_SET_RATIO_OSC);
   ssd1306_write_instruction (0x80);
@@ -63,14 +63,14 @@ ssd1306_init_display (void)
   ssd1306_write_instruction (SSD1306_SET_VCOM);
   ssd1306_write_instruction (0x40);
 
-  ssd1306_write_instruction (SSD1306_EON_OFF);
+  ssd1306_write_instruction (SSD1306_RESUME_TO_RAM_CONTENT);
 
   ssd1306_set_display_mode(NORMAL);
 
   ssd1306_write_instruction (SSD1306_MEM_ADDRESSING);
   ssd1306_write_instruction (0x00); 			// Horizontal Addressing mode
 
-  ssd1306_write_instruction (SSD1306_DISP_ON);
+  ssd1306_set_power_state(ON);
 }
 
 void
@@ -114,9 +114,9 @@ ssd1306_clear_display (void)
 void
 ssd1306_show_display (void)
 {
-  ssd1306_write_instruction (SSD1306_SET_PAGE);
-  ssd1306_write_instruction (SSD1306_SET_COL_HI);
-  ssd1306_write_instruction (SSD1306_SET_COL_LO);
+  ssd1306_write_instruction (SSD1306_SET_PAGE_0);
+  ssd1306_write_instruction (SSD1306_SET_COL_HI_NIBBLE);
+  ssd1306_write_instruction (SSD1306_SET_COL_LO_NIBBLE);
 
   const uint8_t * display_cursor = display_buffer;
 
@@ -127,18 +127,6 @@ ssd1306_show_display (void)
 	  ssd1306_write_data (*display_cursor++);
 	}
     }
-}
-
-void
-ssd1306_set_pixel (const uint8_t x, const uint8_t y)
-{
-  display_buffer[((uint16_t) (y << 4) & 0xFF80) + x] |= (uint8_t) (0x01 << (y & 0x07));
-}
-
-void
-ssd1306_set_byte (const uint8_t byte)
-{
-  display_buffer[((uint16_t) (cursor_g.disp_page << 7)) + (cursor_g.disp_x++)] |= byte;
 }
 
 void
@@ -155,4 +143,44 @@ ssd1306_set_display_mode(display_mode_t display_mode)
       ssd1306_write_instruction (SSD1306_DISP_NORMAL);
       break;
   }
+}
+
+void
+ssd1306_set_power_state (power_state_t power_state)
+{
+  switch (power_state)
+    {
+    case ON:
+      ssd1306_write_instruction (SSD1306_DISP_ON);
+      break;
+    case SLEEP:
+      ssd1306_write_instruction (SSD1306_DISP_SLEEP);
+      break;
+    default:
+      break;
+    }
+}
+
+void
+ssd1306_set_pixel_fb (const uint8_t x, const uint8_t y)
+{
+  /* The assembly generated from the below is slower. Use the cryptic version */
+  //display_buffer[(y / SSD1306_PIXEL_PAGES) * SSD1306_X_PIXELS + x] |= (1 << y % SSD1306_PIXEL_PAGES);
+  display_buffer[((y >> 3) << 7) + x] |= (1 << y % SSD1306_PIXEL_PAGES);
+  //display_buffer[((y << 4) & 0xFF80) + x] |= (1 << y % SSD1306_PIXEL_PAGES);
+}
+
+void
+ssd1306_set_byte_fb (const uint8_t byte)
+{
+  display_buffer[((uint16_t) (cursor_g.disp_page << 7)) + (cursor_g.disp_x++)] |= byte;
+}
+
+void
+ssd1306_set_byte (const uint8_t x, const uint8_t page, const uint8_t byte)
+{
+  ssd1306_write_instruction (SSD1306_SET_PAGE_0 | page);
+  ssd1306_write_instruction (SSD1306_SET_COL_LO_NIBBLE | (x & 0xF));
+  ssd1306_write_instruction (SSD1306_SET_COL_HI_NIBBLE | (x >> 4));
+  ssd1306_write_data(byte);
 }

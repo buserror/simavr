@@ -79,6 +79,8 @@ ssd1306_get_pixel_opacity(uint8_t contrast)
 void
 ssd1306_gl_draw (ssd1306_t *part)
 {
+  ssd1306_set_flag(part, SSD1306_FLAG_DIRTY, 0);
+
   int columns = part->w;
   int pages = part->pages;
   int rows = part->h;
@@ -87,7 +89,7 @@ ssd1306_gl_draw (ssd1306_t *part)
   glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glBegin (GL_QUADS);
 
-  // Hack colour
+  // Draw background
   // TODO Clean up
   float opacity = ssd1306_get_pixel_opacity (part->contrast_register);
   int invert = ssd1306_get_flag(part, SSD1306_FLAG_DISPLAY_INVERTED);
@@ -104,8 +106,12 @@ ssd1306_gl_draw (ssd1306_t *part)
   glVertex2f (0, columns);
   glVertex2f (rows, columns);
   glEnd ();
-  //glColor4f (1.0f, 1.0f, 1.0f);
 
+  // Don't draw pixels if display is off
+  if (!ssd1306_get_flag (part, SSD1306_FLAG_DISPLAY_ON))
+    return;
+
+  // Draw pixels
   uint16_t buf_index = 0;
   for (int p = 0; p < pages; p++)
     {
@@ -122,6 +128,4 @@ ssd1306_gl_draw (ssd1306_t *part)
       // Next page
       glTranslatef (0, (rows/pages)*pix_size_g + pix_gap_g, 0);
     }
-
-  ssd1306_set_flag(part, SSD1306_FLAG_DIRTY, 0);
 }

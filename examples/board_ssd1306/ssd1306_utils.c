@@ -124,7 +124,7 @@ ssd1306_line (uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
     }
   x = (uint8_t) (dyabs >> 1);
   y = (uint8_t) (dxabs >> 1);
-  ssd1306_set_pixel (x1, y1);
+  ssd1306_set_pixel_fb (x1, y1);
   if (dxabs >= dyabs)
     { // the line is more horizontal than vertical
       for (i = 0; i < dxabs; i++)
@@ -136,7 +136,7 @@ ssd1306_line (uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 	      y1 += stepy;
 	    }
 	  x1 += stepx;
-	  ssd1306_set_pixel (x1, y1);
+	  ssd1306_set_pixel_fb (x1, y1);
 	}
     }
   else
@@ -150,7 +150,7 @@ ssd1306_line (uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 	      x1 += stepx;
 	    }
 	  y1 += stepy;
-	  ssd1306_set_pixel (x1, y1);
+	  ssd1306_set_pixel_fb (x1, y1);
 	}
     }
 }
@@ -172,8 +172,8 @@ ssd1306_char_to_buffer (char character, uint8_t invert_char)
     }
   if (character == '.' && font_g != &Font_3x6)
     {		// Small point to Save space
-      ssd1306_set_byte (96);
-      ssd1306_set_byte (96);
+      ssd1306_set_byte_fb (96);
+      ssd1306_set_byte_fb (96);
       cursor_g.x += 2;
     }
   else
@@ -189,24 +189,24 @@ ssd1306_char_to_buffer (char character, uint8_t invert_char)
 	  data = pgm_read_byte_near (pointer++);
 	  if (invert_char)
 	    data = ~data;
-	  ssd1306_set_byte (data);
+	  ssd1306_set_byte_fb (data);
 	  char_column++;
 	  cursor_g.x++;
 	}
     }
   if (character == '/')
     {
-      ssd1306_set_byte (0x70);
+      ssd1306_set_byte_fb (0x70);
       cursor_g.x++;
     }
   else if (character == '(')
     {
-      ssd1306_set_byte (0x70);
+      ssd1306_set_byte_fb (0x70);
       cursor_g.x += 2;
     }
   else if (character == '&')
     {
-      ssd1306_set_byte (0x10);
+      ssd1306_set_byte_fb (0x10);
       cursor_g.x++;
     }
   else if (cursor_g.x < 128)
@@ -216,7 +216,7 @@ ssd1306_char_to_buffer (char character, uint8_t invert_char)
       data = 0;
       if (invert_char)
 	data = 255;
-      ssd1306_set_byte (data); // if not then insert a space before next letter
+      ssd1306_set_byte_fb (data); // if not then insert a space before next letter
       cursor_g.x++;
     }
 }
@@ -258,7 +258,7 @@ ssd1306_libmono_char_to_buffer (char character, uint8_t Negative)
       data = pgm_read_byte_near (pointer++);
       if (Negative)
 	data = ~data;
-      ssd1306_set_byte (data);
+      ssd1306_set_byte_fb (data);
       i++;
     }
   //Draw the second half
@@ -270,7 +270,7 @@ ssd1306_libmono_char_to_buffer (char character, uint8_t Negative)
       data = pgm_read_byte_near (pointer++);
       if (Negative)
 	data = ~data;
-      ssd1306_set_byte (data);
+      ssd1306_set_byte_fb (data);
       i++;
     }
   cursor_g.x += font_g->width;

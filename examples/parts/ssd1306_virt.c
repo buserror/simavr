@@ -85,14 +85,27 @@ ssd1306_update_command_register (ssd1306_t *part)
       ssd1306_set_flag (part, SSD1306_FLAG_DISPLAY_INVERTED, 0);
       ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
       printf (">> DISPLAY NORMAL\n");
-      SSD1306_CLEAR_COMMAND_REG;
+      SSD1306_CLEAR_COMMAND_REG(part);
       return delay;
     case SSD1306_VIRT_DISP_INVERTED:
       ssd1306_set_flag (part, SSD1306_FLAG_DISPLAY_INVERTED, 1);
       ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
       printf (">> DISPLAY INVERTED\n");
-      SSD1306_CLEAR_COMMAND_REG;
+      SSD1306_CLEAR_COMMAND_REG(part);
       return delay;
+    case SSD1306_VIRT_DISP_SUSPEND:
+      ssd1306_set_flag (part, SSD1306_FLAG_DISPLAY_ON, 0);
+      ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
+      printf (">> DISPLAY SUSPENDED\n");
+      SSD1306_CLEAR_COMMAND_REG(part);
+      return delay;
+    case SSD1306_VIRT_DISP_ON:
+      ssd1306_set_flag (part, SSD1306_FLAG_DISPLAY_ON, 1);
+      ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
+      printf (">> DISPLAY ON\n");
+      SSD1306_CLEAR_COMMAND_REG(part);
+      return delay;
+
     default:
       // Unknown command
       return delay;
@@ -110,7 +123,7 @@ ssd1306_update_setting (ssd1306_t *part)
     case SSD1306_VIRT_SET_CONTRAST:
       part->contrast_register = part->spi_data;
       ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
-      SSD1306_CLEAR_COMMAND_REG;
+      SSD1306_CLEAR_COMMAND_REG(part);
       printf (">> CONTRAST SET: 0x%02x\n", part->contrast_register);
       return delay;
     default:
@@ -203,16 +216,14 @@ static void ssd1306_reset_hook(struct avr_irq_t * irq, uint32_t value, void * pa
       memset(p->vram, 0, p->h * p->pages);
       p->cursor = 0;
       p->flags = 0;
-      // TODO: Check this is all
       p->command_register = 0x00;
       p->contrast_register = 0x7F;
-      //
   }
 
 }
 
 static const char * irq_names[IRQ_SSD1306_COUNT] =
-  {   //[IRQ_SSD1306_ALL] = "7=ssd1306.pins",
+  {
       [IRQ_SSD1306_SPI_BYTE_IN] = "=ssd1306.SDIN",
       [IRQ_SSD1306_RESET ] = "<ssd1306.RS",
       [IRQ_SSD1306_DATA_INSTRUCTION] = "<ssd1306.RW",
