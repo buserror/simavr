@@ -38,7 +38,7 @@
 #define SSD1306_PUMP_ON     		0x14
 #define SSD1306_DISP_SLEEP 		0xAE
 #define SSD1306_DISP_ON			0xAF
-#define SSD1306_SET_PAGE_0		0xB0
+#define SSD1306_SET_PAGE_START_ADDR	0xB0
 #define SSD1306_SET_SCAN_FLIP		0xC0
 #define SSD1306_SET_SCAN_NOR		0xC8
 #define SSD1306_SET_OFFSET		0xD3
@@ -81,20 +81,20 @@ ssd1306_init_display (void);
 void
 ssd1306_set_contrast (const uint8_t contrast);
 void
-ssd1306_clear_display (void);
+ssd1306_display_fb (void);
 void
-ssd1306_show_display (void);
+ssd1306_set_display_mode (const display_mode_t display_mode);
+void
+ssd1306_set_power_state (const power_state_t power_state);
+void
+ssd1306_set_pixel_direct (const uint8_t x, const uint8_t y);
+void
+ssd1306_set_byte (const uint8_t x, const uint8_t page, const uint8_t byte);
 void
 ssd1306_set_byte_fb (const uint8_t data);
 void
 ssd1306_set_pixel_fb (const uint8_t x, const uint8_t y);
 void
-ssd1306_set_display_mode (display_mode_t display_mode);
-void
-ssd1306_set_power_state (power_state_t power_state);
-void
-ssd1306_set_pixel_direct (const uint8_t x, const uint8_t y);
-void
-ssd1306_set_byte (const uint8_t x, const uint8_t page, const uint8_t byte);
+ssd1306_clear_fb (void);
 
 #endif

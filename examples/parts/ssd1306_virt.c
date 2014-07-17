@@ -30,13 +30,15 @@
 #include "avr_ioport.h"
 
 
+/* TODO: Get rid of this? ...not an internal command */
 static void
 _ssd1306_reset_cursor (ssd1306_t *part)
 {
   printf (">> RESET CURSOR\n");
-  part->cursor = 0;
+  part->cursor.column = 0;
+  part->cursor.page = 0;
   ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
-  avr_raise_irq (part->irq + IRQ_SSD1306_ADDR, part->cursor);
+  //avr_raise_irq (part->irq + IRQ_SSD1306_ADDR, part->cursor);
 }
 
 static void
@@ -45,7 +47,7 @@ _ssd1306_clear_screen (ssd1306_t *part)
   printf (">> CLEAR SCREEN\n");
   memset (part->vram, 0, part->h * part->pages);
   ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
-  avr_raise_irq (part->irq + IRQ_SSD1306_ADDR, part->cursor);
+  //avr_raise_irq (part->irq + IRQ_SSD1306_ADDR, part->cursor);
 }
 
 /*
@@ -57,13 +59,19 @@ ssd1306_write_data (ssd1306_t *part)
   printf (">> SPI DATA: 0x%02x\n", part->spi_data);
   uint32_t delay = 37; // uS TODO: How long does this take?? -- Depends on internal disp clock?!
 
-  // TODO: Check auto cursor increment
-  part->vram[part->cursor++] = part->spi_data;
-  if (part->cursor > 1023)
+  part->vram[part->cursor.page][part->cursor.column] = part->spi_data;
+
+  // Scroll the cursor
+  if (++(part->cursor.column) > 127)
     {
-      part->cursor = 0;
+      part->cursor.column = 0;
+      if (++(part->cursor.page) > 7)
+	{
+	  part->cursor.page = 0;
+	}
     }
-  printf (">> CURSOR: 0x%02x\n", part->cursor);
+
+  printf (">> CURSOR COLUMN: 0x%02x, PAGE: 0x%02x\n", part->cursor.column, part->cursor.page);
 
   ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
   return delay;
@@ -105,7 +113,27 @@ ssd1306_update_command_register (ssd1306_t *part)
       printf (">> DISPLAY ON\n");
       SSD1306_CLEAR_COMMAND_REG(part);
       return delay;
-
+    case SSD1306_VIRT_SET_PAGE_START_ADDR
+	... SSD1306_VIRT_SET_PAGE_START_ADDR + SSD1306_VIRT_PAGES - 1:
+	part->cursor.page = part->spi_data - SSD1306_VIRT_SET_PAGE_START_ADDR;
+	printf (">> SET PAGE ADDRESS: 0x%02x\n", part->spi_data);
+      SSD1306_CLEAR_COMMAND_REG(part);
+      return delay;
+    case SSD1306_VIRT_SET_COLUMN_LOW_NIBBLE
+	... SSD1306_VIRT_SET_COLUMN_LOW_NIBBLE + 0xF:
+	// FIXME: Better way?
+	part->spi_data -= SSD1306_VIRT_SET_COLUMN_LOW_NIBBLE;
+      part->cursor.column = (part->cursor.column & 0b11110000) | (part->spi_data & 0b00001111);
+      printf (">> SET COLUMN LOW NIBBLE: 0x%02x\n", part->spi_data);
+      SSD1306_CLEAR_COMMAND_REG(part);
+      return delay;
+    case SSD1306_VIRT_SET_COLUMN_HIGH_NIBBLE
+	... SSD1306_VIRT_SET_COLUMN_HIGH_NIBBLE + 0xF:
+	part->spi_data -= SSD1306_VIRT_SET_COLUMN_HIGH_NIBBLE;
+	part->cursor.column = (part->cursor.column & 0b00001111) | ((part->spi_data & 0b00001111) << 4);
+      printf (">> SET COLUMN HIGH NIBBLE: 0x%02x\n", part->spi_data);
+      SSD1306_CLEAR_COMMAND_REG(part);
+      return delay;
     default:
       // Unknown command
       return delay;
@@ -199,8 +227,8 @@ ssd1306_cs_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 static void
 ssd1306_di_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 {
-  ssd1306_t * p = (ssd1306_t*) param;
-  p->di = value & 0xFF;
+  ssd1306_t * part = (ssd1306_t*) param;
+  part->di = value & 0xFF;
   //printf (">> DATA / INSTRUCTION:  0x%08x\n", value);
 }
 
@@ -210,14 +238,15 @@ ssd1306_di_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 static void ssd1306_reset_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 {
   printf(">> RESET\n");
-  ssd1306_t * p = (ssd1306_t*)param;
+  ssd1306_t * part = (ssd1306_t*)param;
   if (irq->value && !value) {
       // Falling edge
-      memset(p->vram, 0, p->h * p->pages);
-      p->cursor = 0;
-      p->flags = 0;
-      p->command_register = 0x00;
-      p->contrast_register = 0x7F;
+      memset(part->vram, 0, part->h * part->pages);
+      part->cursor.column = 0;
+      part->cursor.page = 0;
+      part->flags = 0;
+      part->command_register = 0x00;
+      part->contrast_register = 0x7F;
   }
 
 }
@@ -254,6 +283,7 @@ ssd1306_init(
 	if(!avr || !part)
 	  return;
 
+	// FIXME, sort out zeroing
 	memset(part, 0, sizeof(*part));
 	part->avr = avr;
 	part->w = width;

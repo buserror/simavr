@@ -57,7 +57,7 @@ void
 demo_show_image (void)
 {
   ssd1306_image_to_buffer (logo);
-  ssd1306_show_display ();
+  ssd1306_display_fb ();
 }
 
 /* Draw some stripes by writing directly to the VRAM */
@@ -69,7 +69,7 @@ demo_set_byte_direct (void)
     {
       for (x = 0; x < SSD1306_X_PIXELS; x+=2)
 	{
-	  ssd1306_set_byte(x, page, 0xFF);
+	  ssd1306_set_byte(x, page, 0xAA);
 	}
     }
 }
@@ -86,7 +86,7 @@ demo_set_pixels (void)
 	  ssd1306_set_pixel_fb (x, y);
 	}
     }
-  ssd1306_show_display ();
+  ssd1306_display_fb ();
 }
 
 void
@@ -94,12 +94,12 @@ demo_clear_screen (void)
 {
   // Turn all pixels on
   memset(display_buffer, 0xFF, SSD1306_PIXEL_BYTES);
-  ssd1306_show_display ();
+  ssd1306_display_fb ();
   _delay_ms (1000);
 
   // Clear screen
-  ssd1306_clear_display ();
-  ssd1306_show_display ();
+  ssd1306_clear_fb ();
+  ssd1306_display_fb ();
 }
 
 void
@@ -126,12 +126,12 @@ main ()
 
   for(;;){
      // demo_set_power_state();
-      ssd1306_clear_display ();
+      ssd1306_clear_fb ();
       demo_set_byte_direct();
-      _delay_ms (1000);
-      ssd1306_clear_display ();
+      _delay_ms (10000);
+      ssd1306_clear_fb ();
       demo_set_pixels();
-      _delay_ms (1000);
+      _delay_ms (10000);
   }
 
 

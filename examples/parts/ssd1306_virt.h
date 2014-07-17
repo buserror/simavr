@@ -41,6 +41,8 @@
 #define SSD1306_VIRT_DATA			1
 #define SSD1306_VIRT_INSTRUCTION 		0
 
+#define SSD1306_VIRT_PAGES			8
+
 /* Fundamental commands. */
 #define SSD1306_VIRT_SET_CONTRAST		0x81
 #define SSD1306_VIRT_RESUME_TO_RAM_CONTENT	0xA4
@@ -60,12 +62,12 @@
 #define SSD1306_VIRT_VERT_SCROLL_A  		0xA3
 
 /* Address setting commands */
-#define SSD1306_VIRT_SET_COL_LO			0x00
-#define SSD1306_VIRT_SET_COL_HI			0x10
+#define SSD1306_VIRT_SET_COLUMN_LOW_NIBBLE	0x00
+#define SSD1306_VIRT_SET_COLUMN_HIGH_NIBBLE	0x10
 #define SSD1306_VIRT_MEM_ADDRESSING 		0x20
 #define SSD1306_VIRT_SET_COL_ADDR		0x21
 #define SSD1306_VIRT_SET_PAGE_ADDR		0x22
-#define SSD1306_VIRT_SET_PAGE			0xB0
+#define SSD1306_VIRT_SET_PAGE_START_ADDR	0xB0
 
 /* Hardware config. commands */
 #define SSD1306_VIRT_SET_LINE			0x40
@@ -114,14 +116,20 @@ enum {
     SSD1306_FLAG_DIRTY,			// 1: needs redisplay...
 };
 
+struct cursor_t
+{
+  uint8_t page;				// Current page in VRAM
+  uint8_t column;			// Current column in VRAM
+};
+
 
 typedef struct ssd1306_t
 {
 	avr_irq_t * irq;
 	struct avr_t * avr;
 	uint8_t	w, h, pages;		// Width, height and page count of the LCD
-	uint16_t cursor;		// Offset in vram
-	uint8_t  vram[1024];		// 128x64 bits in 8 pages
+	struct cursor_t cursor;		// VRAM cursor
+	uint8_t vram[8][128];		// 128x64 bits in 8 pages
 	uint16_t flags;			// LCD flags ( SSD1306_FLAG_*)
 	uint8_t command_register;	// Current display command
 	uint8_t contrast_register;	// OLED contrast

@@ -112,14 +112,13 @@ ssd1306_gl_draw (ssd1306_t *part)
     return;
 
   // Draw pixels
-  uint16_t buf_index = 0;
   for (int p = 0; p < pages; p++)
     {
       glPushMatrix ();
       for (int c = 0; c < columns; c++)
 	{
 	  ssd1306_gl_put_pixel_column (
-	      part->vram[buf_index++],
+	      part->vram[p][c],
 	      opacity, invert);
 	  // Next column
 	  glTranslatef (pix_size_g + pix_gap_g, 0, 0);
