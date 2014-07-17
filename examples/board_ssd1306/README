@@ -1,0 +1,21 @@
+board_hd44780
+
+(C) 2011 Michel Pollet <buserror@gmail.com>
+With thanks to Luki <humbell@ethz.ch>
+
+This sample code is derivated from a patch sent by Luki, however it was mostly
+in german, and was using the SDL library. Also the implementation of the LCD
+itself had several shortcomings.
+
+Therefore it was almost entirely rewritten from scratch the LCD was extended
+and made as compliant as it is practical, and the sample code itself was
+stripped of SDL. Also the german AVR LCD driver was replaced with the 
+avr-libc one, a much more complete one.
+
+This example demonstrated how to write a "part' that provide both a way to
+visualize what your code is doing, but also provide extra data you can
+visualize in gtkwave; so the LCD "part" exports quite a few IRQs that can
+be used to help you trace and debug your own code.
+
+Make sure to run this program and visualize the pretty curves.
+ 

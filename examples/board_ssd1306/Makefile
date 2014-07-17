@@ -16,7 +16,7 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
-target=	charlcd
+target=	ssd1306demo
 firm_src = ${wildcard at*${board}.c}
 firmware = ${firm_src:.c=.axf}
 simavr = ../../
@@ -35,17 +35,17 @@ LDFLAGS += -lpthread
 
 include ../Makefile.opengl
 
-all: obj atmega48_charlcd.axf ${target} 
+all: obj atmega32_ssd1306.axf ${target}
 
-atmega48_charlcd.axf: atmega48_charlcd.c
+atmega32_ssd1306.axf: atmega32_ssd1306.c ssd1306.c ssd1306_utils.c images.c
 
 include ${simavr}/Makefile.common
 
 board = ${OBJ}/${target}.elf
 
 ${board} : ${OBJ}/ac_input.o
-${board} : ${OBJ}/hd44780.o
-${board} : ${OBJ}/hd44780_glut.o
+${board} : ${OBJ}/ssd1306_virt.o
+${board} : ${OBJ}/ssd1306_glut.o
 ${board} : ${OBJ}/${target}.o
 
 ${target}: ${board}

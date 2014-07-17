@@ -28,10 +28,10 @@
  * AVR this was compiled for, including the speed, model, and signature bytes.
  *
  * A programmer software can read this and verify fuses values for example, and a
- * simulator can instanciate the proper "model" of AVR, the speed and so on without
+ * simulator can instantiate the proper "model" of AVR, the speed and so on without
  * command line parameters.
  *
- * Exemple of use:
+ * Example of use:
  *
  * #include "avr_mcu_section.h"
  * AVR_MCU(F_CPU, "atmega88");

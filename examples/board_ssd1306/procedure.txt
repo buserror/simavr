@@ -1,0 +1,14 @@
+--> SIMAVR COMPILE AND LINK - works ok 
+avr-gcc -Wall -gdwarf-2 -Os -std=gnu99 -mmcu=atmega32 -DF_CPU=8000000 -fno-inline-small-functions -ffunction-sections -fdata-sections -Wl,--relax,--gc-sections -Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000 -I../simavr/sim/avr -I../../simavr/sim/avr atmega48_charlcd.c -o atmega48_charlcd.axf
+
+## NOTE, removing --section-start.mmcu=0x910000 allows flash with avrdude. Can we get rid of this with obj copy? 
+
+#Dump:
+avr-objdump -h -S atmega48_charlcd.axf > rangerr.lst
+
+#Obj copy:
+avr-objcopy -j .text -j .data -O ihex atmega48_charlcd.axf atmega48_charlcd.hex
+
+Problem: 
+
+In simavr/Makefile.common it seems that on line 131 part isn't set correctly. This causes the hex form the obj dump to be 104 bytes instead of 136 for the basic LED flash example
