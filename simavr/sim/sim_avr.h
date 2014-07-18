@@ -28,6 +28,7 @@ extern "C" {
 
 #include "sim_irq.h"
 #include "sim_interrupts.h"
+#include "sim_cmds.h"
 #include "sim_cycle_timers.h"
 
 typedef uint32_t avr_flashaddr_t;
@@ -263,6 +264,8 @@ typedef struct avr_t {
 	// queue of io modules
 	struct avr_io_t *io_port;
 
+	// Builtin and user-defined commands
+	avr_cmd_table_t commands;
 	// cycle timers tracking & delivery
 	avr_cycle_timer_pool_t	cycle_timers;
 	// interrupt vectors and delivery fifo

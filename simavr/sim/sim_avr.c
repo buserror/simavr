@@ -82,6 +82,7 @@ int avr_init(avr_t * avr)
 	// cpu is in limbo before init is finished.
 	avr->state = cpu_Limbo;
 	avr->frequency = 1000000;	// can be overridden via avr_mcu_section
+	avr_cmd_init(avr);
 	avr_interrupt_init(avr);
 	if (avr->special_init)
 		avr->special_init(avr, avr->special_data);
@@ -151,35 +152,9 @@ void avr_sadly_crashed(avr_t *avr, uint8_t signal)
 		avr->state = cpu_Crashed;
 }
 
-static void _avr_io_command_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
-{
-	AVR_LOG(avr, LOG_TRACE, "%s %02x\n", __FUNCTION__, v);
-	switch (v) {
-		case SIMAVR_CMD_VCD_START_TRACE:
-			if (avr->vcd)
-				avr_vcd_start(avr->vcd);
-			break;
-		case SIMAVR_CMD_VCD_STOP_TRACE:
-			if (avr->vcd)
-				avr_vcd_stop(avr->vcd);
-			break;
-		case SIMAVR_CMD_UART_LOOPBACK: {
-			avr_irq_t * src = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_OUTPUT);
-			avr_irq_t * dst = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ('0'), UART_IRQ_INPUT);
-			if (src && dst) {
-				AVR_LOG(avr, LOG_TRACE, "%s activating uart local echo IRQ src %p dst %p\n",
-						__FUNCTION__, src, dst);
-				avr_connect_irq(src, dst);
-			}
-		}	break;
-
-	}
-}
-
 void avr_set_command_register(avr_t * avr, avr_io_addr_t addr)
 {
-	if (addr)
-		avr_register_io_write(avr, addr, _avr_io_command_write, NULL);
+	avr_cmd_set_register(avr, addr);
 }
 
 static void _avr_io_console_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
