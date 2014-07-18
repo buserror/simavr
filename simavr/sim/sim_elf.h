@@ -22,6 +22,7 @@
 #ifndef __SIM_ELF_H__
 #define __SIM_ELF_H__
 
+#include "sim_cycle_counters.h"
 #include "avr/avr_mcu_section.h"
 
 #ifdef __cplusplus
@@ -53,6 +54,12 @@ typedef struct elf_firmware_t {
 		uint16_t addr;
 		char	name[64];
 	} trace[32];
+
+	int		cycle_counters_count;
+	struct {
+		uint8_t	id;
+		char	name[32];
+	} cycle_counters[MAX_CYCLE_COUNTERS];
 
 	struct {
 		char port;

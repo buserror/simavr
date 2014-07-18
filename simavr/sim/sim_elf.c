@@ -91,62 +91,65 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 	avr_set_command_register(avr, firmware->command_register_addr);
 	avr_set_console_register(avr, firmware->console_register_addr);
 
-	// rest is initialization of the VCD file
+	// initialization of the VCD file
+	if (firmware->tracecount != 0) {
+		avr->vcd = malloc(sizeof(*avr->vcd));
+		memset(avr->vcd, 0, sizeof(*avr->vcd));
+		avr_vcd_init(avr,
+			firmware->tracename[0] ? firmware->tracename: "gtkwave_trace.vcd",
+			avr->vcd,
+			firmware->traceperiod >= 1000 ? firmware->traceperiod : 1000);
 
-	if (firmware->tracecount == 0)
-		return;
-	avr->vcd = malloc(sizeof(*avr->vcd));
-	memset(avr->vcd, 0, sizeof(*avr->vcd));
-	avr_vcd_init(avr,
-		firmware->tracename[0] ? firmware->tracename: "gtkwave_trace.vcd",
-		avr->vcd,
-		firmware->traceperiod >= 1000 ? firmware->traceperiod : 1000);
-
-	AVR_LOG(avr, LOG_TRACE, "Creating VCD trace file '%s'\n", avr->vcd->filename);
-	for (int ti = 0; ti < firmware->tracecount; ti++) {
-		if (firmware->trace[ti].mask == 0xff || firmware->trace[ti].mask == 0) {
-			// easy one
-			avr_irq_t * all = avr_iomem_getirq(avr,
-					firmware->trace[ti].addr,
-					firmware->trace[ti].name,
-					AVR_IOMEM_IRQ_ALL);
-			if (!all) {
-				AVR_LOG(avr, LOG_ERROR, "ELF: %s: unable to attach trace to address %04x\n",
-					__FUNCTION__, firmware->trace[ti].addr);
-			} else {
-				avr_vcd_add_signal(avr->vcd, all, 8, firmware->trace[ti].name);
-			}
-		} else {
-			int count = 0;
-			for (int bi = 0; bi < 8; bi++)
-				if (firmware->trace[ti].mask & (1 << bi))
-					count++;
-			for (int bi = 0; bi < 8; bi++)
-				if (firmware->trace[ti].mask & (1 << bi)) {
-					avr_irq_t * bit = avr_iomem_getirq(avr,
-							firmware->trace[ti].addr,
-							firmware->trace[ti].name,
-							bi);
-					if (!bit) {
-						AVR_LOG(avr, LOG_ERROR, "ELF: %s: unable to attach trace to address %04x\n",
-							__FUNCTION__, firmware->trace[ti].addr);
-						break;
-					}
-
-					if (count == 1) {
-						avr_vcd_add_signal(avr->vcd, bit, 1, firmware->trace[ti].name);
-						break;
-					}
-					char comp[128];
-					sprintf(comp, "%s.%d", firmware->trace[ti].name, bi);
-					avr_vcd_add_signal(avr->vcd, bit, 1, firmware->trace[ti].name);
+		AVR_LOG(avr, LOG_TRACE, "Creating VCD trace file '%s'\n", avr->vcd->filename);
+		for (int ti = 0; ti < firmware->tracecount; ti++) {
+			if (firmware->trace[ti].mask == 0xff || firmware->trace[ti].mask == 0) {
+				// easy one
+				avr_irq_t * all = avr_iomem_getirq(avr,
+						firmware->trace[ti].addr,
+						firmware->trace[ti].name,
+						AVR_IOMEM_IRQ_ALL);
+				if (!all) {
+					AVR_LOG(avr, LOG_ERROR, "ELF: %s: unable to attach trace to address %04x\n",
+						__FUNCTION__, firmware->trace[ti].addr);
+				} else {
+					avr_vcd_add_signal(avr->vcd, all, 8, firmware->trace[ti].name);
 				}
+			} else {
+				int count = 0;
+				for (int bi = 0; bi < 8; bi++)
+					if (firmware->trace[ti].mask & (1 << bi))
+						count++;
+				for (int bi = 0; bi < 8; bi++)
+					if (firmware->trace[ti].mask & (1 << bi)) {
+						avr_irq_t * bit = avr_iomem_getirq(avr,
+								firmware->trace[ti].addr,
+								firmware->trace[ti].name,
+								bi);
+						if (!bit) {
+							AVR_LOG(avr, LOG_ERROR, "ELF: %s: unable to attach trace to address %04x\n",
+								__FUNCTION__, firmware->trace[ti].addr);
+							break;
+						}
+
+						if (count == 1) {
+							avr_vcd_add_signal(avr->vcd, bit, 1, firmware->trace[ti].name);
+							break;
+						}
+						char comp[128];
+						sprintf(comp, "%s.%d", firmware->trace[ti].name, bi);
+						avr_vcd_add_signal(avr->vcd, bit, 1, firmware->trace[ti].name);
+					}
+			}
 		}
+		// if the firmware has specified a command register, do NOT start the trace here
+		// the firmware probably knows best when to start/stop it
+		if (!firmware->command_register_addr)
+			avr_vcd_start(avr->vcd);
 	}
-	// if the firmware has specified a command register, do NOT start the trace here
-	// the firmware probably knows best when to start/stop it
-	if (!firmware->command_register_addr)
-		avr_vcd_start(avr->vcd);
+
+	if(firmware->cycle_counters_count)
+		for (int i = 0; i < firmware->cycle_counters_count; ++i)
+			avr_cycle_counter_register(avr, firmware->cycle_counters[i].id, firmware->cycle_counters[i].name);
 }
 
 static void elf_parse_mmcu_section(elf_firmware_t * firmware, uint8_t * src, uint32_t size)
@@ -212,6 +215,19 @@ static void elf_parse_mmcu_section(elf_firmware_t * firmware, uint8_t * src, uin
 			}	break;
 			case AVR_MMCU_TAG_SIMAVR_CONSOLE: {
 				firmware->console_register_addr = src[0] | (src[1] << 8);
+			}	break;
+			case AVR_MMCU_TAG_CYCLE_COUNTER: {
+				uint8_t id = src[0];
+				char * name = (char*)src + 1;
+				size_t len = sizeof(firmware->cycle_counters[firmware->cycle_counters_count].name);
+
+				AVR_LOG(NULL, LOG_TRACE, "AVR_MMCU_TAG_CYCLE_COUNTER '%s' (%d)\n", name, id);
+
+				firmware->cycle_counters[firmware->cycle_counters_count].id = id;
+				strncpy(firmware->cycle_counters[firmware->cycle_counters_count].name, name, len);
+				firmware->cycle_counters[firmware->cycle_counters_count].name[len - 1] = 0;
+
+				++firmware->cycle_counters_count;
 			}	break;
 		}
 		size -= next;
