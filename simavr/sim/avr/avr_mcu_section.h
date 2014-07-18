@@ -61,6 +61,7 @@ enum {
 	AVR_MMCU_TAG_VCD_PERIOD,
 	AVR_MMCU_TAG_VCD_TRACE,
 	AVR_MMCU_TAG_PORT_EXTERNAL_PULL,
+	AVR_MMCU_TAG_CYCLE_COUNTER
 };
 
 enum {
@@ -68,6 +69,8 @@ enum {
 	SIMAVR_CMD_VCD_START_TRACE,
 	SIMAVR_CMD_VCD_STOP_TRACE,
 	SIMAVR_CMD_UART_LOOPBACK,
+	SIMAVR_CMD_START_CYCLE_COUNTER,
+	SIMAVR_CMD_STOP_CYCLE_COUNTER,
 };
 
 #if __AVR__
@@ -96,6 +99,13 @@ struct avr_mmcu_vcd_trace_t {
 	uint8_t len;
 	uint8_t mask;
 	void * what;
+	char name[];
+} __attribute__((__packed__));
+
+struct avr_mmcu_cycle_counter_t {
+	uint8_t tag;
+	uint8_t len;
+	uint8_t id;
 	char name[];
 } __attribute__((__packed__));
 
@@ -139,6 +149,26 @@ struct avr_mmcu_vcd_trace_t {
 #define AVR_MCU_VCD_SYMBOL(_name) \
 	.tag = AVR_MMCU_TAG_VCD_TRACE, \
 	.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2 + sizeof(_name),\
+	.name = _name
+
+/*!
+ * Allows you to define named cycle counters.
+ *
+ * Example:
+ * 	enum {
+ * 		COUNTER_1,
+ * 		COUNTER_2,
+ * 	};
+ *
+ * 	const struct avr_mmcu_cycle_counter_t _cycle_counters _MMCU_ = {
+ * 		{ AVR_MCU_CYCLE_COUNTER(COUNTER_1, "Counter 1") },
+ * 		{ AVR_MCU_CYCLE_COUNTER(COUNTER_2, "Counter 2") },
+ * 	};
+ */
+#define AVR_MCU_CYCLE_COUNTER(_id, _name) \
+	.tag = AVR_MMCU_TAG_CYCLE_COUNTER, \
+	.len = sizeof(struct avr_mmcu_cycle_counter_t) - 2 + sizeof(_name),\
+	.id = _id, \
 	.name = _name
 
 /*!
