@@ -79,7 +79,7 @@ static int my_avr_run(avr_t * avr)
 	// until the next timer is due
 	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
 
-	avr->pc = new_pc;
+	avr_set_pc(avr, new_pc);
 
 	if (avr->state == cpu_Sleeping) {
 		if (!avr->sreg[S_I]) {

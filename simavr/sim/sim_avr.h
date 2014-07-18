@@ -216,6 +216,8 @@ typedef struct avr_t {
 	 * It CAN be a little confusing, so concentrate, young grasshopper.
 	 */
 	avr_flashaddr_t	pc;
+	// Previous PC - needed for cycle counter overhead accounting.
+	avr_flashaddr_t	old_pc;
 
 	/*
 	 * callback when specific IO registers are read/written.
@@ -347,6 +349,11 @@ void
 avr_set_console_register(
 		avr_t * avr,
 		avr_io_addr_t addr);
+
+void
+avr_set_pc(
+		avr_t * avr,
+		avr_flashaddr_t new_pc);
 
 // load code in the "flash"
 void

@@ -124,7 +124,7 @@ void avr_reset(avr_t * avr)
 
 	memset(avr->data, 0x0, avr->ramend + 1);
 	_avr_sp_set(avr, avr->ramend);
-	avr->pc = 0;
+	avr->old_pc = avr->pc = 0;
 	for (int i = 0; i < 8; i++)
 		avr->sreg[i] = 0;
 	avr_interrupt_reset(avr);
@@ -180,6 +180,12 @@ void avr_set_console_register(avr_t * avr, avr_io_addr_t addr)
 {
 	if (addr)
 		avr_register_io_write(avr, addr, _avr_io_console_write, NULL);
+}
+
+void avr_set_pc(avr_t * avr, avr_flashaddr_t new_pc)
+{
+	avr->old_pc = avr->pc;
+	avr->pc = new_pc;
 }
 
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, avr_flashaddr_t address)
@@ -249,7 +255,7 @@ void avr_callback_run_gdb(avr_t * avr)
 	// until the next timer is due
 	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
 
-	avr->pc = new_pc;
+	avr_set_pc(avr, new_pc);
 
 	if (avr->state == cpu_Sleeping) {
 		if (!avr->sreg[S_I]) {
@@ -303,7 +309,7 @@ void avr_callback_run_raw(avr_t * avr)
 	// until the next timer is due
 	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
 
-	avr->pc = new_pc;
+	avr_set_pc(avr, new_pc);
 
 	if (avr->state == cpu_Sleeping) {
 		if (!avr->sreg[S_I]) {

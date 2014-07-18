@@ -295,7 +295,7 @@ delay of one instruction.
 
 \begin{lstlisting}
     avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
-    avr->pc = new_pc;
+    avr_set_pc(avr, new_pc);
 \end{lstlisting}
 
 Next, all due cycle timers are processed. Cycle timers are one of the
