@@ -393,10 +393,10 @@ avr_sadly_crashed(
  */
 void
 avr_global_logger(
-		struct avr_t* avr, 
-		const int level, 
-		const char * format, 
-		... );
+		struct avr_t* avr,
+		const int level,
+		const char * format,
+		... ) __attribute__((format(printf, 3, 4)));
 
 #ifndef AVR_CORE
 #include <stdarg.h>
