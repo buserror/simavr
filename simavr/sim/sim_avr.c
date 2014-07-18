@@ -83,6 +83,7 @@ int avr_init(avr_t * avr)
 	avr->state = cpu_Limbo;
 	avr->frequency = 1000000;	// can be overridden via avr_mcu_section
 	avr_cmd_init(avr);
+	avr_cycle_counter_init(avr);
 	avr_interrupt_init(avr);
 	if (avr->special_init)
 		avr->special_init(avr, avr->special_data);
