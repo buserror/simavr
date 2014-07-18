@@ -212,6 +212,73 @@ struct avr_mmcu_vcd_trace_t {
 	AVR_MCU_STRING(AVR_MMCU_TAG_NAME, _name);\
 	AVR_MCU_LONG(AVR_MMCU_TAG_FREQUENCY, _speed)
 
+/*
+ * The following MAP macros where copied from
+ * https://github.com/swansontec/map-macro/blob/master/map.h
+ *
+ * The license header for that file is reproduced below:
+ *
+ * Copyright (C) 2012 William Swanson
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use, copy,
+ * modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * Except as contained in this notice, the names of the authors or
+ * their institutions shall not be used in advertising or otherwise to
+ * promote the sale, use or other dealings in this Software without
+ * prior written authorization from the authors.
+ */
+
+#define _EVAL0(...) __VA_ARGS__
+#define _EVAL1(...) _EVAL0 (_EVAL0 (_EVAL0 (__VA_ARGS__)))
+#define _EVAL2(...) _EVAL1 (_EVAL1 (_EVAL1 (__VA_ARGS__)))
+#define _EVAL3(...) _EVAL2 (_EVAL2 (_EVAL2 (__VA_ARGS__)))
+#define _EVAL4(...) _EVAL3 (_EVAL3 (_EVAL3 (__VA_ARGS__)))
+#define _EVAL(...)  _EVAL4 (_EVAL4 (_EVAL4 (__VA_ARGS__)))
+
+#define _MAP_END(...)
+#define _MAP_OUT
+
+#define _MAP_GET_END() 0, _MAP_END
+#define _MAP_NEXT0(test, next, ...) next _MAP_OUT
+#define _MAP_NEXT1(test, next) _MAP_NEXT0 (test, next, 0)
+#define _MAP_NEXT(test, next)  _MAP_NEXT1 (_MAP_GET_END test, next)
+
+#define _MAP0(f, x, peek, ...) f(x) _MAP_NEXT (peek, _MAP1) (f, peek, __VA_ARGS__)
+#define _MAP1(f, x, peek, ...) f(x) _MAP_NEXT (peek, _MAP0) (f, peek, __VA_ARGS__)
+#define _MAP(f, ...) _EVAL (-MAP1 (f, __VA_ARGS__, (), 0))
+
+/* End of original MAP macros. */
+
+// Define MAP macros with one additional argument
+#define _MAP0_1(f, a, x, peek, ...) f(a, x) _MAP_NEXT (peek, _MAP1_1) (f, a, peek, __VA_ARGS__)
+#define _MAP1_1(f, a, x, peek, ...) f(a, x) _MAP_NEXT (peek, _MAP0_1) (f, a, peek, __VA_ARGS__)
+#define _MAP_1(f, a, ...) _EVAL (_MAP1_1 (f, a, __VA_ARGS__, (), 0))
+
+#define _SEND_SIMAVR_CMD_BYTE(reg, b)            reg = b;
+
+// A helper macro for sending multi-byte commands
+#define SEND_SIMAVR_CMD(reg, ...)		\
+	do { \
+		_MAP_1(_SEND_SIMAVR_CMD_BYTE, reg, __VA_ARGS__) \
+	} while(0)
+
 #endif /* __AVR__ */
 
 #ifdef __cplusplus
