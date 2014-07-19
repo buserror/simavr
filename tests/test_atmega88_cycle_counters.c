@@ -2,6 +2,11 @@
 #include <string.h>
 #include "tests.h"
 
+enum {
+	OUTER_CYCLE_COUNTER,
+	INNER_CYCLE_COUNTER,
+};
+
 static int success = 1;
 
 static void
@@ -11,10 +16,10 @@ notify(
 		avr_cycle_count_t cycles,
 		void * param)
 {
-	if(strcmp(counter->name, "Outer") == 0 && cycles != 60 && counter->overhead != 31)
+	if(counter->id == OUTER_CYCLE_COUNTER && cycles != 60 && counter->overhead != 31)
 		success = 0;
 
-	if(strcmp(counter->name, "Inner") == 0 && cycles != 3 && counter->overhead != 1)
+	if(counter->id == INNER_CYCLE_COUNTER && cycles != 3 && counter->overhead != 1)
 		success = 0;
 }
 
