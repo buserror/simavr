@@ -65,6 +65,7 @@ avr_cycle_counter_register(
 	AVR_LOG(avr, LOG_TRACE, LOG_PREFIX "%s: register cycle counter '%s' (%d)\n", __FUNCTION__, name, id);
 
 	memset(counter, 0, sizeof(*counter));
+	counter->id = id;
 	if(name) {
 		strncpy(counter->name, name, sizeof(counter->name));
 		counter->name[sizeof(counter->name) - 1] = 0;
@@ -168,7 +169,7 @@ _avr_cycle_counter_stop(
 
 	cycles = avr->cycle - counter->start - counter->overhead;
 
-	AVR_LOG(avr, LOG_TRACE, LOG_PREFIX "%s: counter '%s' measured %" PRI_avr_cycle_count " cycle(s) (overhead %" PRI_avr_cycle_count " cycle(s))\n", __FUNCTION__, counter->name, cycles, counter->overhead);
+	AVR_LOG(avr, LOG_TRACE, LOG_PREFIX "%s: counter '%s' (%d) measured %" PRI_avr_cycle_count " cycle(s) (overhead %" PRI_avr_cycle_count " cycle(s))\n", __FUNCTION__, counter->name, counter->id, cycles, counter->overhead);
 
 	// Invoke callbacks
 	while(hook) {

@@ -45,6 +45,7 @@ typedef struct avr_cycle_counter_t {
 	char name[32];
 	avr_cycle_count_t start;
 	avr_cycle_count_t overhead;
+	uint8_t id;
 	uint8_t registered:1;
 } avr_cycle_counter_t;
 
