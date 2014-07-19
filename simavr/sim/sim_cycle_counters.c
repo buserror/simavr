@@ -168,7 +168,7 @@ _avr_cycle_counter_stop(
 
 	cycles = avr->cycle - counter->start - counter->overhead;
 
-	AVR_LOG(avr, LOG_TRACE, LOG_PREFIX "%s: counter '%s' measured %" PRI_avr_cycle_count " cycle(s)\n", __FUNCTION__, counter->name, cycles);
+	AVR_LOG(avr, LOG_TRACE, LOG_PREFIX "%s: counter '%s' measured %" PRI_avr_cycle_count " cycle(s) (overhead %" PRI_avr_cycle_count " cycle(s))\n", __FUNCTION__, counter->name, cycles, counter->overhead);
 
 	// Invoke callbacks
 	while(hook) {
