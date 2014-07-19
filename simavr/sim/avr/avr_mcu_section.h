@@ -71,6 +71,7 @@ enum {
 	SIMAVR_CMD_UART_LOOPBACK,
 	SIMAVR_CMD_START_CYCLE_COUNTER,
 	SIMAVR_CMD_STOP_CYCLE_COUNTER,
+	SIMAVR_CMD_USER,	// Denotes start of user-defined commands
 };
 
 #if __AVR__
