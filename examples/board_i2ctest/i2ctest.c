@@ -54,8 +54,8 @@ int main(int argc, char *argv[])
 	avr_init(avr);
 	avr_load_firmware(avr, &f);
 
-	// initialize our 'peripheral'
-	i2c_eeprom_init(avr, &ee, 0xa0, 0xfe, NULL, 1024);
+	// initialize our 'peripheral', setting the mask to allow read and write
+	i2c_eeprom_init(avr, &ee, 0xa0, 0x01, NULL, 1024);
 
 	i2c_eeprom_attach(avr, &ee, AVR_IOCTL_TWI_GETIRQ(0));
 	ee.verbose = 1;
