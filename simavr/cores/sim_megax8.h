@@ -64,6 +64,12 @@ struct mcu_t {
 #error SIM_MMCU is not declared
 #endif
 
+/* Termporary hack for mega 324 due to mangled headers */
+#ifdef _AVR_IOM328P_H_
+#undef EFUSE_DEFAULT
+#define EFUSE_DEFAULT 0
+#endif
+
 const struct mcu_t SIM_CORENAME = {
 	.core = {
 		.mmcu = SIM_MMCU,

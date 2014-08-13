@@ -42,6 +42,32 @@ void m128rfr2_reset(struct avr_t * avr);
 #include "avr/iom128rfr2.h"
 
 /*
+ * Temporary hack for mangled avr-libc headers
+ */
+#ifndef PB7
+#define PB4 4
+#define PB5 5
+#define PB6 6
+#define PB7 7
+#endif
+#ifndef PD0
+#define PD0 0
+#define PD1 1
+#define PD2 2
+#define PD3 3
+#define PD4 4
+#endif
+#ifndef PE3
+#define PE3 3
+#define PE4 4
+#define PE5 5
+#define PE6 6
+#define PE7 7
+#endif
+#ifndef PG5
+#define PG5 5
+#endif
+/*
  * This is a template for all of the 128rfr2 devices, hopefully
  */
 const struct mcu_t {
