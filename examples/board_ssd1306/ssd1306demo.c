@@ -29,7 +29,6 @@
 #include "avr_ioport.h"
 #include "sim_elf.h"
 #include "sim_gdb.h"
-#include "sim_vcd_file.h"
 
 #if __APPLE__
 #include <GLUT/glut.h>
@@ -39,14 +38,11 @@
 
 #include <pthread.h>
 
-#include "ac_input.h"
 #include "ssd1306_glut.h"
 
 int window_identifier;
 
 avr_t * avr = NULL;
-avr_vcd_t vcd_file;
-ac_input_t ac_input;
 ssd1306_t ssd1306;
 
 static void *
@@ -147,7 +143,6 @@ main (int argc, char *argv[])
 
 	avr_init (avr);
 	avr_load_firmware (avr, &f);
-	ac_input_init (avr, &ac_input);
 
 	ssd1306_init (avr, &ssd1306, 128, 64);
 
