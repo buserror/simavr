@@ -182,6 +182,7 @@ avr_twi_write(
 			if (p->state & TWI_COND_START) {
 				avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
 						avr_twi_irq_msg(TWI_COND_STOP, p->peer_addr, 1));
+				avr_regbit_clear(avr, p->twsto);
 			}
 		}
 		p->state = 0;
