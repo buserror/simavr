@@ -581,6 +581,7 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
  */
 avr_flashaddr_t avr_run_one(avr_t * avr)
 {
+run_one_again:
 #if CONFIG_SIMAVR_TRACE
 	/*
 	 * this traces spurious reset or bad jumps
@@ -1402,6 +1403,16 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 
 	}
 	avr->cycle += cycle;
+	
+	if( (avr->state == cpu_Running) && 
+		(avr->run_cycle_count > cycle) && 
+		!(avr->sreg[S_I] && avr_has_pending_interrupts(avr)) )
+	{
+		avr->run_cycle_count -= cycle;
+		avr->pc = new_pc;
+		goto run_one_again;
+	}
+	
 	return new_pc;
 }
 
