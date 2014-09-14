@@ -4,6 +4,7 @@
 	External Interrupt Handling (for INT0-3)
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Copyright 2014 Doug Szumski <d.s.szumski@gmail.com>
 
  	This file is part of simavr.
 
@@ -75,6 +76,20 @@ void avr_extint_init(avr_t * avr, avr_extint_t * p);
 			.vector = { \
 				.enable = AVR_IO_REGBIT(EIMSK, INT##_index), \
 				.raised = AVR_IO_REGBIT(EIFR, INTF##_index), \
+				.vector = INT##_index##_vect, \
+			},\
+		}
+
+// Asynchronous External Interrupt, for example INT2 on the m16 and m32
+// Uses only 1 interrupt sense control bit
+#define AVR_ASYNC_EXTINT_DECLARE(_index, _portname, _portpin) \
+		.eint[_index] = { \
+			.port_ioctl = AVR_IOCTL_IOPORT_GETIRQ(_portname), \
+			.port_pin = _portpin, \
+			.isc = { AVR_IO_REGBIT(MCUCSR, ISC##_index) },\
+			.vector = { \
+				.enable = AVR_IO_REGBIT(GICR, INT##_index), \
+				.raised = AVR_IO_REGBIT(GIFR, INTF##_index), \
 				.vector = INT##_index##_vect, \
 			},\
 		}
