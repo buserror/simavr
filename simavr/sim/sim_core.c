@@ -888,7 +888,7 @@ run_one_again:
 			if ((opcode & 0xff0f) == 0x9408) {
 				get_sreg_bit(opcode);
 				STATE("%s%c\n", opcode & 0x0080 ? "cl" : "se", _sreg_bit_name[b]);
-				avr->sreg[b] = (opcode & 0x0080) == 0;
+				avr_sreg_set(avr, b, (opcode & 0x0080) == 0);
 				SREG();
 			} else switch (opcode) {
 				case 0x9588: { // SLEEP -- 1001 0101 1000 1000
@@ -942,7 +942,7 @@ run_one_again:
 					new_pc = _avr_pop_addr(avr);
 					cycle += 1 + avr->address_size;
 					if (opcode & 0x10)	// reti
-						avr->sreg[S_I] = 1;
+						avr_sreg_set(avr, S_I, 1);
 					STATE("ret%s\n", opcode & 0x10 ? "i" : "");
 					TRACE_JUMP();
 					STACK_FRAME_POP();
@@ -1404,9 +1404,9 @@ run_one_again:
 	}
 	avr->cycle += cycle;
 	
-	if( (avr->state == cpu_Running) && 
+	if ((avr->state == cpu_Running) && 
 		(avr->run_cycle_count > cycle) && 
-		!(avr->sreg[S_I] && avr_has_pending_interrupts(avr)) )
+		(avr->interrupt_state == 0))
 	{
 		avr->run_cycle_count -= cycle;
 		avr->pc = new_pc;

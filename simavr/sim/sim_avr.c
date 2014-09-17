@@ -264,12 +264,6 @@ void avr_callback_run_gdb(avr_t * avr)
 #endif
 	}
 
-	// if we just re-enabled the interrupts...
-	// double buffer the I flag, to detect that edge
-	if (avr->sreg[S_I] && !avr->i_shadow)
-		avr->interrupts.pending_wait++;
-	avr->i_shadow = avr->sreg[S_I];
-
 	// run the cycle timers, get the suggested sleep time
 	// until the next timer is due
 	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
@@ -318,12 +312,6 @@ void avr_callback_run_raw(avr_t * avr)
 #endif
 	}
 
-	// if we just re-enabled the interrupts...
-	// double buffer the I flag, to detect that edge
-	if (avr->sreg[S_I] && !avr->i_shadow)
-		avr->interrupts.pending_wait++;
-	avr->i_shadow = avr->sreg[S_I];
-
 	// run the cycle timers, get the suggested sleep time
 	// until the next timer is due
 	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
@@ -344,8 +332,12 @@ void avr_callback_run_raw(avr_t * avr)
 		avr->cycle += 1 + sleep;
 	}
 	// Interrupt servicing might change the PC too, during 'sleep'
-	if (avr->state == cpu_Running || avr->state == cpu_Sleeping)
-		avr_service_interrupts(avr);
+	if (avr->state == cpu_Running || avr->state == cpu_Sleeping) {
+		/* Note: checking interrupt_state here is completely superfluous, however
+			as interrupt_state tells us all we really need to know, here
+			a simple check here may be cheaper than a call not needed. */
+		if (avr->interrupt_state) avr_service_interrupts(avr);
+	}
 }
 
 

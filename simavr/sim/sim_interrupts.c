@@ -47,7 +47,7 @@ avr_interrupt_reset(
 	printf("%s\n", __func__);
 	avr_int_table_p table = &avr->interrupts;
 	table->pending_r = table->pending_w = 0;
-	table->pending_wait = 0;
+	avr->interrupt_state = 0;
 	for (int i = 0; i < table->vector_count; i++)
 		table->vector[i]->pending = 0;
 }
@@ -127,8 +127,8 @@ avr_raise_interrupt(
 		table->pending[table->pending_w++] = vector;
 		table->pending_w = INT_FIFO_MOD(table->pending_w);
 
-		if (!table->pending_wait)
-			table->pending_wait = 1;		// latency on interrupts ??
+		if (avr->sreg[S_I] && avr->interrupt_state == 0)
+			avr->interrupt_state = 1;
 		if (avr->state == cpu_Sleeping) {
 			if (vector->trace)
 				printf("Waking CPU due to interrupt\n");
@@ -191,18 +191,17 @@ avr_service_interrupts(
 	if (!avr->sreg[S_I])
 		return;
 
-	if (!avr_has_pending_interrupts(avr))
+	if (avr->interrupt_state) {
+		if (avr->interrupt_state < 0) {
+			avr->interrupt_state++;
+			if (avr->interrupt_state == 0)
+				avr->interrupt_state = avr_has_pending_interrupts(avr);
+			return;
+		}
+	} else
 		return;
 
 	avr_int_table_p table = &avr->interrupts;
-
-	if (!table->pending_wait) {
-		table->pending_wait = 2;	// for next one...
-		return;
-	}
-	table->pending_wait--;
-	if (table->pending_wait)
-		return;
 
 	// how many are pending...
 	int cnt = table->pending_w > table->pending_r ?
@@ -230,11 +229,12 @@ avr_service_interrupts(
 	// could also have been disabled, or cleared
 	if (!avr_regbit_get(avr, vector->enable) || !vector->pending) {
 		vector->pending = 0;
+		avr->interrupt_state = avr_has_pending_interrupts(avr);
 	} else {
 		if (vector && vector->trace)
 			printf("%s calling %d\n", __FUNCTION__, (int)vector->vector);
 		_avr_push_addr(avr, avr->pc);
-		avr->sreg[S_I] = 0;
+		avr_sreg_set(avr, S_I, 0);
 		avr->pc = vector->vector * avr->vector_size;
 
 		avr_clear_interrupt(avr, vector);
