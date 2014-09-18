@@ -155,7 +155,7 @@ FIFO_DECL FIFO_INLINE FIFO_CURSOR_TYPE __name##_get_read_size(__name##_t *c)\
 }\
 FIFO_DECL FIFO_INLINE FIFO_CURSOR_TYPE __name##_get_write_size(__name##_t *c)\
 {\
-	return __name##_fifo_size - __name##_get_read_size(c);\
+	return (__name##_fifo_size-1) - __name##_get_read_size(c);\
 }\
 FIFO_DECL FIFO_INLINE void __name##_read_offset(__name##_t *c, FIFO_CURSOR_TYPE o)\
 {\
