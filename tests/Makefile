@@ -26,8 +26,8 @@ simavr 		= ..
 IPATH 		+= ${simavr}/include
 IPATH 		+= ${simavr}/simavr/sim
 
-tests_src	= ${wildcard test_*.c}
-tests		= ${patsubst %.c, ${OBJ}/%.tst, ${tests_src}}
+tests_src	:= ${wildcard test_*.c}
+tests		:= ${patsubst %.c, ${OBJ}/%.tst, ${tests_src}}
 
 all: obj axf tests
 

@@ -1,5 +1,5 @@
 
-UNAME = ${shell uname}
+UNAME := ${shell uname}
 
 ifeq (${UNAME}, Darwin)
 LDFLAGS 	+= -framework GLUT -framework OpenGL

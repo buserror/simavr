@@ -27,7 +27,7 @@
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
 # simavr directory
-SIMAVR		?= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && echo $$p/simavr; done}
+SIMAVR		:= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && echo $$p/simavr; done}
 
 # You can override the build settings with local changes in this file
 # for example:
@@ -37,7 +37,7 @@ SIMAVR		?= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && ech
 -include ${wildcard ${SIMAVR}/../.make.options*}
 
 # get the first character of what the compiler says it is, unless it's 'x86_64' doh
-ARCH 		= ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
+ARCH 		:= ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
 
 CFLAGS		+= -O2 -Wall
 CFLAGS		+= -g
@@ -91,8 +91,8 @@ MKDIR		?= mkdir -p
 INSTALL		?= install
 SHELL	 	:= ${shell which bash}
 	
-OBJ 		= obj-${shell $(CC) -dumpmachine}
-LIBDIR		= ${shell pwd}/${SIMAVR}/${OBJ}
+OBJ 		:= obj-${shell $(CC) -dumpmachine}
+LIBDIR		:= ${shell pwd}/${SIMAVR}/${OBJ}
 LDFLAGS 	+= -L${LIBDIR} -lsimavr 
 
 LDFLAGS 	+= -lelf 
