@@ -46,6 +46,8 @@
 		} \
 	}
 
+#define DEFAULT_SLEEP_CYCLES 1000
+
 void
 avr_cycle_timer_reset(
 		struct avr_t * avr)
@@ -57,6 +59,41 @@ avr_cycle_timer_reset(
 		avr_cycle_timer_slot_p t = &pool->timer_slots[i];
 		QUEUE(pool->timer_free, t);
 	}
+	avr->run_cycle_count = 1;
+	avr->run_cycle_limit = 1;
+}
+
+static avr_cycle_count_t
+avr_cycle_timer_return_sleep_run_cycles_limited(
+	avr_t *avr,
+	avr_cycle_count_t sleep_cycle_count)
+{
+	// run_cycle_count is bound to run_cycle_limit but NOT less than 1 cycle...
+	//	this is not an error!..  unless you like deadlock.
+	avr_cycle_count_t run_cycle_count = ((avr->run_cycle_limit >= sleep_cycle_count) ?
+		sleep_cycle_count : avr->run_cycle_limit);
+	avr->run_cycle_count = run_cycle_count ? run_cycle_count : 1;
+
+	// sleep cycles are returned unbounded thus preserving original behavior.
+	return(sleep_cycle_count);
+}
+
+static void
+avr_cycle_timer_reset_sleep_run_cycles_limited(
+	avr_t *avr)
+{
+	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
+	avr_cycle_count_t sleep_cycle_count = DEFAULT_SLEEP_CYCLES;
+
+	if(pool->timer) {
+		if(pool->timer->when > avr->cycle) {
+			sleep_cycle_count = pool->timer->when - avr->cycle;
+		} else {
+			sleep_cycle_count = 0;
+		}
+	}
+
+	avr_cycle_timer_return_sleep_run_cycles_limited(avr, sleep_cycle_count);
 }
 
 // no sanity checks checking here, on purpose
@@ -112,6 +149,7 @@ avr_cycle_timer_register(
 		return;
 	}
 	avr_cycle_timer_insert(avr, when, timer, param);
+	avr_cycle_timer_reset_sleep_run_cycles_limited(avr);
 }
 
 void
@@ -143,6 +181,7 @@ avr_cycle_timer_cancel(
 		last = t;
 		t = t->next;
 	}
+	avr_cycle_timer_reset_sleep_run_cycles_limited(avr);
 }
 
 /*
@@ -179,15 +218,12 @@ avr_cycle_timer_process(
 {
 	avr_cycle_timer_pool_t * pool = &avr->cycle_timers;
 
-	if (!pool->timer)
-		return (avr_cycle_count_t)1000;
-
-	do {
+	if (pool->timer) do {
 		avr_cycle_timer_slot_p t = pool->timer;
 		avr_cycle_count_t when = t->when;
 
 		if (when > avr->cycle)
-			return t->when - avr->cycle;
+			return avr_cycle_timer_return_sleep_run_cycles_limited(avr, when - avr->cycle);
 
 		// detach from active timers
 		pool->timer = t->next;
@@ -206,5 +242,8 @@ avr_cycle_timer_process(
 		QUEUE(pool->timer_free, t);
 	} while (pool->timer);
 
-	return (avr_cycle_count_t)1000;
+	// original behavior was to return 1000 cycles when no timers were present...
+	// run_cycles are bound to at least one cycle but no more than requested limit...
+	//	value passed here is returned unbounded, thus preserving original behavior.
+	return avr_cycle_timer_return_sleep_run_cycles_limited(avr, DEFAULT_SLEEP_CYCLES);
 }

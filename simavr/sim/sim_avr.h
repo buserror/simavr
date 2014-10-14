@@ -162,6 +162,11 @@ typedef struct avr_t {
 	// like, sleeping.
 	avr_cycle_count_t	cycle;		// current cycle
 
+	// these next two allow the core to freely run between cycle timers and also allows
+	// for a maximum run cycle limit... run_cycle_count is set during cycle timer processing.
+	avr_cycle_count_t	run_cycle_count;	// cycles to run before next timer
+	avr_cycle_count_t	run_cycle_limit;	// maximum run cycle interval limit
+
 	/**
 	 * Sleep requests are accumulated in sleep_usec until the minimum sleep value
 	 * is reached, at which point sleep_usec is cleared and the sleep request
