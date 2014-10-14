@@ -237,8 +237,6 @@ static void avr_timer_reconfigure(avr_timer_t * p)
 {
 	avr_t * avr = p->io.avr;
 
-	avr_timer_wgm_t zero={0};
-	p->mode = zero;
 	// cancel everything
 	p->comp[AVR_TIMER_COMPA].comp_cycles = 0;
 	p->comp[AVR_TIMER_COMPB].comp_cycles = 0;
@@ -258,8 +256,8 @@ static void avr_timer_reconfigure(avr_timer_t * p)
 			avr_timer_configure(p, p->cs_div_clock, _timer_get_ocr(p, AVR_TIMER_COMPA));
 		}	break;
 		case avr_timer_wgm_pwm: {
-			uint16_t top = p->mode.top == (avr_timer_wgm_reg_ocra ?
-				_timer_get_ocr(p, AVR_TIMER_COMPA) : _timer_get_icr(p));
+			uint16_t top = (p->mode.top == avr_timer_wgm_reg_ocra) ?
+				_timer_get_ocr(p, AVR_TIMER_COMPA) : _timer_get_icr(p);
 			avr_timer_configure(p, p->cs_div_clock, top);
 		}	break;
 		case avr_timer_wgm_fast_pwm:
