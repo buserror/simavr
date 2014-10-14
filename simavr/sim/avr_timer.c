@@ -86,6 +86,27 @@ static avr_cycle_count_t avr_timer_comp(avr_timer_t *p, avr_cycle_count_t when, 
 				p->comp[comp].comp_cycles ?
 						when + p->comp[comp].comp_cycles : 0;
 }
+static void avr_timer_comp_on_tov(avr_timer_t *p, avr_cycle_count_t when, uint8_t comp)
+{
+	avr_t * avr = p->io.avr;
+
+	// check output compare mode and set/clear pins
+	uint8_t mode = avr_regbit_get(avr, p->comp[comp].com);
+	avr_irq_t * irq = &p->io.irq[TIMER_IRQ_OUT_COMP + comp];
+
+	switch (mode) {
+		case avr_timer_com_normal: // Normal mode
+			break;
+		case avr_timer_com_toggle: // toggle on compare match => on tov do nothing
+			break;
+		case avr_timer_com_clear: // clear on compare match => set on tov
+			avr_raise_irq(irq, 1);
+			break;
+		case avr_timer_com_set: //set on compare match => clear on tov
+			avr_raise_irq(irq, 0);
+			break;
+	}
+}
 
 static avr_cycle_count_t avr_timer_compa(struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
@@ -117,11 +138,12 @@ static avr_cycle_count_t avr_timer_tov(struct avr_t * avr, avr_cycle_count_t whe
 
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
 		if (p->comp[compi].comp_cycles) {
-			if (p->comp[compi].comp_cycles < p->tov_cycles)
+			if (p->comp[compi].comp_cycles < p->tov_cycles) {
+				avr_timer_comp_on_tov(p, when, compi);
 				avr_cycle_timer_register(avr,
 					p->comp[compi].comp_cycles,
 					dispatch[compi], p);
-			else if (p->tov_cycles == p->comp[compi].comp_cycles && !start)
+			} else if (p->tov_cycles == p->comp[compi].comp_cycles && !start)
 				dispatch[compi](avr, when, param);
 		}
 	}
@@ -237,8 +259,6 @@ static void avr_timer_reconfigure(avr_timer_t * p)
 {
 	avr_t * avr = p->io.avr;
 
-	avr_timer_wgm_t zero={0};
-	p->mode = zero;
 	// cancel everything
 	p->comp[AVR_TIMER_COMPA].comp_cycles = 0;
 	p->comp[AVR_TIMER_COMPB].comp_cycles = 0;
@@ -258,8 +278,8 @@ static void avr_timer_reconfigure(avr_timer_t * p)
 			avr_timer_configure(p, p->cs_div_clock, _timer_get_ocr(p, AVR_TIMER_COMPA));
 		}	break;
 		case avr_timer_wgm_pwm: {
-			uint16_t top = p->mode.top == (avr_timer_wgm_reg_ocra ?
-				_timer_get_ocr(p, AVR_TIMER_COMPA) : _timer_get_icr(p));
+			uint16_t top = (p->mode.top == avr_timer_wgm_reg_ocra) ?
+				_timer_get_ocr(p, AVR_TIMER_COMPA) : _timer_get_icr(p);
 			avr_timer_configure(p, p->cs_div_clock, top);
 		}	break;
 		case avr_timer_wgm_fast_pwm:
@@ -296,8 +316,8 @@ static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 		case avr_timer_wgm_pwm:
 			if (timer->mode.top != avr_timer_wgm_reg_ocra) {
 				avr_raise_irq(timer->io.irq + TIMER_IRQ_OUT_PWM0, _timer_get_ocr(timer, AVR_TIMER_COMPA));
-				avr_raise_irq(timer->io.irq + TIMER_IRQ_OUT_PWM1, _timer_get_ocr(timer, AVR_TIMER_COMPB));
 			}
+			avr_raise_irq(timer->io.irq + TIMER_IRQ_OUT_PWM1, _timer_get_ocr(timer, AVR_TIMER_COMPB));
 			break;
 		case avr_timer_wgm_fast_pwm:
 			if (oldv != _timer_get_comp_ocr(avr, comp))
