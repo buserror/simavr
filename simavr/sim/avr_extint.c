@@ -2,6 +2,7 @@
 	avr_extint.c
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Copyright 2014 Doug Szumski <d.s.szumski@gmail.com>
 
  	This file is part of simavr.
 
@@ -31,26 +32,44 @@ static void avr_extint_irq_notify(struct avr_irq_t * irq, uint32_t value, void *
 	avr_extint_t * p = (avr_extint_t *)param;
 	avr_t * avr = p->io.avr;
 
-	uint8_t mode = avr_regbit_get_array(avr, p->eint[irq->irq].isc, 2);
 	int up = !irq->value && value;
 	int down = irq->value && !value;
-	switch (mode) {
-		case 0:
-			// unsupported
-			break;
-		case 1:
-			if (up || down)
-				avr_raise_interrupt(avr, &p->eint[irq->irq].vector);
-			break;
-		case 2:
-			if (down)
-				avr_raise_interrupt(avr, &p->eint[irq->irq].vector);
-			break;
-		case 3:
-			if (up)
-				avr_raise_interrupt(avr, &p->eint[irq->irq].vector);
-			break;
+
+	if (p->eint[irq->irq + 1].isc->reg) {
+		// Two bit interrupt sense control
+		uint8_t mode = avr_regbit_get_array(avr, p->eint[irq->irq].isc, 2);
+		switch (mode) {
+			case 0:
+				// unsupported
+				break;
+			case 1:
+				if (up || down)
+					avr_raise_interrupt(avr, &p->eint[irq->irq].vector);
+				break;
+			case 2:
+				if (down)
+					avr_raise_interrupt(avr, &p->eint[irq->irq].vector);
+				break;
+			case 3:
+				if (up)
+					avr_raise_interrupt(avr, &p->eint[irq->irq].vector);
+				break;
+		}
+	} else {
+		// 1 bit interrupt sense control, eg int2 in m16, m32 etc
+		uint8_t mode = avr_regbit_get_array(avr, p->eint[irq->irq].isc, 1);
+		switch (mode) {
+			case 0:
+				if (down)
+					avr_raise_interrupt(avr, &p->eint[irq->irq].vector);
+				break;
+			case 1:
+				if (up)
+					avr_raise_interrupt(avr, &p->eint[irq->irq].vector);
+				break;
+		}
 	}
+
 }
 
 static void avr_extint_reset(avr_io_t * port)
