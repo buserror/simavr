@@ -953,22 +953,6 @@ run_one_again:
 					cycle += 2; // 3 cycles
 					_avr_set_r(avr, 0, avr->flash[z]);
 				}	break;
-				case 0x9408:case 0x9418:case 0x9428:case 0x9438:case 0x9448:case 0x9458:case 0x9468:
-				case 0x9478:
-				{	// BSET -- Set Bit in SREG -- 1001 0100 0bbb 1000
-					get_sreg_bit(opcode);
-					avr->sreg[b] = 1;
-					STATE("bset %c\n", _sreg_bit_name[b]);
-					SREG();
-				}	break;
-				case 0x9488:case 0x9498:case 0x94a8:case 0x94b8:case 0x94c8:case 0x94d8:case 0x94e8:
-				case 0x94f8:	// bit 7 is 'clear vs set'
-				{	// BCLR -- Clear Bit in SREG -- 1001 0100 1bbb 1000
-					get_sreg_bit(opcode);
-					avr->sreg[b] = 0;
-					STATE("bclr %c\n", _sreg_bit_name[b]);
-					SREG();
-				}	break;
 				default:  {
 					switch (opcode & 0xfe0f) {
 						case 0x9000: {	// LDS -- Load Direct from Data Space, 32 bits -- 1001 0000 0000 0000
