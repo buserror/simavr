@@ -90,19 +90,11 @@ const struct mcu_t SIM_CORENAME = {
 		AVR_EXTINT_DECLARE(1, 'D', PD3),
 	},
 #ifdef PORTA
-	.porta = {
-		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
-	},
+	AVR_IOPORT_DECLARE(a, 'A', A),
 #endif
-	.portb = {
-		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
-	},
-	.portc = {
-		.name = 'C', .r_port = PORTC, .r_ddr = DDRC, .r_pin = PINC,
-	},
-	.portd = {
-		.name = 'D', .r_port = PORTD, .r_ddr = DDRD, .r_pin = PIND,
-	},
+	AVR_IOPORT_DECLARE(b, 'B', B),
+	AVR_IOPORT_DECLARE(c, 'C', C),
+	AVR_IOPORT_DECLARE(d, 'D', D),
 	.uart = {
 	   // no PRUSART .disabled = AVR_IO_REGBIT(PRR,PRUSART0),
 		.name = '0',

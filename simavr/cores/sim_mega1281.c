@@ -77,9 +77,7 @@ const struct mcu_t {
 		AVR_EXTINT_MEGA_DECLARE(6, 'E', PE6, B),
 		AVR_EXTINT_MEGA_DECLARE(7, 'E', PE7, B),
 	},
-	.porta = {
-		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
-	},
+	AVR_IOPORT_DECLARE(a, 'A', A),
 	.portb = {
 		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
 		.pcint = {
@@ -89,22 +87,11 @@ const struct mcu_t {
 		},
 		.r_pcint = PCMSK0,
 	},
-	.portc = {
-		.name = 'C', .r_port = PORTC, .r_ddr = DDRC, .r_pin = PINC,
-	},
-	.portd = {
-		.name = 'D', .r_port = PORTD, .r_ddr = DDRD, .r_pin = PIND,
-	},
-	.porte = {
-		.name = 'E', .r_port = PORTE, .r_ddr = DDRE, .r_pin = PINE,
-	},
-	.portf = {
-		.name = 'F', .r_port = PORTF, .r_ddr = DDRF, .r_pin = PINF,
-	},
-	.portg = {
-		.name = 'G', .r_port = PORTG, .r_ddr = DDRG, .r_pin = PING,
-	},
-
+	AVR_IOPORT_DECLARE(c, 'C', C),
+	AVR_IOPORT_DECLARE(d, 'D', D),
+	AVR_IOPORT_DECLARE(e, 'E', E),
+	AVR_IOPORT_DECLARE(f, 'F', F),
+	AVR_IOPORT_DECLARE(g, 'G', G),
 	.uart0 = {
 		.disabled = AVR_IO_REGBIT(PRR0,PRUSART0),
 		.name = '0',

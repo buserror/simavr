@@ -59,9 +59,7 @@ static const struct mcu_t {
 		AVR_EXTINT_TINY_DECLARE(0, 'D', 2, EIFR),
 		AVR_EXTINT_TINY_DECLARE(1, 'D', 3, EIFR),
 	},
-	.porta = {	// port A has no PCInts..
-		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
-	},
+	AVR_IOPORT_DECLARE(a, 'A', A), // port A has no PCInts..
 	.portb = {
 		.name = 'B',  .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
 		.pcint = {
@@ -71,9 +69,7 @@ static const struct mcu_t {
 		},
 		.r_pcint = PCMSK,
 	},
-	.portd = {	// port D has no PCInts..
-		.name = 'D', .r_port = PORTD, .r_ddr = DDRD, .r_pin = PIND,
-	},
+	AVR_IOPORT_DECLARE(d, 'D', D), // port D has no PCInts..
 	.uart = {
 		// no PRR register on the 2313
 		//.disabled = AVR_IO_REGBIT(PRR,PRUSART0),
