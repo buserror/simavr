@@ -118,6 +118,10 @@ typedef struct avr_ioport_t {
 
 void avr_ioport_init(avr_t * avr, avr_ioport_t * port);
 
+#define AVR_IOPORT_DECLARE(_lname, _cname, _uname) \
+	.port ## _lname = { \
+		.name = _cname, .r_port = PORT ## _uname, .r_ddr = DDR ## _uname, .r_pin = PIN ## _uname, \
+	}
 
 #ifdef __cplusplus
 };

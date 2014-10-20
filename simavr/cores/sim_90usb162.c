@@ -89,9 +89,7 @@ const struct mcu_t {
 		},
 		.r_pcint = PCMSK1,
 	},
-	.portd = {
-		.name = 'D', .r_port = PORTD, .r_ddr = DDRD, .r_pin = PIND,
-	},
+	AVR_IOPORT_DECLARE(d, 'D', D),
 
 	.uart1 = {
 		.disabled = AVR_IO_REGBIT(PRR1,PRUSART1),
