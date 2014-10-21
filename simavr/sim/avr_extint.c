@@ -31,9 +31,16 @@ static void avr_extint_irq_notify(struct avr_irq_t * irq, uint32_t value, void *
 	avr_extint_t * p = (avr_extint_t *)param;
 	avr_t * avr = p->io.avr;
 
-	uint8_t mode = avr_regbit_get_array(avr, p->eint[irq->irq].isc, 2);
 	int up = !irq->value && value;
 	int down = irq->value && !value;
+
+	uint8_t isc_bits = p->eint[irq->irq + 1].isc->reg ? 2 : 1;
+	uint8_t mode = avr_regbit_get_array(avr, p->eint[irq->irq].isc, isc_bits);
+
+	// Asynchronous interrupts, eg int2 in m16, m32 etc. support only down/up
+	if (isc_bits == 1)
+		mode +=2;
+
 	switch (mode) {
 		case 0:
 			// unsupported
