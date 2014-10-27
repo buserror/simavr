@@ -193,9 +193,9 @@ avr_twi_write(
 #endif
 		// generate a start condition
 		if (p->state & TWI_COND_START)
-			_avr_twi_delay_state(p, 3, TWI_REP_START);
+			_avr_twi_delay_state(p, 0, TWI_REP_START);
 		else
-			_avr_twi_delay_state(p, 3, TWI_START);
+			_avr_twi_delay_state(p, 0, TWI_START);
 		p->peer_addr = 0;
 		p->state = TWI_COND_START;
 	}
