@@ -210,7 +210,12 @@ typedef struct avr_t {
 	// in the opcode decoder.
 	// This array is re-synthesized back/forth when SREG changes
 	uint8_t		sreg[8];
-	uint8_t		i_shadow;	// used to detect edges on I flag
+
+	/* Interrupt state:
+		00: idle (no wait, no pending interrupts) or disabled
+		<0: wait till zero
+		>0: interrupt pending */
+	int8_t		interrupt_state;	// interrupt state
 
 	/* 
 	 * ** current PC **

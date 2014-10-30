@@ -102,12 +102,31 @@ void avr_dump_state(avr_t * avr);
 					dst |= (1 << i); \
 		}
 
+static inline void avr_sreg_set(avr_t * avr, uint8_t flag, uint8_t ival)
+{
+	/* 
+	 *	clear interrupt_state if disabling interrupts.
+	 *	set wait if enabling interrupts.
+	 *	no change if interrupt flag does not change.
+	 */
+
+	if (flag == S_I) {
+		if (ival) {
+			if (!avr->sreg[S_I])
+				avr->interrupt_state = -2;
+		} else
+			avr->interrupt_state = 0;
+	}
+
+	avr->sreg[flag] = ival;
+}
+
 /**
  * Splits the SREG value from src into the avr->sreg array.
  */
 #define SET_SREG_FROM(avr, src) { \
 			for (int i = 0; i < 8; i++) \
-				avr->sreg[i] = (src & (1 << i)) != 0; \
+				avr_sreg_set(avr, i, (src & (1 << i)) != 0); \
 		}
 
 #ifdef __cplusplus
