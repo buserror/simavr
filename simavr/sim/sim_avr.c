@@ -90,7 +90,6 @@ int avr_init(avr_t * avr)
 	// set default (non gdb) fast callbacks
 	avr->run = avr_callback_run_raw;
 	avr->sleep = avr_callback_sleep_raw;
-	avr->state = cpu_Running;
 	// number of address bytes to push/pull on/off the stack
 	avr->address_size = avr->eind ? 3 : 2;
 	avr->log = 1;
@@ -121,7 +120,9 @@ void avr_reset(avr_t * avr)
 {
 	AVR_LOG(avr, LOG_TRACE, "%s reset\n", avr->mmcu);
 
-	memset(avr->data, 0x0, avr->ramend + 1);
+	avr->state = cpu_Running;
+	for(int i = 0x20; i <= MAX_IOs; i++)
+		avr->data[i] = 0;
 	_avr_sp_set(avr, avr->ramend);
 	avr->pc = 0;
 	for (int i = 0; i < 8; i++)

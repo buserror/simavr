@@ -132,6 +132,9 @@ struct avr_trace_data_t {
 	uint32_t	touched[256 / 32];	// debug
 };
 
+typedef void (*avr_run_t)(
+		struct avr_t * avr);
+
 /*
  * Main AVR instance. Some of these fields are set by the AVR "Core" definition files
  * the rest is runtime data (as little as possible)
@@ -191,7 +194,7 @@ typedef struct avr_t {
 	 * it can, and a "gdb" mode that also watchouts for gdb events
 	 * and is a little bit slower.
 	 */
-	void (*run)(struct avr_t * avr);
+	avr_run_t	run;
 
 	/*!
 	 * Sleep default behaviour.

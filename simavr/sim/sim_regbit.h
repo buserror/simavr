@@ -89,6 +89,19 @@ static inline uint8_t avr_regbit_get(avr_t * avr, avr_regbit_t rb)
 }
 
 /*
+ * Using regbit from value eliminates some of the 
+ * set to test then clear register operations.
+ * makes cheking register bits before setting easier.
+ */
+static inline uint8_t avr_regbit_from_value(avr_t * avr, avr_regbit_t rb, uint8_t value)
+{
+	uint8_t a = rb.reg;
+	if (!a)
+		return 0;
+	return (value >> rb.bit) & rb.mask;
+}
+
+/*
  * Return the bit(s) 'in position' instead of zero based
  */
 static inline uint8_t avr_regbit_get_raw(avr_t * avr, avr_regbit_t rb)
@@ -124,6 +137,22 @@ static inline uint8_t avr_regbit_get_array(avr_t * avr, avr_regbit_t *rb, int co
 		res |= ((avr->data[a] >> rb->bit) & rb->mask) << i;
 	}
 	return res;
+}
+
+/*
+ * Does the reverse of avr_regbit_get_array
+ */
+static inline void avr_regbit_set_array_from_value(
+	avr_t * avr, 
+	avr_regbit_t * rb, 
+	uint8_t count, 
+	uint8_t value)
+{
+	int i;
+	for (i = 0; i < count; i++, rb++) if (rb->reg) {
+		uint8_t rbv = (value >> (count - i)) & 1;
+		avr_regbit_setto(avr, *rb, rbv);
+	}
 }
 
 #define AVR_IO_REGBIT(_io, _bit) { . reg = (_io), .bit = (_bit), .mask = 1 }
