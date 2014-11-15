@@ -8,7 +8,7 @@ ifeq  (${UNAME}, Linux)
 CPPFLAGS	+= ${shell pkg-config --cflags glu}
 LDFLAGS 	+= ${shell pkg-config --libs glu} -lglut
 else
-ifeq (${shell uname -o}, Msys)
+ifeq (${shell uname -o 2>/dev/null ; if [ $$? -ne 0 ] ; then uname -s ; fi}, Msys)
 LDFLAGS 	+= -mwindows -lopengl32 -lfreeglut
 else
 CPPFLAGS	+= ${shell pkg-config --cflags glu glut} -DFREEBSD=1

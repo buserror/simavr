@@ -37,7 +37,7 @@ all:
 include ../Makefile.common
 
 cores	:= ${wildcard cores/*.c}
-sim		:= ${wildcard sim/sim_*.c} ${wildcard sim/avr_*.c}
+sim	:= ${wildcard sim/sim_*.c} ${wildcard sim/avr_*.c}
 sim_o 	:= ${patsubst sim/%.c, ${OBJ}/%.o, ${sim}}
 
 VPATH	= cores
@@ -82,12 +82,11 @@ ${OBJ}/${target}.elf	: ${OBJ}/${target}.o
 
 ${target}	: ${OBJ}/${target}.elf
 
-# FIXME uname -o doesn't work on BSD
-#ifeq (${shell uname -o}, Msys)
-#	ln -sf $< $@.exe
-#else
+ifeq (${shell uname -o 2>/dev/null; if [ $$? -ne 0 ] ; then uname -s ; fi}, Msys)
+	ln -sf $< $@.exe
+else
 	ln -sf $< $@
-#endif
+endif
  
 clean: clean-${OBJ}
 	rm -rf ${target} *.a *.so *.exe
