@@ -1,5 +1,5 @@
 /*
-	sim_mega128.c
+	sim_megax.h
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
@@ -38,7 +38,7 @@ void mx_init(struct avr_t * avr);
 void mx_reset(struct avr_t * avr);
 
 /*
- * This is a template for all of the 8/32/64 devices, hopefully
+ * This is a template for all of the 8/16/32 devices, hopefully
  */
 struct mcu_t {
 	avr_t          core;
@@ -88,6 +88,9 @@ const struct mcu_t SIM_CORENAME = {
 	.extint = {
 		AVR_EXTINT_DECLARE(0, 'D', PD2),
 		AVR_EXTINT_DECLARE(1, 'D', PD3),
+#ifdef INT2
+		AVR_ASYNC_EXTINT_DECLARE(2, 'B', PB2),
+#endif
 	},
 #ifdef PORTA
 	AVR_IOPORT_DECLARE(a, 'A', A),
