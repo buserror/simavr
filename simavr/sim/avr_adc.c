@@ -25,6 +25,8 @@
 #include "sim_time.h"
 #include "avr_adc.h"
 
+static void avr_adc_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param);
+
 static avr_cycle_count_t avr_adc_int_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
 	avr_adc_t * p = (avr_adc_t *)param;
@@ -34,6 +36,15 @@ static avr_cycle_count_t avr_adc_int_raise(struct avr_t * avr, avr_cycle_count_t
 		avr_regbit_clear(avr, p->adsc);
 		p->first = 0;
 		p->read_status = 0;
+		if( avr_regbit_get(avr, p->adate) )
+		{
+			uint8_t a = p->adsc.reg;
+			if( a )
+			{
+				uint8_t val = avr->data[a] | (1 << p->adsc.bit);
+				avr_adc_write(avr, a, val, param);
+			}
+		}
 	}
 	return 0;
 }
