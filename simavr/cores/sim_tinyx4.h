@@ -110,6 +110,16 @@ const struct mcu_t SIM_CORENAME = {
 
         .r_adcsrb = ADCSRB,
         .adts = { AVR_IO_REGBIT(ADCSRB, ADTS0), AVR_IO_REGBIT(ADCSRB, ADTS1), AVR_IO_REGBIT(ADCSRB, ADTS2),},
+        .adts_op = {
+          [0] = avr_adts_free_running,
+          [1] = avr_adts_analog_comparator_0,
+          [2] = avr_adts_external_interrupt_0,
+          [3] = avr_adts_timer_0_compare_match_a,
+          [4] = avr_adts_timer_0_overflow,
+          [5] = avr_adts_timer_1_compare_match_b,
+          [6] = avr_adts_timer_1_overflow,
+          [7] = avr_adts_timer_1_capture_event,
+        },
         .bin = AVR_IO_REGBIT(ADCSRB, BIN),
 
         .muxmode = {
