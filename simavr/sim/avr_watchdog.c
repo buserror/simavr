@@ -103,13 +103,14 @@ static void avr_watchdog_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void 
 
 	uint8_t old_wde = avr_regbit_get(avr, p->wde);
 	uint8_t old_wdie = avr_regbit_get(avr, p->watchdog.enable);
-
+	uint8_t old_wdce = avr_regbit_get(avr, p->wdce);
+	
 	uint8_t was_enabled = (old_wde || old_wdie);
 
 	uint8_t old_v = avr->data[addr]; // allow gdb to see write...
 	avr_core_watch_write(avr, addr, v);
 
-	if (avr_regbit_get(avr, p->wdce)) {
+	if (old_wdce) {
 		uint8_t old_wdp = avr_regbit_get_array(avr, p->wdp, 4);
 
 		// wdrf (watchdog reset flag) must be cleared before wde can be cleared.
