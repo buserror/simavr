@@ -82,7 +82,7 @@ enum {
 
 // ADC trigger sources
 typedef enum {
-	avr_adrs_invalid = 0,
+	avr_adts_none = 0,
 	avr_adts_free_running,
 	avr_adts_analog_comparator_0,
 	avr_adts_analog_comparator_1,
@@ -124,6 +124,7 @@ typedef struct avr_adc_t {
 	uint8_t			r_adcsrb;	// ADC Control and Status Register B
 	avr_regbit_t	adts[4];	// Timing Source
 	avr_adts_type	adts_op[16];    // ADTS type
+	uint8_t		adts_mode;      // the extracted ADTS mode
 	avr_regbit_t 	bin;		// Bipolar Input Mode (tinyx5 have it)
 	avr_regbit_t 	ipr;		// Input Polarity Reversal (tinyx5 have it)
 
