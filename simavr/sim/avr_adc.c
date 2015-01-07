@@ -168,25 +168,21 @@ static void avr_adc_configure_trigger(struct avr_t * avr, avr_io_addr_t addr, ui
 		"psc_module_2_sync_signal",
 	};
 	
-	if( adate )
-	{
+	if( adate ) {
 		uint8_t adts = avr_regbit_get_array(avr, p->adts, ARRAY_SIZE(p->adts));
 		p->adts_mode = p->adts_op[adts];
 		
-		switch(p->adts_mode)
-		{
-			case avr_adts_free_running:
+		switch(p->adts_mode) {
+			case avr_adts_free_running: {
 				// do nothing at free running mode
-				break;
+			}	break;
 			// TODO: implement the other auto trigger modes
-			default:
+			default: {
 				AVR_LOG(avr, LOG_WARNING, "ADC: unimplemented auto trigger mode: %s\n", auto_trigger_names[p->adts_mode]);
 				p->adts_mode = avr_adts_none;
-				break;
+			}	break;
 		}
-	}
-	else
-	{
+	} else {
 		// TODO: remove previously configured auto triggers
 		p->adts_mode = avr_adts_none;
 	}
@@ -267,11 +263,9 @@ static void avr_adc_irq_notify(struct avr_irq_t * irq, uint32_t value, void * pa
 			if (avr_regbit_get(avr, p->adate)) {
 				// start a conversion only if it's not running
 				// otherwise ignore the trigger
-				if( ! avr_regbit_get(avr, p->adsc) )
-				{
+				if( ! avr_regbit_get(avr, p->adsc) ) {
 			  		uint8_t addr = p->adsc.reg;
-					if( addr )
-					{
+					if( addr ) {
 						uint8_t val = avr->data[addr] | (1 << p->adsc.bit);
 						// write ADSC to ADCSRA
 						avr_adc_write_adcsra(avr, addr, val, param);
