@@ -206,7 +206,7 @@ inline void _avr_sp_set(avr_t * avr, uint16_t sp)
  */
 static inline void _avr_set_ram(avr_t * avr, uint16_t addr, uint8_t v)
 {
-	if (addr < 256)
+	if (addr < MAX_IOs + 31)
 		_avr_set_r(avr, addr, v);
 	else
 		avr_core_watch_write(avr, addr, v);
@@ -224,7 +224,7 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 		 */
 		READ_SREG_INTO(avr, avr->data[R_SREG]);
 		
-	} else if (addr > 31 && addr < 256) {
+	} else if (addr > 31 && addr < 31 + MAX_IOs) {
 		uint8_t io = AVR_DATA_TO_IO(addr);
 		
 		if (avr->io[io].r.c)
