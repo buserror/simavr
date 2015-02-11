@@ -56,7 +56,7 @@ AVR 		:= ${AVR_ROOT}/bin/avr-
 endif
 
 # use the avr toolchain provided by homebrew if exists
-HOMEBREW_AVR := $(wildcard /usr/local/Cellar/avr-gcc/*)
+HOMEBREW_AVR := $(firstword $(wildcard /usr/local/Cellar/avr-gcc/*))
 ifneq ($(HOMEBREW_AVR),)
 AVR_ROOT	:= $(HOMEBREW_AVR)
 AVR_INC		:= $(AVR_ROOT)/avr
