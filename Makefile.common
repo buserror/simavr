@@ -46,14 +46,36 @@ CORE_CFLAGS	= -nostdinc -DAVR_CORE=1
 ifeq (${shell uname}, Darwin)
 # gcc 4.2 from MacOS is really not up to scratch anymore 
 CC			= clang
-AVR_ROOT 	:= "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/"
-AVR_INC 	:= ${AVR_ROOT}/avr-4/
+
+# use the avr toolchain provided by arduino if exists
+ARDUINO_DIR := $(wildcard /Applications/Arduino.app)
+ifneq ($(ARDUINO_DIR),)
+AVR_ROOT 	:= $(ARDUINO_DIR)/Contents/Resources/Java/hardware/tools/avr/
+AVR_INC 	:= ${AVR_ROOT}/avr
 AVR 		:= ${AVR_ROOT}/bin/avr-
-# Thats for MacPorts libelf
-ifeq (${shell test -d /opt/local && echo Exists}, Exists)
-IPATH		+= /opt/local/include
-LFLAGS		= -L/opt/local/lib/
 endif
+
+# use the avr toolchain provided by homebrew if exists
+HOMEBREW_AVR := $(wildcard /usr/local/Cellar/avr-gcc/*)
+ifneq ($(HOMEBREW_AVR),)
+AVR_ROOT	:= $(HOMEBREW_AVR)
+AVR_INC		:= $(AVR_ROOT)/avr
+AVR		:= /usr/local/bin/avr-
+endif
+
+# check for the existence of macports and use it
+ifneq ($(wildcard /opt/local),)
+IPATH		+= /opt/local/include
+LFLAGS		= -L/opt/local/lib
+endif
+
+# check for the existence of homebrew and use it
+ifneq ($(wildcard /usr/local/Cellar),)
+IPATH		+= /usr/local/include
+CFLAGS		+= -I/usr/local/include/libelf # homebrew fix, because libelf.h is in subdir
+LFLAGS		= -L/usr/local/lib
+endif
+
 else
 LINUX_AVR_ROOTS := /usr/lib/avr /usr/avr /opt/cross/avr/avr /usr/local/avr
 AVR_ROOT := $(firstword $(wildcard $(LINUX_AVR_ROOTS)))
