@@ -47,6 +47,14 @@ ifeq (${shell uname}, Darwin)
 # gcc 4.2 from MacOS is really not up to scratch anymore 
 CC			= clang
 
+# use the avr toolchain provided by crosspack if exists
+CROSSPACK_DIR := $(wildcard /usr/local/CrossPack-AVR)
+ifneq ($(CROSSPACK_DIR),)
+AVR_ROOT	:= $(CROSSPACK_DIR)
+AVR_INC 	:= ${AVR_ROOT}/avr
+AVR 		:= ${AVR_ROOT}/bin/avr-
+endif
+
 # use the avr toolchain provided by arduino if exists
 ARDUINO_DIR := $(wildcard /Applications/Arduino.app)
 ifneq ($(ARDUINO_DIR),)
