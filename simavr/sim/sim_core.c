@@ -162,7 +162,7 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
  * if it's an IO register (> 31) also (try to) call any callback that was
  * registered to track changes to that register.
  */
-static inline void _avr_set_r(avr_t * avr, uint8_t r, uint8_t v)
+static inline void _avr_set_r(avr_t * avr, uint16_t r, uint8_t v)
 {
 	REG_TOUCH(avr, r);
 
@@ -173,7 +173,7 @@ static inline void _avr_set_r(avr_t * avr, uint8_t r, uint8_t v)
 		SREG();
 	}
 	if (r > 31) {
-		uint8_t io = AVR_DATA_TO_IO(r);
+		avr_io_addr_t io = AVR_DATA_TO_IO(r);
 		if (avr->io[io].w.c)
 			avr->io[io].w.c(avr, r, v, avr->io[io].w.param);
 		else
@@ -206,7 +206,7 @@ inline void _avr_sp_set(avr_t * avr, uint16_t sp)
  */
 static inline void _avr_set_ram(avr_t * avr, uint16_t addr, uint8_t v)
 {
-	if (addr < 256)
+	if (addr < MAX_IOs + 31)
 		_avr_set_r(avr, addr, v);
 	else
 		avr_core_watch_write(avr, addr, v);
@@ -224,8 +224,8 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 		 */
 		READ_SREG_INTO(avr, avr->data[R_SREG]);
 		
-	} else if (addr > 31 && addr < 256) {
-		uint8_t io = AVR_DATA_TO_IO(addr);
+	} else if (addr > 31 && addr < 31 + MAX_IOs) {
+		avr_io_addr_t io = AVR_DATA_TO_IO(addr);
 		
 		if (avr->io[io].r.c)
 			avr->data[addr] = avr->io[io].r.c(avr, addr, avr->io[io].r.param);
