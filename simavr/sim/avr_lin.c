@@ -98,5 +98,4 @@ avr_lin_init(
 	p->io = _io;
 	avr_register_io_write(avr, p->r_linbtr, avr_lin_baud_write, p);
 	avr_register_io_write(avr, p->r_linbrrl, avr_lin_baud_write, p);
-	avr->data[p->r_linbtr] = 0x20;
 }
