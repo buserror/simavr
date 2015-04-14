@@ -55,9 +55,10 @@ avr_lin_baud_write(
 	}
 	avr_core_watch_write(avr, addr, v); // actually set the value
 
-	uint32_t lbt = avr_regbit_get(avr, p->lbt);
+	uint32_t lbt = avr_regbit_get(avr, p->lbt); // Min value CANNOT be zero
 	uint32_t lbrr = (avr->data[p->r_linbrrh] << 8) | avr->data[p->r_linbrrl];
 	AVR_LOG(avr, LOG_TRACE, "LIN: UART LBT/LBRR to %04x/%04x\n", lbt, lbrr);
+	// there is no division by zero case here, lbt is >= 8
 	uint32_t baud = avr->frequency / (lbt * (lbrr + 1));
 	uint32_t word_size = 1 /*start*/+ 8 /*data bits*/+ 1 /*parity*/+ 1 /*stop*/;
 
@@ -97,5 +98,4 @@ avr_lin_init(
 	p->io = _io;
 	avr_register_io_write(avr, p->r_linbtr, avr_lin_baud_write, p);
 	avr_register_io_write(avr, p->r_linbrrl, avr_lin_baud_write, p);
-	avr->data[p->r_linbtr] = 0x20;
 }

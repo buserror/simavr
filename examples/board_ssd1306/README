@@ -1,0 +1,10 @@
+board_ssd1306
+
+(C) 2014 Doug Szumski <d.s.szumski@gmail.com>
+
+This sample code demonstrates the use of the SSD1306 OLED driver. It 
+runs identically in real life. 
+
+The part has been tested using only the supplied driver.
+
+In the future it could be extended to allow parallel addressing and I2C mode.

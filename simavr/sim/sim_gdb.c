@@ -59,7 +59,10 @@ typedef struct avr_gdb_t {
 /**
  * Returns the index of the watchpoint if found, -1 otherwise.
  */
-static int gdb_watch_find(const avr_gdb_watchpoints_t * w, uint32_t addr)
+static int 
+gdb_watch_find(
+		const avr_gdb_watchpoints_t * w, 
+		uint32_t addr )
 {
 	for (int i = 0; i < w->len; i++) {
 		if (w->points[i].addr > addr) {
@@ -76,7 +79,10 @@ static int gdb_watch_find(const avr_gdb_watchpoints_t * w, uint32_t addr)
  * Contrary to gdb_watch_find, this actually checks the address against
  * a watched memory _range_.
  */
-static int gdb_watch_find_range(const avr_gdb_watchpoints_t * w, uint32_t addr)
+static int 
+gdb_watch_find_range(
+		const avr_gdb_watchpoints_t * w, 
+		uint32_t addr )
 {
 	for (int i = 0; i < w->len; i++) {
 		if (w->points[i].addr > addr) {
@@ -92,8 +98,12 @@ static int gdb_watch_find_range(const avr_gdb_watchpoints_t * w, uint32_t addr)
 /**
  * Returns -1 on error, 0 otherwise.
  */
-static int gdb_watch_add_or_update(avr_gdb_watchpoints_t * w, enum avr_gdb_watch_type kind, uint32_t addr,
-		uint32_t size)
+static int 
+gdb_watch_add_or_update(
+		avr_gdb_watchpoints_t * w, 
+		enum avr_gdb_watch_type kind, 
+		uint32_t addr,
+		uint32_t size )
 {
 	/* If the watchpoint exists, update it. */
 	int i = gdb_watch_find(w, addr);
@@ -117,8 +127,8 @@ static int gdb_watch_add_or_update(avr_gdb_watchpoints_t * w, enum avr_gdb_watch
 
 	w->len++;
 
-	/* Make space for new element. */
-	for (int j = i + 1; j < w->len; j++) {
+	/* Make space for new element, moving old ones from the end. */
+	for (int j = w->len; j > i; j--) {
 		w->points[j] = w->points[j - 1];
 	}
 
@@ -133,7 +143,11 @@ static int gdb_watch_add_or_update(avr_gdb_watchpoints_t * w, enum avr_gdb_watch
 /**
  * Returns -1 on error or if the specified point does not exist, 0 otherwise.
  */
-static int gdb_watch_rm(avr_gdb_watchpoints_t * w, enum avr_gdb_watch_type kind, uint32_t addr)
+static int 
+gdb_watch_rm(
+		avr_gdb_watchpoints_t * w, 
+		enum avr_gdb_watch_type kind, 
+		uint32_t addr )
 {
 	int i = gdb_watch_find(w, addr);
 	if (i == -1) {
@@ -154,12 +168,17 @@ static int gdb_watch_rm(avr_gdb_watchpoints_t * w, enum avr_gdb_watch_type kind,
 	return 0;
 }
 
-static void gdb_watch_clear(avr_gdb_watchpoints_t * w)
+static void 
+gdb_watch_clear(
+		avr_gdb_watchpoints_t * w )
 {
 	w->len = 0;
 }
 
-static void gdb_send_reply(avr_gdb_t * g, char * cmd)
+static void 
+gdb_send_reply(
+		avr_gdb_t * g, 
+		char * cmd )
 {
 	uint8_t reply[1024];
 	uint8_t * dst = reply;
@@ -174,7 +193,10 @@ static void gdb_send_reply(avr_gdb_t * g, char * cmd)
 	send(g->s, reply, dst - reply + 3, 0);
 }
 
-static void gdb_send_quick_status(avr_gdb_t * g, uint8_t signal)
+static void 
+gdb_send_quick_status(
+		avr_gdb_t * g, 
+		uint8_t signal )
 {
 	char cmd[64];
 
@@ -185,8 +207,13 @@ static void gdb_send_quick_status(avr_gdb_t * g, uint8_t signal)
 	gdb_send_reply(g, cmd);
 }
 
-static int gdb_change_breakpoint(avr_gdb_watchpoints_t * w, int set, enum avr_gdb_watch_type kind,
-		uint32_t addr, uint32_t size)
+static int 
+gdb_change_breakpoint(
+		avr_gdb_watchpoints_t * w, 
+		int set, 
+		enum avr_gdb_watch_type kind,
+		uint32_t addr, 
+		uint32_t size )
 {
 	DBG(printf("set %d kind %d addr %08x len %d\n", set, kind, addr, len);)
 
@@ -199,7 +226,11 @@ static int gdb_change_breakpoint(avr_gdb_watchpoints_t * w, int set, enum avr_gd
 	return -1;
 }
 
-static int gdb_write_register(avr_gdb_t * g, int regi, uint8_t * src)
+static int 
+gdb_write_register(
+		avr_gdb_t * g, 
+		int regi, 
+		uint8_t * src )
 {
 	switch (regi) {
 		case 0 ... 31:
@@ -220,7 +251,11 @@ static int gdb_write_register(avr_gdb_t * g, int regi, uint8_t * src)
 	return 1;
 }
 
-static int gdb_read_register(avr_gdb_t * g, int regi, char * rep)
+static int 
+gdb_read_register(
+		avr_gdb_t * g, 
+		int regi, 
+		char * rep )
 {
 	switch (regi) {
 		case 0 ... 31:
@@ -243,12 +278,47 @@ static int gdb_read_register(avr_gdb_t * g, int regi, char * rep)
 	return strlen(rep);
 }
 
-static void gdb_handle_command(avr_gdb_t * g, char * cmd)
+static void 
+gdb_handle_command(
+		avr_gdb_t * g, 
+		char * cmd )
 {
 	avr_t * avr = g->avr;
 	char rep[1024];
 	uint8_t command = *cmd++;
 	switch (command) {
+		case 'q':
+			if (strncmp(cmd, "Supported", 9) == 0) {
+				/* If GDB asked what features we support, report back
+				 * the features we support, which is just memory layout
+				 * information for now.
+				 */
+				gdb_send_reply(g, "qXfer:memory-map:read+");
+				break;
+			} else if (strncmp(cmd, "Attached", 8) == 0) {
+				/* Respond that we are attached to an existing process..
+				 * ourselves!
+				 */
+				gdb_send_reply(g, "1");
+				break;
+			} else if (strncmp(cmd, "Offsets", 7) == 0) {
+				gdb_send_reply(g, "Text=0;Data=800000;Bss=800000");
+				break;
+			} else if (strncmp(cmd, "Xfer:memory-map:read", 20) == 0) {
+				snprintf(rep, sizeof(rep),
+						"l<memory-map>\n"
+						" <memory type='ram' start='0x800000' length='%#x'/>\n"
+						" <memory type='flash' start='0' length='%#x'>\n"
+						"  <property name='blocksize'>0x80</property>\n"
+						" </memory>\n"
+						"</memory-map>",
+						g->avr->ramend + 1, g->avr->flashend + 1);
+
+				gdb_send_reply(g, rep);
+				break;
+            }
+			gdb_send_reply(g, "");
+			break;
 		case '?':
 			gdb_send_quick_status(g, 0);
 			break;
@@ -395,7 +465,10 @@ static void gdb_handle_command(avr_gdb_t * g, char * cmd)
 	}
 }
 
-static int gdb_network_handler(avr_gdb_t * g, uint32_t dosleep)
+static int 
+gdb_network_handler(
+		avr_gdb_t * g, 
+		uint32_t dosleep )
 {
 	fd_set read_set;
 	int max;
@@ -481,7 +554,11 @@ static int gdb_network_handler(avr_gdb_t * g, uint32_t dosleep)
  * If an applicable watchpoint exists for addr, stop the cpu and send a status report.
  * type is one of AVR_GDB_WATCH_READ, AVR_GDB_WATCH_WRITE depending on the type of access.
  */
-void avr_gdb_handle_watchpoints(avr_t * avr, uint16_t addr, enum avr_gdb_watch_type type)
+void 
+avr_gdb_handle_watchpoints(
+		avr_t * avr, 
+		uint16_t addr, 
+		enum avr_gdb_watch_type type )
 {
 	avr_gdb_t *g = avr->gdb;
 
@@ -498,7 +575,8 @@ void avr_gdb_handle_watchpoints(avr_t * avr, uint16_t addr, enum avr_gdb_watch_t
 				5, g->avr->data[R_SREG],
 				g->avr->data[R_SPL], g->avr->data[R_SPH],
 				g->avr->pc & 0xff, (g->avr->pc>>8)&0xff, (g->avr->pc>>16)&0xff,
-				kind & AVR_GDB_WATCH_ACCESS ? "awatch" : kind & AVR_GDB_WATCH_WRITE ? "watch" : "rwatch",
+				kind & AVR_GDB_WATCH_ACCESS ? "awatch" : 
+					kind & AVR_GDB_WATCH_WRITE ? "watch" : "rwatch",
 				addr | 0x800000);
 		gdb_send_reply(g, cmd);
 
@@ -506,13 +584,17 @@ void avr_gdb_handle_watchpoints(avr_t * avr, uint16_t addr, enum avr_gdb_watch_t
 	}
 }
 
-int avr_gdb_processor(avr_t * avr, int sleep)
+int 
+avr_gdb_processor(
+		avr_t * avr, 
+		int sleep )
 {
 	if (!avr || !avr->gdb)
 		return 0;	
 	avr_gdb_t * g = avr->gdb;
 
-	if (avr->state == cpu_Running && gdb_watch_find(&g->breakpoints, avr->pc) != -1) {
+	if (avr->state == cpu_Running && 
+			gdb_watch_find(&g->breakpoints, avr->pc) != -1) {
 		DBG(printf("avr_gdb_processor hit breakpoint at %08x\n", avr->pc);)
 		gdb_send_quick_status(g, 0);
 		avr->state = cpu_Stopped;
@@ -525,7 +607,9 @@ int avr_gdb_processor(avr_t * avr, int sleep)
 }
 
 
-int avr_gdb_init(avr_t * avr)
+int 
+avr_gdb_init(
+		avr_t * avr )
 {
 	avr_gdb_t * g = malloc(sizeof(avr_gdb_t));
 	memset(g, 0, sizeof(avr_gdb_t));
@@ -568,7 +652,9 @@ int avr_gdb_init(avr_t * avr)
 	return 0;
 }
 
-void avr_deinit_gdb(avr_t * avr)
+void 
+avr_deinit_gdb(
+		avr_t * avr )
 {
 	if (avr->gdb->listen != -1)
 	   close(avr->gdb->listen);

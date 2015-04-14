@@ -60,8 +60,10 @@ i2c_eeprom_in_hook(
 	if (v.u.twi.msg & TWI_COND_START) {
 		p->selected = 0;
 		p->index = 0;
-		if ((p->addr_base & p->addr_mask) == (v.u.twi.addr & p->addr_mask)) {
+		if ((p->addr_base & ~p->addr_mask) == (v.u.twi.addr & ~p->addr_mask)) {
 			// it's us !
+			if (p->verbose)
+				printf("eeprom received start\n");
 			p->selected = v.u.twi.addr;
 			avr_raise_irq(p->irq + TWI_IRQ_INPUT,
 					avr_twi_irq_msg(TWI_COND_ACK, p->selected, 1));
@@ -129,6 +131,10 @@ i2c_eeprom_init(
 {
 	memset(p, 0, sizeof(*p));
 	memset(p->ee, 0xff, sizeof(p->ee));
+
+	p->addr_base = addr;
+	p->addr_mask = mask;
+
 	p->irq = avr_alloc_irq(&avr->irq_pool, 0, 2, _ee_irq_names);
 	avr_irq_register_notify(p->irq + TWI_IRQ_OUTPUT, i2c_eeprom_in_hook, p);
 

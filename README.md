@@ -25,17 +25,22 @@ Supported IOs
 
 Emulated Cores (very easy to add new ones!)
 --------------
++ ATMega2560
 + AT90USB162 (with USB!)
++ ATMega1281
 + ATMega1280
 + ATMega128
++ ATMega128rf1
 + ATMega16M1
++ ATMega169
++ ATMega162
 + ATMega164/324/644
 + ATMega48/88/168/328
-+ ATMega8
++ ATMega8/16/32
 + ATTiny25/45/85
 + ATTIny44/84
-+ ATTiny2313
-+ ATTiny13
++ ATTiny2313/2313v
++ ATTiny13/13a
 
 Extras:
 -------

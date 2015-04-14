@@ -131,6 +131,7 @@ avr_register_io_write(
 			}
 			avr->io_shared_io[no].io[d].param = param;
 			avr->io_shared_io[no].io[d].c = writep;
+			return;
 		}
 	}
 

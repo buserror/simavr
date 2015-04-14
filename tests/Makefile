@@ -26,12 +26,13 @@ simavr 		= ..
 IPATH 		+= ${simavr}/include
 IPATH 		+= ${simavr}/simavr/sim
 
-tests_src	= ${wildcard test_*.c}
-tests		= ${patsubst %.c, ${OBJ}/%.tst, ${tests_src}}
+tests_src	:= ${wildcard test_*.c}
 
 all: obj axf tests
 
 include ../Makefile.common
+
+tests		:= ${patsubst %.c, ${OBJ}/%.tst, ${tests_src}}
 
 tests:	${tests}
 	

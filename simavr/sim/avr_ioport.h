@@ -34,6 +34,8 @@ enum {
 	IOPORT_IRQ_PIN5,IOPORT_IRQ_PIN6,IOPORT_IRQ_PIN7,
 	IOPORT_IRQ_PIN_ALL,
 	IOPORT_IRQ_DIRECTION_ALL,
+	IOPORT_IRQ_REG_PORT,
+	IOPORT_IRQ_REG_PIN,
 	IOPORT_IRQ_COUNT
 };
 
@@ -116,6 +118,10 @@ typedef struct avr_ioport_t {
 
 void avr_ioport_init(avr_t * avr, avr_ioport_t * port);
 
+#define AVR_IOPORT_DECLARE(_lname, _cname, _uname) \
+	.port ## _lname = { \
+		.name = _cname, .r_port = PORT ## _uname, .r_ddr = DDR ## _uname, .r_pin = PIN ## _uname, \
+	}
 
 #ifdef __cplusplus
 };

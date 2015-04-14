@@ -27,6 +27,7 @@
 
 #define _AVR_IO_H_
 #define __ASSEMBLER__
+#define __AVR_ATmega88__
 #include "avr/iom88.h"
 // instantiate the new core
 #include "sim_megax8.h"

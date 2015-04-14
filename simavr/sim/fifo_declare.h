@@ -84,8 +84,9 @@ extern "C" {
 #define FIFO_INLINE	inline
 #endif
 
+/* We should not need volatile */
 #ifndef FIFO_VOLATILE
-#define FIFO_VOLATILE	volatile
+#define FIFO_VOLATILE
 #endif
 #ifndef FIFO_SYNC
 #define FIFO_SYNC __sync_synchronize()
@@ -95,6 +96,15 @@ extern "C" {
 #define FIFO_ZERO_INIT {0}
 #endif
 #define FIFO_NULL { FIFO_ZERO_INIT, 0, 0, 0 }
+
+/* New compilers don't like unused static functions. However,
+ * we do like 'static inlines' for these small accessors,
+ * so we mark them as 'unused'. It stops it complaining */
+#ifdef __GNUC__
+#define FIFO_DECL static __attribute__ ((unused))
+#else
+#define FIFO_DECL static
+#endif
 
 #define DECLARE_FIFO(__type, __name, __size) \
 enum { __name##_overflow_f = (1 << 0) }; \
@@ -107,7 +117,7 @@ typedef struct __name##_t {			\
 } __name##_t
 
 #define DEFINE_FIFO(__type, __name) \
-static FIFO_INLINE FIFO_BOOL_TYPE __name##_write(__name##_t * c, __type b)\
+FIFO_DECL FIFO_INLINE FIFO_BOOL_TYPE __name##_write(__name##_t * c, __type b)\
 {\
 	FIFO_CURSOR_TYPE now = c->write;\
 	FIFO_CURSOR_TYPE next = (now + 1) & (__name##_fifo_size-1);\
@@ -119,53 +129,55 @@ static FIFO_INLINE FIFO_BOOL_TYPE __name##_write(__name##_t * c, __type b)\
 	}\
 	return 0;\
 }\
-static FIFO_INLINE FIFO_BOOL_TYPE __name##_isfull(__name##_t *c)\
+FIFO_DECL FIFO_INLINE FIFO_BOOL_TYPE __name##_isfull(__name##_t *c)\
 {\
 	FIFO_CURSOR_TYPE next = (c->write + 1) & (__name##_fifo_size-1);\
 	return c->read == next;\
 }\
-static FIFO_INLINE FIFO_BOOL_TYPE __name##_isempty(__name##_t * c)\
+FIFO_DECL FIFO_INLINE FIFO_BOOL_TYPE __name##_isempty(__name##_t * c)\
 {\
 	return c->read == c->write;\
 }\
-static FIFO_INLINE __type __name##_read(__name##_t * c)\
+FIFO_DECL FIFO_INLINE __type __name##_read(__name##_t * c)\
 {\
 	__type res = FIFO_ZERO_INIT; \
-	if (c->read == c->write)\
-		return res;\
 	FIFO_CURSOR_TYPE read = c->read;\
-	FIFO_SYNC; \
+	if (read == c->write)\
+		return res;\
 	res = c->buffer[read];\
+	FIFO_SYNC; \
 	c->read = (read + 1) & (__name##_fifo_size-1);\
 	return res;\
 }\
-static FIFO_INLINE FIFO_CURSOR_TYPE __name##_get_read_size(__name##_t *c)\
+FIFO_DECL FIFO_INLINE FIFO_CURSOR_TYPE __name##_get_read_size(__name##_t *c)\
 {\
 	return ((c->write + __name##_fifo_size) - c->read) & (__name##_fifo_size-1);\
 }\
-static FIFO_INLINE FIFO_CURSOR_TYPE __name##_get_write_size(__name##_t *c)\
+FIFO_DECL FIFO_INLINE FIFO_CURSOR_TYPE __name##_get_write_size(__name##_t *c)\
 {\
-	return __name##_fifo_size - __name##_get_read_size(c);\
+	return (__name##_fifo_size-1) - __name##_get_read_size(c);\
 }\
-static FIFO_INLINE void __name##_read_offset(__name##_t *c, FIFO_CURSOR_TYPE o)\
+FIFO_DECL FIFO_INLINE void __name##_read_offset(__name##_t *c, FIFO_CURSOR_TYPE o)\
 {\
+	FIFO_SYNC; \
 	c->read = (c->read + o) & (__name##_fifo_size-1);\
 }\
-static FIFO_INLINE __type __name##_read_at(__name##_t *c, FIFO_CURSOR_TYPE o)\
+FIFO_DECL FIFO_INLINE __type __name##_read_at(__name##_t *c, FIFO_CURSOR_TYPE o)\
 {\
 	return c->buffer[(c->read + o) & (__name##_fifo_size-1)];\
 }\
-static FIFO_INLINE void __name##_write_at(__name##_t *c, FIFO_CURSOR_TYPE o, __type b)\
+FIFO_DECL FIFO_INLINE void __name##_write_at(__name##_t *c, FIFO_CURSOR_TYPE o, __type b)\
 {\
 	c->buffer[(c->write + o) & (__name##_fifo_size-1)] = b;\
 }\
-static FIFO_INLINE void __name##_write_offset(__name##_t *c, FIFO_CURSOR_TYPE o)\
+FIFO_DECL FIFO_INLINE void __name##_write_offset(__name##_t *c, FIFO_CURSOR_TYPE o)\
 {\
 	FIFO_SYNC; \
 	c->write = (c->write + o) & (__name##_fifo_size-1);\
 }\
-static FIFO_INLINE void __name##_reset(__name##_t *c)\
+FIFO_DECL FIFO_INLINE void __name##_reset(__name##_t *c)\
 {\
+	FIFO_SYNC; \
 	c->read = c->write = c->flags = 0;\
 }\
 struct __name##_t

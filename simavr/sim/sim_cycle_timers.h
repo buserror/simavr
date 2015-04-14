@@ -37,22 +37,40 @@
 extern "C" {
 #endif
 
-#define MAX_CYCLE_TIMERS	32
+#define MAX_CYCLE_TIMERS	64
 
 typedef avr_cycle_count_t (*avr_cycle_timer_t)(
 		struct avr_t * avr,
 		avr_cycle_count_t when,
 		void * param);
 
+/*
+ * Each timer instance contains the absolute cycle number they
+ * are hoping to run at, a function pointer to call and a parameter
+ * 
+ * it will NEVER be the exact cycle specified, as each instruction is
+ * not divisible and might take 2 or more cycles anyway.
+ * 
+ * However if there was a LOT of cycle lag, the timer migth be called
+ * repeteadly until it 'caches up'.
+ */
 typedef struct avr_cycle_timer_slot_t {
+	struct avr_cycle_timer_slot_t *next;
 	avr_cycle_count_t	when;
 	avr_cycle_timer_t	timer;
 	void * param;
-} avr_cycle_timer_slot_t;
+} avr_cycle_timer_slot_t, *avr_cycle_timer_slot_p;
 
+/*
+ * Timer pool contains a pool of timer slots available, they all
+ * start queued into the 'free' qeueue, are migrated to the
+ * 'active' queue when needed and are re-queued to the free one
+ * when done
+ */
 typedef struct avr_cycle_timer_pool_t {
-	avr_cycle_timer_slot_t timer[MAX_CYCLE_TIMERS];
-	uint8_t	count;
+	avr_cycle_timer_slot_t timer_slots[MAX_CYCLE_TIMERS];
+	avr_cycle_timer_slot_p timer_free;
+	avr_cycle_timer_slot_p timer;
 } avr_cycle_timer_pool_t, *avr_cycle_timer_pool_p;
 
 

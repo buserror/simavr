@@ -35,13 +35,42 @@
 #define AVR_KIND_DECL
 #include "sim_core_decl.h"
 
-static void std_logger(avr_t * avr, const int level, const char * format, ...);
-avr_logger_p avr_global_logger = std_logger;
+static void std_logger(avr_t * avr, const int level, const char * format, va_list ap);
+static avr_logger_p _avr_global_logger = std_logger;
+
+void
+avr_global_logger(
+		struct avr_t* avr, 
+		const int level, 
+		const char * format, 
+		... )
+{
+	va_list args;
+	va_start(args, format);
+	if (_avr_global_logger)
+		_avr_global_logger(avr, level, format, args);
+	va_end(args);	
+}
+
+void
+avr_global_logger_set(
+		avr_logger_p logger)
+{
+	_avr_global_logger = logger ? logger : std_logger;
+}
+
+avr_logger_p
+avr_global_logger_get(void)
+{
+	return _avr_global_logger;
+}
+
 
 int avr_init(avr_t * avr)
 {
 	avr->flash = malloc(avr->flashend + 1);
 	memset(avr->flash, 0xff, avr->flashend + 1);
+	avr->codeend = avr->flashend;
 	avr->data = malloc(avr->ramend + 1);
 	memset(avr->data, 0, avr->ramend + 1);
 #ifdef CONFIG_SIMAVR_TRACE
@@ -53,14 +82,16 @@ int avr_init(avr_t * avr)
 	// cpu is in limbo before init is finished.
 	avr->state = cpu_Limbo;
 	avr->frequency = 1000000;	// can be overridden via avr_mcu_section
+	avr_interrupt_init(avr);
 	if (avr->special_init)
-		avr->special_init(avr);
+		avr->special_init(avr, avr->special_data);
 	if (avr->init)
 		avr->init(avr);
 	// set default (non gdb) fast callbacks
 	avr->run = avr_callback_run_raw;
 	avr->sleep = avr_callback_sleep_raw;
-	avr->state = cpu_Running;
+	// number of address bytes to push/pull on/off the stack
+	avr->address_size = avr->eind ? 3 : 2;
 	avr->log = 1;
 	avr_reset(avr);	
 	return 0;
@@ -69,7 +100,7 @@ int avr_init(avr_t * avr)
 void avr_terminate(avr_t * avr)
 {
 	if (avr->special_deinit)
-		avr->special_deinit(avr);
+		avr->special_deinit(avr, avr->special_data);
 	if (avr->gdb) {
 		avr_deinit_gdb(avr);
 		avr->gdb = NULL;
@@ -89,15 +120,17 @@ void avr_reset(avr_t * avr)
 {
 	AVR_LOG(avr, LOG_TRACE, "%s reset\n", avr->mmcu);
 
-	memset(avr->data, 0x0, avr->ramend + 1);
+	avr->state = cpu_Running;
+	for(int i = 0x20; i <= MAX_IOs; i++)
+		avr->data[i] = 0;
 	_avr_sp_set(avr, avr->ramend);
 	avr->pc = 0;
 	for (int i = 0; i < 8; i++)
 		avr->sreg[i] = 0;
-	if (avr->reset)
-		avr->reset(avr);
 	avr_interrupt_reset(avr);
 	avr_cycle_timer_reset(avr);
+	if (avr->reset)
+		avr->reset(avr);
 	avr_io_t * port = avr->io_port;
 	while (port) {
 		if (port->reset)
@@ -177,7 +210,7 @@ void avr_set_console_register(avr_t * avr, avr_io_addr_t addr)
 
 void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, avr_flashaddr_t address)
 {
-	if (size > avr->flashend+1) {
+	if ((address + size) > avr->flashend+1) {
 		AVR_LOG(avr, LOG_ERROR, "avr_loadcode(): Attempted to load code of size %d but flash size is only %d.\n",
 			size, avr->flashend + 1);
 		abort();
@@ -190,7 +223,10 @@ void avr_loadcode(avr_t * avr, uint8_t * code, uint32_t size, avr_flashaddr_t ad
  * a minimum count of requested sleep microseconds are reached
  * (low amounts cannot be handled accurately).
  */
-static inline uint32_t avr_pending_sleep_usec(avr_t * avr, avr_cycle_count_t howLong)
+uint32_t 
+avr_pending_sleep_usec(
+		avr_t * avr, 
+		avr_cycle_count_t howLong)
 {
 	avr->sleep_usec += avr_cycles_to_usec(avr, howLong);
 	uint32_t usec = avr->sleep_usec;
@@ -228,12 +264,6 @@ void avr_callback_run_gdb(avr_t * avr)
 		avr_dump_state(avr);
 #endif
 	}
-
-	// if we just re-enabled the interrupts...
-	// double buffer the I flag, to detect that edge
-	if (avr->sreg[S_I] && !avr->i_shadow)
-		avr->interrupts.pending_wait++;
-	avr->i_shadow = avr->sreg[S_I];
 
 	// run the cycle timers, get the suggested sleep time
 	// until the next timer is due
@@ -283,12 +313,6 @@ void avr_callback_run_raw(avr_t * avr)
 #endif
 	}
 
-	// if we just re-enabled the interrupts...
-	// double buffer the I flag, to detect that edge
-	if (avr->sreg[S_I] && !avr->i_shadow)
-		avr->interrupts.pending_wait++;
-	avr->i_shadow = avr->sreg[S_I];
-
 	// run the cycle timers, get the suggested sleep time
 	// until the next timer is due
 	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
@@ -309,8 +333,12 @@ void avr_callback_run_raw(avr_t * avr)
 		avr->cycle += 1 + sleep;
 	}
 	// Interrupt servicing might change the PC too, during 'sleep'
-	if (avr->state == cpu_Running || avr->state == cpu_Sleeping)
-		avr_service_interrupts(avr);
+	if (avr->state == cpu_Running || avr->state == cpu_Sleeping) {
+		/* Note: checking interrupt_state here is completely superfluous, however
+			as interrupt_state tells us all we really need to know, here
+			a simple check here may be cheaper than a call not needed. */
+		if (avr->interrupt_state) avr_service_interrupts(avr);
+	}
 }
 
 
@@ -353,13 +381,10 @@ avr_make_mcu_by_name(
 	return avr;
 }
 
-static void std_logger(avr_t* avr, const int level, const char * format, ...)
+static void std_logger(avr_t* avr, const int level, const char * format, va_list ap)
 {
 	if (!avr || avr->log >= level) {
-		va_list args;
-		va_start(args, format);
-		vfprintf((level > LOG_ERROR) ?  stdout : stderr , format, args);
-		va_end(args);
+		vfprintf((level > LOG_ERROR) ?  stdout : stderr , format, ap);
 	}
 }
 

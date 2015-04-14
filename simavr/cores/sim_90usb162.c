@@ -89,9 +89,7 @@ const struct mcu_t {
 		},
 		.r_pcint = PCMSK1,
 	},
-	.portd = {
-		.name = 'D', .r_port = PORTD, .r_ddr = DDRD, .r_pin = PIND,
-	},
+	AVR_IOPORT_DECLARE(d, 'D', D),
 
 	.uart1 = {
 		.disabled = AVR_IO_REGBIT(PRR1,PRUSART1),
@@ -228,22 +226,7 @@ const struct mcu_t {
 			},
 		},
 	},
-	.spi = {
-
-		.r_spdr = SPDR,
-		.r_spcr = SPCR,
-		.r_spsr = SPSR,
-
-		.spe = AVR_IO_REGBIT(SPCR, SPE),
-		.mstr = AVR_IO_REGBIT(SPCR, MSTR),
-
-		.spr = { AVR_IO_REGBIT(SPCR, SPR0), AVR_IO_REGBIT(SPCR, SPR1), AVR_IO_REGBIT(SPSR, SPI2X) },
-		.spi = {
-			.enable = AVR_IO_REGBIT(SPCR, SPIE),
-			.raised = AVR_IO_REGBIT(SPSR, SPIF),
-			.vector = SPI_STC_vect,
-		},
-	},
+	AVR_SPI_DECLARE(0, 0),
 	.usb = {
 		.name='1',
 		.disabled=AVR_IO_REGBIT(PRR1, PRUSB),// bit in the PRR

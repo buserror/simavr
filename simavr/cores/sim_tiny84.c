@@ -29,7 +29,11 @@
 #define _AVR_IO_H_
 #define __ASSEMBLER__
 #include "avr/iotn84.h"
+
+#ifndef HFUSE_DEFAULT
 #define HFUSE_DEFAULT FUSE_HFUSE_DEFAULT
+#endif
+
 // instantiate the new core
 #include "sim_tinyx4.h"
 

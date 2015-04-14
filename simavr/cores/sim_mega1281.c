@@ -77,9 +77,7 @@ const struct mcu_t {
 		AVR_EXTINT_MEGA_DECLARE(6, 'E', PE6, B),
 		AVR_EXTINT_MEGA_DECLARE(7, 'E', PE7, B),
 	},
-	.porta = {
-		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
-	},
+	AVR_IOPORT_DECLARE(a, 'A', A),
 	.portb = {
 		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
 		.pcint = {
@@ -89,22 +87,11 @@ const struct mcu_t {
 		},
 		.r_pcint = PCMSK0,
 	},
-	.portc = {
-		.name = 'C', .r_port = PORTC, .r_ddr = DDRC, .r_pin = PINC,
-	},
-	.portd = {
-		.name = 'D', .r_port = PORTD, .r_ddr = DDRD, .r_pin = PIND,
-	},
-	.porte = {
-		.name = 'E', .r_port = PORTE, .r_ddr = DDRE, .r_pin = PINE,
-	},
-	.portf = {
-		.name = 'F', .r_port = PORTF, .r_ddr = DDRF, .r_pin = PINF,
-	},
-	.portg = {
-		.name = 'G', .r_port = PORTG, .r_ddr = DDRG, .r_pin = PING,
-	},
-
+	AVR_IOPORT_DECLARE(c, 'C', C),
+	AVR_IOPORT_DECLARE(d, 'D', D),
+	AVR_IOPORT_DECLARE(e, 'E', E),
+	AVR_IOPORT_DECLARE(f, 'F', F),
+	AVR_IOPORT_DECLARE(g, 'G', G),
 	.uart0 = {
 		.disabled = AVR_IO_REGBIT(PRR0,PRUSART0),
 		.name = '0',
@@ -187,6 +174,16 @@ const struct mcu_t {
 
 		.r_adcsrb = ADCSRB,
 		.adts = { AVR_IO_REGBIT(ADCSRB, ADTS0), AVR_IO_REGBIT(ADCSRB, ADTS1), AVR_IO_REGBIT(ADCSRB, ADTS2),},
+		.adts_op = {
+			[0] = avr_adts_free_running,
+			[1] = avr_adts_analog_comparator_0,
+			[2] = avr_adts_external_interrupt_0,
+			[3] = avr_adts_timer_0_compare_match_a,
+			[4] = avr_adts_timer_0_overflow,
+			[5] = avr_adts_timer_1_compare_match_b,
+			[6] = avr_adts_timer_1_overflow,
+			[7] = avr_adts_timer_1_capture_event,
+		},
 
 		.muxmode = {
 			[0] = AVR_ADC_SINGLE(0), [1] = AVR_ADC_SINGLE(1),
@@ -461,24 +458,7 @@ const struct mcu_t {
 			.vector = TIMER3_CAPT_vect,
 		},
 	},
-	.spi = {
-		.disabled = AVR_IO_REGBIT(PRR0,PRSPI),
-
-		.r_spdr = SPDR,
-		.r_spcr = SPCR,
-		.r_spsr = SPSR,
-
-		.spe = AVR_IO_REGBIT(SPCR, SPE),
-		.mstr = AVR_IO_REGBIT(SPCR, MSTR),
-
-		.spr = { AVR_IO_REGBIT(SPCR, SPR0), AVR_IO_REGBIT(SPCR, SPR1), AVR_IO_REGBIT(SPSR, SPI2X) },
-		.spi = {
-			.enable = AVR_IO_REGBIT(SPCR, SPIE),
-			.raised = AVR_IO_REGBIT(SPSR, SPIF),
-			.vector = SPI_STC_vect,
-		},
-	},
-
+	AVR_SPI_DECLARE(PRR0, PRSPI),
 	.twi = {
 
 		.r_twcr = TWCR,

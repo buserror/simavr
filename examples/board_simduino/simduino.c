@@ -145,42 +145,46 @@ static void * avr_run_thread(void * oaram)
 	return NULL;
 }
 
-
-char avr_flash_path[1024];
-int avr_flash_fd = 0;
+struct avr_flash {
+	char avr_flash_path[1024];
+	int avr_flash_fd;
+};
 
 // avr special flash initalization
 // here: open and map a file to enable a persistent storage for the flash memory
-void avr_special_init( avr_t * avr)
+void avr_special_init( avr_t * avr, void * data)
 {
+	struct avr_flash *flash_data = (struct avr_flash *)data;
 	// open the file
-	avr_flash_fd = open(avr_flash_path, O_RDWR|O_CREAT, 0644);
-	if (avr_flash_fd < 0) {
-		perror(avr_flash_path);
+	flash_data->avr_flash_fd = open(flash_data->avr_flash_path, O_RDWR|O_CREAT, 0644);
+	if (flash_data->avr_flash_fd < 0) {
+		perror(flash_data->avr_flash_path);
 		exit(1);
 	}
 	// resize and map the file the file
-	(void)ftruncate(avr_flash_fd, avr->flashend + 1);
-	ssize_t r = read(avr_flash_fd, avr->flash, avr->flashend + 1);
+	(void)ftruncate(flash_data->avr_flash_fd, avr->flashend + 1);
+	ssize_t r = read(flash_data->avr_flash_fd, avr->flash, avr->flashend + 1);
 	if (r != avr->flashend + 1) {
 		fprintf(stderr, "unable to load flash memory\n");
-		perror(avr_flash_path);
+		perror(flash_data->avr_flash_path);
 		exit(1);
 	}
 }
 
 // avr special flash deinitalization
 // here: cleanup the persistent storage
-void avr_special_deinit( avr_t* avr)
+void avr_special_deinit( avr_t* avr, void * data)
 {
+	struct avr_flash *flash_data = (struct avr_flash *)data;
+
 	puts(__func__);
-	lseek(avr_flash_fd, SEEK_SET, 0);
-	ssize_t r = write(avr_flash_fd, avr->flash, avr->flashend + 1);
+	lseek(flash_data->avr_flash_fd, SEEK_SET, 0);
+	ssize_t r = write(flash_data->avr_flash_fd, avr->flash, avr->flashend + 1);
 	if (r != avr->flashend + 1) {
 		fprintf(stderr, "unable to load flash memory\n");
-		perror(avr_flash_path);
+		perror(flash_data->avr_flash_path);
 	}
-	close(avr_flash_fd);
+	close(flash_data->avr_flash_fd);
 	uart_pty_stop(&uart_pty);
 }
 
@@ -188,6 +192,7 @@ int main(int argc, char *argv[])
 {
 	//elf_firmware_t f;
 	//const char * pwd = dirname(argv[0]);
+	struct avr_flash flash_data;
 
 	avr = avr_make_mcu_by_name("atmega328p");
 	if (!avr) {
@@ -195,10 +200,12 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 //	snprintf(avr_flash_path, sizeof(avr_flash_path), "%s/%s", pwd, "simduino_flash.bin");
-	strcpy(avr_flash_path,  "simduino_flash.bin");
+	strcpy(flash_data.avr_flash_path,  "simduino_flash.bin");
+	flash_data.avr_flash_fd = 0;
 	// register our own functions
 	avr->special_init = avr_special_init;
 	avr->special_deinit = avr_special_deinit;
+	avr->special_data = &flash_data;
 	//avr->reset = NULL;
 	avr_init(avr);
 	avr->frequency = 16000000;

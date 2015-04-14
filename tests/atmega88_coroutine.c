@@ -57,7 +57,7 @@ static inline void _set_stack(register void * stack)
 			"out __SP_H__, %B0" "\n\t"
 			"out __SREG__, r0" "\n\t"
 			"out __SP_L__, %A0" "\n\t"
-			: : "e" (stack) :
+			: : "e" (stack) /* : */
 	);
 }
 

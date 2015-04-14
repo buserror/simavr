@@ -55,7 +55,7 @@ enum {
 	R_SREG	= 32+0x3f,
 
 	// maximum number of IO registers, on normal AVRs
-	MAX_IOs	= 279,	// Bigger AVRs need more than 256-32 (mega1280)
+	MAX_IOs	= 280,	// Bigger AVRs need more than 256-32 (mega1280)
 };
 
 #define AVR_DATA_TO_IO(v) ((v) - 32)
@@ -72,8 +72,7 @@ enum {
 	LOG_TRACE,
 };
 
-typedef void (*avr_logger_p)(struct avr_t* avr, const int level, const char * format, ... );
-extern avr_logger_p avr_global_logger;
+
 #ifndef AVR_LOG
 #define AVR_LOG(avr, level, ...) \
 	do { \
@@ -133,6 +132,9 @@ struct avr_trace_data_t {
 	uint32_t	touched[256 / 32];	// debug
 };
 
+typedef void (*avr_run_t)(
+		struct avr_t * avr);
+
 /*
  * Main AVR instance. Some of these fields are set by the AVR "Core" definition files
  * the rest is runtime data (as little as possible)
@@ -148,7 +150,8 @@ typedef struct avr_t {
 	uint8_t		fuse[4];
 	avr_io_addr_t	rampz;	// optional, only for ELPM/SPM on >64Kb cores
 	avr_io_addr_t	eind;	// optional, only for EIJMP/EICALL on >64Kb cores
-
+	uint8_t		address_size;	// 2, or 3 for cores >128KB in flash
+	
 	// filled by the ELF data, this allow tracking of invalid jumps
 	uint32_t			codeend;
 
@@ -162,19 +165,26 @@ typedef struct avr_t {
 	// like, sleeping.
 	avr_cycle_count_t	cycle;		// current cycle
 
+	// these next two allow the core to freely run between cycle timers and also allows
+	// for a maximum run cycle limit... run_cycle_count is set during cycle timer processing.
+	avr_cycle_count_t	run_cycle_count;	// cycles to run before next timer
+	avr_cycle_count_t	run_cycle_limit;	// maximum run cycle interval limit
+
 	/**
 	 * Sleep requests are accumulated in sleep_usec until the minimum sleep value
 	 * is reached, at which point sleep_usec is cleared and the sleep request
 	 * is passed on to the operating system.
 	 */
 	uint32_t sleep_usec;
-	
+
 	// called at init time
 	void (*init)(struct avr_t * avr);
 	// called at init time (for special purposes like using a memory mapped file as flash see: simduino)
-	void (*special_init)(struct avr_t * avr);
+	void (*special_init)(struct avr_t * avr, void * data);
 	// called at termination time ( to clean special initializations)
-	void (*special_deinit)(struct avr_t * avr);
+	void (*special_deinit)(struct avr_t * avr, void * data);
+    // value passed to special_init() and special_deinit()
+	void *special_data;
 	// called at reset time
 	void (*reset)(struct avr_t * avr);
 
@@ -184,7 +194,7 @@ typedef struct avr_t {
 	 * it can, and a "gdb" mode that also watchouts for gdb events
 	 * and is a little bit slower.
 	 */
-	void (*run)(struct avr_t * avr);
+	avr_run_t	run;
 
 	/*!
 	 * Sleep default behaviour.
@@ -203,7 +213,12 @@ typedef struct avr_t {
 	// in the opcode decoder.
 	// This array is re-synthesized back/forth when SREG changes
 	uint8_t		sreg[8];
-	uint8_t		i_shadow;	// used to detect edges on I flag
+
+	/* Interrupt state:
+		00: idle (no wait, no pending interrupts) or disabled
+		<0: wait till zero
+		>0: interrupt pending */
+	int8_t		interrupt_state;	// interrupt state
 
 	/* 
 	 * ** current PC **
@@ -293,7 +308,7 @@ typedef struct avr_t {
 // this is a static constructor for each of the AVR devices
 typedef struct avr_kind_t {
 	const char * names[4];	// name aliases
-	avr_t * (*make)();
+	avr_t * (*make)(void);
 } avr_kind_t;
 
 // a symbol loaded from the .elf file
@@ -373,6 +388,31 @@ avr_sadly_crashed(
 		avr_t *avr,
 		uint8_t signal);
 
+/*
+ * Logs a message using the current logger
+ */
+void
+avr_global_logger(
+		struct avr_t* avr, 
+		const int level, 
+		const char * format, 
+		... );
+
+#ifndef AVR_CORE
+#include <stdarg.h>
+/*
+ * Type for custom logging functions
+ */
+typedef void (*avr_logger_p)(struct avr_t* avr, const int level, const char * format, va_list ap);
+
+/* Sets a global logging function in place of the default */
+void
+avr_global_logger_set(
+		avr_logger_p logger);
+/* Gets the current global logger function */
+avr_logger_p
+avr_global_logger_get(void);
+#endif
 
 /*
  * These are callbacks for the two 'main' behaviour in simavr
@@ -382,12 +422,45 @@ void avr_callback_run_gdb(avr_t * avr);
 void avr_callback_sleep_raw(avr_t * avr, avr_cycle_count_t howLong);
 void avr_callback_run_raw(avr_t * avr);
 
+/**
+ * Accumulates sleep requests (and returns a sleep time of 0) until
+ * a minimum count of requested sleep microseconds are reached
+ * (low amounts cannot be handled accurately).
+ * This function is an utility function for the sleep callbacks
+ */
+uint32_t 
+avr_pending_sleep_usec(
+		avr_t * avr, 
+		avr_cycle_count_t howLong);
+
 #ifdef __cplusplus
 };
 #endif
 
 #include "sim_io.h"
 #include "sim_regbit.h"
+
+#ifdef __GNUC__
+
+# ifndef likely
+#  define likely(x) __builtin_expect(!!(x), 1)
+# endif
+
+# ifndef unlikely
+#  define unlikely(x) __builtin_expect(!!(x), 0)
+# endif
+
+#else /* ! __GNUC__ */
+
+# ifndef likely
+#  define likely(x) x
+# endif
+
+# ifndef unlikely
+#  define unlikely(x) x
+# endif
+
+#endif /* __GNUC__ */
 
 #endif /*__SIM_AVR_H__*/
 

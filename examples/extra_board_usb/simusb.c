@@ -43,42 +43,46 @@ avr_t * avr = NULL;
 avr_vcd_t vcd_file;
 
 
-
-char avr_flash_path[1024];
-int avr_flash_fd = 0;
+struct avr_flash {
+	char avr_flash_path[1024];
+	int avr_flash_fd;
+};
 
 // avr special flash initalization
 // here: open and map a file to enable a persistent storage for the flash memory
-void avr_special_init( avr_t* avr)
+void avr_special_init( avr_t* avr, void *data)
 {
+	struct avr_flash *flash_data = (struct avr_flash *)data;
 	//puts(" --=== INIT CALLED ===--");
 	// release flash memory if allocated
 	if(avr->flash) free(avr->flash);
 	// open the file
-	avr_flash_fd = open(avr_flash_path, O_RDWR|O_CREAT, 0644);
-	if (avr_flash_fd < 0) {
-		perror(avr_flash_path);
+	flash_data->avr_flash_fd = open(flash_data->avr_flash_path,
+            O_RDWR|O_CREAT, 0644);
+	if (flash_data->avr_flash_fd < 0) {
+		perror(flash_data->avr_flash_path);
 		exit(1);
 	}
 	// resize and map the file the file
-	(void)ftruncate(avr_flash_fd, avr->flashend + 1);
+	(void)ftruncate(flash_data->avr_flash_fd, avr->flashend + 1);
 	avr->flash = (uint8_t*)mmap(NULL, avr->flashend + 1, // 32k is multiple of 4096
-							PROT_READ|PROT_WRITE, MAP_SHARED, avr_flash_fd, 0);
+            PROT_READ|PROT_WRITE, MAP_SHARED, flash_data->avr_flash_fd, 0);
 	if (!avr->flash) {
 		fprintf(stderr, "unable to map memory\n");
-		perror(avr_flash_path);
+		perror(flash_data->avr_flash_path);
 		exit(1);
 	}
 }
 
 // avr special flash deinitalization
 // here: cleanup the persistent storage
-void avr_special_deinit( avr_t* avr)
+void avr_special_deinit( avr_t* avr, void *data)
 {
+	struct avr_flash *flash_data = (struct avr_flash *)data;
 	//puts(" --=== DEINIT CALLED ===--");
 	// unmap and close the file
 	munmap( avr->flash, avr->flashend + 1);
-	close( avr_flash_fd);
+	close(flash_data->avr_flash_fd);
 	// signal that cleanup is done
 	avr->flash = NULL;
 }
@@ -87,16 +91,19 @@ int main(int argc, char *argv[])
 {
 //		elf_firmware_t f;
 	const char * pwd = dirname(argv[0]);
+	struct avr_flash flash_data;
 
 	avr = avr_make_mcu_by_name("at90usb162");
 	if (!avr) {
 		fprintf(stderr, "%s: Error creating the AVR core\n", argv[0]);
 		exit(1);
 	}
-	strcpy(avr_flash_path,  "simusb_flash.bin");
+	strcpy(flash_data->avr_flash_path,  "simusb_flash.bin");
+	flash_data->avr_flash_fd = 0;
 	// register our own functions
 	avr->special_init = avr_special_init;
 	avr->special_deinit = avr_special_deinit;
+	avr->special_data = &flash_data;
 	//avr->reset = NULL;
 	avr_init(avr);
 	avr->frequency = 8000000;
@@ -115,7 +122,7 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "%s: Unable to load %s\n", argv[0], path);
 			exit(1);
 		}
-		printf("Booloader %04x: %d\n", base, size);
+		printf("Bootloader %04x: %d\n", base, size);
 		memcpy(avr->flash + base, boot, size);
 		free(boot);
 		avr->pc = base;

@@ -1,5 +1,5 @@
 /*
-	sim_mega128.c
+	sim_megax.h
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
@@ -38,7 +38,7 @@ void mx_init(struct avr_t * avr);
 void mx_reset(struct avr_t * avr);
 
 /*
- * This is a template for all of the 8/32/64 devices, hopefully
+ * This is a template for all of the 8/16/32 devices, hopefully
  */
 struct mcu_t {
 	avr_t          core;
@@ -52,6 +52,10 @@ struct mcu_t {
 	avr_timer_t		timer0,timer1,timer2;
 	avr_spi_t		spi;
 	avr_twi_t		twi;
+	// PORTA exists on m16 and 32, but not on 8. 
+	// It is still necessary to declare this as otherwise
+	// the core_megax shared constructor will be confused
+	avr_ioport_t	porta;
 };
 
 #ifdef SIM_CORENAME
@@ -84,17 +88,16 @@ const struct mcu_t SIM_CORENAME = {
 	.extint = {
 		AVR_EXTINT_DECLARE(0, 'D', PD2),
 		AVR_EXTINT_DECLARE(1, 'D', PD3),
+#ifdef INT2
+		AVR_ASYNC_EXTINT_DECLARE(2, 'B', PB2),
+#endif
 	},
-	.portb = {
-		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
-	},
-	.portc = {
-		.name = 'C', .r_port = PORTC, .r_ddr = DDRC, .r_pin = PINC,
-	},
-	.portd = {
-		.name = 'D', .r_port = PORTD, .r_ddr = DDRD, .r_pin = PIND,
-	},
-
+#ifdef PORTA
+	AVR_IOPORT_DECLARE(a, 'A', A),
+#endif
+	AVR_IOPORT_DECLARE(b, 'B', B),
+	AVR_IOPORT_DECLARE(c, 'C', C),
+	AVR_IOPORT_DECLARE(d, 'D', D),
 	.uart = {
 	   // no PRUSART .disabled = AVR_IO_REGBIT(PRR,PRUSART0),
 		.name = '0',
@@ -164,8 +167,11 @@ const struct mcu_t SIM_CORENAME = {
 	},
 	.timer0 = {
 		.name = '0',
+		.wgm_op = {
+			[0] = AVR_TIMER_WGM_NORMAL8(),
+			// CTC etc. are missing because atmega8 does not support them on timer0
+		},
 		.cs = { AVR_IO_REGBIT(TCCR0, CS00), AVR_IO_REGBIT(TCCR0, CS01), AVR_IO_REGBIT(TCCR0, CS02) },
-		//		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */},
 
 		.r_tcnt = TCNT0,
@@ -175,6 +181,7 @@ const struct mcu_t SIM_CORENAME = {
 			.raised = AVR_IO_REGBIT(TIFR, TOV0),
 			.vector = TIMER0_OVF_vect,
 		},
+		// Compare Output Mode is missing for timer0 as atmega8 does not support it
 	},
 	.timer1 = {
 		.name = '1',
@@ -203,7 +210,7 @@ const struct mcu_t SIM_CORENAME = {
 		.r_tcnth = TCNT1H,
 
 		.ices = AVR_IO_REGBIT(TCCR1B, ICES1),
-		.icp = AVR_IO_REGBIT(PORTD, 4),
+		.icp = AVR_IO_REGBIT(ICP_PORT, ICP_PIN),
 
 		.overflow = {
 			.enable = AVR_IO_REGBIT(TIMSK, TOIE1),
@@ -276,23 +283,7 @@ const struct mcu_t SIM_CORENAME = {
 			},
 		},
 	},
-	.spi = {
-
-		.r_spdr = SPDR,
-		.r_spcr = SPCR,
-		.r_spsr = SPSR,
-
-		.spe = AVR_IO_REGBIT(SPCR, SPE),
-		.mstr = AVR_IO_REGBIT(SPCR, MSTR),
-
-		.spr = { AVR_IO_REGBIT(SPCR, SPR0), AVR_IO_REGBIT(SPCR, SPR1), AVR_IO_REGBIT(SPSR, SPI2X) },
-		.spi = {
-			.enable = AVR_IO_REGBIT(SPCR, SPIE),
-			.raised = AVR_IO_REGBIT(SPSR, SPIF),
-			.vector = SPI_STC_vect,
-		},
-	},
-	
+	AVR_SPI_DECLARE(0, 0),
 	.twi = {
 
 		.r_twcr = TWCR,

@@ -51,7 +51,7 @@ int read_hex_string(const char * src, uint8_t * buffer, int maxlen)
     uint8_t * dst = buffer;
     int ls = 0;
     uint8_t b = 0;
-    while (*src && maxlen--) {
+    while (*src && maxlen) {
         char c = *src++;
         switch (c) {
             case 'a' ... 'f':   b = (b << 4) | (c - 'a' + 0xa); break;
@@ -66,6 +66,7 @@ int read_hex_string(const char * src, uint8_t * buffer, int maxlen)
         }
         if (ls & 1) {
             *dst++ = b; b = 0;
+            maxlen--;
         }
         ls++;
     }

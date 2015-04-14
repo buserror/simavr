@@ -30,7 +30,9 @@ CFLAGS	+= -Werror
 # it otherwise eat quite a bit of few cycles, even disabled
 #CFLAGS	+= -DCONFIG_SIMAVR_TRACE=1
 
-all:	obj config libsimavr ${target}
+all:
+	$(MAKE) obj config
+	$(MAKE) libsimavr ${target}
 
 include ../Makefile.common
 
@@ -61,10 +63,10 @@ endif
 #
 ${OBJ}/libsimavr.so.1	:	${sim_o}
 ifeq ($(V),1)
-	$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^
+	$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^ ${filter-out -lsimavr, $(LDFLAGS)}
 else
 	@echo SHARED $@
-	@$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^
+	@$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^ ${filter-out -lsimavr, $(LDFLAGS)}
 endif
 
 ${OBJ}/libsimavr.so		: ${OBJ}/libsimavr.so.1
@@ -185,7 +187,7 @@ sim_core_decl.h: sim_core_config.h $(cores) Makefile
 	@decl=""; array=""; \
 	for core in $$(grep -r avr_kind_t cores/|awk -F '[ :]' '{print $$1 "=" $$3;}') ; do \
 		file=$${core/=*}; global=$${core/*=}; \
-		upper=$${file/cores\/sim_}; upper=$${upper/.c}; \
+		upper=$$global; upper=$${upper/.c}; \
 		upper=$$(echo $$upper|tr '[a-z]' '[A-Z]'); \
 		decl+="#if CONFIG_$$upper\nextern avr_kind_t $$global;\n#endif\n"; \
 		array+="#if CONFIG_$$upper\n\t&$$global,\n#endif\n"; \
