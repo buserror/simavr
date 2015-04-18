@@ -76,13 +76,13 @@ static int avr_flash_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param
 			for (int i = 0; i < p->spm_pagesize; i++)
 				avr->flash[z++] = 0xff;
 		} else if (avr_regbit_get(avr, p->pgwrt)) {
-			z &= ~1;
+			z &= ~(p->spm_pagesize - 1);
+			AVR_LOG(avr, LOG_TRACE, "FLASH: Writing page %04x (%d)\n", (z / p->spm_pagesize), p->spm_pagesize);
 			for (int i = 0; i < p->spm_pagesize / 2; i++) {
 				avr->flash[z++] = p->tmppage[i];
 				avr->flash[z++] = p->tmppage[i] >> 8;
 			}
 			avr_flash_clear_temppage(p);
-			AVR_LOG(avr, LOG_TRACE, "FLASH: Writing page %08x (%d)\n", z, p->spm_pagesize);
 		} else if (avr_regbit_get(avr, p->blbset)) {
 			AVR_LOG(avr, LOG_TRACE, "FLASH: Setting lock bits (ignored)\n");
 		} else if (p->flags & AVR_SELFPROG_HAVE_RWW && avr_regbit_get(avr, p->rwwsre)) {
