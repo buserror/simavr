@@ -1,7 +1,7 @@
 
 boards_base=${wildcard board_*}
 # Remove simduino until FileMapping is implemented to work around missing mmap in Win32
-ifeq (${shell uname -o}, Msys)
+ifeq (${shell uname -o 2>/dev/null ; if [ $$? -ne 0 ] ; then uname -s; fi}, Msys)
 boards=${subst board_usb,,${subst board_simduino,,$(boards_base)}}
 else
 boards=$(boards_base)
