@@ -118,10 +118,11 @@ void avr_terminate(avr_t * avr)
 
 void avr_reset(avr_t * avr)
 {
+	int noof_ios = MAX_IOs > avr->ramend ? avr->ramend : avr->ramend;
 	AVR_LOG(avr, LOG_TRACE, "%s reset\n", avr->mmcu);
 
 	avr->state = cpu_Running;
-	for(int i = 0x20; i <= MAX_IOs; i++)
+	for(int i = 0x20; i < noof_ios; i++)
 		avr->data[i] = 0;
 	_avr_sp_set(avr, avr->ramend);
 	avr->pc = 0;
