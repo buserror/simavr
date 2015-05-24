@@ -76,6 +76,12 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 		avr_eeprom_desc_t d = { .ee = firmware->eeprom, .offset = 0, .size = firmware->eesize };
 		avr_ioctl(avr, AVR_IOCTL_EEPROM_SET, &d);
 	}
+	if (firmware->fuse) {
+		memcpy(avr->fuse, firmware->fuse, firmware->fusesize);
+	}
+	if (firmware->lockbits) {
+		avr->lockbits = firmware->lockbits[0];
+	}
 	// load the default pull up/down values for ports
 	for (int i = 0; i < 8; i++)
 		if (firmware->external_state[i].port == 0)
@@ -219,6 +225,21 @@ static void elf_parse_mmcu_section(elf_firmware_t * firmware, uint8_t * src, uin
 	}
 }
 
+static int
+elf_copy_section(const char *name, Elf_Data *data, uint8_t **dest)
+{
+	*dest = malloc(data->d_size);
+	if (!*dest) {
+		return -1;
+	}
+
+	memcpy(*dest, data->d_buf, data->d_size);
+	AVR_LOG(NULL, LOG_TRACE, "Loaded %zu .%s\n", name, data->d_size);
+
+	return 0;
+}
+
+
 int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 {
 	Elf32_Ehdr elf_header;			/* ELF header */
@@ -236,6 +257,8 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 	Elf_Data *data_data = NULL,
 		*data_text = NULL,
 		*data_ee = NULL;                /* Data Descriptor */
+	Elf_Data *data_fuse = NULL;
+	Elf_Data *data_lockbits = NULL;
 
 	memset(firmware, 0, sizeof(*firmware));
 #if ELF_SYMBOLS
@@ -265,6 +288,10 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 			data_data = elf_getdata(scn, NULL);
 		else if (!strcmp(name, ".eeprom"))
 			data_ee = elf_getdata(scn, NULL);
+		else if (!strcmp(name, ".fuse"))
+			data_fuse = elf_getdata(scn, NULL);
+		else if (!strcmp(name, ".lock"))
+			data_lockbits = elf_getdata(scn, NULL);
 		else if (!strcmp(name, ".bss")) {
 			Elf_Data *s = elf_getdata(scn, NULL);
 			firmware->bsssize = s->d_size;
@@ -327,27 +354,36 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 			(data_text ? data_text->d_size : 0) +
 			(data_data ? data_data->d_size : 0);
 	firmware->flash = malloc(firmware->flashsize);
+	if (!firmware->flash)
+		return -1;
 
 	// using unsigned int for output, since there is no AVR with 4GB
 	if (data_text) {
 	//	hdump("code", data_text->d_buf, data_text->d_size);
 		memcpy(firmware->flash + offset, data_text->d_buf, data_text->d_size);
 		offset += data_text->d_size;
-		AVR_LOG(NULL, LOG_TRACE, "Loaded %u .text\n", (unsigned int)data_text->d_size);
+		AVR_LOG(NULL, LOG_TRACE, "Loaded %zu .text\n", data_text->d_size);
 	}
 	if (data_data) {
 	//	hdump("data", data_data->d_buf, data_data->d_size);
 		memcpy(firmware->flash + offset, data_data->d_buf, data_data->d_size);
-		AVR_LOG(NULL, LOG_TRACE, "Loaded %u .data\n", (unsigned int)data_data->d_size);
+		AVR_LOG(NULL, LOG_TRACE, "Loaded %zu .data\n", data_data->d_size);
 		offset += data_data->d_size;
 		firmware->datasize = data_data->d_size;
 	}
 	if (data_ee) {
-	//	hdump("eeprom", data_ee->d_buf, data_ee->d_size);
-		firmware->eeprom = malloc(data_ee->d_size);
-		memcpy(firmware->eeprom, data_ee->d_buf, data_ee->d_size);
-		AVR_LOG(NULL, LOG_TRACE, "Loaded %u .eeprom\n", (unsigned int)data_ee->d_size);
+		if (elf_copy_section(".eeprom", data_ee, &firmware->eeprom))
+			return -1;
 		firmware->eesize = data_ee->d_size;
+	}
+	if (data_fuse) {
+		if (elf_copy_section(".fuse", data_fuse, &firmware->fuse))
+			return -1;
+        firmware->fusesize = data_fuse->d_size;
+	}
+	if (data_lockbits) {
+		if (elf_copy_section(".lock", data_fuse, &firmware->lockbits))
+			return -1;
 	}
 //	hdump("flash", avr->flash, offset);
 	elf_end(elf);

@@ -135,6 +135,10 @@ struct avr_trace_data_t {
 typedef void (*avr_run_t)(
 		struct avr_t * avr);
 
+#define AVR_FUSE_LOW	0
+#define AVR_FUSE_HIGH	1
+#define AVR_FUSE_EXT	2
+
 /*
  * Main AVR instance. Some of these fields are set by the AVR "Core" definition files
  * the rest is runtime data (as little as possible)
@@ -142,16 +146,17 @@ typedef void (*avr_run_t)(
 typedef struct avr_t {
 	const char * mmcu;	// name of the AVR
 	// these are filled by sim_core_declare from constants in /usr/lib/avr/include/avr/io*.h
-	uint16_t 	ramend;		
+	uint16_t 	ramend;
 	uint32_t	flashend;
 	uint32_t	e2end;
 	uint8_t		vector_size;
 	uint8_t		signature[3];
-	uint8_t		fuse[4];
+	uint8_t		fuse[6];
+	uint8_t		lockbits;
 	avr_io_addr_t	rampz;	// optional, only for ELPM/SPM on >64Kb cores
 	avr_io_addr_t	eind;	// optional, only for EIJMP/EICALL on >64Kb cores
 	uint8_t		address_size;	// 2, or 3 for cores >128KB in flash
-	
+
 	// filled by the ELF data, this allow tracking of invalid jumps
 	uint32_t			codeend;
 
