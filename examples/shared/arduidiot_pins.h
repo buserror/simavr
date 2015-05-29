@@ -28,7 +28,7 @@
 #include <stdint.h>
 
 typedef struct ardupin_t {
-	uint32_t port : 7, pin : 3, analog : 1, adc : 3, pwm : 1, ardupin;
+	uint32_t port : 7, pin : 3, analog : 1, adc : 4, pwm : 1, ardupin;
 } ardupin_t, *ardupin_p;
 
 struct avr_t;
@@ -39,6 +39,7 @@ get_ardu_irq(
 		int ardupin,
 		ardupin_t pins[]);
 
-extern ardupin_t arduidiot_644[32];
+extern ardupin_t arduidiot_644[];
+extern ardupin_t arduidiot_2560[];
 
 #endif
