@@ -35,6 +35,7 @@
 
 #include "uart_pty.h"
 #include "avr_uart.h"
+#include "sim_time.h"
 #include "sim_hex.h"
 
 DEFINE_FIFO(uint8_t,uart_pty_fifo);
@@ -96,6 +97,19 @@ uart_pty_flush_incoming(
 	}
 }
 
+avr_cycle_count_t
+uart_pty_flush_timer(
+		struct avr_t * avr,
+		avr_cycle_count_t when,
+		void * param)
+{
+	uart_pty_t * p = (uart_pty_t*)param;
+
+	uart_pty_flush_incoming(p);
+	/* always return a cycle NUMBER not a cycle count */
+	return p->xon ? when + avr_hz_to_cycles(p->avr, 1000) : 0;
+}
+
 /*
  * Called when the uart has room in it's input buffer. This is called repeateadly
  * if necessary, while the xoff is called only when the uart fifo is FULL
@@ -109,7 +123,13 @@ uart_pty_xon_hook(
 	uart_pty_t * p = (uart_pty_t*)param;
 	TRACE(if (!p->xon) printf("uart_pty_xon_hook\n");)
 	p->xon = 1;
+
 	uart_pty_flush_incoming(p);
+
+	// if the buffer is not flushed, try to do it later
+	if (p->xon)
+			avr_cycle_timer_register(p->avr, avr_hz_to_cycles(p->avr, 1000),
+						uart_pty_flush_timer, param);
 }
 
 /*
@@ -124,6 +144,7 @@ uart_pty_xoff_hook(
 	uart_pty_t * p = (uart_pty_t*)param;
 	TRACE(if (p->xon) printf("uart_pty_xoff_hook\n");)
 	p->xon = 0;
+	avr_cycle_timer_cancel(p->avr, uart_pty_flush_timer, param);
 }
 
 static void *
@@ -150,7 +171,8 @@ uart_pty_thread(
 			}
 		}
 
-		struct timeval timo = { 0, 500 };	// short, but not too short interval
+		// short, but not too short interval
+		struct timeval timo = { 0, 500 };
 		int ret = select(max+1, &read_set, &write_set, NULL, &timo);
 
 		if (!ret)
@@ -164,7 +186,8 @@ uart_pty_thread(
 									sizeof(p->port[ti].buffer)-1);
 				p->port[ti].buffer_len = r;
 				p->port[ti].buffer_done = 0;
-				TRACE(if (!p->port[ti].tap) hdump("pty recv", p->port[ti].buffer, r);)
+				TRACE(if (!p->port[ti].tap)
+						hdump("pty recv", p->port[ti].buffer, r);)
 			}
 			if (p->port[ti].buffer_done < p->port[ti].buffer_len) {
 				// write them in fifo
@@ -174,7 +197,11 @@ uart_pty_thread(
 					TRACE(int wi = p->port[ti].out.write;)
 					uart_pty_fifo_write(&p->port[ti].out,
 							p->port[ti].buffer[index]);
-					TRACE(printf("w %3d:%02x\n", wi, p->port[ti].buffer[index]);)
+					TRACE(printf("w %3d:%02x (%d/%d) %s\n",
+								wi, p->port[ti].buffer[index],
+								p->port[ti].out.read,
+								p->port[ti].out.write,
+								p->xon ? "XON" : "XOFF");)
 				}
 			}
 			if (FD_ISSET(p->port[ti].s, &write_set)) {
