@@ -43,7 +43,7 @@ sim_o 	:= ${patsubst sim/%.c, ${OBJ}/%.o, ${sim}}
 VPATH	= cores
 VPATH	+= sim
 
-IPATH	= sim
+IPATH	+= sim
 IPATH	+= .
 IPATH	+= ../../shared
     

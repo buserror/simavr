@@ -44,24 +44,41 @@ CFLAGS		+= -g
 CORE_CFLAGS	= -nostdinc -DAVR_CORE=1
 
 ifeq (${shell uname}, Darwin)
-# gcc 4.2 from MacOS is really not up to scratch anymore 
-CC			= clang
-AVR_ROOT 	:= "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/"
-AVR_INC 	:= ${AVR_ROOT}/avr-4/
-AVR 		:= ${AVR_ROOT}/bin/avr-
-# Thats for MacPorts libelf
-ifeq (${shell test -d /opt/local && echo Exists}, Exists)
-IPATH		+= /opt/local/include
-LFLAGS		= -L/opt/local/lib/
-endif
+ # gcc 4.2 from MacOS is really not up to scratch anymore 
+ CC			= clang
+ AVR_ROOT 	:= "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/"
+ AVR_INC 	:= ${AVR_ROOT}/avr/
+ AVR 		:= ${AVR_ROOT}/bin/avr-
+ # Thats for MacPorts libelf
+ ifeq (${shell test -d /opt/local && echo Exists}, Exists)
+  IPATH		+= /opt/local/include
+  LFLAGS		= -L/opt/local/lib/
+ else
+  # That's for Homebrew libelf and avr-gcc support
+  ifeq (${shell test -d /usr/local/Cellar && echo Exists}, Exists)
+   ifneq (${shell test -d /usr/local/Cellar/avr-gcc/ && echo Exists}, Exists)
+    $(error Please install avr-gcc: brew tap larsimmisch/avr ; brew install avr-gcc avr-libc)
+   endif
+   ifneq (${shell test -d /usr/local/Cellar/libelf/ && echo Exists}, Exists)
+    $(error Please install libelf: brew install libelf)
+   endif
+   CC			= clang
+   IPATH		+= /usr/local/include /usr/local/include/libelf
+   LFLAGS		= -L/usr/local/lib/
+   AVR_ROOT 	:= $(firstword $(wildcard /usr/local/Cellar/avr-gcc/*/))
+   AVR_INC  	:= ${AVR_ROOT}/avr
+   AVR  		:= /usr/local/bin/avr-
+  endif
+ endif
 else
-LINUX_AVR_ROOTS := /usr/lib/avr /usr/avr /opt/cross/avr/avr /usr/local/avr
-AVR_ROOT := $(firstword $(wildcard $(LINUX_AVR_ROOTS)))
-ifeq (${AVR_ROOT},)
-$(error No avr-libc root directory found. Tried the following paths: $(LINUX_AVR_ROOTS))
+ LINUX_AVR_ROOTS := /usr/lib/avr /usr/avr /opt/cross/avr/avr /usr/local/avr
+ AVR_ROOT := $(firstword $(wildcard $(LINUX_AVR_ROOTS)))
+ ifeq (${AVR_ROOT},)
+  $(error No avr-libc root directory found. Tried the following paths: $(LINUX_AVR_ROOTS))
+ endif
+ AVR_INC 	:= ${AVR_ROOT}
+ AVR 		:= avr-
 endif
-AVR_INC 	:= ${AVR_ROOT}
-AVR 		:= avr-
 
 # FIXME uname -o doesn't work on bsd derivatives
 #WIN := ${shell uname -o}
@@ -76,7 +93,6 @@ LDFLAGS		+= -L/lib -L/local/lib
 CFLAGS 		+= -DNO_COLOR
 else
 CFLAGS 		+= -fPIC
-endif
 endif
 
 CPPFLAGS	+= --std=gnu99 -Wall
