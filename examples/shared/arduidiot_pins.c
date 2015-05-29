@@ -25,42 +25,110 @@
 #include "sim_irq.h"
 #include "avr_ioport.h"
 
-ardupin_t arduidiot_644[32] = {
-	[ 0] = { .ardupin =  0, .port = 'B', .pin =  0 },
-	[ 1] = { .ardupin =  1, .port = 'B', .pin =  1 },
-	[ 2] = { .ardupin =  2, .port = 'B', .pin =  2 },
-	[ 3] = { .ardupin =  3, .port = 'B', .pin =  3 },
-	[ 4] = { .ardupin =  4, .port = 'B', .pin =  4 },
-	[ 5] = { .ardupin =  5, .port = 'B', .pin =  5 },
-	[ 6] = { .ardupin =  6, .port = 'B', .pin =  6 },
-	[ 7] = { .ardupin =  7, .port = 'B', .pin =  7 },
+#define PIN(_n, _p, _b) \
+	[ _n] = { .ardupin =  _n, .port = _p, .pin =  _b }
 
-	[ 8] = { .ardupin =  8, .port = 'D', .pin =  0 },
-	[ 9] = { .ardupin =  9, .port = 'D', .pin =  1 },
-	[10] = { .ardupin = 10, .port = 'D', .pin =  2 },
-	[11] = { .ardupin = 11, .port = 'D', .pin =  3 },
-	[12] = { .ardupin = 12, .port = 'D', .pin =  4 },
-	[13] = { .ardupin = 13, .port = 'D', .pin =  5 },
-	[14] = { .ardupin = 14, .port = 'D', .pin =  6 },
-	[15] = { .ardupin = 15, .port = 'D', .pin =  7 },
+#define ADC(_n, _p, _b) \
+	[ _n] = { .ardupin =  _n, .port = _p, .pin =  _b, .analog = 1, .adc = _b }
 
-	[16] = { .ardupin = 16, .port = 'C', .pin =  0 },
-	[17] = { .ardupin = 17, .port = 'C', .pin =  1 },
-	[18] = { .ardupin = 18, .port = 'C', .pin =  2 },
-	[19] = { .ardupin = 19, .port = 'C', .pin =  3 },
-	[20] = { .ardupin = 20, .port = 'C', .pin =  4 },
-	[21] = { .ardupin = 21, .port = 'C', .pin =  5 },
-	[22] = { .ardupin = 22, .port = 'C', .pin =  6 },
-	[23] = { .ardupin = 23, .port = 'C', .pin =  7 },
+#define ADCL(_n, _p, _b, _a) \
+	[ _n] = { .ardupin =  _n, .port = _p, .pin =  _b, .analog = 1, .adc = _a }
 
-	[24] = { .ardupin = 24, .port = 'A', .pin =  7, .analog = 1, .adc = 7 },
-	[25] = { .ardupin = 25, .port = 'A', .pin =  6, .analog = 1, .adc = 6 },
-	[26] = { .ardupin = 26, .port = 'A', .pin =  5, .analog = 1, .adc = 5 },
-	[27] = { .ardupin = 27, .port = 'A', .pin =  4, .analog = 1, .adc = 4 },
-	[28] = { .ardupin = 28, .port = 'A', .pin =  3, .analog = 1, .adc = 3 },
-	[29] = { .ardupin = 29, .port = 'A', .pin =  2, .analog = 1, .adc = 2 },
-	[30] = { .ardupin = 30, .port = 'A', .pin =  1, .analog = 1, .adc = 1 },
-	[31] = { .ardupin = 31, .port = 'A', .pin =  0, .analog = 1, .adc = 0 },
+#define PORT(_B, _P) \
+	PIN( _B + 0, _P, 0), \
+	PIN( _B + 1, _P, 1), \
+	PIN( _B + 2, _P, 2), \
+	PIN( _B + 3, _P, 3), \
+	PIN( _B + 4, _P, 4), \
+	PIN( _B + 5, _P, 5), \
+	PIN( _B + 6, _P, 6), \
+	PIN( _B + 7, _P, 7)
+
+ardupin_t arduidiot_644[] = {
+	PORT( 0, 'B'),
+	PORT( 8, 'D'),
+	PORT(16, 'C'),
+	
+	ADC(24, 'A', 7),
+	ADC(25, 'A', 6),
+	ADC(26, 'A', 5),
+	ADC(27, 'A', 4),
+	ADC(28, 'A', 3),
+	ADC(29, 'A', 2),
+	ADC(30, 'A', 1),
+	ADC(31, 'A', 0),
+};
+
+ardupin_t arduidiot_2560[] = {
+	PIN( 0, 'E', 0),
+	PIN( 1, 'E', 1),
+	PIN( 2, 'E', 4),
+	PIN( 3, 'E', 5),
+	PIN( 4, 'G', 5),
+	PIN( 5, 'E', 3),
+	PIN( 6, 'H', 3),
+	PIN( 7, 'H', 4),
+	PIN( 8, 'H', 5),
+	PIN( 9, 'H', 6),
+	PIN(10, 'B', 4),
+	PIN(11, 'B', 5),
+	PIN(12, 'B', 6),
+	PIN(13, 'B', 7),
+//	PIN(14, 'H', 4),
+//	PIN(15, 'H', 4),
+	PIN(16, 'H', 1),
+
+	PIN(17, 'H', 0),
+	PIN(18, 'D', 3),
+	PIN(19, 'D', 2),
+	PIN(20, 'D', 1),
+	PIN(21, 'D', 0),
+	
+	PORT(22, 'A'),	
+
+	PIN(30, 'C', 7),
+	PIN(31, 'C', 6),
+	PIN(32, 'C', 5),
+	PIN(33, 'C', 4),
+	PIN(34, 'C', 3),
+	PIN(35, 'C', 2),
+	PIN(36, 'C', 1),
+	PIN(37, 'C', 0),
+	PIN(38, 'D', 7),
+	PIN(39, 'G', 2),
+
+	PIN(40, 'G', 1),
+	PIN(41, 'G', 0),
+	PIN(42, 'L', 7),
+	PIN(43, 'L', 6),
+	PIN(44, 'L', 5),
+	PIN(45, 'L', 4),
+	PIN(46, 'L', 3),
+	PIN(47, 'L', 2),
+	PIN(48, 'L', 1),
+	PIN(49, 'L', 0),
+
+	PIN(50, 'B', 3),
+	PIN(51, 'G', 2),
+	PIN(52, 'G', 1),
+	PIN(53, 'G', 0),
+
+	ADC(64, 'F', 0),
+	ADC(65, 'F', 1),
+	ADC(66, 'F', 2),
+	ADC(67, 'F', 3),
+	ADC(68, 'F', 4),
+	ADC(69, 'F', 5),
+	ADC(70, 'F', 6),
+	ADC(71, 'F', 7),
+	ADCL(72, 'K', 0, 8),
+	ADCL(73, 'K', 1, 9),
+	ADCL(74, 'K', 2, 10),
+	ADCL(75, 'K', 3, 11),
+	ADCL(76, 'K', 4, 12),
+	ADCL(77, 'K', 5, 13),
+	ADCL(78, 'K', 6, 14),
+	ADCL(79, 'K', 7, 15),
 };
 
 struct avr_irq_t *
@@ -76,7 +144,8 @@ get_ardu_irq(
 	struct avr_irq_t * irq = avr_io_getirq(avr,
 			AVR_IOCTL_IOPORT_GETIRQ(pins[ardupin].port), pins[ardupin].pin);
 	if (!irq) {
-		printf("%s pin %d PORT%C%d not found\n", __func__, ardupin, pins[ardupin].port, pins[ardupin].pin);
+		printf("%s pin %d PORT%C%d not found\n", __func__, ardupin, 
+			pins[ardupin].port, pins[ardupin].pin);
 		return NULL;
 	}
 	return irq;
