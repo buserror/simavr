@@ -25,7 +25,9 @@
 #include "sim_time.h"
 #include "avr_adc.h"
 
-static avr_cycle_count_t avr_adc_int_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t
+avr_adc_int_raise(
+		struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
 	avr_adc_t * p = (avr_adc_t *)param;
 	if (avr_regbit_get(avr, p->aden)) {
@@ -40,7 +42,9 @@ static avr_cycle_count_t avr_adc_int_raise(struct avr_t * avr, avr_cycle_count_t
 	return 0;
 }
 
-static uint8_t avr_adc_read_l(struct avr_t * avr, avr_io_addr_t addr, void * param)
+static uint8_t
+avr_adc_read_l(
+		struct avr_t * avr, avr_io_addr_t addr, void * param)
 {
 	avr_adc_t * p = (avr_adc_t *)param;
 
@@ -127,7 +131,9 @@ static uint8_t avr_adc_read_l(struct avr_t * avr, avr_io_addr_t addr, void * par
  * So here if the H is read before the L, we still call the L to update the
  * register value.
  */
-static uint8_t avr_adc_read_h(struct avr_t * avr, avr_io_addr_t addr, void * param)
+static uint8_t
+avr_adc_read_h(
+		struct avr_t * avr, avr_io_addr_t addr, void * param)
 {
 	avr_adc_t * p = (avr_adc_t *)param;
 	// no "break" here on purpose
@@ -141,7 +147,9 @@ static uint8_t avr_adc_read_h(struct avr_t * avr, avr_io_addr_t addr, void * par
 	}
 }
 
-static void avr_adc_configure_trigger(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+static void
+avr_adc_configure_trigger(
+		struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_adc_t * p = (avr_adc_t *)param;
 	
@@ -178,7 +186,9 @@ static void avr_adc_configure_trigger(struct avr_t * avr, avr_io_addr_t addr, ui
 			}	break;
 			// TODO: implement the other auto trigger modes
 			default: {
-				AVR_LOG(avr, LOG_WARNING, "ADC: unimplemented auto trigger mode: %s\n", auto_trigger_names[p->adts_mode]);
+				AVR_LOG(avr, LOG_WARNING,
+						"ADC: unimplemented auto trigger mode: %s\n",
+						auto_trigger_names[p->adts_mode]);
 				p->adts_mode = avr_adts_none;
 			}	break;
 		}
@@ -188,10 +198,13 @@ static void avr_adc_configure_trigger(struct avr_t * avr, avr_io_addr_t addr, ui
 	}
 	
 	if( old_adts != p->adts_mode )
-		AVR_LOG(avr, LOG_TRACE, "ADC: auto trigger configured: %s\n", auto_trigger_names[p->adts_mode]);
+		AVR_LOG(avr, LOG_TRACE, "ADC: auto trigger configured: %s\n",
+				auto_trigger_names[p->adts_mode]);
 }
 
-static void avr_adc_write_adcsra(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+static void
+avr_adc_write_adcsra(
+		struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_adc_configure_trigger(avr, addr, v, param);
 	
@@ -225,7 +238,8 @@ static void avr_adc_write_adcsra(struct avr_t * avr, avr_io_addr_t addr, uint8_t
 			uint32_t v;
 		} e = { .mux = p->muxmode[muxi] };
 		avr_raise_irq(p->io.irq + ADC_IRQ_OUT_TRIGGER, e.v);
-
+		if (muxi == 0)
+			printf("Start ADC %d\n", muxi);
 		// clock prescaler are just a bit shift.. and 0 means 1
 		uint32_t div = avr_regbit_get_array(avr, p->adps, ARRAY_SIZE(p->adps));
 		if (!div) div++;
@@ -242,12 +256,16 @@ static void avr_adc_write_adcsra(struct avr_t * avr, avr_io_addr_t addr, uint8_t
 	avr_core_watch_write(avr, addr, v);
 }
 
-static void avr_adc_write_adcsrb(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+static void
+avr_adc_write_adcsrb(
+		struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_adc_configure_trigger(avr, addr, v, param);
 }
 
-static void avr_adc_irq_notify(struct avr_irq_t * irq, uint32_t value, void * param)
+static void
+avr_adc_irq_notify(
+		struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	avr_adc_t * p = (avr_adc_t *)param;
 	avr_t * avr = p->io.avr;
@@ -263,9 +281,9 @@ static void avr_adc_irq_notify(struct avr_irq_t * irq, uint32_t value, void * pa
 			if (avr_regbit_get(avr, p->adate)) {
 				// start a conversion only if it's not running
 				// otherwise ignore the trigger
-				if( ! avr_regbit_get(avr, p->adsc) ) {
+				if(!avr_regbit_get(avr, p->adsc) ) {
 			  		uint8_t addr = p->adsc.reg;
-					if( addr ) {
+					if (addr) {
 						uint8_t val = avr->data[addr] | (1 << p->adsc.bit);
 						// write ADSC to ADCSRA
 						avr_adc_write_adcsra(avr, addr, val, param);
