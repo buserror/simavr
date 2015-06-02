@@ -36,10 +36,10 @@ struct avr_t;
 struct avr_irq_t *
 get_ardu_irq(
 		struct avr_t * avr,
-		int ardupin,
-		ardupin_t pins[]);
+		uint8_t ardupin,
+		const ardupin_t pins[]);
 
-extern ardupin_t arduidiot_644[];
-extern ardupin_t arduidiot_2560[];
+extern const ardupin_t arduidiot_644[];
+extern const ardupin_t arduidiot_2560[];
 
 #endif

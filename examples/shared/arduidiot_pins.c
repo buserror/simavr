@@ -44,7 +44,7 @@
 	PIN( _B + 6, _P, 6), \
 	PIN( _B + 7, _P, 7)
 
-ardupin_t arduidiot_644[] = {
+const ardupin_t arduidiot_644[] = {
 	PORT( 0, 'B'),
 	PORT( 8, 'D'),
 	PORT(16, 'C'),
@@ -59,7 +59,7 @@ ardupin_t arduidiot_644[] = {
 	ADC(31, 'A', 0),
 };
 
-ardupin_t arduidiot_2560[] = {
+const ardupin_t arduidiot_2560[] = {
 	PIN( 0, 'E', 0),
 	PIN( 1, 'E', 1),
 	PIN( 2, 'E', 4),
@@ -70,6 +70,7 @@ ardupin_t arduidiot_2560[] = {
 	PIN( 7, 'H', 4),
 	PIN( 8, 'H', 5),
 	PIN( 9, 'H', 6),
+
 	PIN(10, 'B', 4),
 	PIN(11, 'B', 5),
 	PIN(12, 'B', 6),
@@ -77,13 +78,12 @@ ardupin_t arduidiot_2560[] = {
 	PIN(14, 'J', 1),
 	PIN(15, 'J', 0),
 	PIN(16, 'H', 1),
-
 	PIN(17, 'H', 0),
 	PIN(18, 'D', 3),
 	PIN(19, 'D', 2),
+
 	PIN(20, 'D', 1),
 	PIN(21, 'D', 0),
-	
 	PORT(22, 'A'),	
 
 	PIN(30, 'C', 7),
@@ -112,13 +112,13 @@ ardupin_t arduidiot_2560[] = {
 	PIN(51, 'G', 2),
 	PIN(52, 'G', 1),
 	PIN(53, 'G', 0),
-
 	ADC(54, 'F', 0),
 	ADC(55, 'F', 1),
 	ADC(56, 'F', 2),
 	ADC(57, 'F', 3),
 	ADC(58, 'F', 4),
 	ADC(59, 'F', 5),
+
 	ADC(60, 'F', 6),
 	ADC(61, 'F', 7),
 	ADCL(62, 'K', 0, 8),
@@ -129,13 +129,31 @@ ardupin_t arduidiot_2560[] = {
 	ADCL(67, 'K', 5, 13),
 	ADCL(68, 'K', 6, 14),
 	ADCL(69, 'K', 7, 15),
+
+	PIN(70, 'G', 4),
+	PIN(71, 'G', 3),
+	PIN(72, 'J', 2),
+	PIN(73, 'J', 3),
+	PIN(74, 'J', 7),
+	PIN(75, 'J', 4),
+	PIN(76, 'J', 5),
+	PIN(77, 'J', 6),
+	PIN(78, 'E', 2),
+	PIN(79, 'E', 6),
+
+	PIN(80, 'E', 7),
+	PIN(81, 'D', 4),
+	PIN(82, 'D', 5),
+	PIN(83, 'D', 6),
+	PIN(84, 'H', 2),
+	PIN(85, 'H', 7),
 };
 
 struct avr_irq_t *
 get_ardu_irq(
 		struct avr_t * avr,
-		int ardupin,
-		ardupin_t pins[])
+		uint8_t ardupin,
+		const ardupin_t pins[])
 {
 	if (pins[ardupin].ardupin != ardupin) {
 		printf("%s pin %d isn't correct in table\n", __func__, ardupin);
@@ -147,6 +165,9 @@ get_ardu_irq(
 		printf("%s pin %d PORT%C%d not found\n", __func__, ardupin, 
 			pins[ardupin].port, pins[ardupin].pin);
 		return NULL;
-	}
+	} else
+		printf("%s pin %2d is PORT%C%d\n", __func__, ardupin, 
+			pins[ardupin].port, pins[ardupin].pin);
+
 	return irq;
 }
