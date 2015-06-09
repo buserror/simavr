@@ -173,7 +173,7 @@ avr_twi_write(
 	/*int cleared = */avr_clear_interrupt_if(avr, &p->twi, twint);
 //	AVR_TRACE(avr, "cleared %d\n", cleared);
 
-	if (!twsto && avr_regbit_get(avr, p->twsto)) {
+	if (/*!twsto && */ avr_regbit_get(avr, p->twsto)) {
 		// generate a stop condition
 #if AVR_TWI_DEBUG
 		AVR_TRACE(avr, "<<<<< I2C stop\n");
@@ -182,9 +182,10 @@ avr_twi_write(
 			if (p->state & TWI_COND_START) {
 				avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
 						avr_twi_irq_msg(TWI_COND_STOP, p->peer_addr, 1));
-				avr_regbit_clear(avr, p->twsto);
 			}
 		}
+		/* clear stop condition regardless of status */
+		avr_regbit_clear(avr, p->twsto);
 		p->state = 0;
 	}
 	if (!twsta && avr_regbit_get(avr, p->twsta)) {
