@@ -39,7 +39,7 @@ extern "C" {
  * and dumps their values (if changed) at certain intervals into the VCD file
  */
 
-#define AVR_VCD_MAX_SIGNALS 32
+#define AVR_VCD_MAX_SIGNALS 64
 
 typedef struct avr_vcd_signal_t {
 	avr_irq_t 	irq;		// receiving IRQ
@@ -63,7 +63,7 @@ typedef struct avr_vcd_t {
 	FILE * output;
 
 	int signal_count;
-	avr_vcd_signal_t	signal [AVR_VCD_MAX_SIGNALS];	
+	avr_vcd_signal_t	signal[AVR_VCD_MAX_SIGNALS];
 
 	uint64_t period;
 	uint64_t start;

@@ -219,6 +219,7 @@ int avr_vcd_start(avr_vcd_t * vcd)
 		fprintf(vcd->output, "%s\n", _avr_vcd_get_float_signal_text(s, out));
 	}
 	fprintf(vcd->output, "$end\n");
+	vcd->logindex = 0;
 	vcd->start = vcd->avr->cycle;
 	avr_cycle_timer_register(vcd->avr, vcd->period, _avr_vcd_timer, vcd);
 	return 0;
