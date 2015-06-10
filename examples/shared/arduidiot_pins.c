@@ -109,9 +109,9 @@ const ardupin_t arduidiot_2560[] = {
 	PIN(49, 'L', 0),
 
 	PIN(50, 'B', 3),
-	PIN(51, 'G', 2),
-	PIN(52, 'G', 1),
-	PIN(53, 'G', 0),
+	PIN(51, 'B', 2),
+	PIN(52, 'B', 1),
+	PIN(53, 'B', 0),
 	ADC(54, 'F', 0),
 	ADC(55, 'F', 1),
 	ADC(56, 'F', 2),
