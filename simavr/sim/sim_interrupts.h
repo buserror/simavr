@@ -29,13 +29,20 @@
 extern "C" {
 #endif
 
+enum {
+	AVR_INT_IRQ_PENDING = 0,
+	AVR_INT_IRQ_RUNNING,
+	AVR_INT_IRQ_COUNT,
+	AVR_INT_ANY		= 0xff,	// for avr_get_interrupt_irq()
+};
 // interrupt vector for the IO modules
 typedef struct avr_int_vector_t {
 	uint8_t 		vector;			// vector number, zero (reset) is reserved
 	avr_regbit_t 	enable;			// IO register index for the "interrupt enable" flag for this vector
 	avr_regbit_t 	raised;			// IO register index for the register where the "raised" flag is (optional)
 
-	avr_irq_t		irq;			// raised to 1 when queued, to zero when called
+	// 'pending' IRQ, and 'running' status as signaled here
+	avr_irq_t		irq[AVR_INT_IRQ_COUNT];
 	uint8_t			pending : 1,	// 1 while scheduled in the fifo
 					trace : 1,		// only for debug of a vector
 					raise_sticky : 1;	// 1 if the interrupt flag (= the raised regbit) is not cleared
@@ -49,6 +56,10 @@ typedef struct  avr_int_table_t {
 	avr_int_vector_t * pending[64]; // needs to be >= vectors and a power of two
 	uint8_t			pending_w,
 					pending_r;	// fifo cursors
+	uint8_t			running_ptr;
+	avr_int_vector_t *running[64]; // stack of nested interrupts
+	// global status for pending + running in interrupt context
+	avr_irq_t		irq[AVR_INT_IRQ_COUNT];
 } avr_int_table_t, *avr_int_table_p;
 
 /*
@@ -83,7 +94,10 @@ avr_clear_interrupt(
 void
 avr_service_interrupts(
 		struct avr_t * avr);
-
+// called by the core when RETI opcode is ran
+void
+avr_interrupt_reti(
+		struct avr_t * avr);
 // clear the interrupt (inc pending) if "raised" flag is 1
 int
 avr_clear_interrupt_if(
