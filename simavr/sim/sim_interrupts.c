@@ -225,25 +225,21 @@ void
 avr_service_interrupts(
 		avr_t * avr)
 {
-	if (!avr->sreg[S_I])
+	if (!avr->sreg[S_I] || !avr->interrupt_state)
 		return;
 
-	if (avr->interrupt_state) {
-		if (avr->interrupt_state < 0) {
-			avr->interrupt_state++;
-			if (avr->interrupt_state == 0)
-				avr->interrupt_state = avr_has_pending_interrupts(avr);
-			return;
-		}
-	} else
+	if (avr->interrupt_state < 0) {
+		avr->interrupt_state++;
+		if (avr->interrupt_state == 0)
+			avr->interrupt_state = avr_has_pending_interrupts(avr);
 		return;
+	}
 
 	avr_int_table_p table = &avr->interrupts;
 
 	// how many are pending...
-	int cnt = table->pending_w > table->pending_r ?
-			table->pending_w - table->pending_r :
-			(table->pending_w + INT_FIFO_SIZE) - table->pending_r;
+	int cnt = INT_FIFO_MOD(
+				(table->pending_w + INT_FIFO_SIZE) - table->pending_r);
 	// locate the highest priority one
 	int min = 0xff;
 	int mini = 0;
