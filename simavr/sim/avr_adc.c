@@ -238,8 +238,7 @@ avr_adc_write_adcsra(
 			uint32_t v;
 		} e = { .mux = p->muxmode[muxi] };
 		avr_raise_irq(p->io.irq + ADC_IRQ_OUT_TRIGGER, e.v);
-		if (muxi == 0)
-			printf("Start ADC %d\n", muxi);
+
 		// clock prescaler are just a bit shift.. and 0 means 1
 		uint32_t div = avr_regbit_get_array(avr, p->adps, ARRAY_SIZE(p->adps));
 		if (!div) div++;
