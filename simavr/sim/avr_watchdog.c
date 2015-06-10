@@ -196,8 +196,9 @@ static void avr_watchdog_reset(avr_io_t * port)
 		
 		avr_watchdog_set_cycle_count_and_timer(avr, p, 0, 0);
 	}
-
-	avr_irq_register_notify(&p->watchdog.irq, avr_watchdog_irq_notify, p);
+	/* TODO could now use the two pending/running IRQs to do the same
+	 * as before */
+	avr_irq_register_notify(p->watchdog.irq, avr_watchdog_irq_notify, p);
 }
 
 static	avr_io_t	_io = {
