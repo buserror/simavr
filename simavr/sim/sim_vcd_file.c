@@ -126,7 +126,7 @@ static void avr_vcd_flush_log(avr_vcd_t * vcd)
 	uint64_t oldbase = 0;	// make sure it's different
 	char out[48];
 
-	if (!vcd->logindex)
+	if (!vcd->logindex || !vcd->output)
 		return;
 //	printf("avr_vcd_flush_log %d\n", vcd->logindex);
 
