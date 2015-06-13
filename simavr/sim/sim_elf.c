@@ -296,6 +296,9 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 						ELF32_ST_TYPE(sym.st_info) == STT_OBJECT) {
 					const char * name = elf_strptr(elf, shdr.sh_link, sym.st_name);
 
+					// if its a bootloader, this symbol will be the entry point we need
+					if (!strcmp(name, "__vectors"))
+						firmware->flashbase = sym.st_value;
 					avr_symbol_t * s = malloc(sizeof(avr_symbol_t) + strlen(name) + 1);
 					strcpy((char*)s->symbol, name);
 					s->addr = sym.st_value;
@@ -332,8 +335,9 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 	if (data_text) {
 	//	hdump("code", data_text->d_buf, data_text->d_size);
 		memcpy(firmware->flash + offset, data_text->d_buf, data_text->d_size);
+		AVR_LOG(NULL, LOG_TRACE, "Loaded %u .text at address 0x%x\n",
+				(unsigned int)data_text->d_size, firmware->flashbase);
 		offset += data_text->d_size;
-		AVR_LOG(NULL, LOG_TRACE, "Loaded %u .text\n", (unsigned int)data_text->d_size);
 	}
 	if (data_data) {
 	//	hdump("data", data_data->d_buf, data_data->d_size);
