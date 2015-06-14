@@ -462,16 +462,16 @@ const struct mcu_t {
 					},
 			 },
 				// TIMER2_COMPB is only appeared in 2560
-			 //[AVR_TIMER_COMPB] = {
-			 //	.r_ocr = OCR2B,
-			 //	.com = AVR_IO_REGBITS(TCCR2A, COM2B0, 0x3),
-			 //	.com_pin = AVR_IO_REGBIT(PORTH, PH6),
-			 //	.interrupt = {
-			 //		.enable = AVR_IO_REGBIT(TIMSK2, OCIE2B),
-			 //		.raised = AVR_IO_REGBIT(TIFR2, OCF2B),
-			 //		.vector = TIMER2_COMPB_vect,
-			 //	},
-			 //},
+			 [AVR_TIMER_COMPB] = {
+			 	.r_ocr = OCR2B,
+			 	.com = AVR_IO_REGBITS(TCCR2A, COM2B0, 0x3),
+			 	.com_pin = AVR_IO_REGBIT(PORTH, PH6),
+			 	.interrupt = {
+			 		.enable = AVR_IO_REGBIT(TIMSK2, OCIE2B),
+			 		.raised = AVR_IO_REGBIT(TIFR2, OCF2B),
+			 		.vector = TIMER2_COMPB_vect,
+			 	},
+			 },
 		},
 	},
 	.timer3 = {
