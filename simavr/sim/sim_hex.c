@@ -86,13 +86,15 @@ uint8_t * read_ihex_file(const char * fname, uint32_t * dsize, uint32_t * start)
 	uint8_t * res = NULL;
 	uint32_t size = 0;
 	uint32_t base = ~0;
+	uint32_t segment = 0;
 
 	while (!feof(f)) {
 		char line[128];
 		if (!fgets(line, sizeof(line)-1, f))
 			continue;
 		if (line[0] != ':') {
-			fprintf(stderr, "AVR: '%s' invalid ihex format (%.4s)\n", fname, line);
+			fprintf(stderr, "AVR: '%s' invalid ihex format (%.4s)\n",
+					fname, line);
 			break;
 		}
 		uint8_t bline[64];
@@ -110,22 +112,33 @@ uint8_t * read_ihex_file(const char * fname, uint32_t * dsize, uint32_t * start)
 			chk = 0x100 - chk;
 		}
 		if (chk != bline[len-1]) {
-			fprintf(stderr, "%s: %s, invalid checksum %02x/%02x\n", __FUNCTION__, fname, chk, bline[len-1]);
+			fprintf(stderr, "%s: %s, invalid checksum %02x/%02x\n",
+					__func__, fname, chk, bline[len-1]);
 			break;
 		}
-		if (bline[3] != 0) {
-			if (bline[3] != 1) {
-				fprintf(stderr, "%s: %s, unsupported check type %02x\n", __FUNCTION__, fname, bline[3]);
+		switch (bline[3]) {
+			case 0: // data
 				break;
-			}
-			continue;
+			case 1: // end of data
+				segment = 0;
+				continue;
+			case 2: // extended record (for big flash)
+				segment = ((bline[4] << 8) | bline[5]) << 4;
+				continue;
+			case 3: // CS:IP value. WTF in AVR ihex format? perhaps PC value?
+				continue;
+			default:
+				fprintf(stderr, "%s: %s, unsupported chunk type %02x\n",
+						__func__, fname, bline[3]);
+				continue;
 		}
-		uint16_t addr = (bline[1] << 8) | bline[2];
+		uint32_t addr = segment | (bline[1] << 8) | bline[2];
 		if (base == ~0) {
 			base = addr;	// start address
 		}
 		if (addr != base + size) {
-			fprintf(stderr, "%s: %s, offset out of bounds %04x expected %04x\n", __FUNCTION__, fname, addr, base+size);
+			fprintf(stderr, "%s: %s, offset out of bounds %04x(%d) expected %04x\n",
+					__func__, fname, addr, bline[0], base+size);
 			break;
 		}
 		res = realloc(res, size + bline[0]);
@@ -223,7 +236,7 @@ read_ihex_chunks(
 int test_main(int argc, char * argv[])
 {
 	struct ihex_chunk_t chunk[4];
-	
+
 	for (int fi = 1; fi < argc; fi++) {
 		int c = read_ihex_chunks(argv[fi], chunk, 4);
 		if (c == -1) {
