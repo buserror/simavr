@@ -28,7 +28,7 @@ static FILE *orig_stderr = NULL;
 								stderr = stdout;		\
 							} }
 #endif
-		
+
 static void atexit_handler(void) {
 	if (!finished)
 		_fail(NULL, 0, "Test exit without indicating success.");
@@ -93,7 +93,7 @@ static int my_avr_run(avr_t * avr)
 	// Interrupt servicing might change the PC too, during 'sleep'
 	if (avr->state == cpu_Running || avr->state == cpu_Sleeping)
 		avr_service_interrupts(avr);
-	
+
 	// if we were stepping, use this state to inform remote gdb
 
 	return avr->state;
@@ -102,7 +102,7 @@ static int my_avr_run(avr_t * avr)
 avr_t *tests_init_avr(const char *elfname) {
 	tests_cycle_count = 0;
 	map_stderr();
-	
+
 	elf_firmware_t fw;
 	if (elf_read_firmware(elfname, &fw))
 		fail("Failed to read ELF firmware \"%s\"", elfname);
@@ -138,7 +138,7 @@ int tests_run_test(avr_t *avr, unsigned long run_usec) {
 		return reason;
 	}
 	fail("Error in test case: Should never reach this.");
-	return 0;	
+	return 0;
 }
 
 int tests_init_and_run_test(const char *elfname, unsigned long run_usec) {
