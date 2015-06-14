@@ -121,7 +121,7 @@ int tests_run_test(avr_t *avr, unsigned long run_usec) {
 	// assert that the simulation has not finished before that.
 	jmp_buf jmp;
 	special_deinit_jmpbuf = &jmp;
-	avr->special_deinit = special_deinit_longjmp_cb;
+	avr->custom.deinit = special_deinit_longjmp_cb;
 	avr_cycle_timer_register_usec(avr, run_usec,
 				      cycle_timer_longjmp_cb, &jmp);
 	int reason = setjmp(jmp);
