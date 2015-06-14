@@ -358,10 +358,19 @@ gdb_handle_command(
 			uint32_t len;
 			sscanf(cmd, "%x,%x", &addr, &len);
 			uint8_t * src = NULL;
+			/* GDB seems to also use 0x1800000 for sram ?!?! */
+			addr &= 0xffffff;
 			if (addr < avr->flashend) {
 				src = avr->flash + addr;
 			} else if (addr >= 0x800000 && (addr - 0x800000) <= avr->ramend) {
 				src = avr->data + addr - 0x800000;
+			} else if (addr == (0x800000 + avr->ramend + 1) && len == 2) {
+				// Allow GDB to read a value just after end of stack.
+				// This is necessary to make instruction stepping work when stack is empty
+				AVR_LOG(avr, LOG_TRACE,
+						"GDB: read just past end of stack %08x, %08x; returning zero\n", addr, len);
+				gdb_send_reply(g, "0000");
+				break;
 			} else if (addr >= 0x810000 && (addr - 0x810000) <= avr->e2end) {
 				avr_eeprom_desc_t ee = {.offset = (addr - 0x810000)};
 				avr_ioctl(avr, AVR_IOCTL_EEPROM_GET, &ee);
@@ -371,14 +380,10 @@ gdb_handle_command(
 					gdb_send_reply(g, "E01");
 					break;
 				}
-			} else if (addr >= 0x800000 && (addr - 0x800000) == avr->ramend+1 && len == 2) {
-				// Allow GDB to read a value just after end of stack.
-				// This is necessary to make instruction stepping work when stack is empty
-				AVR_LOG(avr, LOG_TRACE, "GDB: read just past end of stack %08x, %08x; returning zero\n", addr, len);
-				gdb_send_reply(g, "0000");
-				break;
 			} else {
-				AVR_LOG(avr, LOG_ERROR, "GDB: read memory error %08x, %08x (ramend %04x)\n", addr, len, avr->ramend+1);
+				AVR_LOG(avr, LOG_ERROR,
+						"GDB: read memory error %08x, %08x (ramend %04x)\n",
+						addr, len, avr->ramend+1);
 				gdb_send_reply(g, "E01");
 				break;
 			}
