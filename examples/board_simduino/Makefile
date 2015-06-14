@@ -1,4 +1,4 @@
-# 
+#
 # 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 #
 #	This file is part of simavr.
@@ -39,7 +39,6 @@ include ${simavr}/Makefile.common
 
 board = ${OBJ}/${target}.elf
 
-${board} : ${OBJ}/button.o
 ${board} : ${OBJ}/uart_pty.o
 ${board} : ${OBJ}/${target}.o
 
