@@ -179,14 +179,18 @@ typedef struct avr_t {
 
 	// called at init time
 	void (*init)(struct avr_t * avr);
-	// called at init time (for special purposes like using a memory mapped file as flash see: simduino)
-	void (*special_init)(struct avr_t * avr, void * data);
-	// called at termination time ( to clean special initializations)
-	void (*special_deinit)(struct avr_t * avr, void * data);
-    // value passed to special_init() and special_deinit()
-	void *special_data;
 	// called at reset time
 	void (*reset)(struct avr_t * avr);
+
+	struct {
+		// called at init time (for special purposes like using a
+		// memory mapped file as flash see: simduino)
+		void (*init)(struct avr_t * avr, void * data);
+		// called at termination time ( to clean special initializations)
+		void (*deinit)(struct avr_t * avr, void * data);
+		// value passed to init() and deinit()
+		void *data;
+	} custom;
 
 	/*!
 	 * Default AVR core run function.

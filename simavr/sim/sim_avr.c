@@ -83,8 +83,8 @@ int avr_init(avr_t * avr)
 	avr->state = cpu_Limbo;
 	avr->frequency = 1000000;	// can be overridden via avr_mcu_section
 	avr_interrupt_init(avr);
-	if (avr->special_init)
-		avr->special_init(avr, avr->special_data);
+	if (avr->custom.init)
+		avr->custom.init(avr, avr->custom.data);
 	if (avr->init)
 		avr->init(avr);
 	// set default (non gdb) fast callbacks
@@ -99,8 +99,8 @@ int avr_init(avr_t * avr)
 
 void avr_terminate(avr_t * avr)
 {
-	if (avr->special_deinit)
-		avr->special_deinit(avr, avr->special_data);
+	if (avr->custom.deinit)
+		avr->custom.deinit(avr, avr->custom.data);
 	if (avr->gdb) {
 		avr_deinit_gdb(avr);
 		avr->gdb = NULL;
