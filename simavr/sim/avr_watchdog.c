@@ -29,16 +29,18 @@ static void avr_watchdog_run_callback_software_reset(avr_t * avr)
 	avr_reset(avr);
 }
 
-static avr_cycle_count_t avr_watchdog_timer(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t avr_watchdog_timer(
+		struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
 	avr_watchdog_t * p = (avr_watchdog_t *)param;
 
 	if (avr_regbit_get(avr, p->watchdog.enable)) {
 		AVR_LOG(avr, LOG_TRACE, "WATCHDOG: timer fired.\n");
 		avr_raise_interrupt(avr, &p->watchdog);
-		return(when + p->cycle_count);
+		return when + p->cycle_count;
 	} else if (avr_regbit_get(avr, p->wde)) {
-		AVR_LOG(avr, LOG_TRACE, "WATCHDOG: timer fired without interrupt. Resetting\n");
+		AVR_LOG(avr, LOG_TRACE,
+				"WATCHDOG: timer fired without interrupt. Resetting\n");
 
 		p->reset_context.avr_run = avr->run;
 		p->reset_context.wdrf = 1;
@@ -55,7 +57,8 @@ static avr_cycle_count_t avr_watchdog_timer(struct avr_t * avr, avr_cycle_count_
 	return 0;
 }
 
-static avr_cycle_count_t avr_wdce_clear(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t avr_wdce_clear(
+		struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
 	avr_watchdog_t * p = (avr_watchdog_t *)param;
 	avr_regbit_clear(p->io.avr, p->wdce);
@@ -84,11 +87,14 @@ static void avr_watchdog_set_cycle_count_and_timer(
 	if (!enable_changed && !wdp_changed)
 		return;
 
-	static char *message[2][2] = { { 0, "reset" }, { "enabled", "enabled and set" } };
+	static char *message[2][2] = {
+			{ 0, "reset" }, { "enabled", "enabled and set" } };
 
 	if (wde || wdie) {
-		AVR_LOG(avr, LOG_TRACE, "WATCHDOG: %s to %d cycles @ 128kz (* %d) = %d CPU cycles.\n",
-			message[enable_changed][wdp_changed], 2048 << wdp, 1 << wdp, (int)p->cycle_count);
+		AVR_LOG(avr, LOG_TRACE,
+				"WATCHDOG: %s to %d cycles @ 128kz (* %d) = %d CPU cycles.\n",
+				message[enable_changed][wdp_changed], 2048 << wdp,
+				1 << wdp, (int)p->cycle_count);
 
 		avr_cycle_timer_register(avr, p->cycle_count, avr_watchdog_timer, p);
 	} else if (enable_changed) {
@@ -97,7 +103,8 @@ static void avr_watchdog_set_cycle_count_and_timer(
 	}
 }
 
-static void avr_watchdog_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+static void avr_watchdog_write(
+		avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_watchdog_t * p = (avr_watchdog_t *)param;
 
@@ -145,14 +152,17 @@ static void avr_watchdog_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void 
 /*
  * called by the core when a WTD instruction is found
  */
-static int avr_watchdog_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
+static int avr_watchdog_ioctl(
+		struct avr_io_t * port, uint32_t ctl, void * io_param)
 {
 	avr_watchdog_t * p = (avr_watchdog_t *)port;
 	int res = -1;
 
 	if (ctl == AVR_IOCTL_WATCHDOG_RESET) {
-		if (avr_regbit_get(p->io.avr, p->wde) || avr_regbit_get(p->io.avr, p->watchdog.enable))
-			avr_cycle_timer_register(p->io.avr, p->cycle_count, avr_watchdog_timer, p);
+		if (avr_regbit_get(p->io.avr, p->wde) ||
+				avr_regbit_get(p->io.avr, p->watchdog.enable))
+			avr_cycle_timer_register(p->io.avr, p->cycle_count,
+					avr_watchdog_timer, p);
 		res = 0;
 	}
 
@@ -183,11 +193,11 @@ static void avr_watchdog_reset(avr_io_t * port)
 	avr_t * avr = p->io.avr;
 
 	if (p->reset_context.wdrf) {
+		p->reset_context.wdrf = 0;
 		/*
-		 * if watchdog reset kicked, then watchdog gets restated at 
+		 * if watchdog reset kicked, then watchdog gets restarted at
 		 * fastest interval
 		 */
-
 		avr->run = p->reset_context.avr_run;
 
 		avr_regbit_set(avr, p->wde);
