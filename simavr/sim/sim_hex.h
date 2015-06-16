@@ -52,6 +52,10 @@ int
 read_ihex_chunks(
 		const char * fname,
 		ihex_chunk_p * chunks );
+/* Frees previously allocated chunks */
+void
+free_ihex_chunks(
+		ihex_chunk_p chunks);
 
 // reads IHEX file 'fname', puts it's decoded size in *'dsize' and returns
 // a newly allocated buffer with the binary data (or NULL, if error)

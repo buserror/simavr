@@ -74,84 +74,16 @@ int read_hex_string(const char * src, uint8_t * buffer, int maxlen)
     return dst - buffer;
 }
 
-uint8_t * read_ihex_file(const char * fname, uint32_t * dsize, uint32_t * start)
+void
+free_ihex_chunks(
+		ihex_chunk_p chunks)
 {
-	if (!fname || !dsize)
-		return NULL;
-	FILE * f = fopen(fname, "r");
-	if (!f) {
-		perror(fname);
-		return NULL;
-	}
-	uint8_t * res = NULL;
-	uint32_t size = 0;
-	uint32_t base = ~0;
-	uint32_t segment = 0;
-
-	while (!feof(f)) {
-		char line[128];
-		if (!fgets(line, sizeof(line)-1, f))
-			continue;
-		if (line[0] != ':') {
-			fprintf(stderr, "AVR: '%s' invalid ihex format (%.4s)\n",
-					fname, line);
-			break;
-		}
-		uint8_t bline[64];
-
-		int len = read_hex_string(line + 1, bline, sizeof(bline));
-		if (len <= 0)
-			continue;
-
-		uint8_t chk = 0;
-		{	// calculate checksum
-			uint8_t * src = bline;
-			int tlen = len-1;
-			while (tlen--)
-				chk += *src++;
-			chk = 0x100 - chk;
-		}
-		if (chk != bline[len-1]) {
-			fprintf(stderr, "%s: %s, invalid checksum %02x/%02x\n",
-					__func__, fname, chk, bline[len-1]);
-			break;
-		}
-		switch (bline[3]) {
-			case 0: // data
-				break;
-			case 1: // end of data
-				segment = 0;
-				continue;
-			case 2: // extended record (for big flash)
-				segment = ((bline[4] << 8) | bline[5]) << 4;
-				continue;
-			case 3: // CS:IP value. WTF in AVR ihex format? perhaps PC value?
-				continue;
-			default:
-				fprintf(stderr, "%s: %s, unsupported chunk type %02x\n",
-						__func__, fname, bline[3]);
-				continue;
-		}
-		uint32_t addr = segment | (bline[1] << 8) | bline[2];
-		if (base == ~0) {
-			base = addr;	// start address
-		}
-		if (addr != base + size) {
-			fprintf(stderr, "%s: %s, offset out of bounds %04x(%d) expected %04x\n",
-					__func__, fname, addr, bline[0], base+size);
-			break;
-		}
-		res = realloc(res, size + bline[0]);
-		memcpy(res + size, bline + 4, bline[0]);
-		size += bline[0];
-	}
-	*dsize = size;
-	if (start)
-		*start = base;
-	fclose(f);
-	return res;
+	if (!chunks)
+		return;
+	for (int i = 0; chunks[i].size; i++)
+		if (chunks[i].data)
+			free(chunks[i].data);
 }
-
 
 int
 read_ihex_chunks(
@@ -218,17 +150,45 @@ read_ihex_chunks(
 		}
 		if (chunk >= max_chunks) {
 			max_chunks++;
-			*chunks = realloc(*chunks, max_chunks * sizeof(ihex_chunk_t));
-			memset(*chunks + chunk, 0, (max_chunks - chunk) * sizeof(ihex_chunk_t));
+			/* Here we allocate and zero an extra chunk, to act as terminator */
+			*chunks = realloc(*chunks, (1 + max_chunks) * sizeof(ihex_chunk_t));
+			memset(*chunks + chunk, 0,
+					(1 + (max_chunks - chunk)) * sizeof(ihex_chunk_t));
 			(*chunks)[chunk].baseaddr = addr;
 		}
-		(*chunks)[chunk].data = realloc((*chunks)[chunk].data, (*chunks)[chunk].size + bline[0]);
-		memcpy((*chunks)[chunk].data + (*chunks)[chunk].size, bline + 4, bline[0]);
+		(*chunks)[chunk].data = realloc((*chunks)[chunk].data,
+									(*chunks)[chunk].size + bline[0]);
+		memcpy((*chunks)[chunk].data + (*chunks)[chunk].size,
+				bline + 4, bline[0]);
 		(*chunks)[chunk].size += bline[0];
 	}
 	fclose(f);
 	return max_chunks;
 }
+
+
+uint8_t *
+read_ihex_file(
+		const char * fname, uint32_t * dsize, uint32_t * start)
+{
+	ihex_chunk_p chunks = NULL;
+	int count = read_ihex_chunks(fname, &chunks);
+	uint8_t * res = NULL;
+
+	if (count > 0) {
+		*dsize = chunks[0].size;
+		*start = chunks[0].baseaddr;
+		res = chunks[0].data;
+		chunks[0].data = NULL;
+	}
+	if (count > 1) {
+		fprintf(stderr, "AVR: '%s' ihex contains more chunks than loaded (%d)\n",
+				fname, count);
+	}
+	free_ihex_chunks(chunks);
+	return res;
+}
+
 
 
 #ifdef IHEX_TEST
