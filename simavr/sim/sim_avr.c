@@ -124,7 +124,7 @@ void avr_reset(avr_t * avr)
 	for(int i = 0x20; i <= MAX_IOs; i++)
 		avr->data[i] = 0;
 	_avr_sp_set(avr, avr->ramend);
-	avr->pc = 0;
+	avr->pc = avr->reset_pc;	// Likely to be zero
 	for (int i = 0; i < 8; i++)
 		avr->sreg[i] = 0;
 	avr_interrupt_reset(avr);

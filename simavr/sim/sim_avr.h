@@ -232,6 +232,11 @@ typedef struct avr_t {
 	 * It CAN be a little confusing, so concentrate, young grasshopper.
 	 */
 	avr_flashaddr_t	pc;
+	/*
+	 * Reset PC, this is the value used to jump to at reset time, this
+	 * allow support for bootloaders
+	 */
+	avr_flashaddr_t	reset_pc;
 
 	/*
 	 * callback when specific IO registers are read/written.
