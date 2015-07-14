@@ -24,6 +24,7 @@
 
 #include "sim_avr_types.h"
 #include "sim_irq.h"
+#include "fifo_declare.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,15 +48,16 @@ typedef struct avr_int_vector_t {
 					trace : 1,		// only for debug of a vector
 					raise_sticky : 1;	// 1 if the interrupt flag (= the raised regbit) is not cleared
 										// by the hardware when executing the interrupt routine (see TWINT)
-} avr_int_vector_t;
+} avr_int_vector_t, *avr_int_vector_p;
+
+// Size needs to be >= max number of vectors, and a power of two
+DECLARE_FIFO(avr_int_vector_p, avr_int_pending, 64);
 
 // interrupt vectors, and their enable/clear registers
 typedef struct  avr_int_table_t {
 	avr_int_vector_t * vector[64];
 	uint8_t			vector_count;
-	avr_int_vector_t * pending[64]; // needs to be >= vectors and a power of two
-	uint8_t			pending_w,
-					pending_r;	// fifo cursors
+	avr_int_pending_t pending;
 	uint8_t			running_ptr;
 	avr_int_vector_t *running[64]; // stack of nested interrupts
 	// global status for pending + running in interrupt context

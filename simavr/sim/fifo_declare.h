@@ -53,7 +53,7 @@ extern "C" {
 		void myfifo_write_at(myfifo_t *c, uint16_t o, uint8_t b);
 
 	In your .c you need to 'implement' the fifo:
-	DEFINE_FIFO(uint8_t, myfifo, 128)
+	DEFINE_FIFO(uint8_t, myfifo)
 
 	To use the fifo, you must declare at least one :
 	myfifo_t fifo = FIFO_NULL;
