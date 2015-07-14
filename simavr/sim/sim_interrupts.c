@@ -28,9 +28,7 @@
 #include "sim_avr.h"
 #include "sim_core.h"
 
-// modulo a cursor value on the pending interrupt fifo
-#define INT_FIFO_SIZE (sizeof(table->pending) / sizeof(avr_int_vector_t *))
-#define INT_FIFO_MOD(_v) ((_v) &  (INT_FIFO_SIZE - 1))
+DEFINE_FIFO(avr_int_vector_p, avr_int_pending);
 
 void
 avr_interrupt_init(
@@ -39,7 +37,6 @@ avr_interrupt_init(
 	avr_int_table_p table = &avr->interrupts;
 	memset(table, 0, sizeof(*table));
 
-	printf("%s\n", __func__);
 	static const char *names[] = { ">global_int_pending", ">global_int_running" };
 	avr_init_irq(&avr->irq_pool, table->irq,
 			0, // base number
@@ -53,7 +50,7 @@ avr_interrupt_reset(
 	avr_int_table_p table = &avr->interrupts;
 
 	table->running_ptr = 0;
-	table->pending_r = table->pending_w = 0;
+	avr_int_pending_reset(&table->pending);
 	avr->interrupt_state = 0;
 	for (int i = 0; i < table->vector_count; i++)
 		table->vector[i]->pending = 0;
@@ -73,7 +70,6 @@ avr_register_vector(
 	avr_init_irq(&avr->irq_pool, vector->irq,
 			vector->vector * 256, // base number
 			AVR_INT_IRQ_COUNT, names);
-//	vector->irq.irq = vector->vector;
 	table->vector[table->vector_count++] = vector;
 	if (vector->trace)
 		printf("%s register vector %d (enabled %04x:%d)\n", __FUNCTION__, vector->vector, vector->enable.reg, vector->enable.bit);
@@ -87,7 +83,7 @@ avr_has_pending_interrupts(
 		avr_t * avr)
 {
 	avr_int_table_p table = &avr->interrupts;
-	return table->pending_r != table->pending_w;
+	return !avr_int_pending_isempty(&table->pending); // table->pending_r != table->pending_w;
 }
 
 int
@@ -136,8 +132,7 @@ avr_raise_interrupt(
 
 		avr_int_table_p table = &avr->interrupts;
 
-		table->pending[table->pending_w++] = vector;
-		table->pending_w = INT_FIFO_MOD(table->pending_w);
+		avr_int_pending_write(&table->pending, vector);
 
 		if (avr->sreg[S_I] && avr->interrupt_state == 0)
 			avr->interrupt_state = 1;
@@ -238,25 +233,23 @@ avr_service_interrupts(
 	avr_int_table_p table = &avr->interrupts;
 
 	// how many are pending...
-	int cnt = INT_FIFO_MOD(
-				(table->pending_w + INT_FIFO_SIZE) - table->pending_r);
+	int cnt = avr_int_pending_get_read_size(&table->pending);
 	// locate the highest priority one
 	int min = 0xff;
 	int mini = 0;
 	for (int ii = 0; ii < cnt; ii++) {
-		int vi = INT_FIFO_MOD(table->pending_r + ii);
-		avr_int_vector_t * v = table->pending[vi];
+		avr_int_vector_t * v = avr_int_pending_read_at(&table->pending, ii);
 		if (v->vector < min) {
 			min = v->vector;
-			mini = vi;
+			mini = ii;
 		}
 	}
-	avr_int_vector_t * vector = table->pending[mini];
+	avr_int_vector_t * vector = avr_int_pending_read_at(&table->pending, mini);
 
 	// now move the one at the front of the fifo in the slot of
 	// the one we service
-	table->pending[mini] = table->pending[table->pending_r++];
-	table->pending_r = INT_FIFO_MOD(table->pending_r);
+	table->pending.buffer[mini % avr_int_pending_fifo_size] = 
+			avr_int_pending_read(&table->pending);
 	avr_raise_irq(avr->interrupts.irq + AVR_INT_IRQ_PENDING,
 			avr_has_pending_interrupts(avr));
 
