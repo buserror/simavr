@@ -343,6 +343,7 @@ void avr_adc_init(avr_t * avr, avr_adc_t * p)
 	avr_io_setirqs(&p->io, AVR_IOCTL_ADC_GETIRQ, ADC_IRQ_COUNT, NULL);
 
 	avr_register_io_write(avr, p->r_adcsra, avr_adc_write_adcsra, p);
+	// some ADCs don't have ADCSRB (atmega8/16/32)
 	if (p->r_adcsrb)
 		avr_register_io_write(avr, p->r_adcsrb, avr_adc_write_adcsrb, p);
 	avr_register_io_read(avr, p->r_adcl, avr_adc_read_l, p);
