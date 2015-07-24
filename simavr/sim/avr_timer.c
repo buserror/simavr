@@ -33,28 +33,46 @@
  * The timers are /always/ 16 bits here, if the higher byte register
  * is specified it's just added.
  */
-static uint16_t _timer_get_ocr(avr_timer_t * p, int compi)
+static uint16_t
+_timer_get_ocr(
+		avr_timer_t * p,
+		int compi)
 {
 	return p->io.avr->data[p->comp[compi].r_ocr] |
-		      (p->comp[compi].r_ocrh ? (p->io.avr->data[p->comp[compi].r_ocrh] << 8) : 0);
+		      (p->comp[compi].r_ocrh ?
+		    		  (p->io.avr->data[p->comp[compi].r_ocrh] << 8) : 0);
 }
-static uint16_t _timer_get_comp_ocr(struct avr_t * avr, avr_timer_comp_p comp)
+
+static uint16_t
+_timer_get_comp_ocr(
+		struct avr_t * avr,
+		avr_timer_comp_p comp)
 {
 	int ocrh = comp->r_ocrh;
 	return avr->data[comp->r_ocr] |
 		(ocrh ? (avr->data[ocrh] << 8) : 0);
 }
-static uint16_t _timer_get_tcnt(avr_timer_t * p)
+
+static uint16_t
+_timer_get_tcnt(
+		avr_timer_t * p)
 {
 	return p->io.avr->data[p->r_tcnt] |
 				(p->r_tcnth ? (p->io.avr->data[p->r_tcnth] << 8) : 0);
 }
-static uint16_t _timer_get_icr(avr_timer_t * p)
+
+static uint16_t
+_timer_get_icr(
+		avr_timer_t * p)
 {
 	return p->io.avr->data[p->r_icr] |
 				(p->r_tcnth ? (p->io.avr->data[p->r_icrh] << 8) : 0);
 }
-static avr_cycle_count_t avr_timer_comp(avr_timer_t *p, avr_cycle_count_t when, uint8_t comp)
+static avr_cycle_count_t
+avr_timer_comp(
+		avr_timer_t *p,
+		avr_cycle_count_t when,
+		uint8_t comp)
 {
 	avr_t * avr = p->io.avr;
 	avr_raise_interrupt(avr, &p->comp[comp].interrupt);
@@ -69,7 +87,8 @@ static avr_cycle_count_t avr_timer_comp(avr_timer_t *p, avr_cycle_count_t when, 
 		case avr_timer_com_toggle: // Toggle OCnA on compare match
 			if (p->comp[comp].com_pin.reg)	// we got a physical pin
 				avr_raise_irq(irq,
-						AVR_IOPORT_OUTPUT | (avr_regbit_get(avr, p->comp[comp].com_pin) ? 0 : 1));
+						AVR_IOPORT_OUTPUT |
+						(avr_regbit_get(avr, p->comp[comp].com_pin) ? 0 : 1));
 			else // no pin, toggle the IRQ anyway
 				avr_raise_irq(irq,
 						p->io.irq[TIMER_IRQ_OUT_COMP + comp].value ? 0 : 1);
@@ -86,7 +105,12 @@ static avr_cycle_count_t avr_timer_comp(avr_timer_t *p, avr_cycle_count_t when, 
 				p->comp[comp].comp_cycles ?
 						when + p->comp[comp].comp_cycles : 0;
 }
-static void avr_timer_comp_on_tov(avr_timer_t *p, avr_cycle_count_t when, uint8_t comp)
+
+static void
+avr_timer_comp_on_tov(
+		avr_timer_t *p,
+		avr_cycle_count_t when,
+		uint8_t comp)
 {
 	avr_t * avr = p->io.avr;
 
@@ -108,23 +132,39 @@ static void avr_timer_comp_on_tov(avr_timer_t *p, avr_cycle_count_t when, uint8_
 	}
 }
 
-static avr_cycle_count_t avr_timer_compa(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t
+avr_timer_compa(
+		struct avr_t * avr,
+		avr_cycle_count_t when,
+		void * param)
 {
 	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPA);
 }
 
-static avr_cycle_count_t avr_timer_compb(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t
+avr_timer_compb(
+		struct avr_t * avr,
+		avr_cycle_count_t when,
+		void * param)
 {
 	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPB);
 }
 
-static avr_cycle_count_t avr_timer_compc(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t
+avr_timer_compc(
+		struct avr_t * avr,
+		avr_cycle_count_t when,
+		void * param)
 {
 	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPC);
 }
 
 // timer overflow
-static avr_cycle_count_t avr_timer_tov(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t
+avr_timer_tov(
+		struct avr_t * avr,
+		avr_cycle_count_t when,
+		void * param)
 {
 	avr_timer_t * p = (avr_timer_t *)param;
 	int start = p->tov_base == 0;
@@ -151,7 +191,9 @@ static avr_cycle_count_t avr_timer_tov(struct avr_t * avr, avr_cycle_count_t whe
 	return when + p->tov_cycles;
 }
 
-static uint16_t _avr_timer_get_current_tcnt(avr_timer_t * p)
+static uint16_t
+_avr_timer_get_current_tcnt(
+		avr_timer_t * p)
 {
 	avr_t * avr = p->io.avr;
 	if (p->tov_cycles) {
@@ -162,7 +204,11 @@ static uint16_t _avr_timer_get_current_tcnt(avr_timer_t * p)
 	return 0;
 }
 
-static uint8_t avr_timer_tcnt_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
+static uint8_t
+avr_timer_tcnt_read(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		void * param)
 {
 	avr_timer_t * p = (avr_timer_t *)param;
 	// made to trigger potential watchpoints
@@ -176,14 +222,23 @@ static uint8_t avr_timer_tcnt_read(struct avr_t * avr, avr_io_addr_t addr, void 
 	return avr_core_watch_read(avr, addr);
 }
 
-static void avr_timer_cancel_all_cycle_timers(struct avr_t * avr, avr_timer_t *timer) {
+static void
+avr_timer_cancel_all_cycle_timers(
+		struct avr_t * avr,
+		avr_timer_t *timer)
+{
 	avr_cycle_timer_cancel(avr, avr_timer_tov, timer);
 	avr_cycle_timer_cancel(avr, avr_timer_compa, timer);
 	avr_cycle_timer_cancel(avr, avr_timer_compb, timer);
 	avr_cycle_timer_cancel(avr, avr_timer_compc, timer);
 }
 
-static void avr_timer_tcnt_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+static void
+avr_timer_tcnt_write(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	avr_timer_t * p = (avr_timer_t *)param;
 	avr_core_watch_write(avr, addr, v);
@@ -216,7 +271,11 @@ static void avr_timer_tcnt_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t
 //	printf("%s-%c new tnt derive to %d\n", __FUNCTION__, p->name, tcnt);	
 }
 
-static void avr_timer_configure(avr_timer_t * p, uint32_t clock, uint32_t top)
+static void
+avr_timer_configure(
+		avr_timer_t * p,
+		uint32_t clock,
+		uint32_t top)
 {
 	float t = clock / (float)(top+1);
 	float frequency = p->io.avr->frequency;
@@ -255,7 +314,9 @@ static void avr_timer_configure(avr_timer_t * p, uint32_t clock, uint32_t top)
 	}
 }
 
-static void avr_timer_reconfigure(avr_timer_t * p)
+static void
+avr_timer_reconfigure(
+		avr_timer_t * p)
 {
 	avr_t * avr = p->io.avr;
 
@@ -293,7 +354,12 @@ static void avr_timer_reconfigure(avr_timer_t * p)
 	}	
 }
 
-static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+static void
+avr_timer_write_ocr(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	avr_timer_comp_p comp = (avr_timer_comp_p)param;
 	avr_timer_t *timer = comp->timer;
@@ -324,17 +390,25 @@ static void avr_timer_write_ocr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 		case avr_timer_wgm_fast_pwm:
 			if (oldv != _timer_get_comp_ocr(avr, comp))
 				avr_timer_reconfigure(timer);
-			avr_raise_irq(timer->io.irq + TIMER_IRQ_OUT_PWM0, _timer_get_ocr(timer, AVR_TIMER_COMPA));
-			avr_raise_irq(timer->io.irq + TIMER_IRQ_OUT_PWM1, _timer_get_ocr(timer, AVR_TIMER_COMPB));
+			avr_raise_irq(timer->io.irq + TIMER_IRQ_OUT_PWM0,
+					_timer_get_ocr(timer, AVR_TIMER_COMPA));
+			avr_raise_irq(timer->io.irq + TIMER_IRQ_OUT_PWM1,
+					_timer_get_ocr(timer, AVR_TIMER_COMPB));
 			break;
 		default:
-			AVR_LOG(avr, LOG_WARNING, "TIMER: %s-%c mode %d UNSUPPORTED\n", __FUNCTION__, timer->name, timer->mode.kind);
+			AVR_LOG(avr, LOG_WARNING, "TIMER: %s-%c mode %d UNSUPPORTED\n",
+					__FUNCTION__, timer->name, timer->mode.kind);
 			avr_timer_reconfigure(timer);
 			break;
 	}
 }
 
-static void avr_timer_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+static void
+avr_timer_write(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	avr_timer_t * p = (avr_timer_t *)param;
 
@@ -374,7 +448,8 @@ static void avr_timer_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, v
 			avr_cycle_timer_cancel(avr, avr_timer_compb, p);
 			avr_cycle_timer_cancel(avr, avr_timer_compc, p);
 
-			AVR_LOG(avr, LOG_TRACE, "TIMER: %s-%c clock turned off\n", __FUNCTION__, p->name);
+			AVR_LOG(avr, LOG_TRACE, "TIMER: %s-%c clock turned off\n",
+					__func__, p->name);
 			return;
 		}
 		p->cs_div_clock = clock >> p->cs_div[new_cs];
@@ -392,7 +467,12 @@ static void avr_timer_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, v
  * write to the TIFR register. Watch for code that writes "1" to clear
  * pending interrupts.
  */
-static void avr_timer_write_pending(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+static void
+avr_timer_write_pending(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	avr_timer_t * p = (avr_timer_t *)param;
 	// save old bits values
@@ -414,7 +494,11 @@ static void avr_timer_write_pending(struct avr_t * avr, avr_io_addr_t addr, uint
 		avr_clear_interrupt_if(avr, &p->comp[compi].interrupt, cp[compi]);
 }
 
-static void avr_timer_irq_icp(struct avr_irq_t * irq, uint32_t value, void * param)
+static void
+avr_timer_irq_icp(
+		struct avr_irq_t * irq,
+		uint32_t value,
+		void * param)
 {
 	avr_timer_t * p = (avr_timer_t *)param;
 	avr_t * avr = p->io.avr;
@@ -440,7 +524,9 @@ static void avr_timer_irq_icp(struct avr_irq_t * irq, uint32_t value, void * par
 	avr_raise_interrupt(avr, &p->icr);
 }
 
-static void avr_timer_reset(avr_io_t * port)
+static void
+avr_timer_reset(
+		avr_io_t * port)
 {
 	avr_timer_t * p = (avr_timer_t *)port;
 	avr_timer_cancel_all_cycle_timers(p->io.avr, p);
@@ -457,7 +543,8 @@ static void avr_timer_reset(avr_io_t * port)
 		};
 		if (avr_ioctl(port->avr, AVR_IOCTL_IOPORT_GETIRQ_REGBIT, &req) > 0) {
 			// cool, got an IRQ
-//			printf("%s-%c COMP%c Connecting PIN IRQ %d\n", __FUNCTION__, p->name, 'A'+compi, req.irq[0]->irq);
+//			printf("%s-%c COMP%c Connecting PIN IRQ %d\n",
+//					__func__, p->name, 'A'+compi, req.irq[0]->irq);
 			avr_connect_irq(&port->irq[TIMER_IRQ_OUT_COMP + compi], req.irq[0]);
 		}
 	}
@@ -466,7 +553,7 @@ static void avr_timer_reset(avr_io_t * port)
 	};
 	if (avr_ioctl(port->avr, AVR_IOCTL_IOPORT_GETIRQ_REGBIT, &req) > 0) {
 		// cool, got an IRQ for the input capture pin
-//		printf("%s-%c ICP Connecting PIN IRQ %d\n", __FUNCTION__, p->name, req.irq[0]->irq);
+//		printf("%s-%c ICP Connecting PIN IRQ %d\n", __func__, p->name, req.irq[0]->irq);
 		avr_irq_register_notify(req.irq[0], avr_timer_irq_icp, p);
 	}
 
@@ -486,7 +573,10 @@ static	avr_io_t	_io = {
 	.irq_names = irq_names,
 };
 
-void avr_timer_init(avr_t * avr, avr_timer_t * p)
+void
+avr_timer_init(
+		avr_t * avr,
+		avr_timer_t * p)
 {
 	p->io = _io;
 
@@ -505,22 +595,33 @@ void avr_timer_init(avr_t * avr, avr_timer_t * p)
 
 	if (p->wgm[0].reg) // these are not present on older AVRs
 		avr_register_io_write(avr, p->wgm[0].reg, avr_timer_write, p);
-	if(p->wgm[1].reg && (p->wgm[1].reg != p->wgm[0].reg))
+	if (p->wgm[1].reg &&
+			(p->wgm[1].reg != p->wgm[0].reg))
 		avr_register_io_write(avr, p->wgm[1].reg, avr_timer_write, p);
-	if(p->wgm[2].reg && (p->wgm[2].reg != p->wgm[0].reg) && (p->wgm[2].reg != p->wgm[1].reg))
+	if (p->wgm[2].reg &&
+			(p->wgm[2].reg != p->wgm[0].reg) &&
+			(p->wgm[2].reg != p->wgm[1].reg))
 		avr_register_io_write(avr, p->wgm[2].reg, avr_timer_write, p);
-	if(p->wgm[3].reg && (p->wgm[3].reg != p->wgm[0].reg) && (p->wgm[3].reg != p->wgm[1].reg) && (p->wgm[3].reg != p->wgm[2].reg))
+	if (p->wgm[3].reg &&
+			(p->wgm[3].reg != p->wgm[0].reg) &&
+			(p->wgm[3].reg != p->wgm[1].reg) &&
+			(p->wgm[3].reg != p->wgm[2].reg))
 		avr_register_io_write(avr, p->wgm[3].reg, avr_timer_write, p);
 
 	avr_register_io_write(avr, p->cs[0].reg, avr_timer_write, p);
-	if(p->cs[1].reg && (p->cs[1].reg != p->cs[0].reg))
+	if (p->cs[1].reg &&
+			(p->cs[1].reg != p->cs[0].reg))
 		avr_register_io_write(avr, p->cs[1].reg, avr_timer_write, p);
-	if(p->cs[2].reg && (p->cs[2].reg != p->cs[0].reg) && (p->cs[2].reg != p->cs[1].reg))
+	if (p->cs[2].reg &&
+			(p->cs[2].reg != p->cs[0].reg) && (p->cs[2].reg != p->cs[1].reg))
 		avr_register_io_write(avr, p->cs[2].reg, avr_timer_write, p);
-	if(p->cs[3].reg && (p->cs[3].reg != p->cs[0].reg) && (p->cs[3].reg != p->cs[1].reg) && (p->cs[3].reg != p->cs[2].reg))
+	if (p->cs[3].reg &&
+			(p->cs[3].reg != p->cs[0].reg) &&
+			(p->cs[3].reg != p->cs[1].reg) &&
+			(p->cs[3].reg != p->cs[2].reg))
 		avr_register_io_write(avr, p->cs[3].reg, avr_timer_write, p);
 
-	if(p->as2.reg) // as2 signifies timer/counter 2... therefore must check for register.
+	if (p->as2.reg) // as2 signifies timer/counter 2... therefore must check for register.
 		avr_register_io_write(avr, p->as2.reg, avr_timer_write, p);
 
 	// this assumes all the "pending" interrupt bits are in the same
