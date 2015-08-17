@@ -308,9 +308,15 @@ avr_twi_write(
 						p->state & TWI_COND_ACK ?
 								TWI_MRX_ADR_ACK : TWI_MRX_ADR_NACK);
 			} else {
-				_avr_twi_delay_state(p, 9,
-						p->state & TWI_COND_ACK ?
-								TWI_MTX_ADR_ACK : TWI_MTX_ADR_NACK);
+				if(p->state & TWI_COND_WRITE){
+					_avr_twi_delay_state(p, 0,
+							p->state & TWI_COND_ACK ?
+									TWI_MTX_DATA_ACK : TWI_MTX_DATA_NACK);
+				}else{
+					_avr_twi_delay_state(p, 9,
+							p->state & TWI_COND_ACK ?
+									TWI_MTX_ADR_ACK : TWI_MTX_ADR_NACK);
+				}
 			}
 		}
 		p->state &= ~TWI_COND_WRITE;
