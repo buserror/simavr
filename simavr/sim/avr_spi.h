@@ -57,6 +57,71 @@ typedef struct avr_spi_t {
 
 void avr_spi_init(avr_t * avr, avr_spi_t * port);
 
+/*
+    A few devices have two SPI ports (eg: mega324a)
+    Assume user only uses port 1 until dual SPI support is fully implemented
+*/
+
+#ifdef SPIF0
+#ifndef SPIF
+#define SPIF SPIF0
+#endif
+#endif
+
+#ifdef SPIE0
+#ifndef SPIE
+#define SPIE SPIE0
+#endif
+#endif
+
+#ifdef MSTR0
+#ifndef MSTR
+#define MSTR MSTR0
+#endif
+#endif
+
+#ifdef SPCR0
+#ifndef SPCR
+#define SPCR SPCR0
+#endif
+#endif
+
+#ifdef SPSR0
+#ifndef SPSR
+#define SPSR SPSR0
+#endif
+#endif
+
+#ifdef SPI2X0
+#ifndef SPI2X
+#define SPI2X SPI2X0
+#endif
+#endif
+
+#ifdef SPR00
+#ifndef SPR0
+#define SPR0 SPR00
+#endif
+#endif
+
+#ifdef SPR10
+#ifndef SPR1
+#define SPR1 SPR10
+#endif
+#endif
+
+#ifdef SPE0
+#ifndef SPE
+#define SPE SPE0
+#endif
+#endif
+
+#ifdef SPDR0
+#ifndef SPDR
+#define SPDR SPDR0
+#endif
+#endif
+
 #define AVR_SPI_DECLARE(_prr, _prspi) \
 	.spi = { \
 		.disabled = AVR_IO_REGBIT(_prr, _prspi), \
