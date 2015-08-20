@@ -27,9 +27,15 @@
 
 #include <stdint.h>
 
+#ifdef ARDUIDIO_FULL
 typedef struct ardupin_t {
-	uint32_t port : 7, pin : 3, analog : 1, adc : 4, pwm : 1, ardupin;
+	uint32_t port : 4, pin : 3, analog : 1, adc : 4, pwm : 1, ardupin;
 } ardupin_t, *ardupin_p;
+#else
+typedef struct ardupin_t {
+	uint8_t port : 4, pin : 3;
+} ardupin_t, *ardupin_p;
+#endif
 
 struct avr_t;
 
