@@ -47,6 +47,9 @@ enum {
 // Get the internal IRQ corresponding to the INT
 #define AVR_IOCTL_TIMER_GETIRQ(_name) AVR_IOCTL_DEF('t','m','r',(_name))
 
+// add timer number/name (character) to set tracing flags
+#define AVR_IOCTL_TIMER_SET_TRACE(_number) AVR_IOCTL_DEF('t','m','t',(_number))
+
 // Waveform generation modes
 enum {
 	avr_timer_wgm_none = 0,	// invalid mode
@@ -71,6 +74,7 @@ enum {
 	avr_timer_wgm_reg_ocra,
 	avr_timer_wgm_reg_icr,
 };
+
 typedef struct avr_timer_wgm_t {
 	uint32_t top: 8, bottom: 8, size : 8, kind : 8;
 } avr_timer_wgm_t;
@@ -95,12 +99,22 @@ typedef struct avr_timer_comp_t {
 		avr_io_addr_t		r_ocrh;			// comparator register hi byte
 		avr_regbit_t		com;			// comparator output mode registers
 		avr_regbit_t		com_pin;		// where comparator output is connected
-		uint64_t		comp_cycles;
+		uint64_t			comp_cycles;
 } avr_timer_comp_t, *avr_timer_comp_p;
 
+enum {
+	avr_timer_trace_ocr		= (1 << 0),
+	avr_timer_trace_tcnt	= (1 << 1),
+
+	avr_timer_trace_compa 	= (1 << 8),
+	avr_timer_trace_compb 	= (1 << 9),
+	avr_timer_trace_compc 	= (1 << 10),
+};
+
 typedef struct avr_timer_t {
-	avr_io_t	io;
-	char name;
+	avr_io_t		io;
+	char 			name;
+	uint32_t		trace;		// debug trace
 
 	avr_regbit_t	disabled;	// bit in the PRR
 
@@ -110,13 +124,13 @@ typedef struct avr_timer_t {
 	avr_regbit_t	wgm[4];
 	avr_timer_wgm_t	wgm_op[16];
 	avr_timer_wgm_t	mode;
-	int		wgm_op_mode_kind;
-	uint32_t	wgm_op_mode_size;
+	int				wgm_op_mode_kind;
+	uint32_t		wgm_op_mode_size;
 
 	avr_regbit_t	as2;		// asynchronous clock 32khz
 	avr_regbit_t	cs[4];
-	uint8_t		cs_div[16];
-	uint32_t	cs_div_clock;
+	uint8_t			cs_div[16];
+	uint32_t		cs_div_clock;
 
 	avr_regbit_t	icp;		// input capture pin, to link IRQs
 	avr_regbit_t	ices;		// input capture edge select
