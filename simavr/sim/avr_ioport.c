@@ -247,6 +247,10 @@ static	avr_io_t	_io = {
 
 void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 {
+	if (!p->r_port) {
+		printf("skipping PORT%c for core %s\n", p->name, avr->mmcu);
+		return;
+	}
 	p->io = _io;
 //	printf("%s PIN%c 0x%02x DDR%c 0x%02x PORT%c 0x%02x\n", __FUNCTION__,
 //		p->name, p->r_pin,
