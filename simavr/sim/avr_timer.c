@@ -126,7 +126,7 @@ avr_timer_comp_on_tov(
 		case avr_timer_com_clear: // clear on compare match => set on tov
 			avr_raise_irq(irq, 1);
 			break;
-		case avr_timer_com_set: //set on compare match => clear on tov
+		case avr_timer_com_set: // set on compare match => clear on tov
 			avr_raise_irq(irq, 0);
 			break;
 	}
@@ -296,11 +296,14 @@ avr_timer_configure(
 		float fc = clock / (float)(ocr+1);
 
 		p->comp[compi].comp_cycles = 0;
-	//	printf("%s-%c clock %d top %d OCR%c %d\n", __FUNCTION__, p->name, clock, top, 'A'+compi, ocr);
+		if (p->trace & (avr_timer_trace_compa << compi))
+			printf("%s-%c clock %d top %d OCR%c %d\n", __FUNCTION__, p->name, clock, top, 'A'+compi, ocr);
 
 		if (ocr && ocr <= top) {
 			p->comp[compi].comp_cycles = frequency / fc; // avr_hz_to_cycles(p->io.avr, fa);
-			AVR_LOG(p->io.avr, LOG_TRACE, "TIMER: %s-%c %c %.2fHz = %d cycles\n", 
+//			AVR_LOG(p->io.avr, LOG_TRACE,
+			if (p->trace & (avr_timer_trace_compa << compi)) printf(
+					"TIMER: %s-%c %c %.2fHz = %d cycles\n",
 					__FUNCTION__, p->name,
 					'A'+compi, fc, (int)p->comp[compi].comp_cycles);
 		}
@@ -524,6 +527,24 @@ avr_timer_irq_icp(
 	avr_raise_interrupt(avr, &p->icr);
 }
 
+static int
+avr_timer_ioctl(
+		avr_io_t * port,
+		uint32_t ctl,
+		void * io_param)
+{
+	avr_timer_t * p = (avr_timer_t *)port;
+	int res = -1;
+
+	/* Allow setting individual trace flags */
+	if (ctl == AVR_IOCTL_TIMER_SET_TRACE(p->name)) {
+		p->trace = *((uint32_t*)io_param);
+		res = 0;
+	}
+
+	return res;
+}
+
 static void
 avr_timer_reset(
 		avr_io_t * port)
@@ -569,8 +590,9 @@ static const char * irq_names[TIMER_IRQ_COUNT] = {
 
 static	avr_io_t	_io = {
 	.kind = "timer",
-	.reset = avr_timer_reset,
 	.irq_names = irq_names,
+	.reset = avr_timer_reset,
+	.ioctl = avr_timer_ioctl,
 };
 
 void
