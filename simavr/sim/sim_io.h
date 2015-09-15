@@ -44,7 +44,7 @@ typedef struct avr_io_t {
 	avr_t *				avr;		// avr we are attached to
 	const char * 		kind;		// pretty name, for debug
 
-	const char ** irq_names;		// IRQ names
+	const char ** 		irq_names;	// IRQ names
 
 	uint32_t			irq_ioctl_get;	// used to get irqs from this module
 	int					irq_count;	// number of (optional) irqs
@@ -99,7 +99,11 @@ avr_ioctl(
 		uint32_t ctl,
 		void * io_param);
 // get the specific irq for a module, check AVR_IOCTL_IOPORT_GETIRQ for example
-struct avr_irq_t * avr_io_getirq(avr_t * avr, uint32_t ctl, int index);
+struct avr_irq_t *
+avr_io_getirq(
+		avr_t * avr,
+		uint32_t ctl,
+		int index);
 
 // get the IRQ for an absolute IO address
 // this allows any code to hook an IRQ in any io address, for example
