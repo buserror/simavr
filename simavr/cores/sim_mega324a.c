@@ -21,22 +21,12 @@
 
 #include "sim_avr.h"
 
-#define SIM_MMCU		"atmega324"
-#define SIM_CORENAME	mcu_mega324
+#define SIM_MMCU		"atmega324a"
+#define SIM_CORENAME	mcu_mega324a
 
 #define _AVR_IO_H_
 #define __ASSEMBLER__
-#include "avr/iom324p.h"
-
-/* borken avr-libc missing these declarations :/ */
-/* The one from 324a are also wrong, like, I'm embarassed for whomever
- * put that in... */
-#ifndef LFUSE_DEFAULT
-#define LFUSE_DEFAULT 0 // (FUSE_CKDIV8 & FUSE_SUT1 & FUSE_SUT0 & FUSE_CKSEL3 & FUSE_CKSEL2 & FUSE_CKSEL0)
-#define HFUSE_DEFAULT 0 // (FUSE_JTAGEN & FUSE_SPIEN & FUSE_BOOTSZ1 & FUSE_BOOTSZ0)
-#define EFUSE_DEFAULT (0xFF)
-#endif
-
+#include "avr/iom324pa.h"
 // instantiate the new core
 #include "sim_megax4.h"
 
@@ -45,8 +35,8 @@ static avr_t * make()
 	return avr_core_allocate(&SIM_CORENAME.core, sizeof(struct mcu_t));
 }
 
-avr_kind_t mega324 = {
-	.names = { "atmega324", "atmega324p" },
+avr_kind_t mega324a = {
+	.names = { "atmega324a", "atmega324pa" },
 	.make = make
 };
 

@@ -57,6 +57,29 @@ typedef struct avr_spi_t {
 
 void avr_spi_init(avr_t * avr, avr_spi_t * port);
 
+#define AVR_SPIX_DECLARE(_name, _prr, _prspi) \
+	.spi = { \
+		.name = '0' + _name,\
+		.disabled = AVR_IO_REGBIT(_prr, _prspi), \
+	\
+		.r_spdr = SPDR ## _name, \
+		.r_spcr = SPCR ## _name, \
+		.r_spsr = SPSR ## _name, \
+	\
+		.spe = AVR_IO_REGBIT(SPCR ## _name, SPE ## _name), \
+		.mstr = AVR_IO_REGBIT(SPCR ## _name, MSTR ## _name), \
+	\
+		.spr = { AVR_IO_REGBIT(SPCR ## _name, SPR0 ## _name), \
+					AVR_IO_REGBIT(SPCR ## _name, SPR1 ## _name), \
+					AVR_IO_REGBIT(SPSR ## _name, SPI2X ## _name) }, \
+		.spi = { \
+			.enable = AVR_IO_REGBIT(SPCR ## _name, SPIE ## _name), \
+			.raised = AVR_IO_REGBIT(SPSR ## _name, SPIF ## _name), \
+			.vector = SPI_STC_vect, \
+		}, \
+	}
+
+
 #define AVR_SPI_DECLARE(_prr, _prspi) \
 	.spi = { \
 		.disabled = AVR_IO_REGBIT(_prr, _prspi), \
