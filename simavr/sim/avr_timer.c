@@ -234,6 +234,18 @@ avr_timer_cancel_all_cycle_timers(
 }
 
 static void
+avr_timer_clear_and_cancel_all_cycle_timers(
+		struct avr_t * avr,
+		avr_timer_t *timer)
+{
+	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++)
+		timer->comp[compi].comp_cycles = 0;
+	timer->tov_cycles = 0;
+
+	avr_timer_cancel_all_cycle_timers(avr, timer);
+}
+
+static void
 avr_timer_tcnt_write(
 		struct avr_t * avr,
 		avr_io_addr_t addr,
@@ -324,12 +336,7 @@ avr_timer_reconfigure(
 	avr_t * avr = p->io.avr;
 
 	// cancel everything
-	p->comp[AVR_TIMER_COMPA].comp_cycles = 0;
-	p->comp[AVR_TIMER_COMPB].comp_cycles = 0;
-	p->comp[AVR_TIMER_COMPC].comp_cycles = 0;
-	p->tov_cycles = 0;
-	
-	avr_timer_cancel_all_cycle_timers(avr, p);
+	avr_timer_clear_and_cancel_all_cycle_timers(avr, p);
 
 	switch (p->wgm_op_mode_kind) {
 		case avr_timer_wgm_normal:
@@ -441,15 +448,7 @@ avr_timer_write(
 	/* cs */
 		if (new_cs == 0) {
 			// cancel everything
-			p->comp[AVR_TIMER_COMPA].comp_cycles = 0;
-			p->comp[AVR_TIMER_COMPB].comp_cycles = 0;
-			p->comp[AVR_TIMER_COMPC].comp_cycles = 0;
-			p->tov_cycles = 0;
-	
-			avr_cycle_timer_cancel(avr, avr_timer_tov, p);
-			avr_cycle_timer_cancel(avr, avr_timer_compa, p);
-			avr_cycle_timer_cancel(avr, avr_timer_compb, p);
-			avr_cycle_timer_cancel(avr, avr_timer_compc, p);
+			avr_timer_clear_and_cancel_all_cycle_timers(avr, p);
 
 			AVR_LOG(avr, LOG_TRACE, "TIMER: %s-%c clock turned off\n",
 					__func__, p->name);
