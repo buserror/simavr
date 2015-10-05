@@ -570,6 +570,80 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
 			o == 0x940f; // CALL Long Call to sub
 }
 
+#define INST_SUB_CALL(_opname) \
+	_avr_inst_ ## _opname(avr, opcode, cycle, new_pc)
+
+#define INST_CALL(_opname) \
+	_avr_inst_ ## _opname(avr, opcode, &cycle, &new_pc)
+
+#define INST_DECL(_opname) \
+	static void \
+		_avr_inst_ ## _opname( \
+			avr_t * avr, \
+			uint32_t opcode, \
+			uint16_t * cycle, \
+			avr_flashaddr_t * new_pc)
+
+#define INST_ESAC(_opcode, _opmask, _opname) \
+	case _opcode: INST_CALL(_opname); break;
+
+INST_DECL(break)
+{
+	STATE("break\n");
+	if (avr->gdb) {
+		// if gdb is on, we break here as in here
+		// and we do so until gdb restores the instruction
+		// that was here before
+		avr->state = cpu_StepDone;
+		*new_pc = avr->pc;
+		*cycle = 0;
+	}
+}
+
+INST_DECL(nop)
+{
+	STATE("nop\n");
+}
+
+INST_DECL(ret)
+{
+	*new_pc = _avr_pop_addr(avr);
+	*cycle += 1 + avr->address_size;
+	STATE("ret%s\n", opcode & 0x10 ? "i" : "");
+	TRACE_JUMP();
+	STACK_FRAME_POP();
+}
+
+INST_DECL(reti)
+{
+	avr_sreg_set(avr, S_I, 1);
+	avr_interrupt_reti(avr);
+	INST_SUB_CALL(ret);
+}
+
+INST_DECL(sleep)
+{
+	STATE("sleep\n");
+	/* Don't sleep if there are interrupts about to be serviced.
+	 * Without this check, it was possible to incorrectly enter a state
+	 * in which the cpu was sleeping and interrupts were disabled. For more
+	 * details, see the commit message. */
+	if (!avr_has_pending_interrupts(avr) || !avr->sreg[S_I])
+		avr->state = cpu_Sleeping;
+}
+
+INST_DECL(spm)
+{
+	STATE("spm\n");
+	avr_ioctl(avr, AVR_IOCTL_FLASH_SPM, 0);
+}
+
+INST_DECL(wdr)
+{
+	STATE("wdr\n");
+	avr_ioctl(avr, AVR_IOCTL_WATCHDOG_RESET, 0);
+}
+
 /*
  * Main opcode decoder
  * 
@@ -613,14 +687,12 @@ run_one_again:
 
 	uint32_t		opcode = _avr_flash_read16le(avr, avr->pc);
 	avr_flashaddr_t	new_pc = avr->pc + 2;	// future "default" pc
-	int 			cycle = 1;
+	uint16_t		cycle = 1;
 
 	switch (opcode & 0xf000) {
 		case 0x0000: {
 			switch (opcode) {
-				case 0x0000: {	// NOP
-					STATE("nop\n");
-				}	break;
+				INST_ESAC(0x0000, 0xffff, nop)	// NOP
 				default: {
 					switch (opcode & 0xfc00) {
 						case 0x0400: {	// CPC -- Compare with carry -- 0000 01rd dddd rrrr
@@ -899,34 +971,10 @@ run_one_again:
 				avr_sreg_set(avr, b, (opcode & 0x0080) == 0);
 				SREG();
 			} else switch (opcode) {
-				case 0x9588: { // SLEEP -- 1001 0101 1000 1000
-					STATE("sleep\n");
-					/* Don't sleep if there are interrupts about to be serviced.
-					 * Without this check, it was possible to incorrectly enter a state
-					 * in which the cpu was sleeping and interrupts were disabled. For more
-					 * details, see the commit message. */
-					if (!avr_has_pending_interrupts(avr) || !avr->sreg[S_I])
-						avr->state = cpu_Sleeping;
-				}	break;
-				case 0x9598: { // BREAK -- 1001 0101 1001 1000
-					STATE("break\n");
-					if (avr->gdb) {
-						// if gdb is on, we break here as in here
-						// and we do so until gdb restores the instruction
-						// that was here before
-						avr->state = cpu_StepDone;
-						new_pc = avr->pc;
-						cycle = 0;
-					}
-				}	break;
-				case 0x95a8: { // WDR -- Watchdog Reset -- 1001 0101 1010 1000
-					STATE("wdr\n");
-					avr_ioctl(avr, AVR_IOCTL_WATCHDOG_RESET, 0);
-				}	break;
-				case 0x95e8: { // SPM -- Store Program Memory -- 1001 0101 1110 1000
-					STATE("spm\n");
-					avr_ioctl(avr, AVR_IOCTL_FLASH_SPM, 0);
-				}	break;
+				INST_ESAC(0x9588, 0xffff, sleep) // SLEEP -- 1001 0101 1000 1000
+				INST_ESAC(0x9598, 0xffff, break) // BREAK -- 1001 0101 1001 1000
+				INST_ESAC(0x95a8, 0xffff, wdr) // WDR -- Watchdog Reset -- 1001 0101 1010 1000
+				INST_ESAC(0x95e8, 0xffff, spm) // SPM -- Store Program Memory -- 1001 0101 1110 1000
 				case 0x9409:   // IJMP -- Indirect jump -- 1001 0100 0000 1001
 				case 0x9419:   // EIJMP -- Indirect jump -- 1001 0100 0001 1001   bit 4 is "indirect"
 				case 0x9509:   // ICALL -- Indirect Call to Subroutine -- 1001 0101 0000 1001
@@ -945,16 +993,8 @@ run_one_again:
 					cycle++;
 					TRACE_JUMP();
 				}	break;
-				case 0x9518: 	// RETI -- Return from Interrupt -- 1001 0101 0001 1000
-					avr_sreg_set(avr, S_I, 1);
-					avr_interrupt_reti(avr);
-				case 0x9508: {	// RET -- Return -- 1001 0101 0000 1000
-					new_pc = _avr_pop_addr(avr);
-					cycle += 1 + avr->address_size;
-					STATE("ret%s\n", opcode & 0x10 ? "i" : "");
-					TRACE_JUMP();
-					STACK_FRAME_POP();
-				}	break;
+				INST_ESAC(0x9508, 0xffff, ret) // RET -- Return -- 1001 0101 0000 1000
+				INST_ESAC(0x9518, 0xffff, reti) // RETI -- Return from Interrupt -- 1001 0101 0001 1000
 				case 0x95c8: {	// LPM -- Load Program Memory R0 <- (Z) -- 1001 0101 1100 1000
 					uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
 					STATE("lpm %s, (Z[%04x])\n", avr_regname(0), z);
