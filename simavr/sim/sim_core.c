@@ -589,35 +589,62 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
 			o == 0x940f; // CALL Long Call to sub
 }
 
-#define INST_SUB_CALL(_opname) \
-	_avr_inst_ ## _opname(avr, opcode, cycle, new_pc)
+#define INST_SUB_CALL(_opname, _args...) \
+	_avr_inst_ ## _opname(avr, opcode, cycle, new_pc, ## _args)
 
 #define INST_CALL(_opname) \
 	_avr_inst_ ## _opname(avr, opcode, &cycle, &new_pc)
 
-#define INST_DECL(_opname) \
+#define INST_DECL(_opname, _args...) \
 	static void \
 		_avr_inst_ ## _opname( \
 			avr_t * avr, \
 			uint32_t opcode, \
 			int * cycle, \
-			avr_flashaddr_t * new_pc)
+			avr_flashaddr_t * new_pc, \
+			## _args)
 
 #define INST_ESAC(_opcode, _opmask, _opname) \
 	case _opcode: INST_CALL(_opname); break;
 
-INST_DECL(add)
+INST_DECL(skip_if, uint16_t res)
+{
+	if (res) {
+		if (_avr_is_instruction_32_bits(avr, *new_pc)) {
+			*new_pc += 4; *cycle += 2;
+		} else {
+			*new_pc += 2; (*cycle)++;
+		}
+	}
+}
+
+INST_DECL(addc_add, const int carry)
 {
 	get_vd5_vr5(opcode);
 	uint8_t res = vd + vr;
+
+	if(carry)
+		res += avr->sreg[S_C];
+
 	if (r == d) {
-		STATE("lsl %s[%02x] = %02x\n", avr_regname(d), vd, res & 0xff);
+		STATE("%s %s[%02x] = %02x\n", carry ? "rol" : "lsl" , avr_regname(d), vd, res);
 	} else {
-		STATE("add %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
+		STATE("%s %s[%02x], %s[%02x] = %02x\n", carry ? "addc" : "add",
+			avr_regname(d), vd, avr_regname(r), vr, res);
 	}
 	_avr_set_r(avr, d, res);
 	_avr_flags_add_zns(avr, res, vd, vr);
 	SREG();
+}
+
+INST_DECL(addc)
+{
+	INST_SUB_CALL(addc_add, 1);
+}
+
+INST_DECL(add)
+{
+	INST_SUB_CALL(addc_add, 0);
 }
 
 INST_DECL(break)
@@ -633,13 +660,44 @@ INST_DECL(break)
 	}
 }
 
-INST_DECL(cpc)
+INST_DECL(cp_cpc_sbc_sub, const int carry, const int save_result)
 {
 	get_vd5_vr5(opcode);
-	uint8_t res = vd - vr - avr->sreg[S_C];
-	STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-	_avr_flags_sub_Rzns(avr, res, vd, vr);
+	uint8_t res = vd - vr;
+
+	if (carry)
+		res -= avr->sreg[S_C];
+
+	T((const char * opname[2][2] = { { "cp", "cpc" }, { "sub", "sbc" } };))
+	STATE("%s %s[%02x], %s[%02x] = %02x\n", opname[save_result][carry], avr_regname(d), vd, avr_regname(r), vr, res);
+
+	if (save_result)
+		_avr_set_r(avr, d, res);
+
+	if (carry)
+		_avr_flags_sub_Rzns(avr, res, vd, vr);
+	else
+		_avr_flags_sub_zns(avr, res, vd, vr);
+		
 	SREG();
+}
+
+INST_DECL(cp)
+{
+	INST_SUB_CALL(cp_cpc_sbc_sub, 0, 0);
+}
+
+INST_DECL(cpc)
+{
+	INST_SUB_CALL(cp_cpc_sbc_sub, 1, 0);
+}
+
+INST_DECL(cpse)
+{
+	get_vd5_vr5(opcode);
+	uint16_t res = vd == vr;
+	STATE("cpse %s[%02x], %s[%02x]\t; Will%s skip\n", avr_regname(d), vd, avr_regname(r), vr, res ? "":" not");
+	INST_SUB_CALL(skip_if, res);
 }
 
 INST_DECL(nop)
@@ -665,16 +723,12 @@ INST_DECL(reti)
 
 INST_DECL(sbc)
 {
-	get_vd5_vr5(opcode);
-	uint8_t res = vd + vr;
-	if (r == d) {
-		STATE("lsl %s[%02x] = %02x\n", avr_regname(d), vd, res & 0xff);
-	} else {
-		STATE("add %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-	}
-	_avr_set_r(avr, d, res);
-	_avr_flags_add_zns(avr, res, vd, vr);
-	SREG();
+	INST_SUB_CALL(cp_cpc_sbc_sub, 1, 1);
+}
+
+INST_DECL(sub)
+{
+	INST_SUB_CALL(cp_cpc_sbc_sub, 0, 1);
 }
 
 INST_DECL(sleep)
@@ -820,45 +874,10 @@ run_one_again:
 
 		case 0x1000: {
 			switch (opcode & 0xfc00) {
-				case 0x1800: {	// SUB -- Subtract without carry -- 0001 10rd dddd rrrr
-					get_vd5_vr5(opcode);
-					uint8_t res = vd - vr;
-					STATE("sub %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-					_avr_set_r(avr, d, res);
-					_avr_flags_sub_zns(avr, res, vd, vr);
-					SREG();
-				}	break;
-				case 0x1000: {	// CPSE -- Compare, skip if equal -- 0001 00rd dddd rrrr
-					get_vd5_vr5(opcode);
-					uint16_t res = vd == vr;
-					STATE("cpse %s[%02x], %s[%02x]\t; Will%s skip\n", avr_regname(d), avr->data[d], avr_regname(r), avr->data[r], res ? "":" not");
-					if (res) {
-						if (_avr_is_instruction_32_bits(avr, new_pc)) {
-							new_pc += 4; cycle += 2;
-						} else {
-							new_pc += 2; cycle++;
-						}
-					}
-				}	break;
-				case 0x1400: {	// CP -- Compare -- 0001 01rd dddd rrrr
-					get_vd5_vr5(opcode);
-					uint8_t res = vd - vr;
-					STATE("cp %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-					_avr_flags_sub_zns(avr, res, vd, vr);
-					SREG();
-				}	break;
-				case 0x1c00: {	// ADD -- Add with carry -- 0001 11rd dddd rrrr
-					get_vd5_vr5(opcode);
-					uint8_t res = vd + vr + avr->sreg[S_C];
-					if (r == d) {
-						STATE("rol %s[%02x] = %02x\n", avr_regname(d), avr->data[d], res);
-					} else {
-						STATE("addc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), avr->data[d], avr_regname(r), avr->data[r], res);
-					}
-					_avr_set_r(avr, d, res);
-					_avr_flags_add_zns(avr, res, vd, vr);
-					SREG();
-				}	break;
+				INST_ESAC(0x1000, 0xfc00, cpse) // CPSE -- 0x1000 -- Compare, skip if equal -- 0001 00rd dddd rrrr
+				INST_ESAC(0x1400, 0xfc00, cp) // CP -- 0x1400 -- Compare -- 0001 01rd dddd rrrr
+				INST_ESAC(0x1800, 0xfc00, sub) // SUB -- 0x1800-- Subtract without carry -- 0001 10rd dddd rrrr
+				INST_ESAC(0x1c00, 0xfc00, addc) // ADD -- 0x1c00-- Add with carry -- 0001 11rd dddd rrrr
 				default: _avr_invalid_opcode(avr);
 			}
 		}	break;
