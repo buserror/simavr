@@ -50,12 +50,12 @@ typedef void (*avr_irq_notify_t)(
 		uint32_t value,
 		void * param);
 
-
 enum {
 	IRQ_FLAG_NOT		= (1 << 0),	//!< change polarity of the IRQ
 	IRQ_FLAG_FILTERED	= (1 << 1),	//!< do not "notify" if "value" is the same as previous raise
 	IRQ_FLAG_ALLOC		= (1 << 2), //!< this irq structure was malloced via avr_alloc_irq
 	IRQ_FLAG_INIT		= (1 << 3), //!< this irq hasn't been used yet
+	IRQ_FLAG_USER		= (1 << 4), //!< Can be used by irq users
 };
 
 /*
@@ -71,7 +71,7 @@ typedef struct avr_irq_pool_t {
  */
 typedef struct avr_irq_t {
 	struct avr_irq_pool_t *	pool;	// TODO: migration in progress
-	const char * name;
+	const char * 		name;
 	uint32_t			irq;		//!< any value the user needs
 	uint32_t			value;		//!< current value
 	uint8_t				flags;		//!< IRQ_* flags
