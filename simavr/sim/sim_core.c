@@ -112,16 +112,24 @@ void crash(avr_t* avr)
 }
 #endif
 
+static inline uint16_t
+_avr_flash_read16le(
+	avr_t * avr,
+	avr_flashaddr_t addr)
+{
+	return(avr->flash[addr] | (avr->flash[addr + 1] << 8));
+}
+
 void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 {
 	if (addr > avr->ramend) {
 		AVR_LOG(avr, LOG_ERROR, "CORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x out of ram\n",
-				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, v);
+				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), addr, v);
 		crash(avr);
 	}
 	if (addr < 32) {
 		AVR_LOG(avr, LOG_ERROR, "CORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x low registers\n",
-				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, v);
+				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), addr, v);
 		crash(avr);
 	}
 #if AVR_STACK_WATCH
@@ -146,7 +154,7 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 {
 	if (addr > avr->ramend) {
 		AVR_LOG(avr, LOG_ERROR, FONT_RED "CORE: *** Invalid read address PC=%04x SP=%04x O=%04x Address %04x out of ram (%04x)\n" FONT_DEFAULT,
-				avr->pc, _avr_sp_get(avr), avr->flash[avr->pc + 1] | (avr->flash[avr->pc]<<8), addr, avr->ramend);
+				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), addr, avr->ramend);
 		crash(avr);
 	}
 
@@ -313,10 +321,10 @@ static void _avr_invalid_opcode(avr_t * avr)
 {
 #if CONFIG_SIMAVR_TRACE
 	printf( FONT_RED "*** %04x: %-25s Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
-			avr->pc, avr->trace_data->codeline[avr->pc>>1]->symbol, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
+			avr->pc, avr->trace_data->codeline[avr->pc>>1]->symbol, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc));
 #else
 	AVR_LOG(avr, LOG_ERROR, FONT_RED "CORE: *** %04x: Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
-			avr->pc, _avr_sp_get(avr), avr->flash[avr->pc] | (avr->flash[avr->pc+1]<<8));
+			avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc));
 #endif
 }
 
@@ -553,7 +561,7 @@ _avr_flags_znv0s (struct avr_t * avr, uint8_t res)
 
 static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
 {
-	uint16_t o = (avr->flash[pc] | (avr->flash[pc+1] << 8)) & 0xfc0f;
+	uint16_t o = _avr_flash_read16le(avr, pc) & 0xfc0f;
 	return	o == 0x9200 || // STS ! Store Direct to Data Space
 			o == 0x9000 || // LDS Load Direct from Data Space
 			o == 0x940c || // JMP Long Jump
@@ -603,7 +611,7 @@ run_one_again:
 		return 0;
 	}
 
-	uint32_t		opcode = (avr->flash[avr->pc + 1] << 8) | avr->flash[avr->pc];
+	uint32_t		opcode = _avr_flash_read16le(avr, avr->pc);
 	avr_flashaddr_t	new_pc = avr->pc + 2;	// future "default" pc
 	int 			cycle = 1;
 
@@ -957,7 +965,7 @@ run_one_again:
 					switch (opcode & 0xfe0f) {
 						case 0x9000: {	// LDS -- Load Direct from Data Space, 32 bits -- 1001 0000 0000 0000
 							get_d5(opcode);
-							uint16_t x = (avr->flash[new_pc+1] << 8) | avr->flash[new_pc];
+							uint16_t x = _avr_flash_read16le(avr, new_pc);
 							new_pc += 2;
 							STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), avr->data[d], x);
 							_avr_set_r(avr, d, _avr_get_ram(avr, x));
@@ -1060,7 +1068,7 @@ run_one_again:
 						}	break;
 						case 0x9200: {	// STS -- Store Direct to Data Space, 32 bits -- 1001 0010 0000 0000
 							get_vd5(opcode);
-							uint16_t x = (avr->flash[new_pc+1] << 8) | avr->flash[new_pc];
+							uint16_t x = _avr_flash_read16le(avr, new_pc);
 							new_pc += 2;
 							STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), vd);
 							cycle++;
@@ -1179,7 +1187,7 @@ run_one_again:
 						case 0x940c:
 						case 0x940d: {	// JMP -- Long Call to sub, 32 bits -- 1001 010a aaaa 110a
 							avr_flashaddr_t a = ((opcode & 0x01f0) >> 3) | (opcode & 1);
-							uint16_t x = (avr->flash[new_pc+1] << 8) | avr->flash[new_pc];
+							uint16_t x = _avr_flash_read16le(avr, new_pc);
 							a = (a << 16) | x;
 							STATE("jmp 0x%06x\n", a);
 							new_pc = a << 1;
@@ -1189,7 +1197,7 @@ run_one_again:
 						case 0x940e:
 						case 0x940f: {	// CALL -- Long Call to sub, 32 bits -- 1001 010a aaaa 111a
 							avr_flashaddr_t a = ((opcode & 0x01f0) >> 3) | (opcode & 1);
-							uint16_t x = (avr->flash[new_pc+1] << 8) | avr->flash[new_pc];
+							uint16_t x = _avr_flash_read16le(avr, new_pc);
 							a = (a << 16) | x;
 							STATE("call 0x%06x\n", a);
 							new_pc += 2;
