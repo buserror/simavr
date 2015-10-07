@@ -628,6 +628,20 @@ INST_DECL(add)
 	INST_SUB_CALL(addc_add, 0);
 }
 
+INST_DECL(and)
+{
+	get_vd5_vr5(opcode);
+	uint8_t res = vd & vr;
+	if (r == d) {
+		STATE("tst %s[%02x]\n", avr_regname(d), vd);
+	} else {
+		STATE("and %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
+	}
+	_avr_set_r(avr, d, res);
+	_avr_flags_znv0s(avr, res);
+	SREG();
+}
+
 INST_DECL(break)
 {
 	STATE("break\n");
@@ -681,9 +695,41 @@ INST_DECL(cpse)
 	INST_SUB_CALL(skip_if, res);
 }
 
+INST_DECL(eor)
+{
+	get_vd5_vr5(opcode);
+	uint8_t res = vd ^ vr;
+	if (r==d) {
+		STATE("clr %s[%02x]\n", avr_regname(d), vd);
+	} else {
+		STATE("eor %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
+	}
+	_avr_set_r(avr, d, res);
+	_avr_flags_znv0s(avr, res);
+	SREG();
+}
+
+INST_DECL(mov)
+{
+	get_d5_vr5(opcode);
+	uint8_t res = vr;
+	STATE("mov %s, %s[%02x] = %02x\n", avr_regname(d), avr_regname(r), vr, res);
+	_avr_set_r(avr, d, res);
+}
+
 INST_DECL(nop)
 {
 	STATE("nop\n");
+}
+
+INST_DECL(or)
+{
+	get_vd5_vr5(opcode);
+	uint8_t res = vd | vr;
+	STATE("or %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
+	_avr_set_r(avr, d, res);
+	_avr_flags_znv0s(avr, res);
+	SREG();
 }
 
 INST_DECL(ret)
@@ -856,56 +902,17 @@ run_one_again:
 			}
 		}	break;
 
-		case 0x1000: {
+		case 0x1000:
+		case 0x2000: {
 			switch (opcode & 0xfc00) {
 				INST_ESAC(0x1000, 0xfc00, cpse) // CPSE -- 0x1000 -- Compare, skip if equal -- 0001 00rd dddd rrrr
 				INST_ESAC(0x1400, 0xfc00, cp) // CP -- 0x1400 -- Compare -- 0001 01rd dddd rrrr
 				INST_ESAC(0x1800, 0xfc00, sub) // SUB -- 0x1800-- Subtract without carry -- 0001 10rd dddd rrrr
 				INST_ESAC(0x1c00, 0xfc00, addc) // ADD -- 0x1c00-- Add with carry -- 0001 11rd dddd rrrr
-				default: _avr_invalid_opcode(avr);
-			}
-		}	break;
-
-		case 0x2000: {
-			switch (opcode & 0xfc00) {
-				case 0x2000: {	// AND -- Logical AND -- 0010 00rd dddd rrrr
-					get_vd5_vr5(opcode);
-					uint8_t res = vd & vr;
-					if (r == d) {
-						STATE("tst %s[%02x]\n", avr_regname(d), avr->data[d]);
-					} else {
-						STATE("and %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-					}
-					_avr_set_r(avr, d, res);
-					_avr_flags_znv0s(avr, res);
-					SREG();
-				}	break;
-				case 0x2400: {	// EOR -- Logical Exclusive OR -- 0010 01rd dddd rrrr
-					get_vd5_vr5(opcode);
-					uint8_t res = vd ^ vr;
-					if (r==d) {
-						STATE("clr %s[%02x]\n", avr_regname(d), avr->data[d]);
-					} else {
-						STATE("eor %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-					}
-					_avr_set_r(avr, d, res);
-					_avr_flags_znv0s(avr, res);
-					SREG();
-				}	break;
-				case 0x2800: {	// OR -- Logical OR -- 0010 10rd dddd rrrr
-					get_vd5_vr5(opcode);
-					uint8_t res = vd | vr;
-					STATE("or %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-					_avr_set_r(avr, d, res);
-					_avr_flags_znv0s(avr, res);
-					SREG();
-				}	break;
-				case 0x2c00: {	// MOV -- 0010 11rd dddd rrrr
-					get_d5_vr5(opcode);
-					uint8_t res = vr;
-					STATE("mov %s, %s[%02x] = %02x\n", avr_regname(d), avr_regname(r), vr, res);
-					_avr_set_r(avr, d, res);
-				}	break;
+				INST_ESAC(0x2000, 0xfc00, and) // AND -- 0x2000 -- Logical AND -- 0010 00rd dddd rrrr
+				INST_ESAC(0x2400, 0xfc00, eor) // EOR -- 0x2400 -- Logical Exclusive OR -- 0010 01rd dddd rrrr
+				INST_ESAC(0x2800, 0xfc00, or) // OR -- 0x2800 -- Logical OR -- 0010 10rd dddd rrrr
+				INST_ESAC(0x2c00, 0xfc00, mov) // MOV -- 0x2c00 -- 0010 11rd dddd rrrr
 				default: _avr_invalid_opcode(avr);
 			}
 		}	break;
