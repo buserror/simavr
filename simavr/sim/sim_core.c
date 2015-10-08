@@ -717,6 +717,19 @@ INST_DECL(mov)
 	_avr_set_r(avr, d, res);
 }
 
+INST_DECL(mul)
+{
+	get_vd5_vr5(opcode);
+	uint16_t res = vd * vr;
+	STATE("mul %s[%02x], %s[%02x] = %04x\n", avr_regname(d), vd, avr_regname(r), vr, res);
+	cycle++;
+	_avr_set_r(avr, 0, res);
+	_avr_set_r(avr, 1, res >> 8);
+	avr->sreg[S_Z] = res == 0;
+	avr->sreg[S_C] = (res >> 15) & 1;
+	SREG();
+}
+
 INST_DECL(nop)
 {
 	STATE("nop\n");
@@ -1352,17 +1365,7 @@ run_one_again:
 								}	break;
 								default:
 									switch (opcode & 0xfc00) {
-										case 0x9c00: {	// MUL -- Multiply Unsigned -- 1001 11rd dddd rrrr
-											get_vd5_vr5(opcode);
-											uint16_t res = vd * vr;
-											STATE("mul %s[%02x], %s[%02x] = %04x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-											cycle++;
-											_avr_set_r(avr, 0, res);
-											_avr_set_r(avr, 1, res >> 8);
-											avr->sreg[S_Z] = res == 0;
-											avr->sreg[S_C] = (res >> 15) & 1;
-											SREG();
-										}	break;
+										INST_ESAC(0x9c00, 0xfc00, mul) // MUL -- 0x9c00 -- Multiply Unsigned -- 1001 11rd dddd rrrr
 										default: _avr_invalid_opcode(avr);
 									}
 							}
