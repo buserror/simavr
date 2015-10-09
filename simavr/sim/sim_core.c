@@ -585,10 +585,21 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
 			avr_flashaddr_t * new_pc, \
 			## _args)
 
+#define INST_SUB_CALL_DECL(_opname, _subcall_opname, _args...) \
+	INST_DECL(_opname) \
+	{ \
+		INST_SUB_CALL(_subcall_opname, ## _args); \
+	}
+
 #define INST_ESAC(_opcode, _opmask, _opname) \
 	case _opcode: INST_CALL(_opname); break;
 
-INST_DECL(skip_if, uint16_t res)
+#define k_INST_FLAG_ADD (0)
+#define k_INST_FLAG_CARRY (1 << 0)
+#define k_INST_FLAG_SAVE_RESULT (1 << 1)
+#define k_INST_FLAG_SUB (1 << 2)
+
+inline INST_DECL(skip_if, uint16_t res)
 {
 	if (res) {
 		if (_avr_is_instruction_32_bits(avr, *new_pc)) {
@@ -599,12 +610,12 @@ INST_DECL(skip_if, uint16_t res)
 	}
 }
 
-INST_DECL(addc_add, const int carry)
+inline INST_DECL(addc_add, const int flags)
 {
 	get_vd5_vr5(opcode);
 	uint8_t res = vd + vr;
 
-	if(carry)
+	if(flags & k_INST_FLAG_CARRY)
 		res += avr->sreg[S_C];
 
 	if (r == d) {
@@ -618,15 +629,8 @@ INST_DECL(addc_add, const int carry)
 	SREG();
 }
 
-INST_DECL(addc)
-{
-	INST_SUB_CALL(addc_add, 1);
-}
-
-INST_DECL(add)
-{
-	INST_SUB_CALL(addc_add, 0);
-}
+INST_SUB_CALL_DECL(addc, addc_add, k_INST_FLAG_CARRY)
+INST_SUB_CALL_DECL(add, addc_add, 0)
 
 INST_DECL(and)
 {
@@ -655,21 +659,21 @@ INST_DECL(break)
 	}
 }
 
-INST_DECL(cp_cpc_sbc_sub, const int carry, const int save_result)
+inline INST_DECL(cp_cpc_sbc_sub, const int flags)
 {
 	get_vd5_vr5(opcode);
 	uint8_t res = vd - vr;
 
-	if (carry)
+	if (flags & k_INST_FLAG_CARRY)
 		res -= avr->sreg[S_C];
 
 	T((const char * opname[2][2] = { { "cp", "cpc" }, { "sub", "sbc" } };))
 	STATE("%s %s[%02x], %s[%02x] = %02x\n", opname[save_result][carry], avr_regname(d), vd, avr_regname(r), vr, res);
 
-	if (save_result)
+	if (flags & k_INST_FLAG_SAVE_RESULT)
 		_avr_set_r(avr, d, res);
 
-	if (carry)
+	if (flags & k_INST_FLAG_CARRY)
 		_avr_flags_sub_Rzns(avr, res, vd, vr);
 	else
 		_avr_flags_sub_zns(avr, res, vd, vr);
@@ -677,15 +681,8 @@ INST_DECL(cp_cpc_sbc_sub, const int carry, const int save_result)
 	SREG();
 }
 
-INST_DECL(cp)
-{
-	INST_SUB_CALL(cp_cpc_sbc_sub, 0, 0);
-}
-
-INST_DECL(cpc)
-{
-	INST_SUB_CALL(cp_cpc_sbc_sub, 1, 0);
-}
+INST_SUB_CALL_DECL(cp, cp_cpc_sbc_sub, k_INST_FLAG_SUB)
+INST_SUB_CALL_DECL(cpc, cp_cpc_sbc_sub, k_INST_FLAG_CARRY | k_INST_FLAG_SUB)
 
 INST_DECL(cpse)
 {
@@ -722,7 +719,7 @@ INST_DECL(mul)
 	get_vd5_vr5(opcode);
 	uint16_t res = vd * vr;
 	STATE("mul %s[%02x], %s[%02x] = %04x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-	cycle++;
+	(*cycle)++;
 	_avr_set_r(avr, 0, res);
 	_avr_set_r(avr, 1, res >> 8);
 	avr->sreg[S_Z] = res == 0;
@@ -761,15 +758,8 @@ INST_DECL(reti)
 	INST_SUB_CALL(ret);
 }
 
-INST_DECL(sbc)
-{
-	INST_SUB_CALL(cp_cpc_sbc_sub, 1, 1);
-}
-
-INST_DECL(sub)
-{
-	INST_SUB_CALL(cp_cpc_sbc_sub, 0, 1);
-}
+INST_SUB_CALL_DECL(sbc, cp_cpc_sbc_sub, k_INST_FLAG_CARRY | k_INST_FLAG_SUB | k_INST_FLAG_SAVE_RESULT)
+INST_SUB_CALL_DECL(sub, cp_cpc_sbc_sub, k_INST_FLAG_SUB | k_INST_FLAG_SAVE_RESULT)
 
 INST_DECL(sleep)
 {
