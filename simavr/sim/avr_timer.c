@@ -222,27 +222,23 @@ avr_timer_tcnt_read(
 	return avr_core_watch_read(avr, addr);
 }
 
-static void
+static inline void
 avr_timer_cancel_all_cycle_timers(
 		struct avr_t * avr,
-		avr_timer_t *timer)
+		avr_timer_t *timer,
+		const uint8_t clear_timers)
 {
+	if(clear_timers) {
+		for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++)
+			timer->comp[compi].comp_cycles = 0;
+		timer->tov_cycles = 0;
+	}
+	
+
 	avr_cycle_timer_cancel(avr, avr_timer_tov, timer);
 	avr_cycle_timer_cancel(avr, avr_timer_compa, timer);
 	avr_cycle_timer_cancel(avr, avr_timer_compb, timer);
 	avr_cycle_timer_cancel(avr, avr_timer_compc, timer);
-}
-
-static void
-avr_timer_clear_and_cancel_all_cycle_timers(
-		struct avr_t * avr,
-		avr_timer_t *timer)
-{
-	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++)
-		timer->comp[compi].comp_cycles = 0;
-	timer->tov_cycles = 0;
-
-	avr_timer_cancel_all_cycle_timers(avr, timer);
 }
 
 static void
@@ -266,7 +262,7 @@ avr_timer_tcnt_write(
 	// cancel the current timers, recalculate the "base" we should be at, reset the
 	// timer base as it should, and re-schedule the timers using that base.
 	
-	avr_timer_cancel_all_cycle_timers(avr, p);
+	avr_timer_cancel_all_cycle_timers(avr, p, 0);
 
 	uint64_t cycles = (tcnt * p->tov_cycles) / p->tov_top;
 
@@ -336,7 +332,7 @@ avr_timer_reconfigure(
 	avr_t * avr = p->io.avr;
 
 	// cancel everything
-	avr_timer_clear_and_cancel_all_cycle_timers(avr, p);
+	avr_timer_cancel_all_cycle_timers(avr, p, 1);
 
 	switch (p->wgm_op_mode_kind) {
 		case avr_timer_wgm_normal:
@@ -448,7 +444,7 @@ avr_timer_write(
 	/* cs */
 		if (new_cs == 0) {
 			// cancel everything
-			avr_timer_clear_and_cancel_all_cycle_timers(avr, p);
+			avr_timer_cancel_all_cycle_timers(avr, p, 1);
 
 			AVR_LOG(avr, LOG_TRACE, "TIMER: %s-%c clock turned off\n",
 					__func__, p->name);
@@ -549,7 +545,7 @@ avr_timer_reset(
 		avr_io_t * port)
 {
 	avr_timer_t * p = (avr_timer_t *)port;
-	avr_timer_cancel_all_cycle_timers(p->io.avr, p);
+	avr_timer_cancel_all_cycle_timers(p->io.avr, p, 0);
 
 	// check to see if the comparators have a pin output. If they do,
 	// (try) to get the ioport corresponding IRQ and connect them
