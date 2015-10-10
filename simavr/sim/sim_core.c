@@ -570,6 +570,220 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
 			o == 0x940f; // CALL Long Call to sub
 }
 
+#define INST_SUB_CALL(_opname, _args...) \
+	_avr_inst_ ## _opname(avr, opcode, cycle, new_pc, ## _args)
+
+#define INST_CALL(_opname) \
+	_avr_inst_ ## _opname(avr, opcode, &cycle, &new_pc)
+
+#define INST_DECL(_opname, _args...) \
+	static void \
+		_avr_inst_ ## _opname( \
+			avr_t * avr, \
+			uint32_t opcode, \
+			int * cycle, \
+			avr_flashaddr_t * new_pc, \
+			## _args)
+
+#define INST_SUB_CALL_DECL(_opname, _subcall_opname, _args...) \
+	INST_DECL(_opname) \
+	{ \
+		INST_SUB_CALL(_subcall_opname, ## _args); \
+	}
+
+#define INST_ESAC(_opcode, _opmask, _opname) \
+	case _opcode: INST_CALL(_opname); break;
+
+#define k_INST_FLAG_ADD (0)
+#define k_INST_FLAG_CARRY (1 << 0)
+#define k_INST_FLAG_SAVE_RESULT (1 << 1)
+#define k_INST_FLAG_SUB (1 << 2)
+
+inline INST_DECL(skip_if, uint16_t res)
+{
+	if (res) {
+		if (_avr_is_instruction_32_bits(avr, *new_pc)) {
+			*new_pc += 4; *cycle += 2;
+		} else {
+			*new_pc += 2; (*cycle)++;
+		}
+	}
+}
+
+inline INST_DECL(addc_add, const int flags)
+{
+	get_vd5_vr5(opcode);
+	uint8_t res = vd + vr;
+
+	if(flags & k_INST_FLAG_CARRY)
+		res += avr->sreg[S_C];
+
+	if (r == d) {
+		STATE("%s %s[%02x] = %02x\n", carry ? "rol" : "lsl" , avr_regname(d), vd, res);
+	} else {
+		STATE("%s %s[%02x], %s[%02x] = %02x\n", carry ? "addc" : "add",
+			avr_regname(d), vd, avr_regname(r), vr, res);
+	}
+	_avr_set_r(avr, d, res);
+	_avr_flags_add_zns(avr, res, vd, vr);
+	SREG();
+}
+
+INST_SUB_CALL_DECL(addc, addc_add, k_INST_FLAG_CARRY)
+INST_SUB_CALL_DECL(add, addc_add, 0)
+
+INST_DECL(and)
+{
+	get_vd5_vr5(opcode);
+	uint8_t res = vd & vr;
+	if (r == d) {
+		STATE("tst %s[%02x]\n", avr_regname(d), vd);
+	} else {
+		STATE("and %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
+	}
+	_avr_set_r(avr, d, res);
+	_avr_flags_znv0s(avr, res);
+	SREG();
+}
+
+INST_DECL(break)
+{
+	STATE("break\n");
+	if (avr->gdb) {
+		// if gdb is on, we break here as in here
+		// and we do so until gdb restores the instruction
+		// that was here before
+		avr->state = cpu_StepDone;
+		*new_pc = avr->pc;
+		*cycle = 0;
+	}
+}
+
+inline INST_DECL(cp_cpc_sbc_sub, const int flags)
+{
+	get_vd5_vr5(opcode);
+	uint8_t res = vd - vr;
+
+	if (flags & k_INST_FLAG_CARRY)
+		res -= avr->sreg[S_C];
+
+	T((const char * opname[2][2] = { { "cp", "cpc" }, { "sub", "sbc" } };))
+	STATE("%s %s[%02x], %s[%02x] = %02x\n", opname[save_result][carry], avr_regname(d), vd, avr_regname(r), vr, res);
+
+	if (flags & k_INST_FLAG_SAVE_RESULT)
+		_avr_set_r(avr, d, res);
+
+	if (flags & k_INST_FLAG_CARRY)
+		_avr_flags_sub_Rzns(avr, res, vd, vr);
+	else
+		_avr_flags_sub_zns(avr, res, vd, vr);
+		
+	SREG();
+}
+
+INST_SUB_CALL_DECL(cp, cp_cpc_sbc_sub, k_INST_FLAG_SUB)
+INST_SUB_CALL_DECL(cpc, cp_cpc_sbc_sub, k_INST_FLAG_CARRY | k_INST_FLAG_SUB)
+
+INST_DECL(cpse)
+{
+	get_vd5_vr5(opcode);
+	uint16_t res = vd == vr;
+	STATE("cpse %s[%02x], %s[%02x]\t; Will%s skip\n", avr_regname(d), vd, avr_regname(r), vr, res ? "":" not");
+	INST_SUB_CALL(skip_if, res);
+}
+
+INST_DECL(eor)
+{
+	get_vd5_vr5(opcode);
+	uint8_t res = vd ^ vr;
+	if (r==d) {
+		STATE("clr %s[%02x]\n", avr_regname(d), vd);
+	} else {
+		STATE("eor %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
+	}
+	_avr_set_r(avr, d, res);
+	_avr_flags_znv0s(avr, res);
+	SREG();
+}
+
+INST_DECL(mov)
+{
+	get_d5_vr5(opcode);
+	uint8_t res = vr;
+	STATE("mov %s, %s[%02x] = %02x\n", avr_regname(d), avr_regname(r), vr, res);
+	_avr_set_r(avr, d, res);
+}
+
+INST_DECL(mul)
+{
+	get_vd5_vr5(opcode);
+	uint16_t res = vd * vr;
+	STATE("mul %s[%02x], %s[%02x] = %04x\n", avr_regname(d), vd, avr_regname(r), vr, res);
+	(*cycle)++;
+	_avr_set_r(avr, 0, res);
+	_avr_set_r(avr, 1, res >> 8);
+	avr->sreg[S_Z] = res == 0;
+	avr->sreg[S_C] = (res >> 15) & 1;
+	SREG();
+}
+
+INST_DECL(nop)
+{
+	STATE("nop\n");
+}
+
+INST_DECL(or)
+{
+	get_vd5_vr5(opcode);
+	uint8_t res = vd | vr;
+	STATE("or %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
+	_avr_set_r(avr, d, res);
+	_avr_flags_znv0s(avr, res);
+	SREG();
+}
+
+INST_DECL(ret)
+{
+	*new_pc = _avr_pop_addr(avr);
+	*cycle += 1 + avr->address_size;
+	STATE("ret%s\n", opcode & 0x10 ? "i" : "");
+	TRACE_JUMP();
+	STACK_FRAME_POP();
+}
+
+INST_DECL(reti)
+{
+	avr_sreg_set(avr, S_I, 1);
+	avr_interrupt_reti(avr);
+	INST_SUB_CALL(ret);
+}
+
+INST_SUB_CALL_DECL(sbc, cp_cpc_sbc_sub, k_INST_FLAG_CARRY | k_INST_FLAG_SUB | k_INST_FLAG_SAVE_RESULT)
+INST_SUB_CALL_DECL(sub, cp_cpc_sbc_sub, k_INST_FLAG_SUB | k_INST_FLAG_SAVE_RESULT)
+
+INST_DECL(sleep)
+{
+	STATE("sleep\n");
+	/* Don't sleep if there are interrupts about to be serviced.
+	 * Without this check, it was possible to incorrectly enter a state
+	 * in which the cpu was sleeping and interrupts were disabled. For more
+	 * details, see the commit message. */
+	if (!avr_has_pending_interrupts(avr) || !avr->sreg[S_I])
+		avr->state = cpu_Sleeping;
+}
+
+INST_DECL(spm)
+{
+	STATE("spm\n");
+	avr_ioctl(avr, AVR_IOCTL_FLASH_SPM, 0);
+}
+
+INST_DECL(wdr)
+{
+	STATE("wdr\n");
+	avr_ioctl(avr, AVR_IOCTL_WATCHDOG_RESET, 0);
+}
+
 /*
  * Main opcode decoder
  * 
@@ -618,38 +832,12 @@ run_one_again:
 	switch (opcode & 0xf000) {
 		case 0x0000: {
 			switch (opcode) {
-				case 0x0000: {	// NOP
-					STATE("nop\n");
-				}	break;
+				INST_ESAC(0x0000, 0xffff, nop)	// NOP
 				default: {
 					switch (opcode & 0xfc00) {
-						case 0x0400: {	// CPC -- Compare with carry -- 0000 01rd dddd rrrr
-							get_vd5_vr5(opcode);
-							uint8_t res = vd - vr - avr->sreg[S_C];
-							STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-							_avr_flags_sub_Rzns(avr, res, vd, vr);
-							SREG();
-						}	break;
-						case 0x0c00: {	// ADD -- Add without carry -- 0000 11rd dddd rrrr
-							get_vd5_vr5(opcode);
-							uint8_t res = vd + vr;
-							if (r == d) {
-								STATE("lsl %s[%02x] = %02x\n", avr_regname(d), vd, res & 0xff);
-							} else {
-								STATE("add %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-							}
-							_avr_set_r(avr, d, res);
-							_avr_flags_add_zns(avr, res, vd, vr);
-							SREG();
-						}	break;
-						case 0x0800: {	// SBC -- Subtract with carry -- 0000 10rd dddd rrrr
-							get_vd5_vr5(opcode);
-							uint8_t res = vd - vr - avr->sreg[S_C];
-							STATE("sbc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), avr->data[d], avr_regname(r), avr->data[r], res);
-							_avr_set_r(avr, d, res);
-							_avr_flags_sub_Rzns(avr, res, vd, vr);
-							SREG();
-						}	break;
+						INST_ESAC(0x0400, 0xfc00, cpc) // CPC -- 0x0400 -- Compare with carry -- 0000 01rd dddd rrrr
+						INST_ESAC(0x0c00, Oxfc00, add) // ADD -- 0x0c00 -- Add without carry -- 0000 11rd dddd rrrr
+						INST_ESAC(0x0800, 0xfc00, sbc) // SBC -- 0x0800 -- Subtract with carry -- 0000 10rd dddd rrrr
 						default:
 							switch (opcode & 0xff00) {
 								case 0x0100: {	// MOVW -- Copy Register Word -- 0000 0001 dddd rrrr
@@ -717,91 +905,17 @@ run_one_again:
 			}
 		}	break;
 
-		case 0x1000: {
-			switch (opcode & 0xfc00) {
-				case 0x1800: {	// SUB -- Subtract without carry -- 0001 10rd dddd rrrr
-					get_vd5_vr5(opcode);
-					uint8_t res = vd - vr;
-					STATE("sub %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-					_avr_set_r(avr, d, res);
-					_avr_flags_sub_zns(avr, res, vd, vr);
-					SREG();
-				}	break;
-				case 0x1000: {	// CPSE -- Compare, skip if equal -- 0001 00rd dddd rrrr
-					get_vd5_vr5(opcode);
-					uint16_t res = vd == vr;
-					STATE("cpse %s[%02x], %s[%02x]\t; Will%s skip\n", avr_regname(d), avr->data[d], avr_regname(r), avr->data[r], res ? "":" not");
-					if (res) {
-						if (_avr_is_instruction_32_bits(avr, new_pc)) {
-							new_pc += 4; cycle += 2;
-						} else {
-							new_pc += 2; cycle++;
-						}
-					}
-				}	break;
-				case 0x1400: {	// CP -- Compare -- 0001 01rd dddd rrrr
-					get_vd5_vr5(opcode);
-					uint8_t res = vd - vr;
-					STATE("cp %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-					_avr_flags_sub_zns(avr, res, vd, vr);
-					SREG();
-				}	break;
-				case 0x1c00: {	// ADD -- Add with carry -- 0001 11rd dddd rrrr
-					get_vd5_vr5(opcode);
-					uint8_t res = vd + vr + avr->sreg[S_C];
-					if (r == d) {
-						STATE("rol %s[%02x] = %02x\n", avr_regname(d), avr->data[d], res);
-					} else {
-						STATE("addc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), avr->data[d], avr_regname(r), avr->data[r], res);
-					}
-					_avr_set_r(avr, d, res);
-					_avr_flags_add_zns(avr, res, vd, vr);
-					SREG();
-				}	break;
-				default: _avr_invalid_opcode(avr);
-			}
-		}	break;
-
+		case 0x1000:
 		case 0x2000: {
 			switch (opcode & 0xfc00) {
-				case 0x2000: {	// AND -- Logical AND -- 0010 00rd dddd rrrr
-					get_vd5_vr5(opcode);
-					uint8_t res = vd & vr;
-					if (r == d) {
-						STATE("tst %s[%02x]\n", avr_regname(d), avr->data[d]);
-					} else {
-						STATE("and %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-					}
-					_avr_set_r(avr, d, res);
-					_avr_flags_znv0s(avr, res);
-					SREG();
-				}	break;
-				case 0x2400: {	// EOR -- Logical Exclusive OR -- 0010 01rd dddd rrrr
-					get_vd5_vr5(opcode);
-					uint8_t res = vd ^ vr;
-					if (r==d) {
-						STATE("clr %s[%02x]\n", avr_regname(d), avr->data[d]);
-					} else {
-						STATE("eor %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-					}
-					_avr_set_r(avr, d, res);
-					_avr_flags_znv0s(avr, res);
-					SREG();
-				}	break;
-				case 0x2800: {	// OR -- Logical OR -- 0010 10rd dddd rrrr
-					get_vd5_vr5(opcode);
-					uint8_t res = vd | vr;
-					STATE("or %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-					_avr_set_r(avr, d, res);
-					_avr_flags_znv0s(avr, res);
-					SREG();
-				}	break;
-				case 0x2c00: {	// MOV -- 0010 11rd dddd rrrr
-					get_d5_vr5(opcode);
-					uint8_t res = vr;
-					STATE("mov %s, %s[%02x] = %02x\n", avr_regname(d), avr_regname(r), vr, res);
-					_avr_set_r(avr, d, res);
-				}	break;
+				INST_ESAC(0x1000, 0xfc00, cpse) // CPSE -- 0x1000 -- Compare, skip if equal -- 0001 00rd dddd rrrr
+				INST_ESAC(0x1400, 0xfc00, cp) // CP -- 0x1400 -- Compare -- 0001 01rd dddd rrrr
+				INST_ESAC(0x1800, 0xfc00, sub) // SUB -- 0x1800-- Subtract without carry -- 0001 10rd dddd rrrr
+				INST_ESAC(0x1c00, 0xfc00, addc) // ADD -- 0x1c00-- Add with carry -- 0001 11rd dddd rrrr
+				INST_ESAC(0x2000, 0xfc00, and) // AND -- 0x2000 -- Logical AND -- 0010 00rd dddd rrrr
+				INST_ESAC(0x2400, 0xfc00, eor) // EOR -- 0x2400 -- Logical Exclusive OR -- 0010 01rd dddd rrrr
+				INST_ESAC(0x2800, 0xfc00, or) // OR -- 0x2800 -- Logical OR -- 0010 10rd dddd rrrr
+				INST_ESAC(0x2c00, 0xfc00, mov) // MOV -- 0x2c00 -- 0010 11rd dddd rrrr
 				default: _avr_invalid_opcode(avr);
 			}
 		}	break;
@@ -899,34 +1013,10 @@ run_one_again:
 				avr_sreg_set(avr, b, (opcode & 0x0080) == 0);
 				SREG();
 			} else switch (opcode) {
-				case 0x9588: { // SLEEP -- 1001 0101 1000 1000
-					STATE("sleep\n");
-					/* Don't sleep if there are interrupts about to be serviced.
-					 * Without this check, it was possible to incorrectly enter a state
-					 * in which the cpu was sleeping and interrupts were disabled. For more
-					 * details, see the commit message. */
-					if (!avr_has_pending_interrupts(avr) || !avr->sreg[S_I])
-						avr->state = cpu_Sleeping;
-				}	break;
-				case 0x9598: { // BREAK -- 1001 0101 1001 1000
-					STATE("break\n");
-					if (avr->gdb) {
-						// if gdb is on, we break here as in here
-						// and we do so until gdb restores the instruction
-						// that was here before
-						avr->state = cpu_StepDone;
-						new_pc = avr->pc;
-						cycle = 0;
-					}
-				}	break;
-				case 0x95a8: { // WDR -- Watchdog Reset -- 1001 0101 1010 1000
-					STATE("wdr\n");
-					avr_ioctl(avr, AVR_IOCTL_WATCHDOG_RESET, 0);
-				}	break;
-				case 0x95e8: { // SPM -- Store Program Memory -- 1001 0101 1110 1000
-					STATE("spm\n");
-					avr_ioctl(avr, AVR_IOCTL_FLASH_SPM, 0);
-				}	break;
+				INST_ESAC(0x9588, 0xffff, sleep) // SLEEP -- 1001 0101 1000 1000
+				INST_ESAC(0x9598, 0xffff, break) // BREAK -- 1001 0101 1001 1000
+				INST_ESAC(0x95a8, 0xffff, wdr) // WDR -- Watchdog Reset -- 1001 0101 1010 1000
+				INST_ESAC(0x95e8, 0xffff, spm) // SPM -- Store Program Memory -- 1001 0101 1110 1000
 				case 0x9409:   // IJMP -- Indirect jump -- 1001 0100 0000 1001
 				case 0x9419:   // EIJMP -- Indirect jump -- 1001 0100 0001 1001   bit 4 is "indirect"
 				case 0x9509:   // ICALL -- Indirect Call to Subroutine -- 1001 0101 0000 1001
@@ -945,16 +1035,8 @@ run_one_again:
 					cycle++;
 					TRACE_JUMP();
 				}	break;
-				case 0x9518: 	// RETI -- Return from Interrupt -- 1001 0101 0001 1000
-					avr_sreg_set(avr, S_I, 1);
-					avr_interrupt_reti(avr);
-				case 0x9508: {	// RET -- Return -- 1001 0101 0000 1000
-					new_pc = _avr_pop_addr(avr);
-					cycle += 1 + avr->address_size;
-					STATE("ret%s\n", opcode & 0x10 ? "i" : "");
-					TRACE_JUMP();
-					STACK_FRAME_POP();
-				}	break;
+				INST_ESAC(0x9508, 0xffff, ret) // RET -- Return -- 1001 0101 0000 1000
+				INST_ESAC(0x9518, 0xffff, reti) // RETI -- Return from Interrupt -- 1001 0101 0001 1000
 				case 0x95c8: {	// LPM -- Load Program Memory R0 <- (Z) -- 1001 0101 1100 1000
 					uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
 					STATE("lpm %s, (Z[%04x])\n", avr_regname(0), z);
@@ -1273,17 +1355,7 @@ run_one_again:
 								}	break;
 								default:
 									switch (opcode & 0xfc00) {
-										case 0x9c00: {	// MUL -- Multiply Unsigned -- 1001 11rd dddd rrrr
-											get_vd5_vr5(opcode);
-											uint16_t res = vd * vr;
-											STATE("mul %s[%02x], %s[%02x] = %04x\n", avr_regname(d), vd, avr_regname(r), vr, res);
-											cycle++;
-											_avr_set_r(avr, 0, res);
-											_avr_set_r(avr, 1, res >> 8);
-											avr->sreg[S_Z] = res == 0;
-											avr->sreg[S_C] = (res >> 15) & 1;
-											SREG();
-										}	break;
+										INST_ESAC(0x9c00, 0xfc00, mul) // MUL -- 0x9c00 -- Multiply Unsigned -- 1001 11rd dddd rrrr
 										default: _avr_invalid_opcode(avr);
 									}
 							}
