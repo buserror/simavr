@@ -573,8 +573,8 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
 #define INST_SUB_CALL(_opname, _args...) \
 	_avr_inst_ ## _opname(avr, opcode, cycle, new_pc, ## _args)
 
-#define INST_CALL(_opname) \
-	_avr_inst_ ## _opname(avr, opcode, &cycle, &new_pc)
+#define INST_CALL(_opname, _args...) \
+	_avr_inst_ ## _opname(avr, opcode, &cycle, &new_pc, ## _args)
 
 #define INST_DECL(_opname, _args...) \
 	static void \
@@ -591,8 +591,8 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
 		INST_SUB_CALL(_subcall_opname, ## _args); \
 	}
 
-#define INST_ESAC(_opcode, _opmask, _opname) \
-	case _opcode: INST_CALL(_opname); break;
+#define INST_ESAC(_opcode, _opmask, _opname, _args...) \
+	case _opcode: INST_CALL(_opname, ## _args); break;
 
 #define k_INST_FLAG_ADD (0)
 #define k_INST_FLAG_CARRY (1 << 0)
@@ -706,6 +706,23 @@ INST_DECL(eor)
 	SREG();
 }
 
+INST_DECL(ld, uint8_t r)
+{
+	int op = opcode & 3;
+	get_d5(opcode);
+	uint16_t x = (avr->data[r + 1] << 8) | avr->data[r];
+	STATE("ld %s, %s%c[%04x]%s\n", 
+		avr_regname(d), op == 2 ? "--" : "", 
+		*avr_regname(r), x, op == 1 ? "++" : "");
+	(*cycle)++; // 2 cycles (1 for tinyavr, except with inc/dec 2)
+	if (op == 2) x--;
+	uint8_t vd = _avr_get_ram(avr, x);
+	if (op == 1) x++;
+	_avr_set_r(avr, r + 1, x >> 8);
+	_avr_set_r(avr, r, x);
+	_avr_set_r(avr, d, vd);
+}
+
 INST_DECL(mov)
 {
 	get_d5_vr5(opcode);
@@ -776,6 +793,23 @@ INST_DECL(spm)
 {
 	STATE("spm\n");
 	avr_ioctl(avr, AVR_IOCTL_FLASH_SPM, 0);
+}
+
+
+INST_DECL(st, uint8_t r)
+{
+	int op = opcode & 3;
+	get_vd5(opcode);
+	uint16_t x = (avr->data[r + 1] << 8) | avr->data[r];
+	STATE("st %s%c[%04x]%s, %s[%02x] \n", 
+		op == 2 ? "--" : "", *avr_regname(r), x, 
+		op == 1 ? "++" : "", avr_regname(d), vd);
+	(*cycle)++; // 2 cycles, except tinyavr
+	if (op == 2) x--;
+	_avr_set_ram(avr, x, vd);
+	if (op == 1) x++;
+	_avr_set_r(avr, r + 1, x >> 8);
+	_avr_set_r(avr, r, x);
 }
 
 INST_DECL(wdr)
@@ -1092,62 +1126,34 @@ run_one_again:
 						 * ii = 16 bits register index, 11 = X, 10 = Y, 00 = Z
 						 * oo = 1) post increment, 2) pre-decrement
 						 */
-						case 0x900c:
-						case 0x900d:
-						case 0x900e: {	// LD -- Load Indirect from Data using X -- 1001 000d dddd 11oo
-							int op = opcode & 3;
-							get_d5(opcode);
-							uint16_t x = (avr->data[R_XH] << 8) | avr->data[R_XL];
-							STATE("ld %s, %sX[%04x]%s\n", avr_regname(d), op == 2 ? "--" : "", x, op == 1 ? "++" : "");
-							cycle++; // 2 cycles (1 for tinyavr, except with inc/dec 2)
-							if (op == 2) x--;
-							uint8_t vd = _avr_get_ram(avr, x);
-							if (op == 1) x++;
-							_avr_set_r(avr, R_XH, x >> 8);
-							_avr_set_r(avr, R_XL, x);
-							_avr_set_r(avr, d, vd);
-						}	break;
-						case 0x920c:
-						case 0x920d:
-						case 0x920e: {	// ST -- Store Indirect Data Space X -- 1001 001d dddd 11oo
-							int op = opcode & 3;
-							get_vd5(opcode);
-							uint16_t x = (avr->data[R_XH] << 8) | avr->data[R_XL];
-							STATE("st %sX[%04x]%s, %s[%02x] \n", op == 2 ? "--" : "", x, op == 1 ? "++" : "", avr_regname(d), vd);
-							cycle++; // 2 cycles, except tinyavr
-							if (op == 2) x--;
-							_avr_set_ram(avr, x, vd);
-							if (op == 1) x++;
-							_avr_set_r(avr, R_XH, x >> 8);
-							_avr_set_r(avr, R_XL, x);
-						}	break;
-						case 0x9009:
-						case 0x900a: {	// LD -- Load Indirect from Data using Y -- 1001 000d dddd 10oo
-							int op = opcode & 3;
-							get_d5(opcode);
-							uint16_t y = (avr->data[R_YH] << 8) | avr->data[R_YL];
-							STATE("ld %s, %sY[%04x]%s\n", avr_regname(d), op == 2 ? "--" : "", y, op == 1 ? "++" : "");
-							cycle++; // 2 cycles, except tinyavr
-							if (op == 2) y--;
-							uint8_t vd = _avr_get_ram(avr, y);
-							if (op == 1) y++;
-							_avr_set_r(avr, R_YH, y >> 8);
-							_avr_set_r(avr, R_YL, y);
-							_avr_set_r(avr, d, vd);
-						}	break;
-						case 0x9209:
-						case 0x920a: {	// ST -- Store Indirect Data Space Y -- 1001 001d dddd 10oo
-							int op = opcode & 3;
-							get_vd5(opcode);
-							uint16_t y = (avr->data[R_YH] << 8) | avr->data[R_YL];
-							STATE("st %sY[%04x]%s, %s[%02x]\n", op == 2 ? "--" : "", y, op == 1 ? "++" : "", avr_regname(d), vd);
-							cycle++;
-							if (op == 2) y--;
-							_avr_set_ram(avr, y, vd);
-							if (op == 1) y++;
-							_avr_set_r(avr, R_YH, y >> 8);
-							_avr_set_r(avr, R_YL, y);
-						}	break;
+
+
+						// LD -- Load Indirect from Data using Z -- 1001 000d dddd 00oo
+						INST_ESAC(0x9001, 0xfe0f, ld, R_ZL)
+						INST_ESAC(0x9002, 0xfe0f, ld, R_ZL)
+
+						// LD -- Load Indirect from Data using Y -- 1001 000d dddd 10oo
+						INST_ESAC(0x9009, 0xfe0f, ld, R_YL)
+						INST_ESAC(0x900a, 0xfe0f, ld, R_YL)
+
+						// LD -- Load Indirect from Data using X -- 1001 000d dddd 11oo
+						INST_ESAC(0x900c, 0xfe0f, ld, R_XL)
+						INST_ESAC(0x900d, 0xfe0f, ld, R_XL)
+						INST_ESAC(0x900e, 0xfe0f, ld, R_XL)
+
+						// ST -- Store Indirect Data Space Z -- 1001 001d dddd 00oo
+						INST_ESAC(0x9201, 0xfe0f, st, R_ZL)
+						INST_ESAC(0x9202, 0xfe0f, st, R_ZL)
+
+						// ST -- Store Indirect Data Space Y -- 1001 001d dddd 10oo
+						INST_ESAC(0x9209, 0xfe0f, st, R_YL)
+						INST_ESAC(0x920a, 0xfe0f, st, R_YL)
+
+						// ST -- Store Indirect Data Space X -- 1001 001d dddd 11oo
+						INST_ESAC(0x920c, 0xfe0f, st, R_XL)
+						INST_ESAC(0x920d, 0xfe0f, st, R_XL)
+						INST_ESAC(0x920e, 0xfe0f, st, R_XL)
+
 						case 0x9200: {	// STS -- Store Direct to Data Space, 32 bits -- 1001 0010 0000 0000
 							get_vd5(opcode);
 							uint16_t x = _avr_flash_read16le(avr, new_pc);
@@ -1155,33 +1161,6 @@ run_one_again:
 							STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), vd);
 							cycle++;
 							_avr_set_ram(avr, x, vd);
-						}	break;
-						case 0x9001:
-						case 0x9002: {	// LD -- Load Indirect from Data using Z -- 1001 000d dddd 00oo
-							int op = opcode & 3;
-							get_d5(opcode);
-							uint16_t z = (avr->data[R_ZH] << 8) | avr->data[R_ZL];
-							STATE("ld %s, %sZ[%04x]%s\n", avr_regname(d), op == 2 ? "--" : "", z, op == 1 ? "++" : "");
-							cycle++;; // 2 cycles, except tinyavr
-							if (op == 2) z--;
-							uint8_t vd = _avr_get_ram(avr, z);
-							if (op == 1) z++;
-							_avr_set_r(avr, R_ZH, z >> 8);
-							_avr_set_r(avr, R_ZL, z);
-							_avr_set_r(avr, d, vd);
-						}	break;
-						case 0x9201:
-						case 0x9202: {	// ST -- Store Indirect Data Space Z -- 1001 001d dddd 00oo
-							int op = opcode & 3;
-							get_vd5(opcode);
-							uint16_t z = (avr->data[R_ZH] << 8) | avr->data[R_ZL];
-							STATE("st %sZ[%04x]%s, %s[%02x] \n", op == 2 ? "--" : "", z, op == 1 ? "++" : "", avr_regname(d), vd);
-							cycle++; // 2 cycles, except tinyavr
-							if (op == 2) z--;
-							_avr_set_ram(avr, z, vd);
-							if (op == 1) z++;
-							_avr_set_r(avr, R_ZH, z >> 8);
-							_avr_set_r(avr, R_ZL, z);
 						}	break;
 						case 0x900f: {	// POP -- 1001 000d dddd 1111
 							get_d5(opcode);
