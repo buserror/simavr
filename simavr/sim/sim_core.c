@@ -762,6 +762,29 @@ INST_DECL(lddstd, uint8_t r)
 	(*cycle)++; // 2 cycles, 3 for tinyavr
 }
 
+INST_DECL(lds_sts)
+{
+	get_vd5(opcode);
+	uint16_t x = _avr_flash_read16le(avr, *new_pc);
+	*new_pc += 2;
+	
+	int sts = opcode & 0x0200;
+	
+	if (sts) {
+		STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), vd);
+	} else {
+		STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), vd, x);
+	}
+
+	if (!sts)
+		_avr_set_r(avr, d, _avr_get_ram(avr, x));
+
+	(*cycle)++; // 2 cycles
+
+	if(sts)
+		_avr_set_ram(avr, x, vd);
+}
+
 INST_DECL(lpm)
 {
 	int elpm = (opcode != 0x95c8) ? (opcode & 2) : 0;
@@ -1131,14 +1154,8 @@ run_one_again:
 				INST_ESAC(0x95c8, 0xffff, lpm) // LPM -- Load Program Memory R0 <- (Z) -- 1001 0101 1100 1000
 				default:  {
 					switch (opcode & 0xfe0f) {
-						case 0x9000: {	// LDS -- Load Direct from Data Space, 32 bits -- 1001 0000 0000 0000
-							get_d5(opcode);
-							uint16_t x = _avr_flash_read16le(avr, new_pc);
-							new_pc += 2;
-							STATE("lds %s[%02x], 0x%04x\n", avr_regname(d), avr->data[d], x);
-							_avr_set_r(avr, d, _avr_get_ram(avr, x));
-							cycle++; // 2 cycles
-						}	break;
+						// LDS -- 0x9000 -- Load Direct from Data Space, 32 bits -- 1001 0000 0000 0000
+						INST_ESAC(0x9000, 0xfe0f, lds_sts)
 
 						// LPM -- Load Program Memory -- 1001 000d dddd 01oo
 						INST_ESAC(0x9004, 0xfe0f, lpm)
@@ -1183,14 +1200,9 @@ run_one_again:
 						INST_ESAC(0x920d, 0xfe0f, st, R_XL)
 						INST_ESAC(0x920e, 0xfe0f, st, R_XL)
 
-						case 0x9200: {	// STS -- Store Direct to Data Space, 32 bits -- 1001 0010 0000 0000
-							get_vd5(opcode);
-							uint16_t x = _avr_flash_read16le(avr, new_pc);
-							new_pc += 2;
-							STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), vd);
-							cycle++;
-							_avr_set_ram(avr, x, vd);
-						}	break;
+						// STS -- Store Direct to Data Space, 32 bits -- 1001 0010 0000 0000
+						INST_ESAC(0x9200, 0xfe0f, lds_sts)
+
 						case 0x900f: {	// POP -- 1001 000d dddd 1111
 							get_d5(opcode);
 							_avr_set_r(avr, d, _avr_pop8(avr));
