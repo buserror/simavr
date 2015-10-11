@@ -762,6 +762,46 @@ INST_DECL(lddstd, uint8_t r)
 	(*cycle)++; // 2 cycles, 3 for tinyavr
 }
 
+INST_DECL(lpm)
+{
+	int elpm = (opcode != 0x95c8) ? (opcode & 2) : 0;
+	
+	if (elpm && !avr->rampz)
+		_avr_invalid_opcode(avr);
+
+
+	uint8_t rzd = 0;
+	int op = 0;
+	
+	if( opcode != 0x95c8 /* LPM 0, Z */) {
+		get_d5(opcode);
+
+		rzd = d;
+		op = opcode & 1;
+	}
+	
+	uint32_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
+	
+	if (elpm) {
+		uint8_t rampzv = avr->data[avr->rampz];
+		STATE("elpm %s, (Z[%02x:%04x]%s)\n", avr_regname(rzd), rampzv, z & 0xffff, op ? "+" : "");
+		z |= rampzv << 16;
+	} else {
+		STATE("lpm %s, (Z[%04x]%s)\n", avr_regname(rzd), z, op ? "+" : "");
+	}
+
+	_avr_set_r(avr, rzd, avr->flash[z]);
+	if (op) {
+		z++;
+		if (elpm)
+			_avr_set_r(avr, avr->rampz, z >> 16);
+			
+		_avr_set_r(avr, R_ZH, z >> 8);
+		_avr_set_r(avr, R_ZL, z);
+	}
+	*cycle += 2; // 3 cycles
+}
+
 INST_DECL(mov)
 {
 	get_d5_vr5(opcode);
@@ -1088,12 +1128,7 @@ run_one_again:
 				}	break;
 				INST_ESAC(0x9508, 0xffff, ret) // RET -- Return -- 1001 0101 0000 1000
 				INST_ESAC(0x9518, 0xffff, reti) // RETI -- Return from Interrupt -- 1001 0101 0001 1000
-				case 0x95c8: {	// LPM -- Load Program Memory R0 <- (Z) -- 1001 0101 1100 1000
-					uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
-					STATE("lpm %s, (Z[%04x])\n", avr_regname(0), z);
-					cycle += 2; // 3 cycles
-					_avr_set_r(avr, 0, avr->flash[z]);
-				}	break;
+				INST_ESAC(0x95c8, 0xffff, lpm) // LPM -- Load Program Memory R0 <- (Z) -- 1001 0101 1100 1000
 				default:  {
 					switch (opcode & 0xfe0f) {
 						case 0x9000: {	// LDS -- Load Direct from Data Space, 32 bits -- 1001 0000 0000 0000
@@ -1104,35 +1139,15 @@ run_one_again:
 							_avr_set_r(avr, d, _avr_get_ram(avr, x));
 							cycle++; // 2 cycles
 						}	break;
-						case 0x9005:
-						case 0x9004: {	// LPM -- Load Program Memory -- 1001 000d dddd 01oo
-							get_d5(opcode);
-							uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
-							int op = opcode & 1;
-							STATE("lpm %s, (Z[%04x]%s)\n", avr_regname(d), z, op ? "+" : "");
-							_avr_set_r(avr, d, avr->flash[z]);
-							if (op) {
-								z++;
-								_avr_set_r16le_hl(avr, R_ZL, z);
-							}
-							cycle += 2; // 3 cycles
-						}	break;
-						case 0x9006:
-						case 0x9007: {	// ELPM -- Extended Load Program Memory -- 1001 000d dddd 01oo
-							if (!avr->rampz)
-								_avr_invalid_opcode(avr);
-							uint32_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8) | (avr->data[avr->rampz] << 16);
-							get_d5(opcode);
-							int op = opcode & 1;
-							STATE("elpm %s, (Z[%02x:%04x]%s)\n", avr_regname(d), z >> 16, z & 0xffff, op ? "+" : "");
-							_avr_set_r(avr, d, avr->flash[z]);
-							if (op) {
-								z++;
-								_avr_set_r(avr, avr->rampz, z >> 16);
-								_avr_set_r16le_hl(avr, R_ZL, z);
-							}
-							cycle += 2; // 3 cycles
-						}	break;
+
+						// LPM -- Load Program Memory -- 1001 000d dddd 01oo
+						INST_ESAC(0x9004, 0xfe0f, lpm)
+						INST_ESAC(0x9005, 0xfe0f, lpm)
+
+						// ELPM -- Extended Load Program Memory -- 1001 000d dddd 01oo
+						INST_ESAC(0x9006, 0xfe0f, lpm)
+						INST_ESAC(0x9007, 0xfe0f, lpm)
+
 						/*
 						 * Load store instructions
 						 *
