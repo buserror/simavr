@@ -878,6 +878,30 @@ INST_DECL(reti)
 }
 
 INST_SUB_CALL_DECL(sbc, cp_cpc_sbc_sub, k_INST_FLAG_CARRY | k_INST_FLAG_SUB | k_INST_FLAG_SAVE_RESULT)
+
+inline INST_DECL(skip_io_r_logic, uint8_t rio, uint8_t vrio, uint8_t mask, char *opname_array[2])
+{
+	int set = (opcode & 0x0200) != 0;
+	int branch = ((vrio & mask) && set) || (!(vrio & mask) && !set);
+	STATE("%s %s[%02x], 0x%02x\t; Will%s branch\n", opname_array[set], avr_regname(rio), vrio, mask, branch ? "":" not");
+	INST_SUB_CALL(skip_if, branch);
+}
+
+INST_DECL(sbic_sbis)
+{
+	get_io5_b3mask(opcode);
+	uint8_t vio = _avr_get_ram(avr, io);
+	char *opname_array[2] = { "sbic", "sbis" };
+	INST_SUB_CALL(skip_io_r_logic, io, vio, mask, opname_array);
+}
+
+INST_DECL(sbrc_sbrs)
+{
+	get_vd5_s3_mask(opcode);
+	char *opname_array[2] = { "sbrc", "sbrs" };
+	INST_SUB_CALL(skip_io_r_logic, d, vd, mask, opname_array);
+}
+
 INST_SUB_CALL_DECL(sub, cp_cpc_sbc_sub, k_INST_FLAG_SUB | k_INST_FLAG_SAVE_RESULT)
 
 INST_DECL(sleep)
@@ -1340,18 +1364,7 @@ run_one_again:
 									_avr_set_ram(avr, io, res);
 									cycle++;
 								}	break;
-								case 0x9900: {	// SBIC -- Skip if Bit in I/O Register is Cleared -- 1001 1001 AAAA Abbb
-									get_io5_b3mask(opcode);
-									uint8_t res = _avr_get_ram(avr, io) & mask;
-									STATE("sbic %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), avr->data[io], mask, !res?"":" not");
-									if (!res) {
-										if (_avr_is_instruction_32_bits(avr, new_pc)) {
-											new_pc += 4; cycle += 2;
-										} else {
-											new_pc += 2; cycle++;
-										}
-									}
-								}	break;
+								INST_ESAC(0x9900, 0xff00, sbic_sbis) // SBIC -- 0x9900 -- Skip if Bit in I/O Register is Cleared -- 1001 1001 AAAA Abbb
 								case 0x9a00: {	// SBI -- Set Bit in I/O Register -- 1001 1010 AAAA Abbb
 									get_io5_b3mask(opcode);
 									uint8_t res = _avr_get_ram(avr, io) | mask;
@@ -1359,18 +1372,7 @@ run_one_again:
 									_avr_set_ram(avr, io, res);
 									cycle++;
 								}	break;
-								case 0x9b00: {	// SBIS -- Skip if Bit in I/O Register is Set -- 1001 1011 AAAA Abbb
-									get_io5_b3mask(opcode);
-									uint8_t res = _avr_get_ram(avr, io) & mask;
-									STATE("sbis %s[%04x], 0x%02x\t; Will%s branch\n", avr_regname(io), avr->data[io], mask, res?"":" not");
-									if (res) {
-										if (_avr_is_instruction_32_bits(avr, new_pc)) {
-											new_pc += 4; cycle += 2;
-										} else {
-											new_pc += 2; cycle++;
-										}
-									}
-								}	break;
+								INST_ESAC(0x9b00, 0xff00, sbic_sbis) // SBIS -- 0x9b00 -- Skip if Bit in I/O Register is Set -- 1001 1011 AAAA Abbb
 								default:
 									switch (opcode & 0xfc00) {
 										INST_ESAC(0x9c00, 0xfc00, mul) // MUL -- 0x9c00 -- Multiply Unsigned -- 1001 11rd dddd rrrr
@@ -1463,20 +1465,9 @@ run_one_again:
 					avr->sreg[S_T] = (vd >> s) & 1;
 					SREG();
 				}	break;
-				case 0xfc00:
-				case 0xfe00: {	// SBRS/SBRC -- Skip if Bit in Register is Set/Clear -- 1111 11sd dddd 0bbb
-					get_vd5_s3_mask(opcode)
-					int set = (opcode & 0x0200) != 0;
-					int branch = ((vd & mask) && set) || (!(vd & mask) && !set);
-					STATE("%s %s[%02x], 0x%02x\t; Will%s branch\n", set ? "sbrs" : "sbrc", avr_regname(d), vd, mask, branch ? "":" not");
-					if (branch) {
-						if (_avr_is_instruction_32_bits(avr, new_pc)) {
-							new_pc += 4; cycle += 2;
-						} else {
-							new_pc += 2; cycle++;
-						}
-					}
-				}	break;
+				// SBRS/SBRC -- Skip if Bit in Register is Set/Clear -- 1111 11sd dddd 0bbb
+				INST_ESAC(0xfc00, 0xfe00, sbrc_sbrs)
+				INST_ESAC(0xfe00, 0xfe00, sbrc_sbrs)
 				default: _avr_invalid_opcode(avr);
 			}
 		}	break;
