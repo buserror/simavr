@@ -117,7 +117,8 @@ _avr_flash_read16le(
 	avr_t * avr,
 	avr_flashaddr_t addr)
 {
-	return(avr->flash[addr] | (avr->flash[addr + 1] << 8));
+	uint16_t data = avr->flash[addr] | (avr->flash[addr + 1] << 8);
+	return data;
 }
 
 void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
@@ -215,12 +216,21 @@ _avr_set_r16le_hl(
 	_avr_set_r(avr, r , v);
 }
 
+static inline uint16_t
+_avr_data_read16le(
+	avr_t * avr,
+	uint16_t addr)
+{
+	uint16_t data = avr->data[addr] | (avr->data[addr + 1] << 8);
+	return data;
+}
+
 /*
  * Stack pointer access
  */
 inline uint16_t _avr_sp_get(avr_t * avr)
 {
-	return avr->data[R_SPL] | (avr->data[R_SPH] << 8);
+	return _avr_data_read16le(avr, R_SPL);
 }
 
 inline void _avr_sp_set(avr_t * avr, uint16_t sp)
@@ -441,7 +451,7 @@ void avr_dump_state(avr_t * avr)
 #define get_vp2_k6(o) \
 		const uint8_t p = 24 + ((o >> 3) & 0x6); \
 		const uint8_t k = ((o & 0x00c0) >> 2) | (o & 0xf); \
-		const uint16_t vp = avr->data[p] | (avr->data[p + 1] << 8);
+		const uint16_t vp = _avr_data_read16le(avr, p);
 
 #define get_sreg_bit(o) \
 		const uint8_t b = (o >> 4) & 7;
@@ -600,9 +610,14 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
 		_avr_inst_ ## _opname( \
 			avr_t * avr, \
 			uint32_t opcode, \
-			int * cycle, \
+			uint16_t * cycle, \
 			avr_flashaddr_t * new_pc, \
 			## _args)
+
+#define INLINE_INST inline
+
+#define INLINE_INST_DECL(_opname, _args...) \
+	INLINE_INST INST_DECL(_opname, ##_args)
 
 #define INST_SUB_CALL_DECL(_opname, _subcall_opname, _args...) \
 	INST_DECL(_opname) \
@@ -613,12 +628,12 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
 #define INST_ESAC(_opcode, _opmask, _opname, _args...) \
 	case _opcode: INST_CALL(_opname, ## _args); break;
 
-#define k_INST_FLAG_ADD (0)
-#define k_INST_FLAG_CARRY (1 << 0)
-#define k_INST_FLAG_SAVE_RESULT (1 << 1)
-#define k_INST_FLAG_SUB (1 << 2)
+#define INST_FLAG_ADD (1 << 0)
+#define INST_FLAG_CARRY (1 << 1)
+#define INST_FLAG_SAVE_RESULT (1 << 2)
+#define INST_FLAG_SUB (1 << 3)
 
-inline INST_DECL(skip_if, uint16_t res)
+INLINE_INST_DECL(skip_if, uint16_t res)
 {
 	if (res) {
 		if (_avr_is_instruction_32_bits(avr, *new_pc)) {
@@ -629,12 +644,12 @@ inline INST_DECL(skip_if, uint16_t res)
 	}
 }
 
-inline INST_DECL(addc_add, const int flags)
+INLINE_INST_DECL(addc_add, const uint16_t flags)
 {
 	get_vd5_vr5(opcode);
 	uint8_t res = vd + vr;
 
-	if(flags & k_INST_FLAG_CARRY)
+	if(flags & INST_FLAG_CARRY)
 		res += avr->sreg[S_C];
 
 	if (r == d) {
@@ -648,8 +663,8 @@ inline INST_DECL(addc_add, const int flags)
 	SREG();
 }
 
-INST_SUB_CALL_DECL(addc, addc_add, k_INST_FLAG_CARRY)
-INST_SUB_CALL_DECL(add, addc_add, 0)
+INST_SUB_CALL_DECL(addc, addc_add, INST_FLAG_ADD | INST_FLAG_CARRY)
+INST_SUB_CALL_DECL(add, addc_add, INST_FLAG_ADD)
 
 INST_DECL(and)
 {
@@ -678,21 +693,21 @@ INST_DECL(break)
 	}
 }
 
-inline INST_DECL(cp_cpc_sbc_sub, const int flags)
+INLINE_INST_DECL(cp_cpc_sbc_sub, const uint16_t flags)
 {
 	get_vd5_vr5(opcode);
 	uint8_t res = vd - vr;
 
-	if (flags & k_INST_FLAG_CARRY)
+	if (flags & INST_FLAG_CARRY)
 		res -= avr->sreg[S_C];
 
 	T((const char * opname[2][2] = { { "cp", "cpc" }, { "sub", "sbc" } };))
 	STATE("%s %s[%02x], %s[%02x] = %02x\n", opname[save_result][carry], avr_regname(d), vd, avr_regname(r), vr, res);
 
-	if (flags & k_INST_FLAG_SAVE_RESULT)
+	if (flags & INST_FLAG_SAVE_RESULT)
 		_avr_set_r(avr, d, res);
 
-	if (flags & k_INST_FLAG_CARRY)
+	if (flags & INST_FLAG_CARRY)
 		_avr_flags_sub_Rzns(avr, res, vd, vr);
 	else
 		_avr_flags_sub_zns(avr, res, vd, vr);
@@ -700,8 +715,8 @@ inline INST_DECL(cp_cpc_sbc_sub, const int flags)
 	SREG();
 }
 
-INST_SUB_CALL_DECL(cp, cp_cpc_sbc_sub, k_INST_FLAG_SUB)
-INST_SUB_CALL_DECL(cpc, cp_cpc_sbc_sub, k_INST_FLAG_CARRY | k_INST_FLAG_SUB)
+INST_SUB_CALL_DECL(cp, cp_cpc_sbc_sub, INST_FLAG_SUB)
+INST_SUB_CALL_DECL(cpc, cp_cpc_sbc_sub, INST_FLAG_CARRY | INST_FLAG_SUB)
 
 INST_DECL(cpse)
 {
@@ -729,7 +744,7 @@ INST_DECL(ld, uint8_t r)
 {
 	int op = opcode & 3;
 	get_d5(opcode);
-	uint16_t x = (avr->data[r + 1] << 8) | avr->data[r];
+	uint16_t x = _avr_data_read16le(avr, r);
 	STATE("ld %s, %s%c[%04x]%s\n", 
 		avr_regname(d), op == 2 ? "--" : "", 
 		*avr_regname(r), x, op == 1 ? "++" : "");
@@ -737,14 +752,13 @@ INST_DECL(ld, uint8_t r)
 	if (op == 2) x--;
 	uint8_t vd = _avr_get_ram(avr, x);
 	if (op == 1) x++;
-	_avr_set_r(avr, r + 1, x >> 8);
-	_avr_set_r(avr, r, x);
+	_avr_set_r16le_hl(avr, r, x);
 	_avr_set_r(avr, d, vd);
 }
 
 INST_DECL(lddstd, uint8_t r)
 {
-	uint16_t v = avr->data[r] | (avr->data[r + 1] << 8);
+	uint16_t v = _avr_data_read16le(avr, r);
 	get_d5_q6(opcode);
 	if (opcode & 0x0200) {
 		uint8_t vd = avr->data[d];
@@ -781,7 +795,7 @@ INST_DECL(lds_sts)
 
 	(*cycle)++; // 2 cycles
 
-	if(sts)
+	if (sts)
 		_avr_set_ram(avr, x, vd);
 }
 
@@ -803,7 +817,7 @@ INST_DECL(lpm)
 		op = opcode & 1;
 	}
 	
-	uint32_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
+	uint32_t z = _avr_data_read16le(avr, R_ZL);
 	
 	if (elpm) {
 		uint8_t rampzv = avr->data[avr->rampz];
@@ -819,8 +833,7 @@ INST_DECL(lpm)
 		if (elpm)
 			_avr_set_r(avr, avr->rampz, z >> 16);
 			
-		_avr_set_r(avr, R_ZH, z >> 8);
-		_avr_set_r(avr, R_ZL, z);
+		_avr_set_r16le_hl(avr, R_ZL, z);
 	}
 	*cycle += 2; // 3 cycles
 }
@@ -839,8 +852,7 @@ INST_DECL(mul)
 	uint16_t res = vd * vr;
 	STATE("mul %s[%02x], %s[%02x] = %04x\n", avr_regname(d), vd, avr_regname(r), vr, res);
 	(*cycle)++;
-	_avr_set_r(avr, 0, res);
-	_avr_set_r(avr, 1, res >> 8);
+	_avr_set_r16le(avr, 0, res);
 	avr->sreg[S_Z] = res == 0;
 	avr->sreg[S_C] = (res >> 15) & 1;
 	SREG();
@@ -877,9 +889,9 @@ INST_DECL(reti)
 	INST_SUB_CALL(ret);
 }
 
-INST_SUB_CALL_DECL(sbc, cp_cpc_sbc_sub, k_INST_FLAG_CARRY | k_INST_FLAG_SUB | k_INST_FLAG_SAVE_RESULT)
+INST_SUB_CALL_DECL(sbc, cp_cpc_sbc_sub, INST_FLAG_CARRY | INST_FLAG_SUB | INST_FLAG_SAVE_RESULT)
 
-inline INST_DECL(skip_io_r_logic, uint8_t rio, uint8_t vrio, uint8_t mask, char *opname_array[2])
+INLINE_INST_DECL(skip_io_r_logic, uint8_t rio, uint8_t vrio, uint8_t mask, char *opname_array[2])
 {
 	int set = (opcode & 0x0200) != 0;
 	int branch = ((vrio & mask) && set) || (!(vrio & mask) && !set);
@@ -902,7 +914,7 @@ INST_DECL(sbrc_sbrs)
 	INST_SUB_CALL(skip_io_r_logic, d, vd, mask, opname_array);
 }
 
-INST_SUB_CALL_DECL(sub, cp_cpc_sbc_sub, k_INST_FLAG_SUB | k_INST_FLAG_SAVE_RESULT)
+INST_SUB_CALL_DECL(sub, cp_cpc_sbc_sub, INST_FLAG_SUB | INST_FLAG_SAVE_RESULT)
 
 INST_DECL(sleep)
 {
@@ -926,7 +938,7 @@ INST_DECL(st, uint8_t r)
 {
 	int op = opcode & 3;
 	get_vd5(opcode);
-	uint16_t x = (avr->data[r + 1] << 8) | avr->data[r];
+	uint16_t x = _avr_data_read16le(avr, r);
 	STATE("st %s%c[%04x]%s, %s[%02x] \n", 
 		op == 2 ? "--" : "", *avr_regname(r), x, 
 		op == 1 ? "++" : "", avr_regname(d), vd);
@@ -934,8 +946,7 @@ INST_DECL(st, uint8_t r)
 	if (op == 2) x--;
 	_avr_set_ram(avr, x, vd);
 	if (op == 1) x++;
-	_avr_set_r(avr, r + 1, x >> 8);
-	_avr_set_r(avr, r, x);
+	_avr_set_r16le_hl(avr, r, x);
 }
 
 INST_DECL(wdr)
@@ -987,7 +998,7 @@ run_one_again:
 
 	uint32_t		opcode = _avr_flash_read16le(avr, avr->pc);
 	avr_flashaddr_t	new_pc = avr->pc + 2;	// future "default" pc
-	int 			cycle = 1;
+	uint16_t		cycle = 1;
 
 	switch (opcode & 0xf000) {
 		case 0x0000: {
@@ -996,7 +1007,7 @@ run_one_again:
 				default: {
 					switch (opcode & 0xfc00) {
 						INST_ESAC(0x0400, 0xfc00, cpc) // CPC -- 0x0400 -- Compare with carry -- 0000 01rd dddd rrrr
-						INST_ESAC(0x0c00, Oxfc00, add) // ADD -- 0x0c00 -- Add without carry -- 0000 11rd dddd rrrr
+						INST_ESAC(0x0c00, 0xfc00, add) // ADD -- 0x0c00 -- Add without carry -- 0000 11rd dddd rrrr
 						INST_ESAC(0x0800, 0xfc00, sbc) // SBC -- 0x0800 -- Subtract with carry -- 0000 10rd dddd rrrr
 						default:
 							switch (opcode & 0xff00) {
