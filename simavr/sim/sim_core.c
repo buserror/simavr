@@ -675,7 +675,8 @@ run_one_again:
 									uint8_t d = ((opcode >> 4) & 0xf) << 1;
 									uint8_t r = ((opcode) & 0xf) << 1;
 									STATE("movw %s:%s, %s:%s[%02x%02x]\n", avr_regname(d), avr_regname(d+1), avr_regname(r), avr_regname(r+1), avr->data[r+1], avr->data[r]);
-									_avr_set_r16le(avr, d, _avr_data_read16le(avr, r));
+									uint16_t vr = avr->data[r] | (avr->data[r + 1] << 8);
+									_avr_set_r16le(avr, d, vr);
 								}	break;
 								case 0x0200: {	// MULS -- Multiply Signed -- 0000 0010 dddd rrrr
 									int8_t r = 16 + (opcode & 0xf);
