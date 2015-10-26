@@ -248,7 +248,7 @@ avr_service_interrupts(
 
 	// now move the one at the front of the fifo in the slot of
 	// the one we service
-	table->pending.buffer[mini % avr_int_pending_fifo_size] = 
+	table->pending.buffer[(table->pending.read + mini) % avr_int_pending_fifo_size] =
 			avr_int_pending_read(&table->pending);
 	avr_raise_irq(avr->interrupts.irq + AVR_INT_IRQ_PENDING,
 			avr_has_pending_interrupts(avr));
