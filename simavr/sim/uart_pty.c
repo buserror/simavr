@@ -232,7 +232,7 @@ static const char * irq_names[IRQ_UART_PTY_COUNT] = {
 void
 uart_pty_init(
 		struct avr_t * avr,
-		uart_pty_t * p)
+		uart_pty_t * p, char uart)
 {
 	memset(p, 0, sizeof(*p));
 
@@ -240,8 +240,10 @@ uart_pty_init(
 	p->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_UART_PTY_COUNT, irq_names);
 	avr_irq_register_notify(p->irq + IRQ_UART_PTY_BYTE_IN, uart_pty_in_hook, p);
 
+	char uartname[6];
+	snprintf(uartname, sizeof(uartname), "uart%c", uart);
 	int hastap = (getenv("SIMAVR_UART_TAP") && atoi(getenv("SIMAVR_UART_TAP"))) ||
-			(getenv("SIMAVR_UART_XTERM") && strstr(getenv("SIMAVR_UART_XTERM"),"uart")) ;
+			(getenv("SIMAVR_UART_XTERM") && strstr(getenv("SIMAVR_UART_XTERM"),uartname)) ;
 
 	for (int ti = 0; ti < 1 + hastap; ti++) {
 		int m, s;

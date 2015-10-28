@@ -226,7 +226,7 @@ main(
 
 	for (int id = 0; id < 4; id++) {
 		if (use_pty[id].uart != 0) {
-			uart_pty_init(avr, &use_pty[id].pty);
+			uart_pty_init(avr, &use_pty[id].pty, use_pty[id].uart);
 			uart_pty_connect(&use_pty[id].pty, use_pty[id].uart);
 		}
 	}
