@@ -241,7 +241,7 @@ uart_pty_init(
 	avr_irq_register_notify(p->irq + IRQ_UART_PTY_BYTE_IN, uart_pty_in_hook, p);
 
 	int hastap = (getenv("SIMAVR_UART_TAP") && atoi(getenv("SIMAVR_UART_TAP"))) ||
-			(getenv("SIMAVR_UART_XTERM") && atoi(getenv("SIMAVR_UART_XTERM"))) ;
+			(getenv("SIMAVR_UART_XTERM") && strstr(getenv("SIMAVR_UART_XTERM"),"uart")) ;
 
 	for (int ti = 0; ti < 1 + hastap; ti++) {
 		int m, s;
@@ -312,11 +312,14 @@ uart_pty_connect(
 			printf("%s: %s now points to %s\n", __func__, link, p->port[ti].slavename);
 		}
 	}
-	if (getenv("SIMAVR_UART_XTERM") && atoi(getenv("SIMAVR_UART_XTERM"))) {
+	char uartname[6];
+	snprintf(uartname, sizeof(uartname), "uart%c", uart);
+	if (getenv("SIMAVR_UART_XTERM") && strstr(getenv("SIMAVR_UART_XTERM"), uartname)) {
 		char cmd[256];
 		sprintf(cmd, "xterm -e picocom -b 115200 %s >/dev/null 2>&1 &",
 				p->tap.slavename);
 		system(cmd);
 	} else
-		printf("note: export SIMAVR_UART_XTERM=1 and install picocom to get a terminal\n");
+		printf("note: export SIMAVR_UART_XTERM=%s and install picocom to get a terminal\n",uartname);
 }
+
