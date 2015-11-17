@@ -55,19 +55,21 @@ ifeq (${shell uname}, Darwin)
   LFLAGS		= -L/opt/local/lib/
  else
   # That's for Homebrew libelf and avr-gcc support
-  ifeq (${shell test -d /usr/local/Cellar && echo Exists}, Exists)
-   ifneq (${shell test -d /usr/local/Cellar/avr-gcc/ && echo Exists}, Exists)
+  ifeq (${shell type brew >/dev/null && echo Exists}, Exists)
+   ifneq (${shell brew ls avr-gcc >/dev/null && echo Exists}, Exists)
     $(error Please install avr-gcc: brew tap larsimmisch/avr ; brew install avr-gcc avr-libc)
    endif
-   ifneq (${shell test -d /usr/local/Cellar/libelf/ && echo Exists}, Exists)
+   ifneq (${shell brew ls libelf >/dev/null && echo Exists}, Exists)
     $(error Please install libelf: brew install libelf)
    endif
    CC			= clang
-   IPATH		+= /usr/local/include /usr/local/include/libelf
-   LFLAGS		= -L/usr/local/lib/
-   AVR_ROOT 	:= $(firstword $(wildcard /usr/local/Cellar/avr-gcc/*/))
+   BREW_PREFIX = ${shell brew --prefix}
+   IPATH += $(BREW_PREFIX)/include
+   LFLAGS		= -L$(BREW_PREFIX)/lib/
+   CFLAGS		+= -I/$(BREW_PREFIX)/include/libelf
+   AVR_ROOT 	:= ${shell brew --prefix avr-gcc}
    AVR_INC  	:= ${AVR_ROOT}/avr
-   AVR  		:= /usr/local/bin/avr-
+   AVR  		:= $(BREW_PREFIX)/bin/avr-
   endif
  endif
 else
