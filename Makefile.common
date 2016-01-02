@@ -26,6 +26,8 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
+V=1
+
 # simavr directory
 SIMAVR		:= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && echo $$p/simavr; done}
 
@@ -46,9 +48,12 @@ CORE_CFLAGS	= -nostdinc -DAVR_CORE=1
 ifeq (${shell uname}, Darwin)
  # gcc 4.2 from MacOS is really not up to scratch anymore 
  CC			= clang
- AVR_ROOT 	:= "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/"
- AVR_INC 	:= ${AVR_ROOT}/avr/
+ AVR_ROOT 	:= /Applications/Arduino.app/Contents/Java/hardware/tools/avr
+ AVR_INC 	:= ${AVR_ROOT}/avr
  AVR 		:= ${AVR_ROOT}/bin/avr-
+ IPATH		+= /usr/local/include
+ LFLAGS		= -L/usr/local/lib/
+
  # Thats for MacPorts libelf
  ifeq (${shell test -d /opt/local && echo Exists}, Exists)
   IPATH		+= /opt/local/include
@@ -157,34 +162,13 @@ endif
 
 # this rule has precedence
 ${OBJ}/sim_%.o : cores/sim_%.c
-ifeq ($(V),1)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(CORE_CFLAGS) -MMD \
-		${AVR_CPPFLAGS} \
-		$<  -c -o $@
-else
-	@$(CC) $(CPPFLAGS) $(CFLAGS) $(CFLAGS) $(CORE_CFLAGS) -MMD \
-		${AVR_CPPFLAGS} \
-		$<  -c -o $@
-	@echo CORE $<
-endif
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(CORE_CFLAGS) -MMD ${AVR_CPPFLAGS} $< -c -o $@
 
 ${OBJ}/%.o: %.c
-ifeq ($(V),1)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD \
-		$<  -c -o $@
-else
-	@$(CC) $(CPPFLAGS) $(CFLAGS) -MMD \
-		$<  -c -o $@
-	@echo CC $<
-endif
+	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD $<  -c -o $@
 
 ${OBJ}/%.elf:
-ifeq ($(V),1)
 	$(CC) -MMD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
-else
-	@echo LD $@
-	@$(CC) -MMD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
-endif
 
 obj: ${OBJ}
  
