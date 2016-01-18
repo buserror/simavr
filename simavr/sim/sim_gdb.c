@@ -486,7 +486,7 @@ gdb_network_handler(
 		FD_SET(g->listen, &read_set);
 		max = g->listen + 1;
 	}
-	struct timeval timo = { 0, dosleep };	// short, but not too short interval
+	struct timeval timo = { dosleep / 1000000, dosleep % 1000000 };
 	int ret = select(max, &read_set, NULL, NULL, &timo);
 
 	if (ret == 0)
