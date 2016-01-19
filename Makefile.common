@@ -51,8 +51,17 @@ ifeq (${shell uname}, Darwin)
  AVR 		:= ${AVR_ROOT}/bin/avr-
  # Thats for MacPorts libelf
  ifeq (${shell test -d /opt/local && echo Exists}, Exists)
-  IPATH		+= /opt/local/include
-  LFLAGS		= -L/opt/local/lib/
+  ifneq (${shell test -d /opt/local/avr && echo Exists}, Exists)
+   $(error Please install avr-gcc: port install avr-gcc avr-libc)
+  endif
+  ifneq (${shell test -d /opt/local/include/libelf && echo Exists}, Exists)
+   $(error Please install libelf: port install libelf)
+  endif
+  CC		= clang
+  IPATH		+= /opt/local/include /opt/local/include/libelf
+  LFLAGS	= -L/opt/local/lib/
+  AVR_INC 	:= /opt/local/avr
+  AVR 		:= /opt/local/bin/avr-
  else
   # That's for Homebrew libelf and avr-gcc support
   ifeq (${shell test -d /usr/local/Cellar && echo Exists}, Exists)
