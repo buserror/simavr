@@ -978,6 +978,14 @@ run_one_again:
 					cycle += 2; // 3 cycles
 					_avr_set_r(avr, 0, avr->flash[z]);
 				}	break;
+				case 0x95d8: {	// ELPM -- Load Program Memory R0 <- (Z) -- 1001 0101 1101 1000
+					if (!avr->rampz)
+						_avr_invalid_opcode(avr);
+					uint32_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8) | (avr->data[avr->rampz] << 16);
+					STATE("elpm %s, (Z[%02x:%04x])\n", avr_regname(0), z >> 16, z & 0xffff);
+					_avr_set_r(avr, 0, avr->flash[z]);
+					cycle += 2; // 3 cycles
+				}	break;
 				default:  {
 					switch (opcode & 0xfe0f) {
 						case 0x9000: {	// LDS -- Load Direct from Data Space, 32 bits -- 1001 0000 0000 0000
