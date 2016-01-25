@@ -623,12 +623,12 @@ avr_gdb_init(
 
 	if ( network_init() ) {
 		AVR_LOG(avr, LOG_ERROR, "GDB: Can't initialize network");
-		return -1;
+		goto error;
 	}
 	
 	if ((g->listen = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
 		AVR_LOG(avr, LOG_ERROR, "GDB: Can't create socket: %s", strerror(errno));
-		return -1;
+		goto error;
 	}
 
 	int optval = 1;
@@ -640,11 +640,11 @@ avr_gdb_init(
 
 	if (bind(g->listen, (struct sockaddr *) &address, sizeof(address))) {
 		AVR_LOG(avr, LOG_ERROR, "GDB: Can not bind socket: %s", strerror(errno));
-		return -1;
+		goto error;
 	}
 	if (listen(g->listen, 1)) {
 		perror("listen");
-		return -1;
+		goto error;
 	}
 	printf("avr_gdb_init listening on port %d\n", avr->gdb_port);
 	g->avr = avr;
@@ -655,6 +655,10 @@ avr_gdb_init(
 	avr->sleep = avr_callback_sleep_gdb;
 	
 	return 0;
+
+	error:
+		free(g);
+		return -1;
 }
 
 void 
