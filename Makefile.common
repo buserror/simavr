@@ -56,23 +56,34 @@ ifeq (${shell uname}, Darwin)
 
  # Thats for MacPorts libelf
  ifeq (${shell test -d /opt/local && echo Exists}, Exists)
-  IPATH		+= /opt/local/include
-  LFLAGS		= -L/opt/local/lib/
+  ifneq (${shell test -d /opt/local/avr && echo Exists}, Exists)
+   $(error Please install avr-gcc: port install avr-gcc avr-libc)
+  endif
+  ifneq (${shell test -d /opt/local/include/libelf && echo Exists}, Exists)
+   $(error Please install libelf: port install libelf)
+  endif
+  CC		= clang
+  IPATH		+= /opt/local/include /opt/local/include/libelf
+  LFLAGS	= -L/opt/local/lib/
+  AVR_INC 	:= /opt/local/avr
+  AVR 		:= /opt/local/bin/avr-
  else
   # That's for Homebrew libelf and avr-gcc support
-  ifeq (${shell test -d /usr/local/Cellar && echo Exists}, Exists)
-   ifneq (${shell test -d /usr/local/Cellar/avr-gcc/ && echo Exists}, Exists)
-    $(error Please install avr-gcc: brew tap larsimmisch/avr ; brew install avr-gcc avr-libc)
+  HOMEBREW_PREFIX ?= /usr/local
+  ifeq (${shell test -d $(HOMEBREW_PREFIX)/Cellar && echo Exists}, Exists)
+   ifneq (${shell test -d $(HOMEBREW_PREFIX)/Cellar/avr-gcc/ && echo Exists}, Exists)
+    $(error Please install avr-gcc: brew tap osx-cross/homebrew-avr ; brew install avr-libc)
    endif
-   ifneq (${shell test -d /usr/local/Cellar/libelf/ && echo Exists}, Exists)
+   ifneq (${shell test -d $(HOMEBREW_PREFIX)/Cellar/libelf/ && echo Exists}, Exists)
     $(error Please install libelf: brew install libelf)
    endif
    CC			= clang
-   IPATH		+= /usr/local/include /usr/local/include/libelf
-   LFLAGS		= -L/usr/local/lib/
-   AVR_ROOT 	:= $(firstword $(wildcard /usr/local/Cellar/avr-gcc/*/))
-   AVR_INC  	:= ${AVR_ROOT}/avr
-   AVR  		:= /usr/local/bin/avr-
+   IPATH		+= $(HOMEBREW_PREFIX)/include
+   LFLAGS		= -L$(HOMEBREW_PREFIX)/lib/
+   CFLAGS		+= -I/$(HOMEBREW_PREFIX)/include/libelf
+   AVR_ROOT		:= $(firstword $(wildcard $(HOMEBREW_PREFIX)/Cellar/avr-libc/*/))
+   AVR_INC		:= ${AVR_ROOT}/avr
+   AVR			:= $(HOMEBREW_PREFIX)/bin/avr-
   endif
  endif
 else
