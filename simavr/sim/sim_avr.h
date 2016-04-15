@@ -311,6 +311,13 @@ typedef struct avr_t {
 	// crashed even if not activated at startup
 	// if zero, the simulator will just exit() in case of a crash
 	int		gdb_port;
+
+	// buffer for console debugging output from register
+	struct {
+		char *	 buf;
+		uint32_t size;
+		uint32_t len;
+	} io_console_buffer;
 } avr_t;
 
 
