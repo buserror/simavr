@@ -113,6 +113,12 @@ void avr_terminate(avr_t * avr)
 
 	if (avr->flash) free(avr->flash);
 	if (avr->data) free(avr->data);
+	if (avr->io_console_buffer.buf) {
+		avr->io_console_buffer.len = 0;
+		avr->io_console_buffer.size = 0;
+		free(avr->io_console_buffer.buf);
+		avr->io_console_buffer.buf = NULL;
+	}
 	avr->flash = avr->data = NULL;
 }
 
@@ -186,21 +192,21 @@ void avr_set_command_register(avr_t * avr, avr_io_addr_t addr)
 
 static void _avr_io_console_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
-	static char * buf = NULL;
-	static int size = 0, len = 0;
-
-	if (v == '\r' && buf) {
-		buf[len] = 0;
-		AVR_LOG(avr, LOG_OUTPUT, "O:" "%s" "" "\n", buf);
-		len = 0;
+	if (v == '\r' && avr->io_console_buffer.buf) {
+		avr->io_console_buffer.buf[avr->io_console_buffer.len] = 0;
+		AVR_LOG(avr, LOG_OUTPUT, "O:" "%s" "" "\n",
+			avr->io_console_buffer.buf);
+		avr->io_console_buffer.len = 0;
 		return;
 	}
-	if (len + 1 >= size) {
-		size += 128;
-		buf = (char*)realloc(buf, size);
+	if (avr->io_console_buffer.len + 1 >= avr->io_console_buffer.size) {
+		avr->io_console_buffer.size += 128;
+		avr->io_console_buffer.buf = (char*)realloc(
+			avr->io_console_buffer.buf,
+			avr->io_console_buffer.size);
 	}
 	if (v >= ' ')
-		buf[len++] = v;
+		avr->io_console_buffer.buf[avr->io_console_buffer.len++] = v;
 }
 
 void avr_set_console_register(avr_t * avr, avr_io_addr_t addr)
