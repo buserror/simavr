@@ -299,7 +299,7 @@ avr_timer_configure(
 		if (!p->comp[compi].r_ocr)
 			continue;
 		uint32_t ocr = _timer_get_ocr(p, compi);
-		uint32_t comp_cycles = clock * ocr;
+		uint32_t comp_cycles = clock * (ocr + 1);
 
 		p->comp[compi].comp_cycles = 0;
 
