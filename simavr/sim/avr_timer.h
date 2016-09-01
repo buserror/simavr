@@ -140,7 +140,7 @@ typedef struct avr_timer_t {
 	avr_int_vector_t overflow;	// overflow
 	avr_int_vector_t icr;	// input capture
 
-	uint64_t		tov_cycles;
+	uint64_t		tov_cycles;	// number of cycles from zero to overflow
 	uint64_t		tov_base;	// when we last were called
 	uint16_t		tov_top;	// current top value to calculate tnct
 } avr_timer_t;
