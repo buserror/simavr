@@ -34,13 +34,14 @@
 
 void display_usage(char * app)
 {
-	printf("Usage: %s [-t] [-g] [-v] [-m <device>] [-f <frequency>] firmware\n", app);
-	printf("       -t: Run full scale decoder trace\n"
+	printf("Usage: %s [-list-cores] [-help] [-t] [-g] [-v] [-m <device>] [-f <frequency>] firmware\n", app);
+	printf(    "       -list-cores: List all supported AVR cores and exit\n"
+		   "       -help: Display this usage message and exit\n"
+		   "       -t: Run full scale decoder trace\n"
 		   "       -g: Listen for gdb connection on port 1234\n"
 		   "       -ff: Load next .hex file as flash\n"
 		   "       -ee: Load next .hex file as eeprom\n"
-		   "       -v: Raise verbosity level (can be passed more than once)\n"
-		   "       --list-cores: List all supported AVR cores\n");
+		   "       -v: Raise verbosity level (can be passed more than once)\n");
 	exit(1);
 }
 
@@ -84,7 +85,7 @@ int main(int argc, char *argv[])
 		display_usage(basename(argv[0]));
 
 	for (int pi = 1; pi < argc; pi++) {
-		if (!strcmp(argv[pi], "--list-cores")) {
+		if (!strcmp(argv[pi], "-list-cores")) {
 			list_cores();
 		} else if (!strcmp(argv[pi], "-h") || !strcmp(argv[pi], "-help")) {
 			display_usage(basename(argv[0]));
