@@ -58,11 +58,15 @@ typedef struct avr_extint_t {
 
 		uint32_t		port_ioctl;		// ioctl to use to get port
 		uint8_t			port_pin;		// pin number in said port
+		uint8_t			strict_lvl_trig;// enforces a repetitive interrupt triggering while the pin is held low
 	}	eint[EXTINT_COUNT];
 
 } avr_extint_t;
 
 void avr_extint_init(avr_t * avr, avr_extint_t * p);
+int avr_extint_is_strict_lvl_trig(avr_t * avr, uint8_t extint_no);
+void avr_extint_set_strict_lvl_trig(avr_t * avr, uint8_t extint_no, uint8_t strict);
+
 
 // Declares a typical INT into a avr_extint_t in a core.
 // this is a shortcut since INT declarations are pretty standard.
