@@ -14,7 +14,7 @@ Installation
 ------------
 On OSX, we recommend using [homebrew](https://brew.sh):
 
-    brew tap osx-cross
+    brew tap osx-cross/avr
     brew install --HEAD simavr
 
 Otherwise, `make` is enough to just start using __bin/simavr__. To install the __simavr__ command system-wide, `make install RELEASE=1`.
