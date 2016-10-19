@@ -34,14 +34,15 @@
 
 void display_usage(char * app)
 {
-	printf("Usage: %s [-list-cores] [-help] [-t] [-g] [-v] [-m <device>] [-f <frequency>] firmware\n", app);
-	printf(    "       -list-cores: List all supported AVR cores and exit\n"
-		   "       -help: Display this usage message and exit\n"
-		   "       -t: Run full scale decoder trace\n"
-		   "       -g: Listen for gdb connection on port 1234\n"
-		   "       -ff: Load next .hex file as flash\n"
-		   "       -ee: Load next .hex file as eeprom\n"
-		   "       -v: Raise verbosity level (can be passed more than once)\n");
+	printf("Usage: %s [--list-cores] [--help] [-t] [-g] [-v] [-m <device>] [-f <frequency>] firmware\n", app);
+        printf(    "       --list-cores      List all supported AVR cores and exit\n"
+		   "       --help, -h        Display this usage message and exit\n"
+		   "       -trace, -t        Run full scale decoder trace\n"
+                   "       -ti <vector>      Add trace vector at <vector>\n"
+		   "       -gdb, -g          Listen for gdb connection on port 1234\n"
+		   "       -ff               Load next .hex file as flash\n"
+		   "       -ee               Load next .hex file as eeprom\n"
+		   "       -v                Raise verbosity level (can be passed more than once)\n");
 	exit(1);
 }
 
@@ -85,9 +86,9 @@ int main(int argc, char *argv[])
 		display_usage(basename(argv[0]));
 
 	for (int pi = 1; pi < argc; pi++) {
-		if (!strcmp(argv[pi], "-list-cores")) {
+		if (!strcmp(argv[pi], "--list-cores")) {
 			list_cores();
-		} else if (!strcmp(argv[pi], "-h") || !strcmp(argv[pi], "-help")) {
+		} else if (!strcmp(argv[pi], "-h") || !strcmp(argv[pi], "--help")) {
 			display_usage(basename(argv[0]));
 		} else if (!strcmp(argv[pi], "-m") || !strcmp(argv[pi], "-mcu")) {
 			if (pi < argc-1)
