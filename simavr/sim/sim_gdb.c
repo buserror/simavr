@@ -301,9 +301,10 @@ gdb_handle_command(
 				 */
 				gdb_send_reply(g, "1");
 				break;
-			} else if (strncmp(cmd, "Offsets", 7) == 0) {
-				gdb_send_reply(g, "Text=0;Data=800000;Bss=800000");
-				break;
+			// Rmoving the following 3 lines fixes #150 issue:
+			// } else if (strncmp(cmd, "Offsets", 7) == 0) {
+			//	gdb_send_reply(g, "Text=0;Data=800000;Bss=800000");
+			//	break;
 			} else if (strncmp(cmd, "Xfer:memory-map:read", 20) == 0) {
 				snprintf(rep, sizeof(rep),
 						"l<memory-map>\n"
@@ -616,6 +617,9 @@ int
 avr_gdb_init(
 		avr_t * avr )
 {
+	if (avr->gdb)
+		return 0; // GDB server already is active
+
 	avr_gdb_t * g = malloc(sizeof(avr_gdb_t));
 	memset(g, 0, sizeof(avr_gdb_t));
 
@@ -656,20 +660,30 @@ avr_gdb_init(
 	
 	return 0;
 
-	error:
-		free(g);
-		return -1;
+error:
+	if (g->listen >= 0)
+		close(g->listen);
+	free(g);
+
+	return -1;
 }
 
 void 
 avr_deinit_gdb(
 		avr_t * avr )
 {
+	if (!avr->gdb)
+		return;
+	avr->run = avr_callback_run_raw; // restore normal callbacks
+	avr->sleep = avr_callback_sleep_raw;
 	if (avr->gdb->listen != -1)
-	   close(avr->gdb->listen);
+		close(avr->gdb->listen);
+	avr->gdb->listen = -1;
 	if (avr->gdb->s != -1)
-	   close(avr->gdb->s);
+		close(avr->gdb->s);
+	avr->gdb->s = -1;
 	free(avr->gdb);
+	avr->gdb = NULL;
 
 	network_release();
 }
