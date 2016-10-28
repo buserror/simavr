@@ -462,7 +462,7 @@ avr_timer_write(
 			// to be synced. To obtain better simulation results
 			// p->tov_base type must be float or avr->frequency
 			// must be multiple of 32768.
-			p->cs_div_value = (uint32_t)((float)avr->frequency * (1 << p->cs_div[new_cs]) / 32768);
+			p->cs_div_value = (uint32_t)((uint64_t)avr->frequency * (1 << p->cs_div[new_cs]) / 32768);
 		} else {
 			p->cs_div_value = 1 << p->cs_div[new_cs];
 		}
