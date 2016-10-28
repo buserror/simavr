@@ -130,7 +130,7 @@ typedef struct avr_timer_t {
 	avr_regbit_t	as2;		// asynchronous clock 32khz
 	avr_regbit_t	cs[4];
 	uint8_t			cs_div[16];
-	uint32_t		cs_div_clock;
+	uint32_t		cs_div_value;
 
 	avr_regbit_t	icp;		// input capture pin, to link IRQs
 	avr_regbit_t	ices;		// input capture edge select

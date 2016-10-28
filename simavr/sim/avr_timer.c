@@ -348,24 +348,24 @@ avr_timer_reconfigure(
 
 	switch (p->wgm_op_mode_kind) {
 		case avr_timer_wgm_normal:
-			avr_timer_configure(p, p->cs_div_clock, p->wgm_op_mode_size, reset);
+			avr_timer_configure(p, p->cs_div_value, p->wgm_op_mode_size, reset);
 			break;
 		case avr_timer_wgm_fc_pwm:
-			avr_timer_configure(p, p->cs_div_clock, p->wgm_op_mode_size, reset);
+			avr_timer_configure(p, p->cs_div_value, p->wgm_op_mode_size, reset);
 			break;
 		case avr_timer_wgm_ctc: {
-			avr_timer_configure(p, p->cs_div_clock, _timer_get_ocr(p, AVR_TIMER_COMPA), reset);
+			avr_timer_configure(p, p->cs_div_value, _timer_get_ocr(p, AVR_TIMER_COMPA), reset);
 		}	break;
 		case avr_timer_wgm_pwm: {
 			uint16_t top = (p->mode.top == avr_timer_wgm_reg_ocra) ?
 				_timer_get_ocr(p, AVR_TIMER_COMPA) : _timer_get_icr(p);
-			avr_timer_configure(p, p->cs_div_clock, top, reset);
+			avr_timer_configure(p, p->cs_div_value, top, reset);
 		}	break;
 		case avr_timer_wgm_fast_pwm:
-			avr_timer_configure(p, p->cs_div_clock, p->wgm_op_mode_size, reset);
+			avr_timer_configure(p, p->cs_div_value, p->wgm_op_mode_size, reset);
 			break;
 		case avr_timer_wgm_none:
-			avr_timer_configure(p, p->cs_div_clock, p->wgm_op_mode_size, reset);
+			avr_timer_configure(p, p->cs_div_value, p->wgm_op_mode_size, reset);
 			break;
 		default: {
 			uint8_t mode = avr_regbit_get_array(avr, p->wgm, ARRAY_SIZE(p->wgm));
@@ -462,9 +462,9 @@ avr_timer_write(
 			// to be synced. To obtain better simulation results
 			// p->tov_base type must be float or avr->frequency
 			// must be multiple of 32768.
-			p->cs_div_clock = (uint32_t)((float)avr->frequency * (1 << p->cs_div[new_cs]) / 32768);
+			p->cs_div_value = (uint32_t)((float)avr->frequency * (1 << p->cs_div[new_cs]) / 32768);
 		} else {
-			p->cs_div_clock = 1 << p->cs_div[new_cs];
+			p->cs_div_value = 1 << p->cs_div[new_cs];
 		}
 
 	/* mode */
