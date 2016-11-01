@@ -130,7 +130,7 @@ typedef struct avr_timer_t {
 	avr_regbit_t	as2;		// asynchronous clock 32khz
 	avr_regbit_t	cs[4];
 	uint8_t			cs_div[16];
-	uint32_t		cs_div_clock;
+	uint32_t		cs_div_value;
 
 	avr_regbit_t	icp;		// input capture pin, to link IRQs
 	avr_regbit_t	ices;		// input capture edge select
@@ -140,7 +140,7 @@ typedef struct avr_timer_t {
 	avr_int_vector_t overflow;	// overflow
 	avr_int_vector_t icr;	// input capture
 
-	uint64_t		tov_cycles;
+	uint64_t		tov_cycles;	// number of cycles from zero to overflow
 	uint64_t		tov_base;	// when we last were called
 	uint16_t		tov_top;	// current top value to calculate tnct
 } avr_timer_t;
