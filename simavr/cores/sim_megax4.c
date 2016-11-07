@@ -41,11 +41,19 @@ void mx4_init(struct avr_t * avr)
 	avr_timer_init(avr, &mcu->timer0);
 	avr_timer_init(avr, &mcu->timer1);
 	avr_timer_init(avr, &mcu->timer2);
-#ifdef PRR1
-	avr_timer_init(avr, &mcu->timer3);
-#endif
+//#ifdef PRR1
+//	avr_timer_init(avr, &mcu->timer3);
+//#endif
 	avr_spi_init(avr, &mcu->spi);
 	avr_twi_init(avr, &mcu->twi);
+}
+
+void m1284_init(struct avr_t * avr)
+{
+	struct mcu_t * mcu = (struct mcu_t*)avr;
+
+	mx4_init(avr);
+	avr_timer_init(avr, &mcu->timer3);
 }
 
 void mx4_reset(struct avr_t * avr)

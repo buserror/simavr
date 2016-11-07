@@ -36,6 +36,7 @@
 #include "avr_twi.h"
 
 void mx4_init(struct avr_t * avr);
+void m1284_init(struct avr_t * avr);
 void mx4_reset(struct avr_t * avr);
 
 /*
@@ -51,9 +52,9 @@ struct mcu_t {
 	avr_uart_t		uart0,uart1;
 	avr_adc_t		adc;
 	avr_timer_t		timer0,timer1,timer2;
-#ifdef PRR1
+//#ifdef PRR1
 	avr_timer_t 	timer3;
-#endif
+//#endif
 	avr_spi_t		spi;
 	avr_twi_t		twi;
 };
@@ -78,8 +79,11 @@ const struct mcu_t SIM_CORENAME = {
 	.core = {
 		.mmcu = SIM_MMCU,
 		DEFAULT_CORE(4),
-
+#ifdef PRR1
+		.init = m1284_init,
+#else
 		.init = mx4_init,
+#endif
 		.reset = mx4_reset,
 	},
 	AVR_EEPROM_DECLARE(EE_READY_vect),
