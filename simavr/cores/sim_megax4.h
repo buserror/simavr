@@ -51,9 +51,7 @@ struct mcu_t {
 	avr_uart_t		uart0,uart1;
 	avr_adc_t		adc;
 	avr_timer_t		timer0,timer1,timer2;
-#ifdef PRR1
 	avr_timer_t 	timer3;
-#endif
 	avr_spi_t		spi;
 	avr_twi_t		twi;
 };
@@ -364,10 +362,10 @@ const struct mcu_t SIM_CORENAME = {
 		.cs_div = { 0, 0, 3 /* 8 */, 5 /* 32 */, 6 /* 64 */, 7 /* 128 */, 8 /* 256 */, 10 /* 1024 */ },
 
 		.r_tcnt = TCNT2,
-		
+
 		// asynchronous timer source bit.. if set, use 32khz frequency
 		.as2 = AVR_IO_REGBIT(ASSR, AS2),
-		
+
 		.overflow = {
 			.enable = AVR_IO_REGBIT(TIMSK2, TOIE2),
 			.raised = AVR_IO_REGBIT(TIFR2, TOV2),
