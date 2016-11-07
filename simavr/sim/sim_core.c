@@ -1326,7 +1326,7 @@ run_one_again:
 		case 0xc000: {	// RJMP -- 1100 kkkk kkkk kkkk
 			get_o12(opcode);
 			STATE("rjmp .%d [%04x]\n", o >> 1, new_pc + o);
-			new_pc = new_pc + o;
+			new_pc = (new_pc + o) % (avr->flashend+1);
 			cycle++;
 			TRACE_JUMP();
 		}	break;
@@ -1335,7 +1335,7 @@ run_one_again:
 			get_o12(opcode);
 			STATE("rcall .%d [%04x]\n", o >> 1, new_pc + o);
 			cycle += _avr_push_addr(avr, new_pc);
-			new_pc = new_pc + o;
+			new_pc = (new_pc + o) % (avr->flashend+1);
 			// 'rcall .1' is used as a cheap "push 16 bits of room on the stack"
 			if (o != 0) {
 				TRACE_JUMP();
