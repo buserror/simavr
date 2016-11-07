@@ -189,7 +189,7 @@ static inline void _avr_set_r(avr_t * avr, uint16_t r, uint8_t v)
 		if (avr->io[io].irq) {
 			avr_raise_irq(avr->io[io].irq + AVR_IOMEM_IRQ_ALL, v);
 			for (int i = 0; i < 8; i++)
-				avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);				
+				avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);
 		}
 	} else
 		avr->data[r] = v;
@@ -250,18 +250,18 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 		 * while the core itself uses the "shortcut" array
 		 */
 		READ_SREG_INTO(avr, avr->data[R_SREG]);
-		
+
 	} else if (addr > 31 && addr < 31 + MAX_IOs) {
 		avr_io_addr_t io = AVR_DATA_TO_IO(addr);
-		
+
 		if (avr->io[io].r.c)
 			avr->data[addr] = avr->io[io].r.c(avr, addr, avr->io[io].r.param);
-		
+
 		if (avr->io[io].irq) {
 			uint8_t v = avr->data[addr];
 			avr_raise_irq(avr->io[io].irq + AVR_IOMEM_IRQ_ALL, v);
 			for (int i = 0; i < 8; i++)
-				avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);				
+				avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);
 		}
 	}
 	return avr_core_watch_read(avr, addr);
@@ -290,7 +290,7 @@ int _avr_push_addr(avr_t * avr, avr_flashaddr_t addr)
 	uint16_t sp = _avr_sp_get(avr);
 	addr >>= 1;
 	for (int i = 0; i < avr->address_size; i++, addr >>= 8, sp--) {
-		_avr_set_ram(avr, sp, addr);	
+		_avr_set_ram(avr, sp, addr);
 	}
 	_avr_sp_set(avr, sp);
 	return avr->address_size;
@@ -400,7 +400,7 @@ void avr_dump_state(avr_t * avr)
 #define get_vd5_s3_mask(o) \
 		get_vd5_s3(o); \
 		const uint8_t mask = 1 << s;
-		
+
 #define get_vd5_vr5(o) \
 		get_r5(o); \
 		get_d5(o); \
@@ -410,7 +410,7 @@ void avr_dump_state(avr_t * avr)
 		get_d5(o); \
 		get_r5(o); \
 		const uint8_t vr = avr->data[r];
-		
+
 #define get_h4_k8(o) \
 		const uint8_t h = 16 + ((o >> 4) & 0xf); \
 		const uint8_t k = ((o & 0x0f00) >> 4) | (o & 0xf);
@@ -459,7 +459,7 @@ void avr_dump_state(avr_t * avr)
 #define STACK_FRAME_PUSH()\
 	avr->trace_data->stack_frame[avr->trace_data->stack_frame_index].pc = avr->pc;\
 	avr->trace_data->stack_frame[avr->trace_data->stack_frame_index].sp = _avr_sp_get(avr);\
-	avr->trace_data->stack_frame_index++; 
+	avr->trace_data->stack_frame_index++;
 #define STACK_FRAME_POP()\
 	if (avr->trace_data->stack_frame_index > 0) \
 		avr->trace_data->stack_frame_index--;
@@ -591,18 +591,18 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
 
 /*
  * Main opcode decoder
- * 
+ *
  * The decoder was written by following the datasheet in no particular order.
  * As I went along, I noticed "bit patterns" that could be used to factor opcodes
  * However, a lot of these only became apparent later on, so SOME instructions
  * (skip of bit set etc) are compact, and some could use some refactoring (the ALU
  * ones scream to be factored).
  * I assume that the decoder could easily be 2/3 of it's current size.
- * 
- * + It lacks the "extended" XMega jumps. 
+ *
+ * + It lacks the "extended" XMega jumps.
  * + It also doesn't check whether the core it's
  *   emulating is supposed to have the fancy instructions, like multiply and such.
- * 
+ *
  * The number of cycles taken by instruction has been added, but might not be
  * entirely accurate.
  */
@@ -1409,16 +1409,16 @@ run_one_again:
 
 	}
 	avr->cycle += cycle;
-	
-	if ((avr->state == cpu_Running) && 
-		(avr->run_cycle_count > cycle) && 
+
+	if ((avr->state == cpu_Running) &&
+		(avr->run_cycle_count > cycle) &&
 		(avr->interrupt_state == 0))
 	{
 		avr->run_cycle_count -= cycle;
 		avr->pc = new_pc;
 		goto run_one_again;
 	}
-	
+
 	return new_pc;
 }
 

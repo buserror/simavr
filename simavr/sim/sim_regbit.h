@@ -89,7 +89,7 @@ static inline uint8_t avr_regbit_get(avr_t * avr, avr_regbit_t rb)
 }
 
 /*
- * Using regbit from value eliminates some of the 
+ * Using regbit from value eliminates some of the
  * set to test then clear register operations.
  * makes cheking register bits before setting easier.
  */
@@ -143,9 +143,9 @@ static inline uint8_t avr_regbit_get_array(avr_t * avr, avr_regbit_t *rb, int co
  * Does the reverse of avr_regbit_get_array
  */
 static inline void avr_regbit_set_array_from_value(
-	avr_t * avr, 
-	avr_regbit_t * rb, 
-	uint8_t count, 
+	avr_t * avr,
+	avr_regbit_t * rb,
+	uint8_t count,
 	uint8_t value)
 {
 	int i;
