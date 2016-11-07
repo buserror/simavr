@@ -93,7 +93,10 @@ static inline uint8_t avr_regbit_get(avr_t * avr, avr_regbit_t rb)
  * set to test then clear register operations.
  * makes cheking register bits before setting easier.
  */
-static inline uint8_t avr_regbit_from_value(avr_t * avr, avr_regbit_t rb, uint8_t value)
+static inline uint8_t avr_regbit_from_value(
+	avr_t * avr __attribute__((unused)),
+	avr_regbit_t rb,
+	uint8_t value)
 {
 	uint16_t a = rb.reg;
 	if (!a)
