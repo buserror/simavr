@@ -28,6 +28,21 @@
 #define ICP_PORT	PORTB
 #define ICP_PIN		0
 
+#define OC1A_PORT	PORTB
+#define OC1A_PIN	1
+
+#define OC1B_PORT	PORTB
+#define OC1B_PIN	2
+
+#define OC2_PORT	PORTB
+#define OC2_PIN		3
+
+#define EXT_CLOCK0_PORT	PORTD
+#define EXT_CLOCK0_PIN		4
+
+#define EXT_CLOCK1_PORT	PORTD
+#define EXT_CLOCK1_PIN		5
+
 #define _AVR_IO_H_
 #define __ASSEMBLER__
 #include "avr/iom8.h"
