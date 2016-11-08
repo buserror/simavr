@@ -252,7 +252,8 @@ const struct mcu_t SIM_CORENAME = {
 			[7] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR0B, CS00), AVR_IO_REGBIT(TCCR0B, CS01), AVR_IO_REGBIT(TCCR0B, CS02) },
-		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ },
+		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTB, 0), /* External clock pin */
 
 		.r_tcnt = TCNT0,
 
@@ -303,7 +304,8 @@ const struct mcu_t SIM_CORENAME = {
 			[15] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR1B, CS10), AVR_IO_REGBIT(TCCR1B, CS11), AVR_IO_REGBIT(TCCR1B, CS12) },
-		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */  /* External clock T1 is not handled */},
+		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTB, 1), /* External clock pin */
 
 		.r_tcnt = TCNT1L,
 		.r_tcnth = TCNT1H,
@@ -414,7 +416,8 @@ const struct mcu_t SIM_CORENAME = {
 			[15] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR3B, CS30), AVR_IO_REGBIT(TCCR3B, CS31), AVR_IO_REGBIT(TCCR3B, CS32) },
-		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */  /* External clock T1 is not handled */},
+		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTD, 0), /* External clock pin */
 
 		.r_tcnt = TCNT3L,
 		.r_tcnth = TCNT3H,

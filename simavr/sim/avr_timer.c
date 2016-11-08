@@ -25,6 +25,8 @@
  */
 
 #include <stdio.h>
+#include <math.h>
+
 #include "avr_timer.h"
 #include "avr_ioport.h"
 #include "sim_time.h"
@@ -159,6 +161,120 @@ avr_timer_compc(
 	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPC);
 }
 
+static void
+avr_timer_irq_ext_clock(
+		struct avr_irq_t * irq,
+		uint32_t value,
+		void * param)
+{
+	avr_timer_t * p = (avr_timer_t *)param;
+	avr_t * avr = p->io.avr;
+
+	if ((p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_VIRT) || !p->tov_top)
+		return;			// we are clocked internally (actually should never come here)
+
+	int bing = 0;
+	if (p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_EDGE) { // clock on rising edge
+		if (!irq->value && value)
+			bing++;
+	} else {	// clock on falling edge
+		if (irq->value && !value)
+			bing++;
+	}
+	if (!bing)
+		return;
+
+	//AVR_LOG(avr, LOG_TRACE, "%s Timer%c tick, tcnt=%i\n", __func__, p->name, p->tov_base);
+
+	p->ext_clock_flags |= AVR_TIMER_EXTCLK_FLAG_STARTED;
+
+	static const avr_cycle_timer_t dispatch[AVR_TIMER_COMP_COUNT] =
+		{ avr_timer_compa, avr_timer_compb, avr_timer_compc };
+
+	int overflow = 0;
+	/**
+	  *
+	  * Datasheet excerpt (Compare Match Output Unit):
+	  * "The 16-bit comparator continuously compares TCNT1 with the Output Compare Regis-
+		ter (OCR1x). If TCNT equals OCR1x the comparator signals a match. A match will set
+		the Output Compare Flag (OCF1x) at the next timer clock cycle. If enabled (OCIE1x =
+		1), the Output Compare Flag generates an output compare interrupt."
+		Thus, comparators should go before incementing the counter to use counter value
+		from the previous cycle.
+	*/
+	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
+		if (p->wgm_op_mode_kind != avr_timer_wgm_ctc) {
+			if ((p->mode.top == avr_timer_wgm_reg_ocra) && (compi == 0))
+				continue; // ocra used to define TOP
+		}
+		if (p->comp[compi].comp_cycles && (p->tov_base == p->comp[compi].comp_cycles)) {
+				dispatch[compi](avr, avr->cycle, param);
+			if (p->wgm_op_mode_kind == avr_timer_wgm_ctc)
+				p->tov_base = 0;
+		}
+	}
+
+	switch (p->wgm_op_mode_kind) {
+		case avr_timer_wgm_fc_pwm:	// in the avr_timer_write_ocr comment "OCR is not used here" - why?
+		case avr_timer_wgm_pwm:
+			if ((p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_REVDIR) != 0) {
+				--p->tov_base;
+				if (p->tov_base == 0) {
+					// overflow occured
+					p->ext_clock_flags &= ~AVR_TIMER_EXTCLK_FLAG_REVDIR; // restore forward count direction
+					overflow = 1;
+				}
+			}
+			else {
+				if (++p->tov_base >= p->tov_top) {
+					p->ext_clock_flags |= AVR_TIMER_EXTCLK_FLAG_REVDIR; // prepare to count down
+				}
+			}
+			break;
+		case avr_timer_wgm_fast_pwm:
+			if (++p->tov_base == p->tov_top) {
+				overflow = 1;
+				if (p->mode.top == avr_timer_wgm_reg_icr)
+					avr_raise_interrupt(avr, &p->icr);
+				else if (p->mode.top == avr_timer_wgm_reg_ocra)
+					avr_raise_interrupt(avr, &p->comp[0].interrupt);
+			}
+			else if (p->tov_base > p->tov_top) {
+				p->tov_base = 0;
+			}
+			break;
+		case avr_timer_wgm_ctc:
+			{
+				int max = (1 << p->wgm_op[0].size)-1;
+				if (++p->tov_base > max) {
+					// overflow occured
+					p->tov_base = 0;
+					overflow = 1;
+				}
+			}
+			break;
+		default:
+			if (++p->tov_base > p->tov_top) {
+				// overflow occured
+				p->tov_base = 0;
+				overflow = 1;
+			}
+			break;
+	}
+
+	if (overflow) {
+		for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
+			if (p->comp[compi].comp_cycles) {
+				if (p->mode.top == avr_timer_wgm_reg_ocra && compi == 0)
+					continue;
+				avr_timer_comp_on_tov(p, 0, compi);
+			}
+		}
+		avr_raise_interrupt(avr, &p->overflow);
+	}
+
+}
+
 // timer overflow
 static avr_cycle_count_t
 avr_timer_tov(
@@ -168,6 +284,19 @@ avr_timer_tov(
 {
 	avr_timer_t * p = (avr_timer_t *)param;
 	int start = p->tov_base == 0;
+
+	avr_cycle_count_t next = when;
+	if (((p->ext_clock_flags & (AVR_TIMER_EXTCLK_FLAG_AS2 | AVR_TIMER_EXTCLK_FLAG_TN)) != 0)
+			&& (p->tov_cycles_fract != 0.0f)) {
+		p->phase_accumulator += p->tov_cycles_fract;
+		if (p->phase_accumulator >= 1.0f) {
+			++next;
+			p->phase_accumulator -= 1.0f;
+		} else if (p->phase_accumulator <= -1.0f) {
+			--next;
+			p->phase_accumulator += 1.0f;
+		}
+	}
 
 	if (!start)
 		avr_raise_interrupt(avr, &p->overflow);
@@ -181,14 +310,14 @@ avr_timer_tov(
 			if (p->comp[compi].comp_cycles < p->tov_cycles && p->comp[compi].comp_cycles >= (avr->cycle - when)) {
 				avr_timer_comp_on_tov(p, when, compi);
 				avr_cycle_timer_register(avr,
-					p->comp[compi].comp_cycles - (avr->cycle - when),
+					p->comp[compi].comp_cycles - (avr->cycle - next),
 					dispatch[compi], p);
 			} else if (p->tov_cycles == p->comp[compi].comp_cycles && !start)
 				dispatch[compi](avr, when, param);
 		}
 	}
 
-	return when + p->tov_cycles;
+	return next + p->tov_cycles;
 }
 
 static uint16_t
@@ -196,10 +325,18 @@ _avr_timer_get_current_tcnt(
 		avr_timer_t * p)
 {
 	avr_t * avr = p->io.avr;
-	if (p->tov_cycles) {
-		uint64_t when = avr->cycle - p->tov_base;
+	if (!(p->ext_clock_flags & (AVR_TIMER_EXTCLK_FLAG_TN | AVR_TIMER_EXTCLK_FLAG_AS2)) ||
+			(p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_VIRT)
+			) {
+		if (p->tov_cycles) {
+			uint64_t when = avr->cycle - p->tov_base;
 
-		return (when * (((uint32_t)p->tov_top)+1)) / p->tov_cycles;
+			return (when * (((uint32_t)p->tov_top)+1)) / p->tov_cycles;
+		}
+	}
+	else {
+		if (p->tov_top)
+			return p->tov_base;
 	}
 	return 0;
 }
@@ -257,84 +394,160 @@ avr_timer_tcnt_write(
 		
 	if (tcnt >= p->tov_top)
 		tcnt = 0;
-	
-	// this involves some magicking
-	// cancel the current timers, recalculate the "base" we should be at, reset the
-	// timer base as it should, and re-schedule the timers using that base.
-	
-	avr_timer_cancel_all_cycle_timers(avr, p, 0);
 
-	uint64_t cycles = (tcnt * p->tov_cycles) / p->tov_top;
+	if (!(p->ext_clock_flags & (AVR_TIMER_EXTCLK_FLAG_TN | AVR_TIMER_EXTCLK_FLAG_AS2)) ||
+			(p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_VIRT)
+			) {
+		// internal or virtual clock
 
-//	printf("%s-%c %d/%d -- cycles %d/%d\n", __FUNCTION__, p->name, tcnt, p->tov_top, (uint32_t)cycles, (uint32_t)p->tov_cycles);
+		// this involves some magicking
+		// cancel the current timers, recalculate the "base" we should be at, reset the
+		// timer base as it should, and re-schedule the timers using that base.
 
-	// this reset the timers bases to the new base
-	if (p->tov_cycles > 1) {
-		avr_cycle_timer_register(avr, p->tov_cycles - cycles, avr_timer_tov, p);
-		p->tov_base = 0;
-		avr_timer_tov(avr, avr->cycle - cycles, p);
+		avr_timer_cancel_all_cycle_timers(avr, p, 0);
+
+		uint64_t cycles = (tcnt * p->tov_cycles) / p->tov_top;
+
+		//	printf("%s-%c %d/%d -- cycles %d/%d\n", __FUNCTION__, p->name, tcnt, p->tov_top, (uint32_t)cycles, (uint32_t)p->tov_cycles);
+
+		// this reset the timers bases to the new base
+		if (p->tov_cycles > 1) {
+			avr_cycle_timer_register(avr, p->tov_cycles - cycles, avr_timer_tov, p);
+			p->tov_base = 0;
+			avr_timer_tov(avr, avr->cycle - cycles, p);
+		}
+
+		//	tcnt = ((avr->cycle - p->tov_base) * p->tov_top) / p->tov_cycles;
+		//	printf("%s-%c new tnt derive to %d\n", __FUNCTION__, p->name, tcnt);
 	}
-
-//	tcnt = ((avr->cycle - p->tov_base) * p->tov_top) / p->tov_cycles;
-//	printf("%s-%c new tnt derive to %d\n", __FUNCTION__, p->name, tcnt);	
+	else {
+		// clocked externally
+		p->tov_base = tcnt;
+	}
 }
 
 static void
 avr_timer_configure(
 		avr_timer_t * p,
-		uint32_t clock,
+		uint32_t prescaler,
 		uint32_t top,
 		uint8_t reset)
 {
-	p->tov_cycles = 0;
 	p->tov_top = top;
 
-	p->tov_cycles = clock * (top+1);
+	avr_t * avr = p->io.avr;
+	float resulting_clock = 0.0f; // used only for trace
+	float tov_cycles_exact;
 
-	AVR_LOG(p->io.avr, LOG_TRACE, "TIMER: %s-%c TOP %.2fHz = %d cycles = %dusec\n",
-			__FUNCTION__, p->name, (p->io.avr->frequency / (float)p->tov_cycles),
-			(int)p->tov_cycles, (int)avr_cycles_to_usec(p->io.avr, p->tov_cycles));
+	uint8_t as2 = p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_AS2;
+	uint8_t use_ext_clock = as2 || (p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_TN);
+	uint8_t virt_ext_clock = use_ext_clock && (p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_VIRT);
+
+	if (!use_ext_clock) {
+		if (prescaler != 0)
+			resulting_clock = (float)avr->frequency / prescaler;
+		p->tov_cycles = prescaler * (top+1);
+		p->tov_cycles_fract = 0.0f;
+		tov_cycles_exact = p->tov_cycles;
+	} else {
+		if (!virt_ext_clock) {
+			p->tov_cycles = 0;
+			p->tov_cycles_fract = 0.0f;
+		} else {
+			if (prescaler != 0)
+				resulting_clock = p->ext_clock / prescaler;
+			tov_cycles_exact = (float)avr->frequency / p->ext_clock * prescaler * (top+1);
+			p->tov_cycles = round(tov_cycles_exact);
+			p->tov_cycles_fract = tov_cycles_exact - p->tov_cycles;
+		}
+	}
+
+	if (p->trace) {
+		if (!use_ext_clock || virt_ext_clock) {
+			// clocked internally
+			AVR_LOG(avr, LOG_TRACE, "TIMER: %s-%c TOP %.2fHz = %d cycles = %dusec\n", // TOP there means Timer Overflows Persec ?
+					__FUNCTION__, p->name, ((float)avr->frequency / tov_cycles_exact),
+					(int)p->tov_cycles, (int)avr_cycles_to_usec(avr, p->tov_cycles));
+		} else {
+			// clocked externally from the Tn pin
+			AVR_LOG(avr, LOG_TRACE, "TIMER: %s-%c use ext clock, TOP=%d\n",
+					__FUNCTION__, p->name, (int)p->tov_top
+					);
+		}
+	}
 
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
 		if (!p->comp[compi].r_ocr)
 			continue;
 		uint32_t ocr = _timer_get_ocr(p, compi);
-		uint32_t comp_cycles = clock * (ocr + 1);
+		//uint32_t comp_cycles = clock * (ocr + 1);
+		uint32_t comp_cycles;
+		if (virt_ext_clock)
+			comp_cycles = (uint32_t)((float)avr->frequency / p->ext_clock * prescaler * (ocr+1));
+		else
+			comp_cycles = prescaler * (ocr + 1);
 
 		p->comp[compi].comp_cycles = 0;
 
-		if (p->trace & (avr_timer_trace_compa << compi))
-			printf("%s-%c clock %f top %d OCR%c %d\n", __FUNCTION__, p->name,
-				(float)(p->io.avr->frequency / clock), top, 'A'+compi, ocr);
-
+		if (p->trace & (avr_timer_trace_compa << compi)) {
+			if (!use_ext_clock || virt_ext_clock) {
+				printf("%s-%c clock %f top %d OCR%c %d\n", __FUNCTION__, p->name,
+					resulting_clock, top, 'A'+compi, ocr);
+			} else {
+				AVR_LOG(avr, LOG_TRACE, "%s timer%c clock via ext pin, TOP=%d OCR%c=%d\n",
+						__FUNCTION__, p->name, top, 'A'+compi, ocr);
+			}
+		}
 		if (ocr && ocr <= top) {
-			p->comp[compi].comp_cycles = comp_cycles; // avr_hz_to_cycles(p->io.avr, fa);
+			p->comp[compi].comp_cycles = comp_cycles;
 
 			if (p->trace & (avr_timer_trace_compa << compi)) printf(
 					"TIMER: %s-%c %c %.2fHz = %d cycles\n",
 					__FUNCTION__, p->name,
-					'A'+compi, (float)(p->io.avr->frequency / ocr),
-					(int)p->comp[compi].comp_cycles);
+					'A'+compi, resulting_clock / ocr,
+					(int)comp_cycles);
 		}
 	}
 
-	if (p->tov_cycles > 1) {
-		if (reset)
-		{
-			avr_cycle_timer_register(p->io.avr, p->tov_cycles, avr_timer_tov, p);
-			// calling it once, with when == 0 tells it to arm the A/B/C timers if needed
-			p->tov_base = 0;
-			avr_timer_tov(p->io.avr, p->io.avr->cycle, p);
+	if (!use_ext_clock || virt_ext_clock) {
+		if (p->tov_cycles > 1) {
+			if (reset) {
+				avr_cycle_timer_register(avr, p->tov_cycles, avr_timer_tov, p);
+				// calling it once, with when == 0 tells it to arm the A/B/C timers if needed
+				p->tov_base = 0;
+				avr_timer_tov(avr, avr->cycle, p);
+				p->phase_accumulator = 0.0f;
+			} else {
+				uint64_t orig_tov_base = p->tov_base;
+				avr_cycle_timer_register(avr, p->tov_cycles - (avr->cycle - orig_tov_base), avr_timer_tov, p);
+				// calling it once, with when == 0 tells it to arm the A/B/C timers if needed
+				p->tov_base = 0;
+				avr_timer_tov(avr, orig_tov_base, p);
+			}
 		}
-		else
-		{
-			uint64_t orig_tov_base = p->tov_base;
-			avr_cycle_timer_register(p->io.avr, p->tov_cycles - (p->io.avr->cycle - orig_tov_base), avr_timer_tov, p);
-			// calling it once, with when == 0 tells it to arm the A/B/C timers if needed
+	} else {
+		if (reset)
 			p->tov_base = 0;
-			avr_timer_tov(p->io.avr, orig_tov_base, p);
+	}
+
+	if (reset) {
+		avr_ioport_getirq_t req = {
+			.bit = p->ext_clock_pin
+		};
+		if (avr_ioctl(p->io.avr, AVR_IOCTL_IOPORT_GETIRQ_REGBIT, &req) > 0) {
+			// got an IRQ for the Tn input clock pin
+			if (use_ext_clock && !virt_ext_clock) {
+				if (p->trace)
+					AVR_LOG(p->io.avr, LOG_TRACE, "%s: timer%c connecting T%c pin IRQ %d\n", __FUNCTION__, p->name, p->name, req.irq[0]->irq);
+				avr_irq_register_notify(req.irq[0], avr_timer_irq_ext_clock, p);
+			} else {
+				if (p->trace)
+					AVR_LOG(p->io.avr, LOG_TRACE, "%s: timer%c disconnecting T%c pin IRQ %d\n", __FUNCTION__, p->name, p->name, req.irq[0]->irq);
+				avr_irq_unregister_notify(req.irq[0], avr_timer_irq_ext_clock, p);
+			}
 		}
 	}
+
 }
 
 static void
@@ -457,14 +670,19 @@ avr_timer_write(
 			return;
 		}
 
-		if (new_as2) {
-			// AVR clock and external 32KHz source does not have
-			// to be synced. To obtain better simulation results
-			// p->tov_base type must be float or avr->frequency
-			// must be multiple of 32768.
-			p->cs_div_value = (uint32_t)((uint64_t)avr->frequency * (1 << p->cs_div[new_cs]) / 32768);
+		p->ext_clock_flags &= ~(AVR_TIMER_EXTCLK_FLAG_TN | AVR_TIMER_EXTCLK_FLAG_EDGE
+								| AVR_TIMER_EXTCLK_FLAG_AS2 | AVR_TIMER_EXTCLK_FLAG_STARTED);
+		if (p->ext_clock_pin.reg
+				&& (p->cs_div[new_cs] == AVR_TIMER_EXTCLK_CHOOSE)) {
+			// Special case: external clock source chosen, prescale divider irrelevant.
+			p->cs_div_value = 1;
+			p->ext_clock_flags |= AVR_TIMER_EXTCLK_FLAG_TN | (new_cs & AVR_TIMER_EXTCLK_FLAG_EDGE);
 		} else {
 			p->cs_div_value = 1 << p->cs_div[new_cs];
+			if (new_as2) {
+				//p->cs_div_value = (uint32_t)((uint64_t)avr->frequency * (1 << p->cs_div[new_cs]) / 32768);
+				p->ext_clock_flags |= AVR_TIMER_EXTCLK_FLAG_AS2 | AVR_TIMER_EXTCLK_FLAG_EDGE;
+			}
 		}
 
 	/* mode */
@@ -497,7 +715,7 @@ avr_timer_write_pending(
 		cp[compi] = avr_regbit_get(avr, p->comp[compi].interrupt.raised);
 
 	// write the value
-	avr_core_watch_write(avr, addr, v);
+    // avr_core_watch_write(avr, addr, v); // This raises flags instead of clearing it.
 
 	// clear any interrupts & flags
 	avr_clear_interrupt_if(avr, &p->overflow, ov);
@@ -546,12 +764,42 @@ avr_timer_ioctl(
 	avr_timer_t * p = (avr_timer_t *)port;
 	int res = -1;
 
-	/* Allow setting individual trace flags */
 	if (ctl == AVR_IOCTL_TIMER_SET_TRACE(p->name)) {
+		/* Allow setting individual trace flags */
 		p->trace = *((uint32_t*)io_param);
 		res = 0;
+	} else if (ctl == AVR_IOCTL_TIMER_SET_FREQCLK(p->name)) {
+		float new_freq = *((float*)io_param);
+		if (new_freq >= 0.0f) {
+			if (p->as2.reg) {
+				if (new_freq <= port->avr->frequency/4) {
+					p->ext_clock = new_freq;
+					res = 0;
+				}
+			} else if (p->ext_clock_pin.reg) {
+				if (new_freq <= port->avr->frequency/2) {
+					p->ext_clock = new_freq;
+					res = 0;
+				}
+			}
+		}
+	} else if (ctl == AVR_IOCTL_TIMER_SET_VIRTCLK(p->name)) {
+		uint8_t new_val = *((uint8_t*)io_param);
+		if (!new_val) {
+			avr_ioport_getirq_t req_timer_clock_pin = {
+				.bit = p->ext_clock_pin
+			};
+			if (avr_ioctl(p->io.avr, AVR_IOCTL_IOPORT_GETIRQ_REGBIT, &req_timer_clock_pin) > 0) {
+				p->ext_clock_flags &= ~AVR_TIMER_EXTCLK_FLAG_VIRT;
+				res = 0;
+			}
+		} else {
+			p->ext_clock_flags |= AVR_TIMER_EXTCLK_FLAG_VIRT;
+			res = 0;
+		}
 	}
-
+	if (res >= 0)
+		avr_timer_reconfigure(p, 0); // virtual clock: attempt to follow frequency change preserving the phase
 	return res;
 }
 
@@ -574,8 +822,8 @@ avr_timer_reset(
 		};
 		if (avr_ioctl(port->avr, AVR_IOCTL_IOPORT_GETIRQ_REGBIT, &req) > 0) {
 			// cool, got an IRQ
-//			printf("%s-%c COMP%c Connecting PIN IRQ %d\n",
-//					__func__, p->name, 'A'+compi, req.irq[0]->irq);
+			//printf("%s-%c COMP%c Connecting PIN IRQ %d\n",
+			//	__func__, p->name, 'A'+compi, req.irq[0]->irq);
 			avr_connect_irq(&port->irq[TIMER_IRQ_OUT_COMP + compi], req.irq[0]);
 		}
 	}
@@ -584,9 +832,11 @@ avr_timer_reset(
 	};
 	if (avr_ioctl(port->avr, AVR_IOCTL_IOPORT_GETIRQ_REGBIT, &req) > 0) {
 		// cool, got an IRQ for the input capture pin
-//		printf("%s-%c ICP Connecting PIN IRQ %d\n", __func__, p->name, req.irq[0]->irq);
+		//printf("%s-%c ICP Connecting PIN IRQ %d\n", __func__, p->name, req.irq[0]->irq);
 		avr_irq_register_notify(req.irq[0], avr_timer_irq_icp, p);
 	}
+	p->ext_clock_flags &= ~(AVR_TIMER_EXTCLK_FLAG_STARTED | AVR_TIMER_EXTCLK_FLAG_TN |
+							AVR_TIMER_EXTCLK_FLAG_AS2 | AVR_TIMER_EXTCLK_FLAG_REVDIR);
 
 }
 
@@ -675,4 +925,12 @@ avr_timer_init(
 	}
 	avr_register_io_write(avr, p->r_tcnt, avr_timer_tcnt_write, p);
 	avr_register_io_read(avr, p->r_tcnt, avr_timer_tcnt_read, p);
+
+	if (p->as2.reg) {
+		p->ext_clock_flags = AVR_TIMER_EXTCLK_FLAG_VIRT;
+		p->ext_clock = 32768.0f;
+	} else {
+		p->ext_clock_flags = 0;
+		p->ext_clock = 0.0f;
+	}
 }

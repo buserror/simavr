@@ -30,6 +30,24 @@
 #define ICP_PORT	PORTD
 #define ICP_PIN		6
 
+#define OC0_PORT	PORTB
+#define OC0_PIN		3
+
+#define OC1A_PORT	PORTD
+#define OC1A_PIN	5
+
+#define OC1B_PORT	PORTD
+#define OC1B_PIN	4
+
+#define OC2_PORT	PORTD
+#define OC2_PIN		7
+
+#define EXT_CLOCK0_PORT	PORTB
+#define EXT_CLOCK0_PIN		0
+
+#define EXT_CLOCK1_PORT	PORTB
+#define EXT_CLOCK1_PIN		1
+
 #define _AVR_IO_H_
 #define __ASSEMBLER__
 #include "avr/iom32.h"
