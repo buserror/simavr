@@ -715,7 +715,7 @@ avr_timer_write_pending(
 		cp[compi] = avr_regbit_get(avr, p->comp[compi].interrupt.raised);
 
 	// write the value
-    avr_core_watch_write(avr, addr, v);
+    // avr_core_watch_write(avr, addr, v); // This raises flags instead of clearing it.
 
 	// clear any interrupts & flags
 	avr_clear_interrupt_if(avr, &p->overflow, ov);
