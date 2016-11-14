@@ -79,6 +79,9 @@ const struct mcu_t SIM_CORENAME = {
 
 		.init = mx4_init,
 		.reset = mx4_reset,
+#ifdef RAMPZ	/* for 1284p */
+		.rampz = RAMPZ,	// extended program memory access
+#endif
 	},
 	AVR_EEPROM_DECLARE(EE_READY_vect),
 	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
