@@ -234,7 +234,7 @@ elf_copy_section(
 		return -1;
 
 	memcpy(*dest, data->d_buf, data->d_size);
-	AVR_LOG(NULL, LOG_TRACE, "Loaded %zu .%s\n", name, data->d_size);
+	AVR_LOG(NULL, LOG_TRACE, "Loaded %zu %s\n", data->d_size, name);
 
 	return 0;
 }
