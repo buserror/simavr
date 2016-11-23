@@ -112,12 +112,13 @@ avr_raise_interrupt(
 		avr_t * avr,
 		avr_int_vector_t * vector)
 {
+	SREG_START(avr);
 	if (!vector || !vector->vector)
 		return 0;
 	if (vector->pending) {
 		if (vector->trace)
 			printf("IRQ%d:I=%d already raised (enabled %d) (cycle %lld pc 0x%x)\n",
-				vector->vector, !!avr->sreg[S_I], avr_regbit_get(avr, vector->enable),
+				vector->vector, !!SREG_BIT(S_I), avr_regbit_get(avr, vector->enable),
 				(long long int)avr->cycle, avr->pc);
 		return 0;
 	}
@@ -142,7 +143,7 @@ avr_raise_interrupt(
 
 		avr_int_pending_write(&table->pending, vector);
 
-		if (avr->sreg[S_I] && avr->interrupt_state == 0)
+		if (SREG_BIT(S_I) && avr->interrupt_state == 0)
 			avr->interrupt_state = 1;
 		if (avr->state == cpu_Sleeping) {
 			if (vector->trace)
@@ -232,7 +233,8 @@ void
 avr_service_interrupts(
 		avr_t * avr)
 {
-	if (!avr->sreg[S_I] || !avr->interrupt_state)
+	SREG_START(avr);
+	if (!SREG_BIT(S_I) || !avr->interrupt_state)
 		return;
 
 	if (avr->interrupt_state < 0) {

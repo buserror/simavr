@@ -239,11 +239,6 @@ typedef struct avr_t {
 	 */
 	avr_irq_pool_t	irq_pool;
 
-	// Mirror of the SREG register, to facilitate the access to bits
-	// in the opcode decoder.
-	// This array is re-synthesized back/forth when SREG changes
-	uint8_t		sreg[8];
-
 	/* Interrupt state:
 		00: idle (no wait, no pending interrupts) or disabled
 		<0: wait till zero
