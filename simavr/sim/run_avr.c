@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 		} else if (!strcmp(argv[pi], "-ee")) {
 			loadBase = AVR_SEGMENT_OFFSET_EEPROM;
 		} else if (!strcmp(argv[pi], "-ff")) {
-			loadBase = AVR_SEGMENT_OFFSET_FLASH;			
+			loadBase = AVR_SEGMENT_OFFSET_FLASH;
 		} else if (argv[pi][0] != '-') {
 			char * filename = argv[pi];
 			char * suffix = strrchr(filename, '.');
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 				ihex_chunk_p chunk = NULL;
 				int cnt = read_ihex_chunks(filename, &chunk);
 				if (cnt <= 0) {
-					fprintf(stderr, "%s: Unable to load IHEX file %s\n", 
+					fprintf(stderr, "%s: Unable to load IHEX file %s\n",
 						argv[0], argv[pi]);
 					exit(1);
 				}
@@ -189,9 +189,9 @@ int main(int argc, char *argv[])
 
 	for (;;) {
 		int state = avr_run(avr);
-		if ( state == cpu_Done || state == cpu_Crashed)
+		if (state == cpu_Done || state == cpu_Crashed)
 			break;
 	}
-	
+
 	avr_terminate(avr);
 }

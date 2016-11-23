@@ -319,7 +319,8 @@ void avr_callback_run_raw(avr_t * avr)
 		/* Note: checking interrupt_state here is completely superfluous, however
 			as interrupt_state tells us all we really need to know, here
 			a simple check here may be cheaper than a call not needed. */
-		if (avr->interrupt_state) avr_service_interrupts(avr);
+		if (avr->interrupt_state)
+			avr_service_interrupts(avr);
 	}
 }
 

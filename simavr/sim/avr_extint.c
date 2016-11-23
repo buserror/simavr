@@ -192,7 +192,7 @@ static void avr_extint_reset(avr_io_t * port)
 			avr_irq_t * irq = avr_io_getirq(p->io.avr,
 					p->eint[i].port_ioctl, p->eint[i].port_pin);
 
-			avr_connect_irq(irq, p->io.irq + i);			
+			avr_connect_irq(irq, p->io.irq + i);
 		}
 	}
 }

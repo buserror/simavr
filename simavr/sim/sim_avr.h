@@ -145,18 +145,18 @@ typedef void (*avr_run_t)(
  * the rest is runtime data (as little as possible)
  */
 typedef struct avr_t {
-	const char * mmcu;	// name of the AVR
+	const char * 		mmcu;	// name of the AVR
 	// these are filled by sim_core_declare from constants in /usr/lib/avr/include/avr/io*.h
-	uint16_t 	ramend;
-	uint32_t	flashend;
-	uint32_t	e2end;
-	uint8_t		vector_size;
-	uint8_t		signature[3];
-	uint8_t		fuse[6];
-	uint8_t		lockbits;
-	avr_io_addr_t	rampz;	// optional, only for ELPM/SPM on >64Kb cores
-	avr_io_addr_t	eind;	// optional, only for EIJMP/EICALL on >64Kb cores
-	uint8_t		address_size;	// 2, or 3 for cores >128KB in flash
+	uint16_t 			ramend;
+	uint32_t			flashend;
+	uint32_t			e2end;
+	uint8_t				vector_size;
+	uint8_t				signature[3];
+	uint8_t				fuse[6];
+	uint8_t				lockbits;
+	avr_io_addr_t		rampz;	// optional, only for ELPM/SPM on >64Kb cores
+	avr_io_addr_t		eind;	// optional, only for EIJMP/EICALL on >64Kb cores
+	uint8_t				address_size;	// 2, or 3 for cores >128KB in flash
 
 	// filled by the ELF data, this allow tracking of invalid jumps
 	uint32_t			codeend;
@@ -181,7 +181,7 @@ typedef struct avr_t {
 	 * is reached, at which point sleep_usec is cleared and the sleep request
 	 * is passed on to the operating system.
 	 */
-	uint32_t sleep_usec;
+	uint32_t 			sleep_usec;
 
 	// called at init time
 	void (*init)(struct avr_t * avr);
@@ -228,7 +228,7 @@ typedef struct avr_t {
 		00: idle (no wait, no pending interrupts) or disabled
 		<0: wait till zero
 		>0: interrupt pending */
-	int8_t		interrupt_state;	// interrupt state
+	int8_t			interrupt_state;	// interrupt state
 
 	/*
 	 * ** current PC **
@@ -274,7 +274,7 @@ typedef struct avr_t {
 	 * will handle this particular case, without impacting the performance of the
 	 * other, normal cases...
 	 */
-	int	io_shared_io_count;
+	int				io_shared_io_count;
 	struct {
 		int used;
 		struct {
@@ -284,12 +284,12 @@ typedef struct avr_t {
 	} io_shared_io[4];
 
 	// flash memory (initialized to 0xff, and code loaded into it)
-	uint8_t *	flash;
+	uint8_t *		flash;
 	// this is the general purpose registers, IO registers, and SRAM
-	uint8_t *	data;
+	uint8_t *		data;
 
 	// queue of io modules
-	struct avr_io_t *io_port;
+	struct avr_io_t * io_port;
 
 	// Builtin and user-defined commands
 	avr_cmd_table_t commands;

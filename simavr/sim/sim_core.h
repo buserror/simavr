@@ -28,8 +28,8 @@ extern "C" {
 
 #ifdef NO_COLOR
 	#define FONT_GREEN
-	#define FONT_RED		
-	#define FONT_DEFAULT	
+	#define FONT_RED
+	#define FONT_DEFAULT
 #else
 	#define FONT_GREEN		"\e[32m"
 	#define FONT_RED		"\e[31m"
@@ -55,8 +55,8 @@ int _avr_push_addr(avr_t * avr, avr_flashaddr_t addr);
  */
 const char * avr_regname(uint8_t reg);
 
-/* 
- * DEBUG bits follow 
+/*
+ * DEBUG bits follow
  * These will disappear when gdb arrives
  */
 void avr_dump_state(avr_t * avr);
@@ -88,7 +88,7 @@ void avr_dump_state(avr_t * avr);
 #define DUMP_STACK()
 #define DUMP_REG();
 
-#endif 
+#endif
 
 /**
  * Reconstructs the SREG value from avr->sreg into dst.
@@ -104,7 +104,7 @@ void avr_dump_state(avr_t * avr);
 
 static inline void avr_sreg_set(avr_t * avr, uint8_t flag, uint8_t ival)
 {
-	/* 
+	/*
 	 *	clear interrupt_state if disabling interrupts.
 	 *	set wait if enabling interrupts.
 	 *	no change if interrupt flag does not change.
