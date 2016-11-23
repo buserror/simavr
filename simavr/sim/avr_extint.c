@@ -25,6 +25,7 @@
 #include <string.h>
 #include "avr_extint.h"
 #include "avr_ioport.h"
+#include "sim_core.h" // for SREG bit access
 
 typedef struct avr_extint_poll_context_t {
 	uint32_t	eint_no; // index of particular interrupt source we are monitoring
@@ -38,6 +39,7 @@ static avr_cycle_count_t avr_extint_poll_level_trig(
 {
 	avr_extint_poll_context_t *poll = (avr_extint_poll_context_t *)param;
 	avr_extint_t * p = (avr_extint_t *)poll->extint;
+	SREG_START(avr);
 
 	char port = p->eint[poll->eint_no].port_ioctl & 0xFF;
 	avr_ioport_state_t iostate;
@@ -47,7 +49,7 @@ static avr_cycle_count_t avr_extint_poll_level_trig(
 	if (bit)
 		goto terminate_poll; // Only poll while pin level remains low
 
-	if (avr->sreg[S_I]) {
+	if (SREG_BIT(S_I)) {
 		uint8_t raised = avr_regbit_get(avr, p->eint[poll->eint_no].vector.raised) || p->eint[poll->eint_no].vector.pending;
 		if (!raised)
 			avr_raise_interrupt(avr, &p->eint[poll->eint_no].vector);
@@ -140,7 +142,8 @@ static void avr_extint_irq_notify(struct avr_irq_t * irq, uint32_t value, void *
 					to turn this feature off. In this case bahaviour will be similar to the falling edge interrupt.
 				 */
 				if (!value) {
-					if (avr->sreg[S_I]) {
+					SREG_START(avr);
+					if (SREG_BIT(S_I)) {
 						uint8_t raised = avr_regbit_get(avr, p->eint[irq->irq].vector.raised) || p->eint[irq->irq].vector.pending;
 						if (!raised)
 							avr_raise_interrupt(avr, &p->eint[irq->irq].vector);

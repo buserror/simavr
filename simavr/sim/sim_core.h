@@ -90,20 +90,18 @@ void avr_dump_state(avr_t * avr);
 
 #endif
 
-/**
- * Reconstructs the SREG value from avr->sreg into dst.
- */
-#define READ_SREG_INTO(avr, dst) { \
-			dst = 0; \
-			for (int i = 0; i < 8; i++) \
-				if (avr->sreg[i] > 1) { \
-					printf("** Invalid SREG!!\n"); \
-				} else if (avr->sreg[i]) \
-					dst |= (1 << i); \
-		}
+#define SREG_BIT(_b) 		(_sreg & (1 << (_b)))
+#define SREG_SETBIT(_b, _v) 	_sreg = (_sreg & ~(1 << (_b))) | (!!(_v) << (_b))
 
-static inline void avr_sreg_set(avr_t * avr, uint8_t flag, uint8_t ival)
+#define READ_SREG_INTO(_avr, _dst) \
+	(_dst) = (_avr)->data[R_SREG]
+
+#define SREG_START(_avr)	uint8_t _sreg; READ_SREG_INTO(_avr, _sreg)
+#define SREG_END(_avr)		(_avr)->data[R_SREG] = _sreg
+
+static inline uint8_t avr_sreg_set(avr_t * avr, uint8_t flag, uint8_t ival)
 {
+	SREG_START(avr);
 	/*
 	 *	clear interrupt_state if disabling interrupts.
 	 *	set wait if enabling interrupts.
@@ -112,13 +110,14 @@ static inline void avr_sreg_set(avr_t * avr, uint8_t flag, uint8_t ival)
 
 	if (flag == S_I) {
 		if (ival) {
-			if (!avr->sreg[S_I])
+			if (!SREG_BIT(S_I))
 				avr->interrupt_state = -2;
 		} else
 			avr->interrupt_state = 0;
 	}
 
-	avr->sreg[flag] = ival;
+	SREG_SETBIT(flag, ival);
+	return SREG_END(avr);
 }
 
 /**

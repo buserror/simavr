@@ -76,7 +76,8 @@ static int my_avr_run(avr_t * avr)
 	avr->pc = new_pc;
 
 	if (avr->state == cpu_Sleeping) {
-		if (!avr->sreg[S_I]) {
+		SREG_START(avr);
+		if (!SREG_BIT(S_I)) {
 			printf("simavr: sleeping with interrupts off, quitting gracefully\n");
 			avr_terminate(avr);
 			fail("Test case error: special_deinit() returned?");
