@@ -207,6 +207,19 @@ typedef struct avr_t {
 	void (*init)(struct avr_t * avr);
 	// called at reset time
 	void (*reset)(struct avr_t * avr);
+	/*!
+	 * Sleep default behaviour.
+	 * In "raw" mode, it calls usleep, in gdb mode, it waits
+	 * for howLong for gdb command on it's sockets.
+	 */
+	void (*sleep)(struct avr_t * avr, avr_cycle_count_t howLong);
+	/*!
+	 * Default AVR core run function.
+	 * Two modes are available, a "raw" run that goes as fast as
+	 * it can, and a "gdb" mode that also watchouts for gdb events
+	 * and is a little bit slower.
+	 */
+	avr_run_t			run;
 
 	struct {
 		// called at init time (for special purposes like using a
@@ -218,20 +231,24 @@ typedef struct avr_t {
 		void *data;
 	} custom;
 
-	/*!
-	 * Default AVR core run function.
-	 * Two modes are available, a "raw" run that goes as fast as
-	 * it can, and a "gdb" mode that also watchouts for gdb events
-	 * and is a little bit slower.
+	/* JIT/translator specific. This is the entry point of the native
+	 * context that has been compiled from the AVR firmware, it is called
+	 * repeteadly and is supposed to run for howLong cyles, or until
+	 * the core changes state.
+	 * Note the jit_avr is NOT a full avr_t, it's a much reduced one with
+	 * just the bits required by the core, proper
 	 */
-	avr_run_t	run;
-
-	/*!
-	 * Sleep default behaviour.
-	 * In "raw" mode, it calls usleep, in gdb mode, it waits
-	 * for howLong for gdb command on it's sockets.
-	 */
-	void (*sleep)(struct avr_t * avr, avr_cycle_count_t howLong);
+	struct {
+		void * 	context;	/* libtcc context */
+		void * jit_avr;
+		avr_flashaddr_t (*entry)(
+			void * jit_avr,
+			avr_flashaddr_t pc,
+			int * state,
+			int8_t * interrupt_state,
+			int * cycles,
+			int howLong );
+	} jit;
 
 	/*!
 	 * Every IRQs will be stored in this pool. It is not
@@ -442,7 +459,11 @@ avr_global_logger(
 /*
  * Type for custom logging functions
  */
-typedef void (*avr_logger_p)(struct avr_t* avr, const int level, const char * format, va_list ap);
+typedef void (*avr_logger_p)(
+		struct avr_t* avr,
+		const int level,
+		const char * format,
+		va_list ap);
 
 /* Sets a global logging function in place of the default */
 void
@@ -460,6 +481,8 @@ void avr_callback_sleep_gdb(avr_t * avr, avr_cycle_count_t howLong);
 void avr_callback_run_gdb(avr_t * avr);
 void avr_callback_sleep_raw(avr_t * avr, avr_cycle_count_t howLong);
 void avr_callback_run_raw(avr_t * avr);
+// and this one is for the translator/jit runtime
+void avr_callback_run_jit(avr_t * avr);
 
 /**
  * Accumulates sleep requests (and returns a sleep time of 0) until

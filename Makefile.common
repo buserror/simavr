@@ -110,11 +110,20 @@ MKDIR		?= mkdir -p
 INSTALL		?= install
 SHELL	 	:= ${shell which bash}
 
+LIBTCC	:= ${wildcard /usr/include/libtcc.*}
+ifeq ($(LIBTCC),)
+LIBTCC	= 0
+else
+LIBTCC	= 1
+endif
+
 OBJ 		:= obj-${shell $(CC) -dumpmachine}
 LIBDIR		:= ${shell pwd}/${SIMAVR}/${OBJ}
 LDFLAGS 	+= -L${LIBDIR} -lsimavr -lm
-
 LDFLAGS 	+= -lelf
+ifeq ($(LIBTCC),1)
+LDFLAGS 	+= -ltcc -ldl
+endif
 
 ifeq (${WIN}, Msys)
 LDFLAGS      += -lws2_32
