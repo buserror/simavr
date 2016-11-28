@@ -98,8 +98,9 @@ static uint8_t avr_uart_read(struct avr_t * avr, avr_io_addr_t addr, void * para
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 
-	// clear the rxc bit in case the code is using polling
-	avr_regbit_clear(avr, p->rxc.raised);
+	// clear the rxc interrupt in case the code is using polling
+	uint8_t rxc = avr_regbit_get(avr, p->rxc.raised);
+	avr_clear_interrupt_if(avr, &p->rxc, rxc);
 
 	if (!avr_regbit_get(avr, p->rxen)) {
 		avr->data[addr] = 0;
