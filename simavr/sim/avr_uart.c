@@ -145,6 +145,18 @@ static void avr_uart_baud_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 	AVR_LOG(avr, LOG_TRACE, "UART: Roughly %d usec per bytes\n", (int)p->usec_per_byte);
 }
 
+static void avr_uart_rxen_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+{
+	avr_uart_t * p = (avr_uart_t *)param;
+
+	avr_core_watch_write(avr, addr, v);
+	// if reception is idle and the fifo is empty, tell whomever there is room
+	if (avr_regbit_get(avr, p->rxen) && uart_fifo_isempty(&p->input)) {
+		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, 0);
+		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XON, 1);
+	}
+}
+
 static void avr_uart_udr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
@@ -311,5 +323,6 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 		avr_register_io_write(avr, p->r_ucsra, avr_uart_write, p);
 	if (p->r_ubrrl)
 		avr_register_io_write(avr, p->r_ubrrl, avr_uart_baud_write, p);
+	avr_register_io_write(avr, p->rxen.reg, avr_uart_rxen_write, p);
 }
 
