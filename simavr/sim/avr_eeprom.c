@@ -40,6 +40,25 @@ static avr_cycle_count_t avr_eei_raise(struct avr_t * avr, avr_cycle_count_t whe
 	return 0;
 }
 
+/*
+ * Get current stack pointer
+ */
+static inline uint16_t _avr_sp_get(avr_t * avr)
+{
+	return avr->data[R_SPL] | (avr->data[R_SPH] << 8);
+}
+
+/*
+ * Get opcode
+*/
+static inline uint16_t
+_avr_flash_read16le(
+	avr_t * avr,
+	avr_flashaddr_t addr)
+{
+	return(avr->flash[addr] | (avr->flash[addr + 1] << 8));
+}
+
 static void avr_eeprom_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_eeprom_t * p = (avr_eeprom_t *)param;
@@ -52,25 +71,41 @@ static void avr_eeprom_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void * 
 	}
 
 	if (eempe && avr_regbit_get(avr, p->eepe)) {	// write operation
-		uint16_t addr;
+		uint16_t addr, addr_wrapped;
 		if (p->r_eearh)
 			addr = avr->data[p->r_eearl] | (avr->data[p->r_eearh] << 8);
 		else
 			addr = avr->data[p->r_eearl];
+		addr_wrapped = addr;
+		if (addr >= p->size) {
+			addr_wrapped = addr & (p->size-1);
+			AVR_LOG(avr, LOG_ERROR, "EEPROM: *** Write address out of bounds: %04x > %04x,"
+									" wrapping to %04x (PC=%04x SP=%04x O=%04x)\n",
+					addr, p->size-1, addr_wrapped,
+					avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc));
+		}
 	//	printf("eeprom write %04x <- %02x\n", addr, avr->data[p->r_eedr]);
-		p->eeprom[addr] = avr->data[p->r_eedr];	
+		p->eeprom[addr_wrapped] = avr->data[p->r_eedr];
 		// Automatically clears that bit (?)
 		avr_regbit_clear(avr, p->eempe);
 
 		avr_cycle_timer_register_usec(avr, 3400, avr_eei_raise, p); // 3.4ms here
 	}
 	if (avr_regbit_get(avr, p->eere)) {	// read operation
-		uint16_t addr;
+		uint16_t addr, addr_wrapped;
 		if (p->r_eearh)
 			addr = avr->data[p->r_eearl] | (avr->data[p->r_eearh] << 8);
 		else
 			addr = avr->data[p->r_eearl];
-		avr->data[p->r_eedr] = p->eeprom[addr];
+		addr_wrapped = addr;
+		if (addr >= p->size) {
+			addr_wrapped = addr & (p->size-1);
+			AVR_LOG(avr, LOG_ERROR, "EEPROM: *** Read address out of bounds: %04x > %04x,"
+					" wrapping to %04x (PC=%04x SP=%04x O=%04x)\n",
+					addr, p->size-1, addr_wrapped,
+					avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc));
+		}
+		avr->data[p->r_eedr] = p->eeprom[addr_wrapped];
 	//	printf("eeprom read %04x : %02x\n", addr, p->eeprom[addr]);
 	}
 
