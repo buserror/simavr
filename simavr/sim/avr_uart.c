@@ -151,6 +151,7 @@ static void avr_uart_rxen_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 
 	avr_core_watch_write(avr, addr, v);
 
+	///TODO: handle the RxDn pin function override
 	if (avr_regbit_get(avr, p->rxen)) {
 		if (uart_fifo_isempty(&p->input)) {
 			// if reception is enabled and the fifo is empty, tell whomever there is room
@@ -162,6 +163,10 @@ static void avr_uart_rxen_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 		avr_cycle_timer_cancel(avr, avr_uart_rxc_raise, p);
 		// flush the Receive Buffer
 		uart_fifo_reset(&p->input);
+		// clear the rxc interrupt flag
+		uint8_t rxc = avr_regbit_get(avr, p->rxc.raised);
+		if (rxc)
+			avr_clear_interrupt_if(avr, &p->rxc, 0);
 	}
 }
 
