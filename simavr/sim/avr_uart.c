@@ -150,10 +150,18 @@ static void avr_uart_rxen_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 	avr_uart_t * p = (avr_uart_t *)param;
 
 	avr_core_watch_write(avr, addr, v);
-	// if reception is idle and the fifo is empty, tell whomever there is room
-	if (avr_regbit_get(avr, p->rxen) && uart_fifo_isempty(&p->input)) {
-		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, 0);
-		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XON, 1);
+
+	if (avr_regbit_get(avr, p->rxen)) {
+		if (uart_fifo_isempty(&p->input)) {
+			// if reception is enabled and the fifo is empty, tell whomever there is room
+			avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, 0);
+			avr_raise_irq(p->io.irq + UART_IRQ_OUT_XON, 1);
+		}
+	} else {
+		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, 1);
+		avr_cycle_timer_cancel(avr, avr_uart_rxc_raise, p);
+		// flush the Receive Buffer
+		uart_fifo_reset(&p->input);
 	}
 }
 
