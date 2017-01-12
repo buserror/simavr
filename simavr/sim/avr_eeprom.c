@@ -40,25 +40,6 @@ static avr_cycle_count_t avr_eei_raise(struct avr_t * avr, avr_cycle_count_t whe
 	return 0;
 }
 
-/*
- * Get current stack pointer
- */
-static inline uint16_t _avr_sp_get(avr_t * avr)
-{
-	return avr->data[R_SPL] | (avr->data[R_SPH] << 8);
-}
-
-/*
- * Get opcode
-*/
-static inline uint16_t
-_avr_flash_read16le(
-	avr_t * avr,
-	avr_flashaddr_t addr)
-{
-	return(avr->flash[addr] | (avr->flash[addr + 1] << 8));
-}
-
 static void avr_eeprom_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_eeprom_t * p = (avr_eeprom_t *)param;
@@ -70,43 +51,33 @@ static void avr_eeprom_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void * 
 		avr_cycle_timer_register(avr, 4, avr_eempe_clear, p);
 	}
 
+	uint16_t ee_addr;
+	if (p->r_eearh)
+		ee_addr = avr->data[p->r_eearl] | (avr->data[p->r_eearh] << 8);
+	else
+		ee_addr = avr->data[p->r_eearl];
+	if (((eempe && avr_regbit_get(avr, p->eepe)) || avr_regbit_get(avr, p->eere)) &&
+			ee_addr >= p->size) {
+		AVR_LOG(avr, LOG_ERROR, "EEPROM: *** %s address out of bounds: %04x > %04x,"
+								" wrapping to %04x (PC=%04x)\n",
+				eempe ? "Write" : "Read",
+				ee_addr, p->size-1, ee_addr & (p->size-1),
+				avr->pc);
+		if (p->oob_crash_en)
+			avr_sadly_crashed(avr, 0);
+		ee_addr = ee_addr & (p->size-1);
+	}
 	if (eempe && avr_regbit_get(avr, p->eepe)) {	// write operation
-		uint16_t addr, addr_wrapped;
-		if (p->r_eearh)
-			addr = avr->data[p->r_eearl] | (avr->data[p->r_eearh] << 8);
-		else
-			addr = avr->data[p->r_eearl];
-		addr_wrapped = addr;
-		if (addr >= p->size) {
-			addr_wrapped = addr & (p->size-1);
-			AVR_LOG(avr, LOG_ERROR, "EEPROM: *** Write address out of bounds: %04x > %04x,"
-									" wrapping to %04x (PC=%04x SP=%04x O=%04x)\n",
-					addr, p->size-1, addr_wrapped,
-					avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc));
-		}
-	//	printf("eeprom write %04x <- %02x\n", addr, avr->data[p->r_eedr]);
-		p->eeprom[addr_wrapped] = avr->data[p->r_eedr];
+		//	printf("eeprom write %04x <- %02x\n", addr, avr->data[p->r_eedr]);
+		p->eeprom[ee_addr] = avr->data[p->r_eedr];
 		// Automatically clears that bit (?)
 		avr_regbit_clear(avr, p->eempe);
 
 		avr_cycle_timer_register_usec(avr, 3400, avr_eei_raise, p); // 3.4ms here
 	}
 	if (avr_regbit_get(avr, p->eere)) {	// read operation
-		uint16_t addr, addr_wrapped;
-		if (p->r_eearh)
-			addr = avr->data[p->r_eearl] | (avr->data[p->r_eearh] << 8);
-		else
-			addr = avr->data[p->r_eearl];
-		addr_wrapped = addr;
-		if (addr >= p->size) {
-			addr_wrapped = addr & (p->size-1);
-			AVR_LOG(avr, LOG_ERROR, "EEPROM: *** Read address out of bounds: %04x > %04x,"
-					" wrapping to %04x (PC=%04x SP=%04x O=%04x)\n",
-					addr, p->size-1, addr_wrapped,
-					avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc));
-		}
-		avr->data[p->r_eedr] = p->eeprom[addr_wrapped];
-	//	printf("eeprom read %04x : %02x\n", addr, p->eeprom[addr]);
+		avr->data[p->r_eedr] = p->eeprom[ee_addr];
+		//	printf("eeprom read %04x : %02x\n", addr, p->eeprom[addr]);
 	}
 
 	// autocleared
@@ -142,6 +113,9 @@ static int avr_eeprom_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_para
 				memcpy(desc->ee, p->eeprom + desc->offset, desc->size);
 			else	// allow to get access to the read data, for gdb support
 				desc->ee = p->eeprom + desc->offset;
+		}	break;
+		case AVR_IOCTL_EEPROM_BNDR_CRSH: {
+			p->oob_crash_en = *((uint8_t*)io_param);
 		}	break;
 	}
 	
