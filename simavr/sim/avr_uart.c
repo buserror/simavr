@@ -314,6 +314,7 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 //	printf("%s UART%c UDR=%02x\n", __FUNCTION__, p->name, p->r_udr);
 
 	p->flags = AVR_UART_FLAG_POOL_SLEEP|AVR_UART_FLAG_STDIO;
+	p->rxc.raise_sticky = 1; // hope this is common for any core
 
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->rxc);
