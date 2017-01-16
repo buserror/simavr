@@ -145,9 +145,17 @@ static void avr_uart_baud_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 	AVR_LOG(avr, LOG_TRACE, "UART: Roughly %d usec per bytes\n", (int)p->usec_per_byte);
 }
 
+/*
 static void avr_uart_rxen_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
+
+	if (addr != p->rxen.reg)
+		return;
+	uint8_t rxen = avr_regbit_get(avr, p->rxen);
+	uint8_t rxen_new = (v >> p->rxen.bit) & p->rxen.mask;
+	if (rxen == rxen_new)
+		return;
 
 	avr_core_watch_write(avr, addr, v);
 
@@ -169,6 +177,7 @@ static void avr_uart_rxen_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 			avr_clear_interrupt_if(avr, &p->rxc, 0);
 	}
 }
+*/
 
 static void avr_uart_udr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
@@ -203,6 +212,7 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 
+	if (0) {
 	if (p->udrc.vector && addr == p->udrc.enable.reg) {
 		/*
 		 * If enabling the UDRC interrupt, raise it immediately if FIFO is empty
@@ -231,6 +241,81 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 
 		//avr_clear_interrupt_if(avr, &p->udrc, udre);
 		avr_clear_interrupt_if(avr, &p->txc, txc);
+	} }
+
+	uint8_t masked_v = v;
+	uint8_t clear_txc = 0;
+
+	// exclude these locations from direct write:
+	if (p->udrc.raised.reg == addr) {
+		masked_v &= ~(p->udrc.raised.mask << p->udrc.raised.bit);
+		masked_v |= avr_regbit_get_raw(avr, p->udrc.raised);
+	}
+	if (p->txc.raised.reg == addr) {
+		uint8_t mask = p->txc.raised.mask << p->txc.raised.bit;
+		masked_v &= ~(mask);
+		masked_v |= avr_regbit_get_raw(avr, p->txc.raised);
+		// it can be cleared by writing a one to its bit location
+		if (v & mask)
+			clear_txc = 1;
+	}
+	if (p->rxc.raised.reg == addr) {
+		masked_v &= ~(p->rxc.raised.mask << p->rxc.raised.bit);
+		masked_v |= avr_regbit_get_raw(avr, p->rxc.raised);
+	}
+	if (p->fe.reg == addr) {
+		masked_v &= ~(p->fe.mask << p->fe.bit);
+		masked_v |= avr_regbit_get_raw(avr, p->fe);
+	}
+	if (p->dor.reg == addr) {
+		masked_v &= ~(p->dor.mask << p->dor.bit);
+		masked_v |= avr_regbit_get_raw(avr, p->dor);
+	}
+	if (p->upe.reg == addr) {
+		masked_v &= ~(p->upe.mask << p->upe.bit);
+		masked_v |= avr_regbit_get_raw(avr, p->upe);
+	}
+	if (p->rxb8.reg == addr) {
+		masked_v &= ~(p->rxb8.mask << p->rxb8.bit);
+		masked_v |= avr_regbit_get_raw(avr, p->rxb8);
+	}
+
+	uint8_t rxen = avr_regbit_get(avr, p->rxen);
+	uint8_t udrce = avr_regbit_get(avr, p->udrc.enable);
+	// Now write whatever bits could be writen directly.
+	// It is necessary, because user may set watchpoints on our registers.
+	avr_core_watch_write(avr, addr, masked_v);
+	uint8_t new_rxen = avr_regbit_get(avr, p->rxen);
+	uint8_t new_udrce = avr_regbit_get(avr, p->udrc.enable);
+	if (!udrce && new_udrce) {
+		// If enabling the UDRC (alias is UDRE) interrupt, raise it immediately if FIFO is empty.
+		// If the FIFO is not empty (clear timer is flying) we don't
+		// need to raise the interrupt, it will happen when the timer
+		// is fired.
+		if (avr_cycle_timer_status(avr, avr_uart_txc_raise, p) == 0)
+			avr_raise_interrupt(avr, &p->udrc);
+	}
+	if (clear_txc)
+		avr_clear_interrupt_if(avr, &p->txc, 0);
+
+	///TODO: handle the RxD & TxD pins function override
+
+	if (new_rxen != rxen) {
+		if (new_rxen) {
+			if (uart_fifo_isempty(&p->input)) {
+				// if reception is enabled and the fifo is empty, tell whomever there is room
+				avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, 0);
+				avr_raise_irq(p->io.irq + UART_IRQ_OUT_XON, 1);
+			}
+		} else {
+			avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, 1);
+			avr_cycle_timer_cancel(avr, avr_uart_rxc_raise, p);
+			// flush the Receive Buffer
+			uart_fifo_reset(&p->input);
+			// clear the rxc interrupt flag
+			avr_clear_interrupt_if(avr, &p->rxc, 0);
+			avr_regbit_setto(avr, p->rxc.raised, 0); // clear even it's 'sticky'
+		}
 	}
 }
 
@@ -315,6 +400,22 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 
 	p->flags = AVR_UART_FLAG_POOL_SLEEP|AVR_UART_FLAG_STDIO;
 	p->rxc.raise_sticky = 1; // hope this is common for any core
+	if (p->fe.reg == 0) {
+		avr_regbit_t fe = AVR_IO_REGBIT(p->r_ucsra, 4);
+		p->fe = fe;
+	}
+	if (p->dor.reg == 0) {
+		avr_regbit_t dor = AVR_IO_REGBIT(p->r_ucsra, 3);
+		p->dor = dor;
+	}
+	if (p->upe.reg == 0) {
+		avr_regbit_t upe = AVR_IO_REGBIT(p->r_ucsra, 2);
+		p->upe = upe;
+	}
+	if (p->rxb8.reg == 0) {
+		avr_regbit_t rxb8 = AVR_IO_REGBIT(p->r_ucsrb, 1);
+		p->rxb8 = rxb8;
+	}
 
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->rxc);
@@ -337,6 +438,7 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 		avr_register_io_write(avr, p->r_ucsra, avr_uart_write, p);
 	if (p->r_ubrrl)
 		avr_register_io_write(avr, p->r_ubrrl, avr_uart_baud_write, p);
-	avr_register_io_write(avr, p->rxen.reg, avr_uart_rxen_write, p);
+	//avr_register_io_write(avr, p->rxen.reg, avr_uart_rxen_write, p);
+	avr_register_io_write(avr, p->rxen.reg, avr_uart_write, p);
 }
 

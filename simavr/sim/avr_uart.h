@@ -100,6 +100,12 @@ typedef struct avr_uart_t {
 	avr_regbit_t	ucsz;		// data bits
 	avr_regbit_t	ucsz2;		// data bits, continued
 
+	// read-only bits
+	avr_regbit_t	fe;			// frame error bit
+	avr_regbit_t	dor;		// data overrun bit
+	avr_regbit_t	upe;		// parity error bit
+	avr_regbit_t	rxb8;		// receive data bit 8
+
 	avr_io_addr_t r_ubrrl,r_ubrrh;
 
 	avr_int_vector_t rxc;
