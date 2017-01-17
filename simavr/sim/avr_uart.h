@@ -113,6 +113,7 @@ typedef struct avr_uart_t {
 	avr_int_vector_t udrc;	
 
 	uart_fifo_t	input;
+	uint16_t		tx_buff;
 
 	uint32_t		flags;
 	avr_cycle_count_t usec_per_byte;
