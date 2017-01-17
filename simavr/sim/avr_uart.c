@@ -53,13 +53,13 @@ static avr_cycle_count_t avr_uart_txc_raise(struct avr_t * avr, avr_cycle_count_
 	if (avr_regbit_get(avr, p->txen)) {
 		// if the interrupts are not used, still raise the UDRE and TXC flag
 		if (!avr_regbit_get(avr, p->udrc.raised)) {
-			uint8_t v = p->tx_buff;
-			avr_raise_irq(p->io.irq + UART_IRQ_OUTPUT, v);
+			//uint8_t v = p->tx_buff;
+			//avr_raise_irq(p->io.irq + UART_IRQ_OUTPUT, v);
 			avr_raise_interrupt(avr, &p->txc);
 		}
 		avr_raise_interrupt(avr, &p->udrc);
 		if (avr_regbit_get(avr, p->udrc.raised))
-			return when+avr_usec_to_cycles(avr, p->usec_per_byte-10);
+			return when+avr_usec_to_cycles(avr, p->usec_per_byte);
 	}
 	return 0;
 }
@@ -175,7 +175,7 @@ static void avr_uart_udr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v
 	// The byte to be sent should NOT be writen there,
 	// the value writen could never be read back.
 	//avr_core_watch_write(avr, addr, v);
-	p->tx_buff = v;
+//	p->tx_buff = v;
 	if (avr->gdb) {
 		avr_gdb_handle_watchpoints(avr, addr, AVR_GDB_WATCH_WRITE);
 	}
@@ -184,8 +184,6 @@ static void avr_uart_udr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v
 		avr_cycle_timer_cancel(avr, avr_uart_txc_raise, p);
 		avr_regbit_clear(avr, p->udrc.raised);
 	}
-	if (avr_regbit_get(avr, p->txen))
-		avr_cycle_timer_register_usec(avr, p->usec_per_byte-10, avr_uart_txc_raise, p); // should be uart speed dependent
 
 	if (p->flags & AVR_UART_FLAG_STDIO) {
 		const int maxsize = 256;
@@ -200,8 +198,10 @@ static void avr_uart_udr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v
 	}
 	TRACE(printf("UDR%c(%02x) = %02x\n", p->name, addr, v);)
 	// tell other modules we are "outputting" a byte
-//	if (avr_regbit_get(avr, p->txen))
-//		avr_raise_irq(p->io.irq + UART_IRQ_OUTPUT, v);
+	if (avr_regbit_get(avr, p->txen)) {
+		avr_raise_irq(p->io.irq + UART_IRQ_OUTPUT, v);
+		avr_cycle_timer_register_usec(avr, p->usec_per_byte, avr_uart_txc_raise, p); // should be uart speed dependent
+	}
 }
 
 
@@ -333,7 +333,6 @@ void avr_uart_reset(struct avr_io_t *io)
 	// DEBUG allow printf without fiddling with enabling the uart
 	avr_regbit_set(avr, p->txen);
 	p->usec_per_byte = 100;
-	p->tx_buff = 0;
 }
 
 static int avr_uart_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
