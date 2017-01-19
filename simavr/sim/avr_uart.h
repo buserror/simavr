@@ -76,11 +76,13 @@ enum {
 #define AVR_IOCTL_UART_GETIRQ(_name) AVR_IOCTL_DEF('u','a','r',(_name))
 
 enum {
-	// the uart code monitors for firmware that pool on
+	// the uart code monitors for firmware that poll on
 	// reception registers, and can do an atomic usleep()
 	// if it's detected, this helps regulating CPU
 	AVR_UART_FLAG_POOL_SLEEP = (1 << 0),
-	AVR_UART_FLAG_STDIO = (1 << 1),			// print lines on the console
+	AVR_UART_FLAG_POLL_SLEEP = (1 << 0),		// to replace pool_sleep
+	AVR_UART_FLAG_STDIO = (1 << 1),				// print lines on the console
+	AVR_UART_FLAG_DFLT_BIT_PLACES = (1 << 2),	// apply usual bit locations (u2x,usbs ..), if not explicitly defined
 };
 
 typedef struct avr_uart_t {
@@ -100,7 +102,7 @@ typedef struct avr_uart_t {
 	avr_regbit_t	ucsz;		// data bits
 	avr_regbit_t	ucsz2;		// data bits, continued
 
-	// read-only bits
+	// read-only bits (just to mask it out)
 	avr_regbit_t	fe;			// frame error bit
 	avr_regbit_t	dor;		// data overrun bit
 	avr_regbit_t	upe;		// parity error bit
