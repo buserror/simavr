@@ -72,7 +72,7 @@ static avr_cycle_count_t avr_uart_txc_raise(struct avr_t * avr, avr_cycle_count_
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 	if (p->tx_cnt) {
-		// Even if the interrupt are disabled, still raise the TXC flag
+		// Even if the interrupt is disabled, still raise the TXC flag
 		if (p->tx_cnt == 1)
 			avr_raise_interrupt(avr, &p->txc);
 		p->tx_cnt--;
@@ -83,25 +83,35 @@ static avr_cycle_count_t avr_uart_txc_raise(struct avr_t * avr, avr_cycle_count_
 				avr_uart_clear_interrupt(avr, &p->udrc);
 			}
 		} else {
-				// udrc (alias udre) should be rased repeatedly while output buffer is empty
-				// Even if the interrupt are disabled, still raise the UDRE flag
-				if (avr_regbit_get(avr, p->txen))
-					avr_raise_interrupt(avr, &p->udrc);
+			if (avr_regbit_get(avr, p->txen)) {
+				// Even if the interrupt is disabled, still raise the UDRE flag
+				avr_raise_interrupt(avr, &p->udrc);
+				if (!avr_regbit_get(avr, p->udrc.enable)) {
+					return 0; //polling mode: stop TX pump
+				} else // udrc (alias udre) should be rased repeatedly while output buffer is empty
+					return when+avr_usec_to_cycles(avr, p->usec_per_byte);
+			} else
+				return 0; // transfer disabled: stop TX pump
 		}
 	}
-	if (p->tx_cnt || avr_regbit_get(avr, p->txen))
+	if (p->tx_cnt)
 		return when+avr_usec_to_cycles(avr, p->usec_per_byte);
-	return 0;
+	return 0; // stop TX pump
 }
 
 static avr_cycle_count_t avr_uart_rxc_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 	if (avr_regbit_get(avr, p->rxen)) {
-		avr_raise_interrupt(avr, &p->rxc);
 		// rxc should be rased continiosly untill input buffer is empty
-		if (!uart_fifo_isempty(&p->input))
+		if (!uart_fifo_isempty(&p->input)) {
+			if (!avr_regbit_get(avr, p->rxc.raised)) {
+				p->rxc_raise_time = avr_cycles_to_usec(avr, when);
+				p->rx_cnt = 0;
+			}
+			avr_raise_interrupt(avr, &p->rxc);
 			return when+avr_usec_to_cycles(avr, p->usec_per_byte);
+		}
 	}
 	return 0;
 }
@@ -140,15 +150,28 @@ static uint8_t avr_uart_read(struct avr_t * avr, avr_io_addr_t addr, void * para
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 
-	if (!avr_regbit_get(avr, p->rxen)) {
+	if (!avr_regbit_get(avr, p->rxen) ||
+			!avr_regbit_get(avr, p->rxc.raised) // rxc flag not raised - nothing to read!
+			) {
+		AVR_LOG(avr, LOG_TRACE, "UART%c: attempt to read empty rx buffer\n", p->name);
 		avr->data[addr] = 0;
 		// made to trigger potential watchpoints
 		avr_core_watch_read(avr, addr);
 		return 0;
 	}
 	uint8_t v = 0;
-	if (!uart_fifo_isempty(&p->input))
+	if (!uart_fifo_isempty(&p->input)) { // probably redundant check
 		v = uart_fifo_read(&p->input);
+		p->rx_cnt++;
+		if ((p->rx_cnt > 1) && // UART actually has 2-character rx buffer
+				((avr_cycles_to_usec(avr, avr->cycle)-p->rxc_raise_time)/p->rx_cnt < p->usec_per_byte)) {
+			// prevent the firmware from reading input characters with non-realistic high speed
+			avr_uart_clear_interrupt(avr, &p->rxc);
+			p->rx_cnt = 0;
+		}
+	} else {
+		AVR_LOG(avr, LOG_TRACE, "UART%c: BUG: rxc raised with empty rx buffer\n", p->name);
+	}
 
 //	TRACE(printf("UART read %02x %s\n", v, uart_fifo_isempty(&p->input) ? "EMPTY!" : "");)
 	avr->data[addr] = v;
@@ -202,8 +225,7 @@ static void avr_uart_udr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v
 		avr_gdb_handle_watchpoints(avr, addr, AVR_GDB_WATCH_WRITE);
 	}
 
-	// synchronize tx pump
-	avr_cycle_timer_cancel(avr, avr_uart_txc_raise, p);
+	//avr_cycle_timer_cancel(avr, avr_uart_txc_raise, p); // synchronize tx pump
 	if (p->udrc.vector && avr_regbit_get(avr, p->udrc.raised)) {
 		avr_uart_clear_interrupt(avr, &p->udrc);
 	}
@@ -224,8 +246,10 @@ static void avr_uart_udr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v
 	if (avr_regbit_get(avr, p->txen)) {
 		avr_raise_irq(p->io.irq + UART_IRQ_OUTPUT, v);
 		p->tx_cnt++;
-		if (avr_cycle_timer_status(avr, avr_uart_txc_raise, p) == 0) // start the tx pump
-			avr_cycle_timer_register_usec(avr, p->usec_per_byte, avr_uart_txc_raise, p); // should be uart speed dependent
+		if (p->tx_cnt > 2) // AVR actually has 1-character UART tx buffer, plus shift register
+			AVR_LOG(avr, LOG_TRACE, "UART%c: tx buffer overflow %d\n", p->name, (int)p->tx_cnt);
+		if (avr_cycle_timer_status(avr, avr_uart_txc_raise, p) == 0)
+			avr_cycle_timer_register_usec(avr, p->usec_per_byte, avr_uart_txc_raise, p); // start the tx pump
 	}
 }
 
@@ -341,13 +365,14 @@ static void avr_uart_irq_input(struct avr_irq_t * irq, uint32_t value, void * pa
 	//avr_uart_regbit_clear(avr, p->upe);
 	//avr_uart_regbit_clear(avr, p->rxb8);
 
-	if (uart_fifo_isempty(&p->input)) {// start the rx pump
-		avr_cycle_timer_register_usec(avr, p->usec_per_byte, avr_uart_rxc_raise, p); // should be uart speed dependent
+	if (uart_fifo_isempty(&p->input)) {
+		avr_cycle_timer_register_usec(avr, p->usec_per_byte, avr_uart_rxc_raise, p); // start the rx pump
+		p->rx_cnt = 0;
 		avr_uart_regbit_clear(avr, p->dor);
 	} else if (uart_fifo_isfull(&p->input)) {
 		avr_regbit_setto(avr, p->dor, 1);
 	}
-	if (!avr_regbit_get(avr, p->dor)) // otherwise newly received character will be lost
+	if (!avr_regbit_get(avr, p->dor)) // otherwise newly received character must be rejected
 		uart_fifo_write(&p->input, value); // add to fifo
 
 	TRACE(printf("UART IRQ in %02x (%d/%d) %s\n", value, p->input.read, p->input.write, uart_fifo_isfull(&p->input) ? "FULL!!" : "");)

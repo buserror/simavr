@@ -115,10 +115,12 @@ typedef struct avr_uart_t {
 	avr_int_vector_t udrc;	
 
 	uart_fifo_t	input;
-	uint8_t		tx_cnt;			// number of unsent bytes in the output buffer
+	uint8_t		tx_cnt;			// number of unsent characters in the output buffer
+	uint32_t	rx_cnt;			// number of characters read by app since rxc_raise_time
 
 	uint32_t		flags;
 	avr_cycle_count_t usec_per_byte;
+	avr_cycle_count_t rxc_raise_time; // when rxc flag was raised last time
 
 	uint8_t *		stdio_out;
 	int				stdio_len;	// current size in the stdio output
