@@ -149,6 +149,7 @@ static uint8_t avr_uart_rxc_read(struct avr_t * avr, avr_io_addr_t addr, void * 
 static uint8_t avr_uart_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
+	uint8_t v = 0;
 
 	if (!avr_regbit_get(avr, p->rxen) ||
 			!avr_regbit_get(avr, p->rxc.raised) // rxc flag not raised - nothing to read!
@@ -157,9 +158,9 @@ static uint8_t avr_uart_read(struct avr_t * avr, avr_io_addr_t addr, void * para
 		avr->data[addr] = 0;
 		// made to trigger potential watchpoints
 		avr_core_watch_read(avr, addr);
-		return 0;
+		//return 0;
+		goto avr_uart_read_check;
 	}
-	uint8_t v = 0;
 	if (!uart_fifo_isempty(&p->input)) { // probably redundant check
 		v = uart_fifo_read(&p->input);
 		p->rx_cnt++;
@@ -178,6 +179,7 @@ static uint8_t avr_uart_read(struct avr_t * avr, avr_io_addr_t addr, void * para
 	// made to trigger potential watchpoints
 	v = avr_core_watch_read(avr, addr);
 
+avr_uart_read_check:
 	if (uart_fifo_isempty(&p->input)) {
 		avr_cycle_timer_cancel(avr, avr_uart_rxc_raise, p);
 		avr_uart_clear_interrupt(avr, &p->rxc);
@@ -366,15 +368,22 @@ static void avr_uart_irq_input(struct avr_irq_t * irq, uint32_t value, void * pa
 	//avr_uart_regbit_clear(avr, p->upe);
 	//avr_uart_regbit_clear(avr, p->rxb8);
 
-	if (uart_fifo_isempty(&p->input)) {
+	if (uart_fifo_isempty(&p->input) &&
+			(avr_cycle_timer_status(avr, avr_uart_rxc_raise, p) == 0)
+			) {
 		avr_cycle_timer_register(avr, p->cycles_per_byte, avr_uart_rxc_raise, p); // start the rx pump
 		p->rx_cnt = 0;
 		avr_uart_regbit_clear(avr, p->dor);
 	} else if (uart_fifo_isfull(&p->input)) {
 		avr_regbit_setto(avr, p->dor, 1);
 	}
-	if (!avr_regbit_get(avr, p->dor)) // otherwise newly received character must be rejected
+	if (!avr_regbit_get(avr, p->dor)) { // otherwise newly received character must be rejected
 		uart_fifo_write(&p->input, value); // add to fifo
+	} else {
+		AVR_LOG(avr, LOG_ERROR, "UART%c: %s: RX buffer overrun, lost char=%c=0x%02X\n", p->name, __func__,
+				(char)value, (uint8_t)value
+				);
+	}
 
 	TRACE(printf("UART IRQ in %02x (%d/%d) %s\n", value, p->input.read, p->input.write, uart_fifo_isfull(&p->input) ? "FULL!!" : "");)
 

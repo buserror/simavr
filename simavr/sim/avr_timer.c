@@ -665,8 +665,8 @@ avr_timer_write(
 			// cancel everything
 			avr_timer_cancel_all_cycle_timers(avr, p, 1);
 
-			AVR_LOG(avr, LOG_TRACE, "TIMER: %s-%c clock turned off\n",
-					__func__, p->name);
+			//AVR_LOG(avr, LOG_TRACE, "TIMER: %s-%c clock turned off\n",
+			//		__func__, p->name);
 			return;
 		}
 
