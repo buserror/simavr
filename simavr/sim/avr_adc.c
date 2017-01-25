@@ -206,7 +206,6 @@ static void
 avr_adc_write_adcsra(
 		struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
-	avr_adc_configure_trigger(avr, addr, v, param);
 	
 	avr_adc_t * p = (avr_adc_t *)param;
 	uint8_t adsc = avr_regbit_get(avr, p->adsc);
@@ -253,12 +252,14 @@ avr_adc_write_adcsra(
 				avr_adc_int_raise, p);
 	}
 	avr_core_watch_write(avr, addr, v);
+	avr_adc_configure_trigger(avr, addr, v, param);
 }
 
 static void
 avr_adc_write_adcsrb(
 		struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
+	avr_core_watch_write(avr, addr, v);
 	avr_adc_configure_trigger(avr, addr, v, param);
 }
 
