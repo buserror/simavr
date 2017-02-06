@@ -51,6 +51,12 @@ _avr_cmd_io_write(
 		}
 		command = &commands->table[v];
 	}
+	if (!command->handler) {
+		AVR_LOG(avr, LOG_ERROR, LOG_PREFIX
+			"%s: code 0x%02x has no handler (wrong MMCU config)\n",
+			__FUNCTION__, v);
+		return;
+	}
 
 	if (command) {
 		if (command->handler(avr, v, command->param))
