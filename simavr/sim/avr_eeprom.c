@@ -63,8 +63,6 @@ static void avr_eeprom_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void * 
 				eempe ? "Write" : "Read",
 				ee_addr, p->size-1, ee_addr & (p->size-1),
 				avr->pc);
-		if (p->oob_crash_en)
-			avr_sadly_crashed(avr, 0);
 		ee_addr = ee_addr & (p->size-1);
 	}
 	if (eempe && avr_regbit_get(avr, p->eepe)) {	// write operation
@@ -113,9 +111,6 @@ static int avr_eeprom_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_para
 				memcpy(desc->ee, p->eeprom + desc->offset, desc->size);
 			else	// allow to get access to the read data, for gdb support
 				desc->ee = p->eeprom + desc->offset;
-		}	break;
-		case AVR_IOCTL_EEPROM_BNDR_CRSH: {
-			p->oob_crash_en = *((uint8_t*)io_param);
 		}	break;
 	}
 	

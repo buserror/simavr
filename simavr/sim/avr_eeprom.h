@@ -44,8 +44,6 @@ typedef struct avr_eeprom_t {
 	avr_regbit_t 	eempe;	// eeprom master program enable
 	avr_regbit_t 	eepe;	// eeprom program enable
 	avr_regbit_t 	eere;	// eeprom read enable
-
-	uint8_t	oob_crash_en;
 	
 	avr_int_vector_t ready;	// EERIE vector
 } avr_eeprom_t;
@@ -60,7 +58,6 @@ typedef struct avr_eeprom_desc_t {
 
 #define AVR_IOCTL_EEPROM_GET	AVR_IOCTL_DEF('e','e','g','p')
 #define AVR_IOCTL_EEPROM_SET	AVR_IOCTL_DEF('e','e','s','p')
-#define AVR_IOCTL_EEPROM_BNDR_CRSH	AVR_IOCTL_DEF('e','e','b','c') // crash on the out of boundary address
 
 
 /*
