@@ -211,8 +211,6 @@ static void avr_uart_baud_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 
 	AVR_LOG(avr, LOG_TRACE, "UART: %c configured to %04x = %.4f bps (x%d), %d data %d stop\n",
 			p->name, val, baud, avr_regbit_get(avr, p->u2x)?2:1, db, sb);
-	// TODO: Use the divider value and calculate the straight number of cycles
-	//p->usec_per_byte = 1000000 / (baud / word_size);
 	AVR_LOG(avr, LOG_TRACE, "UART: Roughly %d usec per byte\n",
 			avr_cycles_to_usec(avr, p->cycles_per_byte));
 }
@@ -407,43 +405,9 @@ void avr_uart_reset(struct avr_io_t *io)
 	avr_cycle_timer_cancel(avr, avr_uart_txc_raise, p);
 	uart_fifo_reset(&p->input);
 	p->tx_cnt =  0;
-	if (p->flags & AVR_UART_FLAG_DFLT_BIT_PLACES) {
-		if (p->udrc.vector) { // not for LIN interfaces
-			if (p->r_ucsra) {
-				if (p->fe.reg == 0) {
-					avr_regbit_t fe = AVR_IO_REGBIT(p->r_ucsra, 4);
-					p->fe = fe;
-				}
-				if (p->dor.reg == 0) {
-					avr_regbit_t dor = AVR_IO_REGBIT(p->r_ucsra, 3);
-					p->dor = dor;
-				}
-				if (p->upe.reg == 0) {
-					avr_regbit_t upe = AVR_IO_REGBIT(p->r_ucsra, 2);
-					p->upe = upe;
-				}
-				if (p->u2x.reg == 0) {
-					avr_regbit_t u2x = AVR_IO_REGBIT(p->r_ucsra, 1);
-					p->u2x = u2x;
-				}
-			}
-			if (p->r_ucsrb) {
-				if (p->rxb8.reg == 0) {
-					avr_regbit_t rxb8 = AVR_IO_REGBIT(p->r_ucsrb, 1);
-					p->rxb8 = rxb8;
-				}
-			}
-			if (p->r_ucsrc) {
-				if (p->usbs.reg == 0) {
-					avr_regbit_t usbs = AVR_IO_REGBIT(p->r_ucsrc, 3);
-					p->usbs = usbs;
-				}
-			}
-		}
-	}
 
-        avr_regbit_set(avr, p->ucsz);
-		avr_uart_regbit_clear(avr, p->ucsz2);
+	avr_regbit_set(avr, p->ucsz);
+	avr_uart_regbit_clear(avr, p->ucsz2);
 
 	// DEBUG allow printf without fiddling with enabling the uart
 	avr_regbit_set(avr, p->txen);
@@ -490,12 +454,7 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 
 //	printf("%s UART%c UDR=%02x\n", __FUNCTION__, p->name, p->r_udr);
 
-	p->flags = AVR_UART_FLAG_POLL_SLEEP|AVR_UART_FLAG_STDIO|AVR_UART_FLAG_DFLT_BIT_PLACES;
-	if (p->udrc.vector) {
-		// hope this is common for any core except LIN periferals
-		p->rxc.raise_sticky = 1;
-		p->udrc.raise_sticky = 1;
-	}
+	p->flags = AVR_UART_FLAG_POLL_SLEEP|AVR_UART_FLAG_STDIO;
 
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->rxc);
@@ -518,7 +477,6 @@ void avr_uart_init(avr_t * avr, avr_uart_t * p)
 		avr_register_io_write(avr, p->r_ucsra, avr_uart_write, p);
 	if (p->r_ubrrl)
 		avr_register_io_write(avr, p->r_ubrrl, avr_uart_baud_write, p);
-	//avr_register_io_write(avr, p->rxen.reg, avr_uart_rxen_write, p);
 	avr_register_io_write(avr, p->rxen.reg, avr_uart_write, p);
 }
 

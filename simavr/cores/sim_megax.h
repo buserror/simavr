@@ -98,37 +98,10 @@ const struct mcu_t SIM_CORENAME = {
 	AVR_IOPORT_DECLARE(b, 'B', B),
 	AVR_IOPORT_DECLARE(c, 'C', C),
 	AVR_IOPORT_DECLARE(d, 'D', D),
-	.uart = {
-	   // no PRUSART .disabled = AVR_IO_REGBIT(PRR,PRUSART0),
-		.name = '0',
-		.r_udr = UDR,
 
-		.txen = AVR_IO_REGBIT(UCSRB, TXEN),
-		.rxen = AVR_IO_REGBIT(UCSRB, RXEN),
-		.ucsz = AVR_IO_REGBITS(UCSRC, UCSZ0, 0x3), // 2 bits
-		.ucsz2 = AVR_IO_REGBIT(UCSRB, UCSZ2), 	// 1 bits
+	//no PRUSART, upe=PE, no reg/bit name index, 'C' in RX/TX vector names
+	AVR_UART_DECLARE(0, 0, PE, , C),
 
-		.r_ucsra = UCSRA,
-		.r_ucsrb = UCSRB,
-		.r_ucsrc = UCSRC,
-		.r_ubrrl = UBRRL,
-		.r_ubrrh = UBRRH,
-		.rxc = {
-			.enable = AVR_IO_REGBIT(UCSRB, RXCIE),
-			.raised = AVR_IO_REGBIT(UCSRA, RXC),
-			.vector = USART_RXC_vect,
-		},
-		.txc = {
-			.enable = AVR_IO_REGBIT(UCSRB, TXCIE),
-			.raised = AVR_IO_REGBIT(UCSRA, TXC),
-			.vector = USART_TXC_vect,
-		},
-		.udrc = {
-			.enable = AVR_IO_REGBIT(UCSRB, UDRIE),
-			.raised = AVR_IO_REGBIT(UCSRA, UDRE),
-			.vector = USART_UDRE_vect,
-		},
-	},
 	.adc = {
 		.r_admux = ADMUX,
 		.mux = { AVR_IO_REGBIT(ADMUX, MUX0), AVR_IO_REGBIT(ADMUX, MUX1),
