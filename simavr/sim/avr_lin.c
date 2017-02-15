@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include "avr_lin.h"
+#include "sim_time.h"
 
 
 static void
@@ -59,14 +60,18 @@ avr_lin_baud_write(
 	uint32_t lbrr = (avr->data[p->r_linbrrh] << 8) | avr->data[p->r_linbrrl];
 	AVR_LOG(avr, LOG_TRACE, "LIN: UART LBT/LBRR to %04x/%04x\n", lbt, lbrr);
 	// there is no division by zero case here, lbt is >= 8
-	uint32_t baud = avr->frequency / (lbt * (lbrr + 1));
+	//uint32_t baud = avr->frequency / (lbt * (lbrr + 1));
 	uint32_t word_size = 1 /*start*/+ 8 /*data bits*/+ 1 /*parity*/+ 1 /*stop*/;
+	int cycles_per_bit = lbt * (lbrr + 1);
+	double baud = ((double)avr->frequency) / cycles_per_bit; // can be less than 1
+	p->uart.cycles_per_byte = cycles_per_bit * word_size;
 
-	AVR_LOG(avr, LOG_TRACE, "LIN: UART configured to %04x/%04x = %d bps, 8 data 1 stop\n", lbt,
+	AVR_LOG(avr, LOG_TRACE, "LIN: UART configured to %04x/%04x = %.4f bps, 8 data 1 stop\n", lbt,
 	        lbrr, baud);
 
-	p->uart.usec_per_byte = 1000000 / (baud / word_size);
-	AVR_LOG(avr, LOG_TRACE, "LIN: Roughly %d usec per bytes\n", (int) p->uart.usec_per_byte);
+	//p->uart.cycles_per_byte = 1000000 / (baud / word_size);
+	AVR_LOG(avr, LOG_TRACE, "LIN: Roughly %d usec per byte\n",
+			avr_cycles_to_usec(avr, p->uart.cycles_per_byte));
 }
 
 static void

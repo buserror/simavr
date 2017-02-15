@@ -91,37 +91,8 @@ const struct mcu_t {
 	},
 	AVR_IOPORT_DECLARE(d, 'D', D),
 
-	.uart1 = {
-		.disabled = AVR_IO_REGBIT(PRR1,PRUSART1),
-		.name = '1',
-		.r_udr = UDR1,
+	AVR_UARTX_DECLARE(1, PRR1, PRUSART1),
 
-		.txen = AVR_IO_REGBIT(UCSR1B, TXEN1),
-		.rxen = AVR_IO_REGBIT(UCSR1B, RXEN1),
-		.ucsz = AVR_IO_REGBITS(UCSR1C, UCSZ10, 0x3), // 2 bits
-		.ucsz2 = AVR_IO_REGBIT(UCSR1B, UCSZ12), 	// 1 bits
-
-		.r_ucsra = UCSR1A,
-		.r_ucsrb = UCSR1B,
-		.r_ucsrc = UCSR1C,
-		.r_ubrrl = UBRR1L,
-		.r_ubrrh = UBRR1H,
-		.rxc = {
-			.enable = AVR_IO_REGBIT(UCSR1B, RXCIE1),
-			.raised = AVR_IO_REGBIT(UCSR1A, RXC1),
-			.vector = USART1_RX_vect,
-		},
-		.txc = {
-			.enable = AVR_IO_REGBIT(UCSR1B, TXCIE1),
-			.raised = AVR_IO_REGBIT(UCSR1A, TXC1),
-			.vector = USART1_TX_vect,
-		},
-		.udrc = {
-			.enable = AVR_IO_REGBIT(UCSR1B, UDRIE1),
-			.raised = AVR_IO_REGBIT(UCSR1A, UDRE1),
-			.vector = USART1_UDRE_vect,
-		},
-	},
 	.timer0 = {
 		.name = '0',
 		.disabled = AVR_IO_REGBIT(PRR0,PRTIM0),
