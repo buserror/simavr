@@ -60,6 +60,7 @@ enum {
 	AVR_MMCU_TAG_VCD_FILENAME,
 	AVR_MMCU_TAG_VCD_PERIOD,
 	AVR_MMCU_TAG_VCD_TRACE,
+	AVR_MMCU_TAG_VCD_PORTPIN,
 	AVR_MMCU_TAG_PORT_EXTERNAL_PULL,
 };
 
@@ -196,6 +197,15 @@ struct avr_mmcu_vcd_trace_t {
 		(((unsigned long)((_port)&0xff) << 16) | \
 		((unsigned long)((_mask)&0xff) << 8) | \
 		((_val)&0xff)));
+/*!
+ * Add this port/pin to the VCD file. The syntax uses the name of the
+ * port as a character, and not a pointer to a register.
+ * AVR_MCU_VCD_PORT_PIN('B', 5);
+ */
+#define AVR_MCU_VCD_PORT_PIN(_port, _pin) \
+	AVR_MCU_LONG(AVR_MMCU_TAG_VCD_PORTPIN, \
+		(((unsigned long)((_port)&0xff) << 8) | \
+		((_pin)&0xff)));
 
 /*!
  * This tag allows you to specify the voltages used by your board

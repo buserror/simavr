@@ -53,6 +53,11 @@ typedef struct elf_firmware_t {
 		uint16_t addr;
 		char	name[64];
 	} trace[32];
+	int traceportcount;
+	struct {
+		char port;
+		int8_t pin;
+	} traceport[16];
 
 	struct {
 		char port;
