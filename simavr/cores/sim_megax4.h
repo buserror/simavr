@@ -128,70 +128,9 @@ const struct mcu_t SIM_CORENAME = {
 		.r_pcint = PCMSK3,
 	},
 
-	.uart0 = {
-		.disabled = AVR_IO_REGBIT(PRR0,PRUSART0),
-		.name = '0',
-		.r_udr = UDR0,
+	AVR_UARTX_DECLARE(0, PRR0, PRUSART0),
+	AVR_UARTX_DECLARE(1, PRR0, PRUSART1),
 
-		.u2x = AVR_IO_REGBIT(UCSR0A, U2X0),
-		.txen = AVR_IO_REGBIT(UCSR0B, TXEN0),
-		.rxen = AVR_IO_REGBIT(UCSR0B, RXEN0),
-		.ucsz = AVR_IO_REGBITS(UCSR0C, UCSZ00, 0x3), // 2 bits
-		.ucsz2 = AVR_IO_REGBIT(UCSR0B, UCSZ02), 	// 1 bits
-
-		.r_ucsra = UCSR0A,
-		.r_ucsrb = UCSR0B,
-		.r_ucsrc = UCSR0C,
-		.r_ubrrl = UBRR0L,
-		.r_ubrrh = UBRR0H,
-		.rxc = {
-			.enable = AVR_IO_REGBIT(UCSR0B, RXCIE0),
-			.raised = AVR_IO_REGBIT(UCSR0A, RXC0),
-			.vector = USART0_RX_vect,
-		},
-		.txc = {
-			.enable = AVR_IO_REGBIT(UCSR0B, TXCIE0),
-			.raised = AVR_IO_REGBIT(UCSR0A, TXC0),
-			.vector = USART0_TX_vect,
-		},
-		.udrc = {
-			.enable = AVR_IO_REGBIT(UCSR0B, UDRIE0),
-			.raised = AVR_IO_REGBIT(UCSR0A, UDRE0),
-			.vector = USART0_UDRE_vect,
-		},
-	},
-	.uart1 = {
-		.disabled = AVR_IO_REGBIT(PRR0,PRUSART1),
-		.name = '1',
-		.r_udr = UDR1,
-
-		.u2x = AVR_IO_REGBIT(UCSR1A, U2X1),
-		.txen = AVR_IO_REGBIT(UCSR1B, TXEN1),
-		.rxen = AVR_IO_REGBIT(UCSR1B, RXEN1),
-		.ucsz = AVR_IO_REGBITS(UCSR1C, UCSZ10, 0x3), // 2 bits
-		.ucsz2 = AVR_IO_REGBIT(UCSR1B, UCSZ12), 	// 1 bits
-
-		.r_ucsra = UCSR1A,
-		.r_ucsrb = UCSR1B,
-		.r_ucsrc = UCSR1C,
-		.r_ubrrl = UBRR1L,
-		.r_ubrrh = UBRR1H,
-		.rxc = {
-			.enable = AVR_IO_REGBIT(UCSR1B, RXCIE1),
-			.raised = AVR_IO_REGBIT(UCSR1A, RXC1),
-			.vector = USART1_RX_vect,
-		},
-		.txc = {
-			.enable = AVR_IO_REGBIT(UCSR1B, TXCIE1),
-			.raised = AVR_IO_REGBIT(UCSR1A, TXC1),
-			.vector = USART1_TX_vect,
-		},
-		.udrc = {
-			.enable = AVR_IO_REGBIT(UCSR1B, UDRIE1),
-			.raised = AVR_IO_REGBIT(UCSR1A, UDRE1),
-			.vector = USART1_UDRE_vect,
-		},
-	},
 	.adc = {
 	//	.disabled = AVR_IO_REGBIT(PRR0,PRADC),
 		.r_admux = ADMUX,
