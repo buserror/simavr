@@ -71,7 +71,13 @@ enum {
 };
 
 #if __AVR__
-
+/*
+ * WARNING. Due to newer GCC being stupid, they introduced a bug that
+ * prevents us introducing variable length strings in the declaration
+ * of structs. Worked for a million years, and no longer.
+ * So the new method declares the string as fixed size, and the parser
+ * is forced to skip the zeroes in padding. Dumbo.
+ */
 #define _MMCU_ __attribute__((section(".mmcu")))
 struct avr_mmcu_long_t {
 	uint8_t tag;
@@ -82,7 +88,7 @@ struct avr_mmcu_long_t {
 struct avr_mmcu_string_t {
 	uint8_t tag;
 	uint8_t len;
-	char string[];
+	char string[64];
 } __attribute__((__packed__));
 
 struct avr_mmcu_addr_t {
@@ -96,7 +102,7 @@ struct avr_mmcu_vcd_trace_t {
 	uint8_t len;
 	uint8_t mask;
 	void * what;
-	char name[];
+	char name[32];
 } __attribute__((__packed__));
 
 #define AVR_MCU_STRING(_tag, _str) \
@@ -138,7 +144,7 @@ struct avr_mmcu_vcd_trace_t {
  */
 #define AVR_MCU_VCD_SYMBOL(_name) \
 	.tag = AVR_MMCU_TAG_VCD_TRACE, \
-	.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2 + sizeof(_name),\
+	.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
 	.name = _name
 
 /*!
@@ -208,9 +214,9 @@ struct avr_mmcu_vcd_trace_t {
  * the _mmcu symbol is used as an anchor to make sure it stays linked in.
  */
 #define AVR_MCU(_speed, _name) \
-	const uint8_t _mmcu[2] _MMCU_ = { AVR_MMCU_TAG, 0 }; \
 	AVR_MCU_STRING(AVR_MMCU_TAG_NAME, _name);\
-	AVR_MCU_LONG(AVR_MMCU_TAG_FREQUENCY, _speed)
+	AVR_MCU_LONG(AVR_MMCU_TAG_FREQUENCY, _speed);\
+	const uint8_t _mmcu[2] _MMCU_ = { AVR_MMCU_TAG, 0 }
 
 /*
  * The following MAP macros where copied from
