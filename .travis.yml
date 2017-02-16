@@ -1,0 +1,29 @@
+language: cpp
+os:
+  - linux
+compiler:
+  - gcc
+  
+# sudo: false
+# addons:
+#   apt:
+#     packages:
+#     - elfutils      
+#     - libelf1       
+#     - libelf-dev    
+#     - freeglut3     
+#     - freeglut3-dev 
+#     - libglib2.0-dev
+#     - avr-libc      
+  
+before_install:              
+  - sudo apt-get update -qq  
+  - sudo apt-get install -y elfutils
+  - sudo apt-get install -y libelf1
+  - sudo apt-get install -y libelf-dev
+  - sudo apt-get install -y freeglut3
+  - sudo apt-get install -y freeglut3-dev
+  - sudo apt-get install -y libglib2.0-dev
+  - sudo apt-get install -y avr-libc
+  
+script: make
