@@ -1132,7 +1132,7 @@ run_one_again:
 							STATE("push %s[%02x] (@%04x)\n", avr_regname(d), vd, sp);
 							cycle++;
 						}	break;
-						case 0x9400: {	// COM -- One’s Complement -- 1001 010d dddd 0000
+						case 0x9400: {	// COM -- One's Complement -- 1001 010d dddd 0000
 							get_vd5(opcode);
 							uint8_t res = 0xff - vd;
 							STATE("com %s[%02x] = %02x\n", avr_regname(d), vd, res);
@@ -1141,7 +1141,7 @@ run_one_again:
 							avr->sreg[S_C] = 1;
 							SREG();
 						}	break;
-						case 0x9401: {	// NEG -- Two’s Complement -- 1001 010d dddd 0001
+						case 0x9401: {	// NEG -- Two's Complement -- 1001 010d dddd 0001
 							get_vd5(opcode);
 							uint8_t res = 0x00 - vd;
 							STATE("neg %s[%02x] = %02x\n", avr_regname(d), vd, res);

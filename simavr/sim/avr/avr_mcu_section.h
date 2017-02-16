@@ -28,10 +28,10 @@
  * AVR this was compiled for, including the speed, model, and signature bytes.
  *
  * A programmer software can read this and verify fuses values for example, and a
- * simulator can instanciate the proper "model" of AVR, the speed and so on without
+ * simulator can instantiate the proper "model" of AVR, the speed and so on without
  * command line parameters.
  *
- * Exemple of use:
+ * Example of use:
  *
  * #include "avr_mcu_section.h"
  * AVR_MCU(F_CPU, "atmega88");
@@ -60,6 +60,7 @@ enum {
 	AVR_MMCU_TAG_VCD_FILENAME,
 	AVR_MMCU_TAG_VCD_PERIOD,
 	AVR_MMCU_TAG_VCD_TRACE,
+	AVR_MMCU_TAG_VCD_PORTPIN,
 	AVR_MMCU_TAG_PORT_EXTERNAL_PULL,
 };
 
@@ -71,7 +72,13 @@ enum {
 };
 
 #if __AVR__
-
+/*
+ * WARNING. Due to newer GCC being stupid, they introduced a bug that
+ * prevents us introducing variable length strings in the declaration
+ * of structs. Worked for a million years, and no longer.
+ * So the new method declares the string as fixed size, and the parser
+ * is forced to skip the zeroes in padding. Dumbo.
+ */
 #define _MMCU_ __attribute__((section(".mmcu")))
 struct avr_mmcu_long_t {
 	uint8_t tag;
@@ -82,7 +89,7 @@ struct avr_mmcu_long_t {
 struct avr_mmcu_string_t {
 	uint8_t tag;
 	uint8_t len;
-	char string[];
+	char string[64];
 } __attribute__((__packed__));
 
 struct avr_mmcu_addr_t {
@@ -96,7 +103,7 @@ struct avr_mmcu_vcd_trace_t {
 	uint8_t len;
 	uint8_t mask;
 	void * what;
-	char name[];
+	char name[32];
 } __attribute__((__packed__));
 
 #define AVR_MCU_STRING(_tag, _str) \
@@ -106,7 +113,7 @@ struct avr_mmcu_vcd_trace_t {
 		.string = _str,\
 	}
 /*
- * This trick allows contatenation of tokens. We need a macro redirection
+ * This trick allows concatenation of tokens. We need a macro redirection
  * for it to work.
  * The goal is to make unique variable names (they don't matter anyway)
  */
@@ -138,7 +145,7 @@ struct avr_mmcu_vcd_trace_t {
  */
 #define AVR_MCU_VCD_SYMBOL(_name) \
 	.tag = AVR_MMCU_TAG_VCD_TRACE, \
-	.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2 + sizeof(_name),\
+	.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
 	.name = _name
 
 /*!
@@ -190,6 +197,15 @@ struct avr_mmcu_vcd_trace_t {
 		(((unsigned long)((_port)&0xff) << 16) | \
 		((unsigned long)((_mask)&0xff) << 8) | \
 		((_val)&0xff)));
+/*!
+ * Add this port/pin to the VCD file. The syntax uses the name of the
+ * port as a character, and not a pointer to a register.
+ * AVR_MCU_VCD_PORT_PIN('B', 5);
+ */
+#define AVR_MCU_VCD_PORT_PIN(_port, _pin) \
+	AVR_MCU_LONG(AVR_MMCU_TAG_VCD_PORTPIN, \
+		(((unsigned long)((_port)&0xff) << 8) | \
+		((_pin)&0xff)));
 
 /*!
  * This tag allows you to specify the voltages used by your board
@@ -208,9 +224,9 @@ struct avr_mmcu_vcd_trace_t {
  * the _mmcu symbol is used as an anchor to make sure it stays linked in.
  */
 #define AVR_MCU(_speed, _name) \
-	const uint8_t _mmcu[2] _MMCU_ = { AVR_MMCU_TAG, 0 }; \
 	AVR_MCU_STRING(AVR_MMCU_TAG_NAME, _name);\
-	AVR_MCU_LONG(AVR_MMCU_TAG_FREQUENCY, _speed)
+	AVR_MCU_LONG(AVR_MMCU_TAG_FREQUENCY, _speed);\
+	const uint8_t _mmcu[2] _MMCU_ = { AVR_MMCU_TAG, 0 }
 
 /*
  * The following MAP macros where copied from
