@@ -58,14 +58,14 @@ void _avr_vcd_notify(struct avr_irq_t * irq, uint32_t value, void * param)
 
 	/*
 	 * buffer starts empty, the first trace will resize it to AVR_VCD_LOG_CHUNK_SIZE,
-	 * further growth will resize it accordingly. There's a bit of
+	 * further growth will resize it accordingly.
 	 */
 	if (vcd->logindex >= vcd->logsize) {
 		vcd->logsize += AVR_VCD_LOG_CHUNK_SIZE;
 		vcd->log = (avr_vcd_log_p)realloc(vcd->log, vcd->logsize * sizeof(vcd->log[0]));
 		AVR_LOG(vcd->avr, LOG_TRACE, "%s trace buffer resized to %d\n",
 				__func__, (int)vcd->logsize);
-		if ((vcd->logsize / AVR_VCD_LOG_CHUNK_SIZE) == 5) {
+		if ((vcd->logsize / AVR_VCD_LOG_CHUNK_SIZE) == 8) {
 			AVR_LOG(vcd->avr, LOG_WARNING, "%s log size runnaway (%d) flush problem?\n",
 					__func__, (int)vcd->logsize);
 		}

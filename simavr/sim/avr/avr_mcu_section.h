@@ -110,7 +110,7 @@ struct avr_mmcu_vcd_trace_t {
 #define AVR_MCU_STRING(_tag, _str) \
 	const struct avr_mmcu_string_t _##_tag _MMCU_ = {\
 		.tag = _tag,\
-		.len = sizeof(_str),\
+		.len = sizeof(struct avr_mmcu_string_t) - 2,\
 		.string = _str,\
 	}
 /*
@@ -124,7 +124,7 @@ struct avr_mmcu_vcd_trace_t {
 #define AVR_MCU_LONG(_tag, _val) \
 	const struct avr_mmcu_long_t DO_CONCAT(DO_CONCAT(_, _tag), __LINE__) _MMCU_ = {\
 		.tag = _tag,\
-		.len = sizeof(uint32_t),\
+		.len = sizeof(struct avr_mmcu_long_t) - 2,\
 		.val = _val,\
 	}
 
@@ -203,10 +203,14 @@ struct avr_mmcu_vcd_trace_t {
  * port as a character, and not a pointer to a register.
  * AVR_MCU_VCD_PORT_PIN('B', 5);
  */
-#define AVR_MCU_VCD_PORT_PIN(_port, _pin) \
-	AVR_MCU_LONG(AVR_MMCU_TAG_VCD_PORTPIN, \
-		(((unsigned long)((_port)&0xff) << 8) | \
-		((_pin)&0xff)));
+#define AVR_MCU_VCD_PORT_PIN(_port, _pin, _name) \
+	const struct avr_mmcu_vcd_trace_t DO_CONCAT(DO_CONCAT(_, _tag), __LINE__) _MMCU_ = {\
+		.tag = AVR_MMCU_TAG_VCD_PORTPIN, \
+		.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
+		.mask = _port, \
+		.what = (void*)_pin, \
+		.name = _name, \
+	}
 
 /*!
  * These allows you to add a trace showing how long an IRQ vector is pending,
@@ -216,11 +220,11 @@ struct avr_mmcu_vcd_trace_t {
 
 #define AVR_MCU_VCD_IRQ_TRACE(_vect_number, __what, _trace_name) \
 	const struct avr_mmcu_vcd_trace_t DO_CONCAT(DO_CONCAT(_, _tag), __LINE__) _MMCU_ = {\
-	.tag = AVR_MMCU_TAG_VCD_IRQ, \
-	.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
-	.mask = _vect_number, \
-	.what = (void*)__what, \
-	.name = _trace_name, \
+		.tag = AVR_MMCU_TAG_VCD_IRQ, \
+		.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
+		.mask = _vect_number, \
+		.what = (void*)__what, \
+		.name = _trace_name, \
 	};
 #define AVR_MCU_VCD_IRQ(_irq_name) \
 	AVR_MCU_VCD_IRQ_TRACE(_irq_name##_vect_num, 1, #_irq_name)

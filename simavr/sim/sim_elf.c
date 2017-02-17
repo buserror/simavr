@@ -103,7 +103,7 @@ avr_load_firmware(
 	avr_set_console_register(avr, firmware->console_register_addr);
 
 	// rest is initialization of the VCD file
-	if (firmware->tracecount == 0 && firmware->traceportcount == 0)
+	if (firmware->tracecount == 0)
 		return;
 	avr->vcd = malloc(sizeof(*avr->vcd));
 	memset(avr->vcd, 0, sizeof(*avr->vcd));
@@ -115,20 +115,20 @@ avr_load_firmware(
 	AVR_LOG(avr, LOG_TRACE, "Creating VCD trace file '%s'\n",
 			avr->vcd->filename);
 
-	for (int ti = 0; ti < firmware->traceportcount; ti++) {
-		avr_irq_t * irq = avr_io_getirq(avr,
-				AVR_IOCTL_IOPORT_GETIRQ(firmware->traceport[ti].port),
-				firmware->traceport[ti].pin);
-		if (irq) {
-			char name[16];
-			sprintf(name, "%c%d", firmware->traceport[ti].port,
-					firmware->traceport[ti].pin);
-			avr_vcd_add_signal(avr->vcd, irq, 1, name);
-		}
-	}
-
 	for (int ti = 0; ti < firmware->tracecount; ti++) {
-		if (firmware->trace[ti].kind == AVR_MMCU_TAG_VCD_IRQ) {
+		if (firmware->trace[ti].kind == AVR_MMCU_TAG_VCD_PORTPIN) {
+			avr_irq_t * irq = avr_io_getirq(avr,
+					AVR_IOCTL_IOPORT_GETIRQ(firmware->trace[ti].mask),
+					firmware->trace[ti].addr);
+			if (irq) {
+				char name[16];
+				sprintf(name, "%c%d", firmware->trace[ti].mask,
+						firmware->trace[ti].addr);
+				avr_vcd_add_signal(avr->vcd, irq, 1,
+					firmware->trace[ti].name[0] ?
+						firmware->trace[ti].name : name);
+			}
+		} else if (firmware->trace[ti].kind == AVR_MMCU_TAG_VCD_IRQ) {
 			avr_irq_t * bit = avr_get_interrupt_irq(avr, firmware->trace[ti].mask);
 			if (bit && firmware->trace[ti].addr < AVR_INT_IRQ_COUNT)
 				avr_vcd_add_signal(avr->vcd,
@@ -233,13 +233,14 @@ elf_parse_mmcu_section(
 						break;
 					}
 			}	break;
+			case AVR_MMCU_TAG_VCD_PORTPIN:
 			case AVR_MMCU_TAG_VCD_IRQ:
 			case AVR_MMCU_TAG_VCD_TRACE: {
 				uint8_t mask = src[0];
 				uint16_t addr = src[1] | (src[2] << 8);
 				char * name = (char*)src + 3;
 				AVR_LOG(NULL, LOG_TRACE,
-						"AVR_MMCU_TAG_VCD_TRACE %04x:%02x - %s\n",
+						"VCD_TRACE %d %04x:%02x - %s\n", tag,
 						addr, mask, name);
 				firmware->trace[firmware->tracecount].kind = tag;
 				firmware->trace[firmware->tracecount].mask = mask;
@@ -247,14 +248,6 @@ elf_parse_mmcu_section(
 				strncpy(firmware->trace[firmware->tracecount].name, name,
 					sizeof(firmware->trace[firmware->tracecount].name));
 				firmware->tracecount++;
-			}	break;
-			case AVR_MMCU_TAG_VCD_PORTPIN: {
-				firmware->traceport[firmware->traceportcount].pin = src[0];
-				firmware->traceport[firmware->traceportcount].port = src[1];
-				printf("trace PORT %c pin %d\n",
-						firmware->traceport[firmware->traceportcount].port,
-						firmware->traceport[firmware->traceportcount].pin);
-				firmware->traceportcount++;
 			}	break;
 			case AVR_MMCU_TAG_VCD_FILENAME: {
 				strcpy(firmware->tracename, (char*)src);
