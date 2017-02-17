@@ -61,6 +61,7 @@ enum {
 	AVR_MMCU_TAG_VCD_PERIOD,
 	AVR_MMCU_TAG_VCD_TRACE,
 	AVR_MMCU_TAG_VCD_PORTPIN,
+	AVR_MMCU_TAG_VCD_IRQ,
 	AVR_MMCU_TAG_PORT_EXTERNAL_PULL,
 };
 
@@ -206,6 +207,27 @@ struct avr_mmcu_vcd_trace_t {
 	AVR_MCU_LONG(AVR_MMCU_TAG_VCD_PORTPIN, \
 		(((unsigned long)((_port)&0xff) << 8) | \
 		((_pin)&0xff)));
+
+/*!
+ * These allows you to add a trace showing how long an IRQ vector is pending,
+ * and also how long it is running. You can specify the IRQ as a vector name
+ * straight from the firmware file, and it will be named properly in the trace
+ */
+
+#define AVR_MCU_VCD_IRQ_TRACE(_vect_number, __what, _trace_name) \
+	const struct avr_mmcu_vcd_trace_t DO_CONCAT(DO_CONCAT(_, _tag), __LINE__) _MMCU_ = {\
+	.tag = AVR_MMCU_TAG_VCD_IRQ, \
+	.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
+	.mask = _vect_number, \
+	.what = (void*)__what, \
+	.name = _trace_name, \
+	};
+#define AVR_MCU_VCD_IRQ(_irq_name) \
+	AVR_MCU_VCD_IRQ_TRACE(_irq_name##_vect_num, 1, #_irq_name)
+#define AVR_MCU_VCD_IRQ_PENDING(_irq_name) \
+	AVR_MCU_VCD_IRQ_TRACE(_irq_name##_vect_num, 0, #_irq_name " pend")
+#define AVR_MCU_VCD_ALL_IRQ() \
+	AVR_MCU_VCD_IRQ_TRACE(0xff, 1, "IRQ")
 
 /*!
  * This tag allows you to specify the voltages used by your board

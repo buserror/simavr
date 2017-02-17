@@ -128,7 +128,14 @@ avr_load_firmware(
 	}
 
 	for (int ti = 0; ti < firmware->tracecount; ti++) {
-		if (firmware->trace[ti].mask == 0xff ||
+		if (firmware->trace[ti].kind == AVR_MMCU_TAG_VCD_IRQ) {
+			avr_irq_t * bit = avr_get_interrupt_irq(avr, firmware->trace[ti].mask);
+			if (bit && firmware->trace[ti].addr < AVR_INT_IRQ_COUNT)
+				avr_vcd_add_signal(avr->vcd,
+						&bit[firmware->trace[ti].addr],
+						firmware->trace[ti].mask == 0xff ? 8 : 1,
+						firmware->trace[ti].name);
+		} else if (firmware->trace[ti].mask == 0xff ||
 				firmware->trace[ti].mask == 0) {
 			// easy one
 			avr_irq_t * all = avr_iomem_getirq(avr,
@@ -226,6 +233,7 @@ elf_parse_mmcu_section(
 						break;
 					}
 			}	break;
+			case AVR_MMCU_TAG_VCD_IRQ:
 			case AVR_MMCU_TAG_VCD_TRACE: {
 				uint8_t mask = src[0];
 				uint16_t addr = src[1] | (src[2] << 8);
@@ -233,6 +241,7 @@ elf_parse_mmcu_section(
 				AVR_LOG(NULL, LOG_TRACE,
 						"AVR_MMCU_TAG_VCD_TRACE %04x:%02x - %s\n",
 						addr, mask, name);
+				firmware->trace[firmware->tracecount].kind = tag;
 				firmware->trace[firmware->tracecount].mask = mask;
 				firmware->trace[firmware->tracecount].addr = addr;
 				strncpy(firmware->trace[firmware->tracecount].name, name,
