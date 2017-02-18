@@ -82,13 +82,15 @@ ifeq (${shell uname}, Darwin)
   endif
  endif
 else
+ ifeq (${WIN},)
  LINUX_AVR_ROOTS := /usr/lib/avr /usr/avr /opt/cross/avr/avr /usr/local/avr
  AVR_ROOT := $(firstword $(wildcard $(LINUX_AVR_ROOTS)))
- ifeq (${AVR_ROOT},)
-  $(error No avr-libc root directory found. Tried the following paths: $(LINUX_AVR_ROOTS))
- endif
+#	 ifeq (${AVR_ROOT},)
+#	  $(error No avr-libc root directory found. Tried the following paths: $(LINUX_AVR_ROOTS))
+#	 endif
  AVR_INC 	:= ${AVR_ROOT}
  AVR 		:= avr-
+ endif
 endif
 
 # FIXME uname -o doesn't work on bsd derivatives
@@ -168,6 +170,9 @@ endif
 
 # this rule has precedence
 ${OBJ}/sim_%.o : cores/sim_%.c
+ifeq (${AVR_ROOT},)
+	$(error No avr-libc root directory found. Tried the following paths: $(LINUX_AVR_ROOTS))
+endif
 ifeq ($(V),1)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(CORE_CFLAGS) -MMD \
 		${AVR_CPPFLAGS} \

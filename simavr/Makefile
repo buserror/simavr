@@ -74,8 +74,10 @@ ${OBJ}/libsimavr.so		: ${OBJ}/libsimavr.so.1
 
 libsimavr	: config ${OBJ}/libsimavr.a
 # shared library won't work that easily on non-linux
+ifeq (${WIN},)
 ifeq (${shell uname}, Linux)
 libsimavr	:	${OBJ}/libsimavr.so
+endif
 endif
 
 ${OBJ}/${target}.elf	: ${OBJ}/${target}.o
@@ -84,10 +86,11 @@ ${target}	: ${OBJ}/${target}.elf
 
 # FIXME uname -o doesn't work on BSD
 #ifeq (${shell uname -o}, Msys)
-#	ln -sf $< $@.exe
-#else
+ifeq (${WIN},)
 	ln -sf $< $@
-#endif
+else
+	ln -sf $< $@.exe
+endif
 
 clean: clean-${OBJ}
 	rm -rf ${target} *.a *.so *.exe
@@ -108,12 +111,18 @@ install : all
 		simavr-avr.pc >$(DESTDIR)/lib/pkgconfig/simavr-avr.pc
 	sed -e "s|PREFIX|${PREFIX}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
 		simavr.pc >$(DESTDIR)/lib/pkgconfig/simavr.pc
+ifeq (${WIN},)
 ifeq (${shell uname}, Linux)
 	$(INSTALL) ${OBJ}/libsimavr.so.1 $(DESTDIR)/lib/
 	ln -sf libsimavr.so.1 $(DESTDIR)/lib/libsimavr.so
 endif
+endif
 	$(MKDIR) $(DESTDIR)/bin
+ifeq (${WIN},)
 	$(INSTALL) ${OBJ}/${target}.elf $(DESTDIR)/bin/simavr
+else
+	$(INSTALL) ${OBJ}/${target}.elf $(DESTDIR)/bin/simavr.exe
+endif
 
 # Needs 'fpm', oneline package manager. Install with 'gem install fpm'
 # This generates 'mock' debian files, without all the policy, scripts
