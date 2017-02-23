@@ -29,6 +29,7 @@
 #include "sim_core.h"
 #include "sim_gdb.h"
 #include "sim_hex.h"
+#include "sim_vcd_file.h"
 
 #include "sim_core_decl.h"
 
@@ -46,6 +47,7 @@ display_usage(
 			"       [--gdb|-g]          Listen for gdb connection on port 1234\n"
 			"       [-ff <.hex file>]   Load next .hex file as flash\n"
 			"       [-ee <.hex file>]   Load next .hex file as eeprom\n"
+			"       [--input|-i <file>] A .vcd file to use as input signals\n"
 			"       [-v]                Raise verbosity level\n"
 			"                           (can be passed more than once)\n"
 			"       <firmware>          A .hex or an ELF file. ELF files are\n"
@@ -92,6 +94,7 @@ main(
 	uint32_t loadBase = AVR_SEGMENT_OFFSET_FLASH;
 	int trace_vectors[8] = {0};
 	int trace_vectors_count = 0;
+	const char *vcd_input = NULL;
 
 	if (argc == 1)
 		display_usage(basename(argv[0]));
@@ -111,7 +114,12 @@ main(
 				f_cpu = atoi(argv[++pi]);
 			else
 				display_usage(basename(argv[0]));
-		} else if (!strcmp(argv[pi], "-t") || !strcmp(argv[pi], "-trace")) {
+		} else if (!strcmp(argv[pi], "-i") || !strcmp(argv[pi], "--input")) {
+			if (pi < argc-1)
+				vcd_input = argv[++pi];
+			else
+				display_usage(basename(argv[0]));
+		} else if (!strcmp(argv[pi], "-t") || !strcmp(argv[pi], "--trace")) {
 			trace++;
 		} else if (!strcmp(argv[pi], "-ti")) {
 			if (pi < argc-1)
@@ -186,6 +194,12 @@ main(
 		for (int vi = 0; vi < avr->interrupts.vector_count; vi++)
 			if (avr->interrupts.vector[vi]->vector == trace_vectors[ti])
 				avr->interrupts.vector[vi]->trace = 1;
+	}
+	if (vcd_input) {
+		static avr_vcd_t input;
+		if (avr_vcd_init_input(avr, vcd_input, &input)) {
+			fprintf(stderr, "%s: Warning: VCD input file %s failed\n", argv[0], vcd_input);
+		}
 	}
 
 	// even if not setup at startup, activate gdb if crashing
