@@ -32,23 +32,31 @@
 
 #include "sim_core_decl.h"
 
-void display_usage(char * app)
+static void
+display_usage(
+	const char * app)
 {
-	printf("Usage: %s [--list-cores] [--help] [-t] [-g] [-v] [-m <device>] [-f <frequency>] firmware\n", app);
-        printf(    "       --list-cores      List all supported AVR cores and exit\n"
-		   "       --help, -h        Display this usage message and exit\n"
-		   "       -trace, -t        Run full scale decoder trace\n"
-                   "       -ti <vector>      Add trace vector at <vector>\n"
-		   "       -gdb, -g          Listen for gdb connection on port 1234\n"
-		   "       -ff               Load next .hex file as flash\n"
-		   "       -ee               Load next .hex file as eeprom\n"
-		   "       -v                Raise verbosity level (can be passed more than once)\n");
+	printf("Usage: %s [...] <firmware>\n", app);
+	printf( "		[--freq|-f <freq>]  Sets the frequency for an .hex firmware\n"
+			"		[--mcu|-m <device>] Sets the MCU type for an .hex firmware\n"
+			"       [--list-cores]      List all supported AVR cores and exit\n"
+			"       [--help|-h]         Display this usage message and exit\n"
+			"       [--trace, -t]       Run full scale decoder trace\n"
+			"       [-ti <vector>]      Add traces for IRQ vector <vector>\n"
+			"       [--gdb|-g]          Listen for gdb connection on port 1234\n"
+			"       [-ff <.hex file>]   Load next .hex file as flash\n"
+			"       [-ee <.hex file>]   Load next .hex file as eeprom\n"
+			"       [-v]                Raise verbosity level\n"
+			"                           (can be passed more than once)\n"
+			"       <firmware>          A .hex or an ELF file. ELF files are\n"
+			"                           prefered, and can include debugging syms\n");
 	exit(1);
 }
 
-void list_cores() {
-	printf(
-		   "   Supported AVR cores:\n");
+static void
+list_cores()
+{
+	printf( "Supported AVR cores:\n");
 	for (int i = 0; avr_kind[i]; i++) {
 		printf("       ");
 		for (int ti = 0; ti < 4 && avr_kind[i]->names[ti]; ti++)
@@ -58,9 +66,9 @@ void list_cores() {
 	exit(1);
 }
 
-avr_t * avr = NULL;
+static avr_t * avr = NULL;
 
-void
+static void
 sig_int(
 		int sign)
 {
@@ -70,14 +78,17 @@ sig_int(
 	exit(0);
 }
 
-int main(int argc, char *argv[])
+int
+main(
+		int argc,
+		char *argv[])
 {
 	elf_firmware_t f = {{0}};
-	long f_cpu = 0;
+	uint32_t f_cpu = 0;
 	int trace = 0;
 	int gdb = 0;
 	int log = 1;
-	char name[16] = "";
+	char name[24] = "";
 	uint32_t loadBase = AVR_SEGMENT_OFFSET_FLASH;
 	int trace_vectors[8] = {0};
 	int trace_vectors_count = 0;
@@ -90,12 +101,12 @@ int main(int argc, char *argv[])
 			list_cores();
 		} else if (!strcmp(argv[pi], "-h") || !strcmp(argv[pi], "--help")) {
 			display_usage(basename(argv[0]));
-		} else if (!strcmp(argv[pi], "-m") || !strcmp(argv[pi], "-mcu")) {
+		} else if (!strcmp(argv[pi], "-m") || !strcmp(argv[pi], "--mcu")) {
 			if (pi < argc-1)
-				strcpy(name, argv[++pi]);
+				strncpy(name, argv[++pi], sizeof(name));
 			else
 				display_usage(basename(argv[0]));
-		} else if (!strcmp(argv[pi], "-f") || !strcmp(argv[pi], "-freq")) {
+		} else if (!strcmp(argv[pi], "-f") || !strcmp(argv[pi], "--freq")) {
 			if (pi < argc-1)
 				f_cpu = atoi(argv[++pi]);
 			else
@@ -105,7 +116,7 @@ int main(int argc, char *argv[])
 		} else if (!strcmp(argv[pi], "-ti")) {
 			if (pi < argc-1)
 				trace_vectors[trace_vectors_count++] = atoi(argv[++pi]);
-		} else if (!strcmp(argv[pi], "-g") || !strcmp(argv[pi], "-gdb")) {
+		} else if (!strcmp(argv[pi], "-g") || !strcmp(argv[pi], "--gdb")) {
 			gdb++;
 		} else if (!strcmp(argv[pi], "-v")) {
 			log++;
