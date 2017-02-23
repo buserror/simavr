@@ -662,6 +662,7 @@ avr_timer_write(
 	if (new_cs != cs || new_mode != mode || new_as2 != as2) {
 	/* cs */
 		if (new_cs == 0) {
+			p->cs_div_value = 0;		// reset prescaler
 			// cancel everything
 			avr_timer_cancel_all_cycle_timers(avr, p, 1);
 
