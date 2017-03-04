@@ -32,8 +32,11 @@
 #include "sim_gdb.h"
 #include "sim_hex.h"
 #include "sim_vcd_file.h"
-
+#ifdef WIN32
+#include "vs_core_decl.h"
+#else
 #include "sim_core_decl.h"
+#endif
 
 static void
 display_usage(

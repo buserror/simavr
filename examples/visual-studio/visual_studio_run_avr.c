@@ -34,7 +34,7 @@ along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
 //#include "sim_network.h"
 #include "avr_uart.h"
-#include "sim_core_decl.h"
+#include "vs_sim_core_decl.h"
 
 void display_usage(char * app)
 {
