@@ -33,7 +33,11 @@
 #include "avr/avr_mcu_section.h"
 
 #define AVR_KIND_DECL
+#ifdef WIN32
+#include "vs_sim_core_decl.h"
+#else
 #include "sim_core_decl.h"
+#endif
 
 static void std_logger(avr_t * avr, const int level, const char * format, va_list ap);
 static avr_logger_p _avr_global_logger = std_logger;
