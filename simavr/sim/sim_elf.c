@@ -29,8 +29,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+
+#ifndef WIN32
 #include <libelf.h>
 #include <gelf.h>
+#endif
 
 #include "sim_elf.h"
 #include "sim_vcd_file.h"
@@ -185,6 +189,8 @@ avr_load_firmware(
 	if (!firmware->command_register_addr)
 		avr_vcd_start(avr->vcd);
 }
+
+#ifndef WIN32
 
 static void
 elf_parse_mmcu_section(
@@ -438,3 +444,4 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 	return 0;
 }
 
+#endif

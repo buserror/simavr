@@ -477,7 +477,11 @@ avr_vcd_add_signal(
 
 	/* manufacture a nice IRQ name */
 	int l = strlen(name);
+#ifdef WIN32
+	char iname[256];
+#else
 	char iname[10 + l + 1];
+#endif
 	if (signal_bit_size > 1)
 		sprintf(iname, "%d>vcd.%s", signal_bit_size, name);
 	else

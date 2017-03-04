@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Atmel Studio Solution File, Format Version 11.00
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "serial-out", "serial-out\serial-out.cproj", "{F04AD5A4-C1EE-46E6-8DF7-C26024D31B5B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|AVR = Debug|AVR
+		Release|AVR = Release|AVR
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F04AD5A4-C1EE-46E6-8DF7-C26024D31B5B}.Debug|AVR.ActiveCfg = Debug|AVR
+		{F04AD5A4-C1EE-46E6-8DF7-C26024D31B5B}.Debug|AVR.Build.0 = Debug|AVR
+		{F04AD5A4-C1EE-46E6-8DF7-C26024D31B5B}.Release|AVR.ActiveCfg = Release|AVR
+		{F04AD5A4-C1EE-46E6-8DF7-C26024D31B5B}.Release|AVR.Build.0 = Release|AVR
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

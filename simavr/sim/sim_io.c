@@ -199,7 +199,11 @@ avr_iomem_getirq(
 	// if given a name, replace the default one...
 	if (name) {
 		int l = strlen(name);
+#ifdef WIN32
+		char n[256];
+#else
 		char n[l + 10];
+#endif
 		sprintf(n, "avr.io.%s", name);
 		free((void*)avr->io[a].irq[index].name);
 		avr->io[a].irq[index].name = strdup(n);

@@ -18,6 +18,55 @@
 	You should have received a copy of the GNU General Public License
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
+#ifdef WIN32
+
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+
+#include "sim_avr.h"
+#include "sim_core.h" // for SET_SREG_FROM, READ_SREG_INTO
+#include "sim_hex.h"
+#include "avr_eeprom.h"
+#include "sim_gdb.h"
+
+int
+avr_gdb_init(
+	avr_t * avr)
+{
+	fprintf(stderr, "Sorry, no GDB in windows\n");
+	exit(1);
+}
+
+void
+avr_deinit_gdb(
+	avr_t * avr)
+{
+	fprintf(stderr, "Sorry, no GDB in windows\n");
+	exit(1);
+}
+
+int
+avr_gdb_processor(
+	avr_t * avr,
+	int sleep)
+{
+	fprintf(stderr, "Sorry, no GDB in windows\n");
+	exit(1);
+}
+
+void
+avr_gdb_handle_watchpoints(
+	avr_t * avr,
+	uint16_t addr,
+enum avr_gdb_watch_type type)
+{
+	fprintf(stderr, "Sorry, no GDB in windows\n");
+	exit(1);
+}
+#else
 
 #include "sim_network.h"
 #include <sys/time.h>
@@ -687,3 +736,5 @@ avr_deinit_gdb(
 
 	network_release();
 }
+
+#endif

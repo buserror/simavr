@@ -21,7 +21,9 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#ifndef WIN32
 #include <libgen.h>
+#endif
 #include <string.h>
 #include <signal.h>
 #include "sim_avr.h"
@@ -163,11 +165,16 @@ main(
 					}
 				}
 			} else {
+#ifdef WIN32
+				fprintf(stderr, "Sorry, no ELFs on Windows, please use .hex\n");
+				exit(1);
+#else
 				if (elf_read_firmware(filename, &f) == -1) {
 					fprintf(stderr, "%s: Unable to load firmware from file %s\n",
 							argv[0], filename);
 					exit(1);
 				}
+#endif
 			}
 		}
 	}

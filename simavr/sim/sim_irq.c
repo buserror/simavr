@@ -22,7 +22,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "vs-hacks.h"
 #include "sim_irq.h"
+
 
 // internal structure for a hook, never seen by the notify procs
 typedef struct avr_irq_hook_t {
