@@ -104,7 +104,7 @@ void crash(avr_t* avr)
 #define T(w)
 #define REG_TOUCH(a, r)
 
-#ifdef WIN32
+#ifdef _MSC_VER
 #define STATE(a, ...)
 #else
 #define STATE(_f, args...)

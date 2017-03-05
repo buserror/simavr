@@ -89,7 +89,7 @@ extern "C" {
 #define FIFO_VOLATILE
 #endif
 
-#ifdef WIN32
+#ifdef _MSC_VER
 
 #define FIFO_SYNC
 //no sync_synchronize 

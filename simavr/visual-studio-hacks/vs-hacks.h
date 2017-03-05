@@ -3,7 +3,7 @@
 #ifndef _VS_HACKS_H
 #define _VS_HACKS_H
 
-#ifdef WIN32
+#ifdef _MSC_VER
 
 #define __func__ __FUNCTION__
 

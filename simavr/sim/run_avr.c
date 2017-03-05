@@ -21,7 +21,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#ifndef WIN32
+#ifndef _MSC_VER
 #include <libgen.h>
 #endif
 #include <string.h>
@@ -32,8 +32,8 @@
 #include "sim_gdb.h"
 #include "sim_hex.h"
 #include "sim_vcd_file.h"
-#ifdef WIN32
-#include "vs_core_decl.h"
+#ifdef _MSC_VER
+#include "vs_sim_core_decl.h"
 #else
 #include "sim_core_decl.h"
 #endif
@@ -168,7 +168,7 @@ main(
 					}
 				}
 			} else {
-#ifdef WIN32
+#ifdef _MSC_VER
 				fprintf(stderr, "Sorry, no ELFs on Windows, please use .hex\n");
 				exit(1);
 #else

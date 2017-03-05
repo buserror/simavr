@@ -31,7 +31,7 @@
 #include <string.h>
 
 
-#ifndef WIN32
+#ifndef _MSC_VER
 #include <libelf.h>
 #include <gelf.h>
 #endif
@@ -190,7 +190,7 @@ avr_load_firmware(
 		avr_vcd_start(avr->vcd);
 }
 
-#ifndef WIN32
+#ifndef _MSC_VER
 
 static void
 elf_parse_mmcu_section(

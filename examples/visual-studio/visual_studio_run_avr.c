@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
 				}
 			}
 			else {
-#ifdef WIN32
+#ifdef _MSC_VER
 				fprintf(stderr, "Sorry, no ELFs on Windows, please use .hex\n");
 				exit(1);
 #else

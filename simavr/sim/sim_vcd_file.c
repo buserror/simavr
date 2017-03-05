@@ -477,7 +477,7 @@ avr_vcd_add_signal(
 
 	/* manufacture a nice IRQ name */
 	int l = strlen(name);
-#ifdef WIN32
+#ifdef _MSC_VER
 	char iname[256];
 #else
 	char iname[10 + l + 1];

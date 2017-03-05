@@ -199,7 +199,7 @@ avr_iomem_getirq(
 	// if given a name, replace the default one...
 	if (name) {
 		int l = strlen(name);
-#ifdef WIN32
+#ifdef _MSC_VER
 		char n[256];
 #else
 		char n[l + 10];
