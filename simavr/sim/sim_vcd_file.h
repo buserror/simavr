@@ -63,6 +63,7 @@ typedef struct avr_vcd_signal_t {
 typedef struct avr_vcd_log_t {
 	uint64_t 		when;
 	uint64_t			sigindex : 8,			// index in signal table
+					floating : 1,
 					value : 32;
 } avr_vcd_log_t, *avr_vcd_log_p;
 

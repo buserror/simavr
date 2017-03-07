@@ -134,8 +134,10 @@ avr_vcd_input_parse_line(
 		avr_vcd_log_t e = {
 				.when = vcd->period,
 				.sigindex = sigindex,
+				.floating = !!floating,
 				.value = val,
 		};
+	//	printf("%10u %d\n", e.when, e.value);
 		avr_vcd_fifo_write(&vcd->log, e);
 	}
 	return res;
@@ -151,13 +153,15 @@ avr_vcd_input_read(
 {
 	char line[1024];
 
-	while (fgets(line, sizeof(line), vcd->input) &&
-			avr_vcd_fifo_get_read_size(&vcd->log) < 128) {
+	while (fgets(line, sizeof(line), vcd->input)) {
+	//	printf("%s", line);
 		if (!line[0])	// technically can't happen, but make sure next line works
 			continue;
 		vcd->input_line = argv_parse(vcd->input_line, line);
-		/* stop once we found a new timestamp */
 		avr_vcd_input_parse_line(vcd, vcd->input_line);
+		/* stop once the fifo is full enough */
+		if (avr_vcd_fifo_get_read_size(&vcd->log) >= 128)
+			break;
 	}
 	return avr_vcd_fifo_isempty(&vcd->log);
 }
@@ -196,7 +200,7 @@ _avr_vcd_input_timer(
 		// we already have it
 		avr_vcd_fifo_read_offset(&vcd->log, 1);
 		avr_vcd_signal_p signal = &vcd->signal[log.sigindex];
-		avr_raise_irq(&signal->irq, log.value);
+		avr_raise_irq_float(&signal->irq, log.value, log.floating);
 	}
 
 	if (avr_vcd_fifo_isempty(&vcd->log)) {
@@ -300,7 +304,6 @@ avr_vcd_init_input(
 				uint32_t ioc = AVR_IOCTL_DEF(
 									ioctl[0], ioctl[1], ioctl[2], ioctl[3]);
 				avr_irq_t * irq = avr_io_getirq(vcd->avr, ioc, index);
-				printf("  irq %p\n", irq);
 				if (irq) {
 					vcd->signal[i].irq.flags = IRQ_FLAG_INIT;
 					avr_connect_irq(&vcd->signal[i].irq, irq);
@@ -416,8 +419,13 @@ avr_vcd_flush_log(
 		// mark this trace as seen for this timestamp
 		seen |= (1 << l.sigindex);
 		fprintf(vcd->output, "%s\n",
-				_avr_vcd_get_signal_text(&vcd->signal[l.sigindex],
-						out, l.value));
+				l.floating ?
+					_avr_vcd_get_float_signal_text(
+							&vcd->signal[l.sigindex],
+							out) :
+					_avr_vcd_get_signal_text(
+							&vcd->signal[l.sigindex],
+							out, l.value));
 	}
 }
 
@@ -448,6 +456,7 @@ _avr_vcd_notify(
 		.sigindex = s->irq.irq,
 		.when = vcd->avr->cycle,
 		.value = value,
+		.floating = !!(avr_irq_get_flags(irq) & IRQ_FLAG_FLOATING),
 	};
 	if (avr_vcd_fifo_isfull(&vcd->log)) {
 		AVR_LOG(vcd->avr, LOG_WARNING,
