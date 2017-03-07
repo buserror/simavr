@@ -189,9 +189,10 @@ avr_irq_unregister_notify(
 }
 
 void
-avr_raise_irq(
+avr_raise_irq_float(
 		avr_irq_t * irq,
-		uint32_t value)
+		uint32_t value,
+		int floating)
 {
 	if (!irq)
 		return ;
@@ -200,7 +201,9 @@ avr_raise_irq(
 	if (irq->value == output &&
 			(irq->flags & IRQ_FLAG_FILTERED) && !(irq->flags & IRQ_FLAG_INIT))
 		return;
-	irq->flags &= ~IRQ_FLAG_INIT;
+	irq->flags &= ~(IRQ_FLAG_INIT | IRQ_FLAG_FLOATING);
+	if (floating)
+		irq->flags |= IRQ_FLAG_FLOATING;
 	avr_irq_hook_t *hook = irq->hook;
 	while (hook) {
 		avr_irq_hook_t * next = hook->next;
@@ -210,7 +213,7 @@ avr_raise_irq(
 			if (hook->notify)
 				hook->notify(irq, output,  hook->param);
 			if (hook->chain)
-				avr_raise_irq(hook->chain, output);
+				avr_raise_irq_float(hook->chain, output, floating);
 			hook->busy--;
 		}
 		hook = next;
@@ -219,6 +222,14 @@ avr_raise_irq(
 	// can themselves compare for old/new values between their parameter
 	// they are passed (new value) and the previous irq->value
 	irq->value = output;
+}
+
+void
+avr_raise_irq(
+		avr_irq_t * irq,
+		uint32_t value)
+{
+	avr_raise_irq_float(irq, value, !!(irq->flags & IRQ_FLAG_FLOATING));
 }
 
 void
@@ -265,4 +276,19 @@ avr_unconnect_irq(
 		prev = hook;
 		hook = hook->next;
 	}
+}
+
+uint8_t
+avr_irq_get_flags(
+		avr_irq_t * irq )
+{
+	return irq->flags;
+}
+
+void
+avr_irq_set_flags(
+		avr_irq_t * irq,
+		uint8_t flags )
+{
+	irq->flags = flags;
 }

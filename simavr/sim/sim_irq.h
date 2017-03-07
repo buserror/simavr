@@ -56,6 +56,7 @@ enum {
 	IRQ_FLAG_FILTERED	= (1 << 1),	//!< do not "notify" if "value" is the same as previous raise
 	IRQ_FLAG_ALLOC		= (1 << 2), //!< this irq structure was malloced via avr_alloc_irq
 	IRQ_FLAG_INIT		= (1 << 3), //!< this irq hasn't been used yet
+	IRQ_FLAG_FLOATING	= (1 << 4), //!< this 'pin'/signal is floating
 };
 
 /*
@@ -98,11 +99,26 @@ avr_init_irq(
 		uint32_t base,
 		uint32_t count,
 		const char ** names /* optional */);
+//! Returns the current IRQ flags
+uint8_t
+avr_irq_get_flags(
+		avr_irq_t * irq );
+//! Sets this irq's flags
+void
+avr_irq_set_flags(
+		avr_irq_t * irq,
+		uint8_t flags );
 //! 'raise' an IRQ. Ie call their 'hooks', and raise any chained IRQs, and set the new 'value'
 void
 avr_raise_irq(
 		avr_irq_t * irq,
 		uint32_t value);
+//! Same as avr_raise_irq(), but also allow setting the float status
+void
+avr_raise_irq_float(
+		avr_irq_t * irq,
+		uint32_t value,
+		int floating);
 //! this connects a "source" IRQ to a "destination" IRQ
 void
 avr_connect_irq(
