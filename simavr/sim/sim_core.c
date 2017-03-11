@@ -109,6 +109,7 @@ void crash(avr_t* avr)
 void crash(avr_t* avr)
 {
 	avr_sadly_crashed(avr, 0);
+
 }
 #endif
 
@@ -123,12 +124,17 @@ _avr_flash_read16le(
 void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 {
 	if (addr > avr->ramend) {
-		AVR_LOG(avr, LOG_ERROR, "CORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x out of ram\n",
+		AVR_LOG(avr, LOG_ERROR, FONT_RED
+				"CORE: *** Invalid write address "
+				"PC=%04x SP=%04x O=%04x Address %04x=%02x out of ram\n"
+				FONT_DEFAULT,
 				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), addr, v);
 		crash(avr);
 	}
 	if (addr < 32) {
-		AVR_LOG(avr, LOG_ERROR, "CORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x low registers\n",
+		AVR_LOG(avr, LOG_ERROR, FONT_RED
+				"CORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x low registers\n"
+				FONT_DEFAULT,
 				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), addr, v);
 		crash(avr);
 	}
@@ -139,7 +145,9 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 	 * frame and is munching on it's own return address.
 	 */
 	if (avr->trace_data->stack_frame_index > 1 && addr > avr->trace_data->stack_frame[avr->trace_data->stack_frame_index-2].sp) {
-		printf( FONT_RED "%04x : munching stack SP %04x, A=%04x <= %02x\n" FONT_DEFAULT, avr->pc, _avr_sp_get(avr), addr, v);
+		printf( FONT_RED "%04x : munching stack "
+				"SP %04x, A=%04x <= %02x\n" FONT_DEFAULT,
+				avr->pc, _avr_sp_get(avr), addr, v);
 	}
 #endif
 
@@ -153,7 +161,10 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 {
 	if (addr > avr->ramend) {
-		AVR_LOG(avr, LOG_ERROR, FONT_RED "CORE: *** Invalid read address PC=%04x SP=%04x O=%04x Address %04x out of ram (%04x)\n" FONT_DEFAULT,
+		AVR_LOG(avr, LOG_ERROR, FONT_RED
+				"CORE: *** Invalid read address "
+				"PC=%04x SP=%04x O=%04x Address %04x out of ram (%04x)\n"
+				FONT_DEFAULT,
 				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), addr, avr->ramend);
 		crash(avr);
 	}
@@ -614,7 +625,7 @@ run_one_again:
 	 * this traces spurious reset or bad jumps
 	 */
 	if ((avr->pc == 0 && avr->cycle > 0) || avr->pc >= avr->codeend || _avr_sp_get(avr) > avr->ramend) {
-		avr->trace = 1;
+//		avr->trace = 1;
 		STATE("RESET\n");
 		crash(avr);
 	}

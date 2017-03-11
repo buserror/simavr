@@ -225,11 +225,13 @@ elf_parse_mmcu_section(
 						firmware->external_state[i].port = src[2];
 						firmware->external_state[i].mask = src[1];
 						firmware->external_state[i].value = src[0];
-						AVR_LOG(NULL, LOG_TRACE,
+#if 0
+						AVR_LOG(NULL, LOG_DEBUG,
 							"AVR_MMCU_TAG_PORT_EXTERNAL_PULL[%d] %c:%02x:%02x\n",
 							i, firmware->external_state[i].port,
 							firmware->external_state[i].mask,
 							firmware->external_state[i].value);
+#endif
 						break;
 					}
 			}	break;
@@ -239,9 +241,12 @@ elf_parse_mmcu_section(
 				uint8_t mask = src[0];
 				uint16_t addr = src[1] | (src[2] << 8);
 				char * name = (char*)src + 3;
-				AVR_LOG(NULL, LOG_TRACE,
+
+#if 0
+				AVR_LOG(NULL, LOG_DEBUG,
 						"VCD_TRACE %d %04x:%02x - %s\n", tag,
 						addr, mask, name);
+#endif
 				firmware->trace[firmware->tracecount].kind = tag;
 				firmware->trace[firmware->tracecount].mask = mask;
 				firmware->trace[firmware->tracecount].addr = addr;
@@ -279,7 +284,7 @@ elf_copy_section(
 		return -1;
 
 	memcpy(*dest, data->d_buf, data->d_size);
-	AVR_LOG(NULL, LOG_TRACE, "Loaded %zu %s\n", data->d_size, name);
+	AVR_LOG(NULL, LOG_DEBUG, "Loaded %zu %s\n", data->d_size, name);
 
 	return 0;
 }
@@ -407,14 +412,14 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 	if (data_text) {
 	//	hdump("code", data_text->d_buf, data_text->d_size);
 		memcpy(firmware->flash + offset, data_text->d_buf, data_text->d_size);
-		AVR_LOG(NULL, LOG_TRACE, "Loaded %zu .text at address 0x%x\n",
+		AVR_LOG(NULL, LOG_DEBUG, "Loaded %zu .text at address 0x%x\n",
 				(unsigned int)data_text->d_size, firmware->flashbase);
 		offset += data_text->d_size;
 	}
 	if (data_data) {
 	//	hdump("data", data_data->d_buf, data_data->d_size);
 		memcpy(firmware->flash + offset, data_data->d_buf, data_data->d_size);
-		AVR_LOG(NULL, LOG_TRACE, "Loaded %zu .data\n", data_data->d_size);
+		AVR_LOG(NULL, LOG_DEBUG, "Loaded %zu .data\n", data_data->d_size);
 		offset += data_data->d_size;
 		firmware->datasize = data_data->d_size;
 	}

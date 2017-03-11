@@ -229,9 +229,11 @@ struct avr_mmcu_vcd_trace_t {
 #define AVR_MCU_VCD_IRQ(_irq_name) \
 	AVR_MCU_VCD_IRQ_TRACE(_irq_name##_vect_num, 1, #_irq_name)
 #define AVR_MCU_VCD_IRQ_PENDING(_irq_name) \
-	AVR_MCU_VCD_IRQ_TRACE(_irq_name##_vect_num, 0, #_irq_name " pend")
+	AVR_MCU_VCD_IRQ_TRACE(_irq_name##_vect_num, 0, #_irq_name "_pend")
 #define AVR_MCU_VCD_ALL_IRQ() \
 	AVR_MCU_VCD_IRQ_TRACE(0xff, 1, "IRQ")
+#define AVR_MCU_VCD_ALL_IRQ_PENDING() \
+	AVR_MCU_VCD_IRQ_TRACE(0xff, 0, "IRQ_PENDING")
 
 /*!
  * This tag allows you to specify the voltages used by your board

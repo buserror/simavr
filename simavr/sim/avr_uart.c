@@ -47,7 +47,8 @@
 
 DEFINE_FIFO(uint8_t, uart_fifo);
 
-static inline void avr_uart_clear_interrupt(
+static inline void
+avr_uart_clear_interrupt(
 		avr_t * avr,
 		avr_int_vector_t * vector)
 {
@@ -60,7 +61,10 @@ static inline void avr_uart_clear_interrupt(
 		avr_regbit_clear(avr, vector->raised);
 }
 
-static inline void avr_uart_regbit_clear(avr_t * avr, avr_regbit_t rb)
+static inline void
+avr_uart_regbit_clear(
+		avr_t * avr,
+		avr_regbit_t rb)
 {
 	uint16_t a = rb.reg;
 	if (!a)
@@ -68,7 +72,11 @@ static inline void avr_uart_regbit_clear(avr_t * avr, avr_regbit_t rb)
 	avr_regbit_clear(avr, rb);
 }
 
-static avr_cycle_count_t avr_uart_txc_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t
+avr_uart_txc_raise(
+		struct avr_t * avr,
+		avr_cycle_count_t when,
+		void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 	if (p->tx_cnt) {
@@ -99,7 +107,11 @@ static avr_cycle_count_t avr_uart_txc_raise(struct avr_t * avr, avr_cycle_count_
 	return 0; // stop TX pump
 }
 
-static avr_cycle_count_t avr_uart_rxc_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t
+avr_uart_rxc_raise(
+		struct avr_t * avr,
+		avr_cycle_count_t when,
+		void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 	if (avr_regbit_get(avr, p->rxen)) {
@@ -116,7 +128,11 @@ static avr_cycle_count_t avr_uart_rxc_raise(struct avr_t * avr, avr_cycle_count_
 	return 0;
 }
 
-static uint8_t avr_uart_rxc_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
+static uint8_t
+avr_uart_rxc_read(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 	uint8_t v = avr_core_watch_read(avr, addr);
@@ -146,7 +162,11 @@ static uint8_t avr_uart_rxc_read(struct avr_t * avr, avr_io_addr_t addr, void * 
 	return v;
 }
 
-static uint8_t avr_uart_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
+static uint8_t
+avr_uart_read(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 	uint8_t v = 0;
@@ -193,7 +213,12 @@ avr_uart_read_check:
 	return v;
 }
 
-static void avr_uart_baud_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+static void
+avr_uart_baud_write(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 	avr_core_watch_write(avr, addr, v);
@@ -215,12 +240,17 @@ static void avr_uart_baud_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 			avr_cycles_to_usec(avr, p->cycles_per_byte));
 }
 
-static void avr_uart_udr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+static void
+avr_uart_udr_write(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 
-	// The byte to be sent should NOT be writen there,
-	// the value writen could never be read back.
+	// The byte to be sent should NOT be written there,
+	// the value written could never be read back.
 	//avr_core_watch_write(avr, addr, v);
 	if (avr->gdb) {
 		avr_gdb_handle_watchpoints(avr, addr, AVR_GDB_WATCH_WRITE);
@@ -239,7 +269,8 @@ static void avr_uart_udr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v
 		p->stdio_out[p->stdio_len] = 0;
 		if (v == '\n' || p->stdio_len == maxsize) {
 			p->stdio_len = 0;
-			AVR_LOG(avr, LOG_TRACE, FONT_GREEN "%s\n" FONT_DEFAULT, p->stdio_out);
+			AVR_LOG(avr, LOG_OUTPUT,
+					FONT_GREEN "%s\n" FONT_DEFAULT, p->stdio_out);
 		}
 	}
 	TRACE(printf("UDR%c(%02x) = %02x\n", p->name, addr, v);)
@@ -248,14 +279,22 @@ static void avr_uart_udr_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v
 		avr_raise_irq(p->io.irq + UART_IRQ_OUTPUT, v);
 		p->tx_cnt++;
 		if (p->tx_cnt > 2) // AVR actually has 1-character UART tx buffer, plus shift register
-			AVR_LOG(avr, LOG_TRACE, "UART%c: tx buffer overflow %d\n", p->name, (int)p->tx_cnt);
+			AVR_LOG(avr, LOG_TRACE,
+					"UART%c: tx buffer overflow %d\n",
+					p->name, (int)p->tx_cnt);
 		if (avr_cycle_timer_status(avr, avr_uart_txc_raise, p) == 0)
-			avr_cycle_timer_register(avr, p->cycles_per_byte, avr_uart_txc_raise, p); // start the tx pump
+			avr_cycle_timer_register(avr, p->cycles_per_byte,
+					avr_uart_txc_raise, p); // start the tx pump
 	}
 }
 
 
-static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+static void
+avr_uart_write(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 
@@ -352,7 +391,11 @@ static void avr_uart_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, vo
 	}
 }
 
-static void avr_uart_irq_input(struct avr_irq_t * irq, uint32_t value, void * param)
+static void
+avr_uart_irq_input(
+		struct avr_irq_t * irq,
+		uint32_t value,
+		void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 	avr_t * avr = p->io.avr;
@@ -379,8 +422,7 @@ static void avr_uart_irq_input(struct avr_irq_t * irq, uint32_t value, void * pa
 		uart_fifo_write(&p->input, value); // add to fifo
 	} else {
 		AVR_LOG(avr, LOG_ERROR, "UART%c: %s: RX buffer overrun, lost char=%c=0x%02X\n", p->name, __func__,
-				(char)value, (uint8_t)value
-				);
+				(char)value, (uint8_t)value );
 	}
 
 	TRACE(printf("UART IRQ in %02x (%d/%d) %s\n", value, p->input.read, p->input.write, uart_fifo_isfull(&p->input) ? "FULL!!" : "");)
@@ -390,7 +432,9 @@ static void avr_uart_irq_input(struct avr_irq_t * irq, uint32_t value, void * pa
 }
 
 
-void avr_uart_reset(struct avr_io_t *io)
+void
+avr_uart_reset(
+		struct avr_io_t *io)
 {
 	avr_uart_t * p = (avr_uart_t *)io;
 	avr_t * avr = p->io.avr;
@@ -414,7 +458,11 @@ void avr_uart_reset(struct avr_io_t *io)
 	p->cycles_per_byte = avr_usec_to_cycles(avr, 100);
 }
 
-static int avr_uart_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param)
+static int
+avr_uart_ioctl(
+		struct avr_io_t * port,
+		uint32_t ctl,
+		void * io_param)
 {
 	avr_uart_t * p = (avr_uart_t *)port;
 	int res = -1;
@@ -448,7 +496,10 @@ static	avr_io_t	_io = {
 	.irq_names = irq_names,
 };
 
-void avr_uart_init(avr_t * avr, avr_uart_t * p)
+void
+avr_uart_init(
+		avr_t * avr,
+		avr_uart_t * p)
 {
 	p->io = _io;
 

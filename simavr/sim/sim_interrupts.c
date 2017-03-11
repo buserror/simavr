@@ -164,8 +164,11 @@ avr_clear_interrupt(
 	vector->pending = 0;
 
 	avr_raise_irq(vector->irq + AVR_INT_IRQ_PENDING, 0);
-	avr_raise_irq(avr->interrupts.irq + AVR_INT_IRQ_PENDING,
-			avr_has_pending_interrupts(avr));
+	avr_raise_irq_float(avr->interrupts.irq + AVR_INT_IRQ_PENDING,
+			avr_has_pending_interrupts(avr) ?
+					avr_int_pending_read_at(
+							&avr->interrupts.pending, 0)->vector : 0,
+							!avr_has_pending_interrupts(avr));
 
 	if (vector->raised.reg && !vector->raise_sticky)
 		avr_regbit_clear(avr, vector->raised);
