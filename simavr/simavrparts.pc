@@ -1,0 +1,10 @@
+prefix=PREFIX
+exec_prefix=${prefix}
+includedir=${prefix}/include/
+libdir=${exec_prefix}/lib
+
+Name: simavr
+Description: Virtual parts library for simavr
+Version: VERSION
+Cflags: -I${includedir}/simavr/parts
+Libs: -L${libdir} -lsimavrparts -lsimavr
