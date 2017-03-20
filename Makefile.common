@@ -2,13 +2,13 @@
 # This makefile take each "at*" file, extracts it's part name
 # And compile it into an ELF binary.
 # It also disassemble it for debugging purposes.
-# 
+#
 # The code is compiled "optimized" to the max.
-# 
+#
 # The weird "-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000"
 # is used to tell the linker not to discard the .mmcu section,
 # otherwise the --gc-sections will delete it.
-# 
+#
 # 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 #
 #	This file is part of simavr.
@@ -44,30 +44,41 @@ CFLAGS		+= -g
 CORE_CFLAGS	= -nostdinc -DAVR_CORE=1
 
 ifeq (${shell uname}, Darwin)
- # gcc 4.2 from MacOS is really not up to scratch anymore 
+ # gcc 4.2 from MacOS is really not up to scratch anymore
  CC			= clang
  AVR_ROOT 	:= "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/"
  AVR_INC 	:= ${AVR_ROOT}/avr/
  AVR 		:= ${AVR_ROOT}/bin/avr-
  # Thats for MacPorts libelf
  ifeq (${shell test -d /opt/local && echo Exists}, Exists)
-  IPATH		+= /opt/local/include
-  LFLAGS		= -L/opt/local/lib/
+  ifneq (${shell test -d /opt/local/avr && echo Exists}, Exists)
+   $(error Please install avr-gcc: port install avr-gcc avr-libc)
+  endif
+  ifneq (${shell test -d /opt/local/include/libelf && echo Exists}, Exists)
+   $(error Please install libelf: port install libelf)
+  endif
+  CC		= clang
+  IPATH		+= /opt/local/include /opt/local/include/libelf
+  LFLAGS	= -L/opt/local/lib/
+  AVR_INC 	:= /opt/local/avr
+  AVR 		:= /opt/local/bin/avr-
  else
   # That's for Homebrew libelf and avr-gcc support
-  ifeq (${shell test -d /usr/local/Cellar && echo Exists}, Exists)
-   ifneq (${shell test -d /usr/local/Cellar/avr-gcc/ && echo Exists}, Exists)
-    $(error Please install avr-gcc: brew tap larsimmisch/avr ; brew install avr-gcc avr-libc)
+  HOMEBREW_PREFIX ?= /usr/local
+  ifeq (${shell test -d $(HOMEBREW_PREFIX)/Cellar && echo Exists}, Exists)
+   ifneq (${shell test -d $(HOMEBREW_PREFIX)/Cellar/avr-gcc/ && echo Exists}, Exists)
+    $(error Please install avr-gcc: brew tap osx-cross/homebrew-avr ; brew install avr-libc)
    endif
-   ifneq (${shell test -d /usr/local/Cellar/libelf/ && echo Exists}, Exists)
+   ifneq (${shell test -d $(HOMEBREW_PREFIX)/Cellar/libelf/ && echo Exists}, Exists)
     $(error Please install libelf: brew install libelf)
    endif
    CC			= clang
-   IPATH		+= /usr/local/include /usr/local/include/libelf
-   LFLAGS		= -L/usr/local/lib/
-   AVR_ROOT 	:= $(firstword $(wildcard /usr/local/Cellar/avr-gcc/*/))
-   AVR_INC  	:= ${AVR_ROOT}/avr
-   AVR  		:= /usr/local/bin/avr-
+   IPATH		+= $(HOMEBREW_PREFIX)/include
+   LFLAGS		= -L$(HOMEBREW_PREFIX)/lib/
+   CFLAGS		+= -I/$(HOMEBREW_PREFIX)/include/libelf
+   AVR_ROOT		:= $(firstword $(wildcard $(HOMEBREW_PREFIX)/Cellar/avr-libc/*/))
+   AVR_INC		:= ${AVR_ROOT}/avr
+   AVR			:= $(HOMEBREW_PREFIX)/bin/avr-
   endif
  endif
 else
@@ -106,12 +117,12 @@ RANLIB 		?= ranlib
 MKDIR		?= mkdir -p
 INSTALL		?= install
 SHELL	 	:= ${shell which bash}
-	
+
 OBJ 		:= obj-${shell $(CC) -dumpmachine}
 LIBDIR		:= ${shell pwd}/${SIMAVR}/${OBJ}
-LDFLAGS 	+= -L${LIBDIR} -lsimavr 
+LDFLAGS 	+= -L${LIBDIR} -lsimavr -lm
 
-LDFLAGS 	+= -lelf 
+LDFLAGS 	+= -lelf
 
 ifeq (${WIN}, Msys)
 LDFLAGS      += -lws2_32
@@ -129,7 +140,7 @@ endif
 endif
 
 # The code is compiled "optimized" to the max.
-# 
+#
 # The weird "-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000"
 # is used to tell the linker not to discard the .mmcu section,
 # otherwise the --gc-sections will delete it.
@@ -141,7 +152,7 @@ endif
 	@${AVR}objdump -j .text -j .data -j .bss -d  ${<} > ${@}
 
 # --mcall-prologues can be used here, but messes up debugging a little
-%.axf: %.c 
+%.axf: %.c
 	@echo AVR-CC ${<}
 	@part=${<} ; part=$${part/_*}; \
 	${AVR}gcc -Wall -gdwarf-2 -Os -std=gnu99 \
@@ -187,8 +198,8 @@ else
 endif
 
 obj: ${OBJ}
- 
-${OBJ}: 
+
+${OBJ}:
 	@mkdir -p ${OBJ}
 
 clean-${OBJ}:

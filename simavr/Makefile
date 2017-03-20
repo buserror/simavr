@@ -46,7 +46,7 @@ VPATH	+= sim
 IPATH	+= sim
 IPATH	+= .
 IPATH	+= ../../shared
-    
+
 #
 # Static library
 #
@@ -88,7 +88,7 @@ ${target}	: ${OBJ}/${target}.elf
 #else
 	ln -sf $< $@
 #endif
- 
+
 clean: clean-${OBJ}
 	rm -rf ${target} *.a *.so *.exe
 	rm -f sim_core_*.h
@@ -119,7 +119,7 @@ endif
 # This generates 'mock' debian files, without all the policy, scripts
 # and all the things normal debian requires. If debian decides to roll
 # in simavr officialy, this section shall diseapear
-debian: 
+debian:
 	rm -rf /tmp/simavr-tmp && mkdir -p /tmp/simavr-tmp/usr && \
 	make cleam; make install DESTDIR=/tmp/simavr-tmp/usr RELEASE=1 && \
 	(cd /tmp/simavr-tmp && \
@@ -181,7 +181,7 @@ sim_core_config.h ${OBJ}/cores.deps: $(cores) Makefile
 # This take the config file that was generated, and create the static
 # table of all available cores for name lookups, as well as a C
 # config file
-#  
+#
 sim_core_decl.h: sim_core_config.h $(cores) Makefile
 	@echo CONF $@
 	@decl=""; array=""; \

@@ -39,14 +39,47 @@
  * This declares a typical AVR core, using constants what appears
  * to be in every io*.h file...
  */
+#if FUSE_MEMORY_SIZE == 6
+# ifndef FUSE0_DEFAULT
+#  define FUSE0_DEFAULT 0xFF
+# endif
+# ifndef FUSE1_DEFAULT
+#  define FUSE1_DEFAULT 0xFF
+# endif
+# ifndef FUSE2_DEFAULT
+#  define FUSE2_DEFAULT 0xFF
+# endif
+# ifndef FUSE3_DEFAULT
+#  define FUSE3_DEFAULT 0xFF
+# endif
+# ifndef FUSE4_DEFAULT
+#  define FUSE4_DEFAULT 0xFF
+# endif
+# ifndef FUSE5_DEFAULT
+#  define FUSE5_DEFAULT 0xFF
+# endif
+
+# define _FUSE_HELPER { FUSE1_DEFAULT, FUSE1_DEFAULT, FUSE2_DEFAULT, \
+	FUSE3_DEFAULT, FUSE4_DEFAULT, FUSE5_DEFAULT }
+#elif FUSE_MEMORY_SIZE == 3
+# define _FUSE_HELPER { LFUSE_DEFAULT, HFUSE_DEFAULT, EFUSE_DEFAULT }
+#elif FUSE_MEMORY_SIZE == 2
+# define _FUSE_HELPER { LFUSE_DEFAULT, HFUSE_DEFAULT }
+#elif FUSE_MEMORY_SIZE == 1
+# define _FUSE_HELPER { FUSE_DEFAULT }
+#else
+# define _FUSE_HELPER { 0 }
+#endif
+
 #ifdef SIGNATURE_0
 #define DEFAULT_CORE(_vector_size) \
 	.ramend = RAMEND, \
 	.flashend = FLASHEND, \
 	.e2end = E2END, \
 	.vector_size = _vector_size, \
-	.fuse = { LFUSE_DEFAULT, HFUSE_DEFAULT, EFUSE_DEFAULT }, \
-	.signature = { SIGNATURE_0,SIGNATURE_1,SIGNATURE_2 }
+	.fuse = _FUSE_HELPER, \
+	.signature = { SIGNATURE_0,SIGNATURE_1,SIGNATURE_2 }, \
+	.lockbits = 0xFF
 #else
 // Disable signature when using an old avr toolchain
 #define DEFAULT_CORE(_vector_size) \

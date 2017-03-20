@@ -301,9 +301,10 @@ gdb_handle_command(
 				 */
 				gdb_send_reply(g, "1");
 				break;
-			} else if (strncmp(cmd, "Offsets", 7) == 0) {
-				gdb_send_reply(g, "Text=0;Data=800000;Bss=800000");
-				break;
+			// Rmoving the following 3 lines fixes #150 issue:
+			// } else if (strncmp(cmd, "Offsets", 7) == 0) {
+			//	gdb_send_reply(g, "Text=0;Data=800000;Bss=800000");
+			//	break;
 			} else if (strncmp(cmd, "Xfer:memory-map:read", 20) == 0) {
 				snprintf(rep, sizeof(rep),
 						"l<memory-map>\n"
@@ -486,7 +487,7 @@ gdb_network_handler(
 		FD_SET(g->listen, &read_set);
 		max = g->listen + 1;
 	}
-	struct timeval timo = { 0, dosleep };	// short, but not too short interval
+	struct timeval timo = { dosleep / 1000000, dosleep % 1000000 };
 	int ret = select(max, &read_set, NULL, NULL, &timo);
 
 	if (ret == 0)
@@ -616,6 +617,9 @@ int
 avr_gdb_init(
 		avr_t * avr )
 {
+	if (avr->gdb)
+		return 0; // GDB server already is active
+
 	avr_gdb_t * g = malloc(sizeof(avr_gdb_t));
 	memset(g, 0, sizeof(avr_gdb_t));
 
@@ -623,12 +627,12 @@ avr_gdb_init(
 
 	if ( network_init() ) {
 		AVR_LOG(avr, LOG_ERROR, "GDB: Can't initialize network");
-		return -1;
+		goto error;
 	}
 	
 	if ((g->listen = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
 		AVR_LOG(avr, LOG_ERROR, "GDB: Can't create socket: %s", strerror(errno));
-		return -1;
+		goto error;
 	}
 
 	int optval = 1;
@@ -640,11 +644,11 @@ avr_gdb_init(
 
 	if (bind(g->listen, (struct sockaddr *) &address, sizeof(address))) {
 		AVR_LOG(avr, LOG_ERROR, "GDB: Can not bind socket: %s", strerror(errno));
-		return -1;
+		goto error;
 	}
 	if (listen(g->listen, 1)) {
 		perror("listen");
-		return -1;
+		goto error;
 	}
 	printf("avr_gdb_init listening on port %d\n", avr->gdb_port);
 	g->avr = avr;
@@ -655,17 +659,31 @@ avr_gdb_init(
 	avr->sleep = avr_callback_sleep_gdb;
 	
 	return 0;
+
+error:
+	if (g->listen >= 0)
+		close(g->listen);
+	free(g);
+
+	return -1;
 }
 
 void 
 avr_deinit_gdb(
 		avr_t * avr )
 {
+	if (!avr->gdb)
+		return;
+	avr->run = avr_callback_run_raw; // restore normal callbacks
+	avr->sleep = avr_callback_sleep_raw;
 	if (avr->gdb->listen != -1)
-	   close(avr->gdb->listen);
+		close(avr->gdb->listen);
+	avr->gdb->listen = -1;
 	if (avr->gdb->s != -1)
-	   close(avr->gdb->s);
+		close(avr->gdb->s);
+	avr->gdb->s = -1;
 	free(avr->gdb);
+	avr->gdb = NULL;
 
 	network_release();
 }

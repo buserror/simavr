@@ -29,18 +29,36 @@
 #include "sim_core.h"
 #include "sim_gdb.h"
 #include "sim_hex.h"
+#include "sim_vcd_file.h"
 
 #include "sim_core_decl.h"
 
-void display_usage(char * app)
+static void
+display_usage(
+	const char * app)
 {
-	printf("Usage: %s [-t] [-g] [-v] [-m <device>] [-f <frequency>] firmware\n", app);
-	printf("       -t: Run full scale decoder trace\n"
-		   "       -g: Listen for gdb connection on port 1234\n"
-		   "       -ff: Load next .hex file as flash\n"
-		   "       -ee: Load next .hex file as eeprom\n"
-		   "       -v: Raise verbosity level (can be passed more than once)\n"
-		   "   Supported AVR cores:\n");
+	printf("Usage: %s [...] <firmware>\n", app);
+	printf( "		[--freq|-f <freq>]  Sets the frequency for an .hex firmware\n"
+			"		[--mcu|-m <device>] Sets the MCU type for an .hex firmware\n"
+			"       [--list-cores]      List all supported AVR cores and exit\n"
+			"       [--help|-h]         Display this usage message and exit\n"
+			"       [--trace, -t]       Run full scale decoder trace\n"
+			"       [-ti <vector>]      Add traces for IRQ vector <vector>\n"
+			"       [--gdb|-g]          Listen for gdb connection on port 1234\n"
+			"       [-ff <.hex file>]   Load next .hex file as flash\n"
+			"       [-ee <.hex file>]   Load next .hex file as eeprom\n"
+			"       [--input|-i <file>] A .vcd file to use as input signals\n"
+			"       [-v]                Raise verbosity level\n"
+			"                           (can be passed more than once)\n"
+			"       <firmware>          A .hex or an ELF file. ELF files are\n"
+			"                           prefered, and can include debugging syms\n");
+	exit(1);
+}
+
+static void
+list_cores()
+{
+	printf( "Supported AVR cores:\n");
 	for (int i = 0; avr_kind[i]; i++) {
 		printf("       ");
 		for (int ti = 0; ti < 4 && avr_kind[i]->names[ti]; ti++)
@@ -50,9 +68,9 @@ void display_usage(char * app)
 	exit(1);
 }
 
-avr_t * avr = NULL;
+static avr_t * avr = NULL;
 
-void
+static void
 sig_int(
 		int sign)
 {
@@ -62,47 +80,58 @@ sig_int(
 	exit(0);
 }
 
-int main(int argc, char *argv[])
+int
+main(
+		int argc,
+		char *argv[])
 {
 	elf_firmware_t f = {{0}};
-	long f_cpu = 0;
+	uint32_t f_cpu = 0;
 	int trace = 0;
 	int gdb = 0;
 	int log = 1;
-	char name[16] = "";
+	char name[24] = "";
 	uint32_t loadBase = AVR_SEGMENT_OFFSET_FLASH;
 	int trace_vectors[8] = {0};
 	int trace_vectors_count = 0;
+	const char *vcd_input = NULL;
 
 	if (argc == 1)
 		display_usage(basename(argv[0]));
 
 	for (int pi = 1; pi < argc; pi++) {
-		if (!strcmp(argv[pi], "-h") || !strcmp(argv[pi], "-help")) {
+		if (!strcmp(argv[pi], "--list-cores")) {
+			list_cores();
+		} else if (!strcmp(argv[pi], "-h") || !strcmp(argv[pi], "--help")) {
 			display_usage(basename(argv[0]));
-		} else if (!strcmp(argv[pi], "-m") || !strcmp(argv[pi], "-mcu")) {
+		} else if (!strcmp(argv[pi], "-m") || !strcmp(argv[pi], "--mcu")) {
 			if (pi < argc-1)
-				strcpy(name, argv[++pi]);
+				strncpy(name, argv[++pi], sizeof(name));
 			else
 				display_usage(basename(argv[0]));
-		} else if (!strcmp(argv[pi], "-f") || !strcmp(argv[pi], "-freq")) {
+		} else if (!strcmp(argv[pi], "-f") || !strcmp(argv[pi], "--freq")) {
 			if (pi < argc-1)
 				f_cpu = atoi(argv[++pi]);
 			else
 				display_usage(basename(argv[0]));
-		} else if (!strcmp(argv[pi], "-t") || !strcmp(argv[pi], "-trace")) {
+		} else if (!strcmp(argv[pi], "-i") || !strcmp(argv[pi], "--input")) {
+			if (pi < argc-1)
+				vcd_input = argv[++pi];
+			else
+				display_usage(basename(argv[0]));
+		} else if (!strcmp(argv[pi], "-t") || !strcmp(argv[pi], "--trace")) {
 			trace++;
 		} else if (!strcmp(argv[pi], "-ti")) {
 			if (pi < argc-1)
 				trace_vectors[trace_vectors_count++] = atoi(argv[++pi]);
-		} else if (!strcmp(argv[pi], "-g") || !strcmp(argv[pi], "-gdb")) {
+		} else if (!strcmp(argv[pi], "-g") || !strcmp(argv[pi], "--gdb")) {
 			gdb++;
 		} else if (!strcmp(argv[pi], "-v")) {
 			log++;
 		} else if (!strcmp(argv[pi], "-ee")) {
 			loadBase = AVR_SEGMENT_OFFSET_EEPROM;
 		} else if (!strcmp(argv[pi], "-ff")) {
-			loadBase = AVR_SEGMENT_OFFSET_FLASH;			
+			loadBase = AVR_SEGMENT_OFFSET_FLASH;
 		} else if (argv[pi][0] != '-') {
 			char * filename = argv[pi];
 			char * suffix = strrchr(filename, '.');
@@ -114,7 +143,7 @@ int main(int argc, char *argv[])
 				ihex_chunk_p chunk = NULL;
 				int cnt = read_ihex_chunks(filename, &chunk);
 				if (cnt <= 0) {
-					fprintf(stderr, "%s: Unable to load IHEX file %s\n", 
+					fprintf(stderr, "%s: Unable to load IHEX file %s\n",
 						argv[0], argv[pi]);
 					exit(1);
 				}
@@ -166,6 +195,12 @@ int main(int argc, char *argv[])
 			if (avr->interrupts.vector[vi]->vector == trace_vectors[ti])
 				avr->interrupts.vector[vi]->trace = 1;
 	}
+	if (vcd_input) {
+		static avr_vcd_t input;
+		if (avr_vcd_init_input(avr, vcd_input, &input)) {
+			fprintf(stderr, "%s: Warning: VCD input file %s failed\n", argv[0], vcd_input);
+		}
+	}
 
 	// even if not setup at startup, activate gdb if crashing
 	avr->gdb_port = 1234;
@@ -179,9 +214,9 @@ int main(int argc, char *argv[])
 
 	for (;;) {
 		int state = avr_run(avr);
-		if ( state == cpu_Done || state == cpu_Crashed)
+		if (state == cpu_Done || state == cpu_Crashed)
 			break;
 	}
-	
+
 	avr_terminate(avr);
 }

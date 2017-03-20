@@ -72,10 +72,12 @@ avr_register_vector(
 			AVR_INT_IRQ_COUNT, names);
 	table->vector[table->vector_count++] = vector;
 	if (vector->trace)
-		printf("%s register vector %d (enabled %04x:%d)\n", __FUNCTION__, vector->vector, vector->enable.reg, vector->enable.bit);
+		printf("IRQ%d registered (enabled %04x:%d)\n",
+			vector->vector, vector->enable.reg, vector->enable.bit);
 
 	if (!vector->enable.reg)
-		AVR_LOG(avr, LOG_WARNING, "INT: avr_register_vector: No 'enable' bit on vector %d !\n", vector->vector);
+		AVR_LOG(avr, LOG_WARNING, "IRQ%d No 'enable' bit !\n",
+			vector->vector);
 }
 
 int
@@ -83,7 +85,7 @@ avr_has_pending_interrupts(
 		avr_t * avr)
 {
 	avr_int_table_p table = &avr->interrupts;
-	return !avr_int_pending_isempty(&table->pending); // table->pending_r != table->pending_w;
+	return !avr_int_pending_isempty(&table->pending);
 }
 
 int
@@ -109,13 +111,16 @@ avr_raise_interrupt(
 {
 	if (!vector || !vector->vector)
 		return 0;
-	if (vector->trace)
-		printf("%s raising %d (enabled %d)\n", __FUNCTION__, vector->vector, avr_regbit_get(avr, vector->enable));
 	if (vector->pending) {
 		if (vector->trace)
-			printf("%s trying to double raise %d (enabled %d)\n", __FUNCTION__, vector->vector, avr_regbit_get(avr, vector->enable));
+			printf("IRQ%d:I=%d already raised (enabled %d) (cycle %lld pc 0x%x)\n",
+				vector->vector, !!avr->sreg[S_I], avr_regbit_get(avr, vector->enable),
+				(long long int)avr->cycle, avr->pc);
 		return 0;
 	}
+	if (vector->trace)
+		printf("IRQ%d raising (enabled %d)\n",
+			vector->vector, avr_regbit_get(avr, vector->enable));
 	// always mark the 'raised' flag to one, even if the interrupt is disabled
 	// this allow "polling" for the "raised" flag, like for non-interrupt
 	// driven UART and so so. These flags are often "write one to clear"
@@ -138,7 +143,8 @@ avr_raise_interrupt(
 			avr->interrupt_state = 1;
 		if (avr->state == cpu_Sleeping) {
 			if (vector->trace)
-				printf("Waking CPU due to interrupt\n");
+				printf("IRQ%d Waking CPU due to interrupt\n",
+					vector->vector);
 			avr->state = cpu_Running;	// in case we were sleeping
 		}
 	}
@@ -154,12 +160,15 @@ avr_clear_interrupt(
 	if (!vector)
 		return;
 	if (vector->trace)
-		printf("%s cleared %d\n", __FUNCTION__, vector->vector);
+		printf("IRQ%d cleared\n", vector->vector);
 	vector->pending = 0;
 
 	avr_raise_irq(vector->irq + AVR_INT_IRQ_PENDING, 0);
-	avr_raise_irq(avr->interrupts.irq + AVR_INT_IRQ_PENDING,
-			avr_has_pending_interrupts(avr));
+	avr_raise_irq_float(avr->interrupts.irq + AVR_INT_IRQ_PENDING,
+			avr_has_pending_interrupts(avr) ?
+					avr_int_pending_read_at(
+							&avr->interrupts.pending, 0)->vector : 0,
+							!avr_has_pending_interrupts(avr));
 
 	if (vector->raised.reg && !vector->raise_sticky)
 		avr_regbit_clear(avr, vector->raised);
@@ -248,7 +257,7 @@ avr_service_interrupts(
 
 	// now move the one at the front of the fifo in the slot of
 	// the one we service
-	table->pending.buffer[mini % avr_int_pending_fifo_size] = 
+	table->pending.buffer[(table->pending.read + mini) % avr_int_pending_fifo_size] =
 			avr_int_pending_read(&table->pending);
 	avr_raise_irq(avr->interrupts.irq + AVR_INT_IRQ_PENDING,
 			avr_has_pending_interrupts(avr));
@@ -260,7 +269,7 @@ avr_service_interrupts(
 		avr->interrupt_state = avr_has_pending_interrupts(avr);
 	} else {
 		if (vector && vector->trace)
-			printf("%s calling %d\n", __FUNCTION__, (int)vector->vector);
+			printf("IRQ%d calling\n", vector->vector);
 		_avr_push_addr(avr, avr->pc);
 		avr_sreg_set(avr, S_I, 0);
 		avr->pc = vector->vector * avr->vector_size;

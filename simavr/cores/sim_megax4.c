@@ -26,7 +26,7 @@
 void mx4_init(struct avr_t * avr)
 {
 	struct mcu_t * mcu = (struct mcu_t*)avr;
-	
+
 	avr_eeprom_init(avr, &mcu->eeprom);
 	avr_flash_init(avr, &mcu->selfprog);
 	avr_extint_init(avr, &mcu->extint);
@@ -41,9 +41,9 @@ void mx4_init(struct avr_t * avr)
 	avr_timer_init(avr, &mcu->timer0);
 	avr_timer_init(avr, &mcu->timer1);
 	avr_timer_init(avr, &mcu->timer2);
-#ifdef PRR1
-	avr_timer_init(avr, &mcu->timer3);
-#endif
+	if (mcu->timer3.name) // only resent on 1284
+		avr_timer_init(avr, &mcu->timer3);
+
 	avr_spi_init(avr, &mcu->spi);
 	avr_twi_init(avr, &mcu->twi);
 }

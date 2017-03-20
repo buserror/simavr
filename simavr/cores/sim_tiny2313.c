@@ -70,38 +70,10 @@ static const struct mcu_t {
 		.r_pcint = PCMSK,
 	},
 	AVR_IOPORT_DECLARE(d, 'D', D), // port D has no PCInts..
-	.uart = {
-		// no PRR register on the 2313
-		//.disabled = AVR_IO_REGBIT(PRR,PRUSART0),
-		.name = '0',
-		.r_udr = UDR,
 
-		.txen = AVR_IO_REGBIT(UCSRB, TXEN),
-		.rxen = AVR_IO_REGBIT(UCSRB, RXEN),
-		.ucsz = AVR_IO_REGBITS(UCSRC, UCSZ0, 0x3), // 2 bits
-		.ucsz2 = AVR_IO_REGBIT(UCSRB, UCSZ2), 	// 1 bits
+	//no PRUSART, upe=UPE, no reg/bit name index, no 'C' in RX/TX vector names
+	AVR_UART_DECLARE(0, 0, UPE, , ),
 
-		.r_ucsra = UCSRA,
-		.r_ucsrb = UCSRB,
-		.r_ucsrc = UCSRC,
-		.r_ubrrl = UBRRL,
-		.r_ubrrh = UBRRH,
-		.rxc = {
-			.enable = AVR_IO_REGBIT(UCSRB, RXCIE),
-			.raised = AVR_IO_REGBIT(UCSRA, RXC),
-			.vector = USART_RX_vect,
-		},
-		.txc = {
-			.enable = AVR_IO_REGBIT(UCSRB, TXCIE),
-			.raised = AVR_IO_REGBIT(UCSRA, TXC),
-			.vector = USART_TX_vect,
-		},
-		.udrc = {
-			.enable = AVR_IO_REGBIT(UCSRB, UDRIE),
-			.raised = AVR_IO_REGBIT(UCSRA, UDRE),
-			.vector = USART_UDRE_vect,
-		},
-	},
 	.timer0 = {
 		.name = '0',
 		.wgm = { AVR_IO_REGBIT(TCCR0A, WGM00), AVR_IO_REGBIT(TCCR0A, WGM01), AVR_IO_REGBIT(TCCR0B, WGM02) },
@@ -112,7 +84,8 @@ static const struct mcu_t {
 			[7] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR0B, CS00), AVR_IO_REGBIT(TCCR0B, CS01), AVR_IO_REGBIT(TCCR0B, CS02) },
-		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ },
+		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTD, 4), /* External clock pin */
 
 		.r_tcnt = TCNT0,
 
@@ -160,7 +133,8 @@ static const struct mcu_t {
 			[15] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR1B, CS10), AVR_IO_REGBIT(TCCR1B, CS11), AVR_IO_REGBIT(TCCR1B, CS12) },
-		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */  /* External clock T1 is not handled */},
+		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTD, 5), /* External clock pin */
 
 		.r_tcnt = TCNT1L,
 		.r_icr = ICR1L,

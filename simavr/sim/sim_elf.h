@@ -49,6 +49,7 @@ typedef struct elf_firmware_t {
 	uint32_t	traceperiod;
 	int			tracecount;
 	struct {
+		uint8_t kind;
 		uint8_t mask;
 		uint16_t addr;
 		char	name[64];
@@ -71,6 +72,9 @@ typedef struct elf_firmware_t {
 	// read the .eeprom section of the elf, too
 	uint8_t * 	eeprom;
 	uint32_t 	eesize;
+	uint8_t *	fuse;
+	uint32_t	fusesize;
+	uint8_t *	lockbits;
 
 #if ELF_SYMBOLS
 	avr_symbol_t **  symbol;

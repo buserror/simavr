@@ -100,132 +100,12 @@ const struct mcu_t {
 	AVR_IOPORT_DECLARE(j, 'J', J),
 	AVR_IOPORT_DECLARE(k, 'K', K),
 	AVR_IOPORT_DECLARE(l, 'L', L),
-	.uart0 = {
-		.disabled = AVR_IO_REGBIT(PRR0,PRUSART0),
-		.name = '0',
-		.r_udr = UDR0,
 
-		.txen = AVR_IO_REGBIT(UCSR0B, TXEN0),
-		.rxen = AVR_IO_REGBIT(UCSR0B, RXEN0),
-		.ucsz = AVR_IO_REGBITS(UCSR0C, UCSZ00, 0x3), // 2 bits
-		.ucsz2 = AVR_IO_REGBIT(UCSR0B, UCSZ02), 	// 1 bits
+	AVR_UARTX_DECLARE(0, PRR0, PRUSART0),
+	AVR_UARTX_DECLARE(1, PRR1, PRUSART1),
+	AVR_UARTX_DECLARE(2, PRR1, PRUSART2),
+	AVR_UARTX_DECLARE(3, PRR1, PRUSART3),
 
-		.r_ucsra = UCSR0A,
-		.r_ucsrb = UCSR0B,
-		.r_ucsrc = UCSR0C,
-		.r_ubrrl = UBRR0L,
-		.r_ubrrh = UBRR0H,
-		.rxc = {
-			.enable = AVR_IO_REGBIT(UCSR0B, RXCIE0),
-			.raised = AVR_IO_REGBIT(UCSR0A, RXC0),
-			.vector = USART0_RX_vect,
-		},
-		.txc = {
-			.enable = AVR_IO_REGBIT(UCSR0B, TXCIE0),
-			.raised = AVR_IO_REGBIT(UCSR0A, TXC0),
-			.vector = USART0_TX_vect,
-		},
-		.udrc = {
-			.enable = AVR_IO_REGBIT(UCSR0B, UDRIE0),
-			.raised = AVR_IO_REGBIT(UCSR0A, UDRE0),
-			.vector = USART0_UDRE_vect,
-		},
-	},
-	.uart1 = {
-		.disabled = AVR_IO_REGBIT(PRR1,PRUSART1),
-		.name = '1',
-		.r_udr = UDR1,
-
-		.txen = AVR_IO_REGBIT(UCSR1B, TXEN1),
-		.rxen = AVR_IO_REGBIT(UCSR1B, RXEN1),
-		.ucsz = AVR_IO_REGBITS(UCSR1C, UCSZ10, 0x3), // 2 bits
-		.ucsz2 = AVR_IO_REGBIT(UCSR1B, UCSZ12), 	// 1 bits
-
-		.r_ucsra = UCSR1A,
-		.r_ucsrb = UCSR1B,
-		.r_ucsrc = UCSR1C,
-		.r_ubrrl = UBRR1L,
-		.r_ubrrh = UBRR1H,
-		.rxc = {
-			.enable = AVR_IO_REGBIT(UCSR1B, RXCIE1),
-			.raised = AVR_IO_REGBIT(UCSR1A, RXC1),
-			.vector = USART1_RX_vect,
-		},
-		.txc = {
-			.enable = AVR_IO_REGBIT(UCSR1B, TXCIE1),
-			.raised = AVR_IO_REGBIT(UCSR1A, TXC1),
-			.vector = USART1_TX_vect,
-		},
-		.udrc = {
-			.enable = AVR_IO_REGBIT(UCSR1B, UDRIE1),
-			.raised = AVR_IO_REGBIT(UCSR1A, UDRE1),
-			.vector = USART1_UDRE_vect,
-		},
-	},
-
-	.uart2 = {
-		.disabled = AVR_IO_REGBIT(PRR1,PRUSART2),
-		.name = '2',
-		.r_udr = UDR2,
-
-		.txen = AVR_IO_REGBIT(UCSR2B, TXEN2),
-		.rxen = AVR_IO_REGBIT(UCSR2B, RXEN2),
-		.ucsz = AVR_IO_REGBITS(UCSR2C, UCSZ20, 0x3), // 2 bits
-		.ucsz2 = AVR_IO_REGBIT(UCSR2B, UCSZ22), 	// 1 bits
-
-		.r_ucsra = UCSR2A,
-		.r_ucsrb = UCSR2B,
-		.r_ucsrc = UCSR2C,
-		.r_ubrrl = UBRR2L,
-		.r_ubrrh = UBRR2H,
-		.rxc = {
-			.enable = AVR_IO_REGBIT(UCSR2B, RXCIE2),
-			.raised = AVR_IO_REGBIT(UCSR2A, RXC2),
-			.vector = USART2_RX_vect,
-		},
-		.txc = {
-			.enable = AVR_IO_REGBIT(UCSR2B, TXCIE2),
-			.raised = AVR_IO_REGBIT(UCSR2A, TXC2),
-			.vector = USART2_TX_vect,
-		},
-		.udrc = {
-			.enable = AVR_IO_REGBIT(UCSR2B, UDRIE2),
-			.raised = AVR_IO_REGBIT(UCSR2A, UDRE2),
-			.vector = USART2_UDRE_vect,
-		},
-	},
-
-	.uart3 = {
-		.disabled = AVR_IO_REGBIT(PRR1,PRUSART3),
-		.name = '3',
-		.r_udr = UDR3,
-
-		.txen = AVR_IO_REGBIT(UCSR3B, TXEN3),
-		.rxen = AVR_IO_REGBIT(UCSR3B, RXEN3),
-		.ucsz = AVR_IO_REGBITS(UCSR3C, UCSZ30, 0x3), // 2 bits
-		.ucsz2 = AVR_IO_REGBIT(UCSR3B, UCSZ32), 	// 1 bits
-
-		.r_ucsra = UCSR3A,
-		.r_ucsrb = UCSR3B,
-		.r_ucsrc = UCSR3C,
-		.r_ubrrl = UBRR3L,
-		.r_ubrrh = UBRR3H,
-		.rxc = {
-			.enable = AVR_IO_REGBIT(UCSR3B, RXCIE3),
-			.raised = AVR_IO_REGBIT(UCSR3A, RXC3),
-			.vector = USART3_RX_vect,
-		},
-		.txc = {
-			.enable = AVR_IO_REGBIT(UCSR3B, TXCIE3),
-			.raised = AVR_IO_REGBIT(UCSR3A, TXC3),
-			.vector = USART3_TX_vect,
-		},
-		.udrc = {
-			.enable = AVR_IO_REGBIT(UCSR3B, UDRIE3),
-			.raised = AVR_IO_REGBIT(UCSR3A, UDRE3),
-			.vector = USART3_UDRE_vect,
-		},
-	},
 	.adc = {
 		.r_admux = ADMUX,
 		.mux = { AVR_IO_REGBIT(ADMUX, MUX0), AVR_IO_REGBIT(ADMUX, MUX1),
@@ -317,7 +197,8 @@ const struct mcu_t {
 			[7] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR0B, CS00), AVR_IO_REGBIT(TCCR0B, CS01), AVR_IO_REGBIT(TCCR0B, CS02) },
-		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ },
+		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTD, 7), /* External clock pin */
 
 		.r_tcnt = TCNT0,
 
@@ -369,7 +250,8 @@ const struct mcu_t {
 			[15] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR1B, CS10), AVR_IO_REGBIT(TCCR1B, CS11), AVR_IO_REGBIT(TCCR1B, CS12) },
-		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */  /* External clock T1 is not handled */},
+		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTD, 7), /* External clock pin */
 
 		.r_tcnt = TCNT1L,
 		.r_tcnth = TCNT1H,
@@ -494,7 +376,8 @@ const struct mcu_t {
 			[15] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR3B, CS30), AVR_IO_REGBIT(TCCR3B, CS31), AVR_IO_REGBIT(TCCR3B, CS32) },
-		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */  /* TODO: 2 External clocks */},
+		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTE, 6), /* External clock pin */
 
 		.r_tcnt = TCNT3L,
 		.r_icr = ICR3L,
@@ -570,7 +453,8 @@ const struct mcu_t {
 			[15] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR4B, CS40), AVR_IO_REGBIT(TCCR4B, CS41), AVR_IO_REGBIT(TCCR4B, CS42) },
-		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */  /* External clock T1 is not handled */},
+		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTH, 7), /* External clock pin */
 
 		.r_tcnt = TCNT4L,
 		.r_tcnth = TCNT4H,
@@ -647,7 +531,8 @@ const struct mcu_t {
 			[15] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR5B, CS50), AVR_IO_REGBIT(TCCR5B, CS51), AVR_IO_REGBIT(TCCR5B, CS52) },
-		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */  /* External clock T1 is not handled */},
+		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTL, 2), /* External clock pin */
 
 		.r_tcnt = TCNT5L,
 		.r_tcnth = TCNT5H,
