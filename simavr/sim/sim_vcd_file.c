@@ -21,7 +21,6 @@
 	You should have received a copy of the GNU General Public License
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
-#define _GNU_SOURCE /* for strdupa */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -295,7 +294,7 @@ avr_vcd_init_input(
 				vcd->signal[i].size);
 		/* format is <four-character ioctl>[_<IRQ index>] */
 		if (strlen(vcd->signal[i].name) >= 4) {
-			char *dup = strdupa(vcd->signal[i].name);
+			char *dup = strdup(vcd->signal[i].name);
 			char *ioctl = strsep(&dup, "_");
 			int index = 0;
 			if (dup)
@@ -311,11 +310,12 @@ avr_vcd_init_input(
 					AVR_LOG(vcd->avr, LOG_WARNING,
 							"%s IRQ was not found\n",
 							vcd->signal[i].name);
-				continue;
+			} else {
+				AVR_LOG(vcd->avr, LOG_WARNING,
+						"%s is an invalid IRQ format\n",
+						vcd->signal[i].name);
 			}
-			AVR_LOG(vcd->avr, LOG_WARNING,
-					"%s is an invalid IRQ format\n",
-					vcd->signal[i].name);
+			if(dup) free(dup);
 		}
 	}
 	return 0;
