@@ -57,6 +57,7 @@ enum {
 	IRQ_FLAG_ALLOC		= (1 << 2), //!< this irq structure was malloced via avr_alloc_irq
 	IRQ_FLAG_INIT		= (1 << 3), //!< this irq hasn't been used yet
 	IRQ_FLAG_FLOATING	= (1 << 4), //!< this 'pin'/signal is floating
+	IRQ_FLAG_USER		= (1 << 5), //!< Can be used by irq users
 };
 
 /*
