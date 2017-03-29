@@ -41,7 +41,7 @@ ARCH 		:= ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
 
 CFLAGS		+= -O2 -Wall -Wextra -Wno-unused-parameter \
 			-Wno-unused-result -Wno-missing-field-initializers \
-			-Wno-sign-compare
+			-Wno-sign-compare -Wno-unused-function
 CFLAGS		+= -g
 CORE_CFLAGS	= -DAVR_CORE=1
 
