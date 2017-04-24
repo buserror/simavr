@@ -296,11 +296,12 @@ avr_vcd_init_input(
 		size_t namelen = strlen(vcd->signal[i].name);
 
 		if (namelen >= 4 && namelen < 20) {
-			char dup[20];
+			char copy[20];
+			char *dup = copy;
 			char *ioctl;
 			int index = 0;
 
-			strcpy(dup, vcd->signal[i].name);
+			strcpy(copy, vcd->signal[i].name);
 			ioctl = strsep(&dup, "_");
 			if (dup)
 				index = atoi(dup);
