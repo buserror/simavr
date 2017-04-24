@@ -300,7 +300,7 @@ avr_vcd_init_input(
 			char *index_string = ioctl;
 			int index = 0;
 
-			strcpy(copy, vcd->signal[i].name);
+			strcpy(ioctl, vcd->signal[i].name);
 			strsep(&index_string, "_");
 			if (index_string)
 				index = atoi(index_string);
