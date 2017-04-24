@@ -21,7 +21,6 @@
 	You should have received a copy of the GNU General Public License
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
-#define _GNU_SOURCE /* for strdupa */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -294,12 +293,17 @@ avr_vcd_init_input(
 				vcd->signal[i].alias, vcd->signal[i].name,
 				vcd->signal[i].size);
 		/* format is <four-character ioctl>[_<IRQ index>] */
-		if (strlen(vcd->signal[i].name) >= 4) {
-			char *dup = strdupa(vcd->signal[i].name);
-			char *ioctl = strsep(&dup, "_");
+		size_t namelen = strlen(vcd->signal[i].name);
+
+		if (namelen >= 4 && namelen < 20) {
+			char ioctl[20];
+			char *index_string = ioctl;
 			int index = 0;
-			if (dup)
-				index = atoi(dup);
+
+			strcpy(ioctl, vcd->signal[i].name);
+			strsep(&index_string, "_");
+			if (index_string)
+				index = atoi(index_string);
 			if (strlen(ioctl) == 4) {
 				uint32_t ioc = AVR_IOCTL_DEF(
 									ioctl[0], ioctl[1], ioctl[2], ioctl[3]);
@@ -311,10 +315,14 @@ avr_vcd_init_input(
 					AVR_LOG(vcd->avr, LOG_WARNING,
 							"%s IRQ was not found\n",
 							vcd->signal[i].name);
-				continue;
+			} else {
+				AVR_LOG(vcd->avr, LOG_WARNING,
+						"%s is an invalid IRQ format\n",
+						vcd->signal[i].name);
 			}
+		} else {
 			AVR_LOG(vcd->avr, LOG_WARNING,
-					"%s is an invalid IRQ format\n",
+					"%s is an invalid IRQ format (too long)\n",
 					vcd->signal[i].name);
 		}
 	}
