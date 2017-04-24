@@ -296,16 +296,15 @@ avr_vcd_init_input(
 		size_t namelen = strlen(vcd->signal[i].name);
 
 		if (namelen >= 4 && namelen < 20) {
-			char copy[20];
-			char *dup = copy;
-			char *ioctl;
+			char ioctl[20];
+			char *index_string = ioctl;
 			int index = 0;
 
 			strcpy(copy, vcd->signal[i].name);
-			ioctl = strsep(&dup, "_");
-			if (dup)
-				index = atoi(dup);
-			if (ioctl && strlen(ioctl) == 4) {
+			strsep(&index_string, "_");
+			if (index_string)
+				index = atoi(index_string);
+			if (strlen(ioctl) == 4) {
 				uint32_t ioc = AVR_IOCTL_DEF(
 									ioctl[0], ioctl[1], ioctl[2], ioctl[3]);
 				avr_irq_t * irq = avr_io_getirq(vcd->avr, ioc, index);
