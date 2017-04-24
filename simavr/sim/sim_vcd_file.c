@@ -293,13 +293,18 @@ avr_vcd_init_input(
 				vcd->signal[i].alias, vcd->signal[i].name,
 				vcd->signal[i].size);
 		/* format is <four-character ioctl>[_<IRQ index>] */
-		if (strlen(vcd->signal[i].name) >= 4) {
-			char *dup = strdup(vcd->signal[i].name);
-			char *ioctl = strsep(&dup, "_");
+		size_t namelen = strlen(vcd->signal[i].name);
+
+		if (namelen >= 4 && namelen < 20) {
+			char dup[20];
+			char *ioctl;
 			int index = 0;
+
+			strcpy(dup, vcd->signal[i].name);
+			ioctl = strsep(&dup, "_");
 			if (dup)
 				index = atoi(dup);
-			if (strlen(ioctl) == 4) {
+			if (ioctl && strlen(ioctl) == 4) {
 				uint32_t ioc = AVR_IOCTL_DEF(
 									ioctl[0], ioctl[1], ioctl[2], ioctl[3]);
 				avr_irq_t * irq = avr_io_getirq(vcd->avr, ioc, index);
@@ -315,7 +320,10 @@ avr_vcd_init_input(
 						"%s is an invalid IRQ format\n",
 						vcd->signal[i].name);
 			}
-			if(dup) free(dup);
+		} else {
+			AVR_LOG(vcd->avr, LOG_WARNING,
+					"%s is an invalid IRQ format (too long)\n",
+					vcd->signal[i].name);
 		}
 	}
 	return 0;
