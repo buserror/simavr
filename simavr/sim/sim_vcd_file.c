@@ -21,7 +21,7 @@
 	You should have received a copy of the GNU General Public License
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
-#define _GNU_SOURCE /* for strdupa */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -33,6 +33,8 @@
 #include "sim_utils.h"
 
 DEFINE_FIFO(avr_vcd_log_t, avr_vcd_fifo);
+
+#define strdupa(__s) strcpy(alloca(strlen(__s)+1), __s)
 
 static void
 _avr_vcd_notify(
