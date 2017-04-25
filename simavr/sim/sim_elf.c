@@ -290,7 +290,10 @@ elf_copy_section(
 }
 
 
-int elf_read_firmware(const char * file, elf_firmware_t * firmware)
+int
+elf_read_firmware(
+	const char * file,
+	elf_firmware_t * firmware)
 {
 	Elf32_Ehdr elf_header;			/* ELF header */
 	Elf *elf = NULL;                       /* Our Elf pointer for libelf */
