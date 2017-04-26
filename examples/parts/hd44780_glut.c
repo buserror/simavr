@@ -93,6 +93,8 @@ glputchar(char c,
 
 	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, font_texture);
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_ADD);
+
 	if (shadow) {
 		glColor32U(shadow);
 		glPushMatrix();
