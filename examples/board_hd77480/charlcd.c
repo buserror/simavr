@@ -53,6 +53,7 @@ int color = 0;
 uint32_t colors[][4] = {
 		{ 0x00aa00ff, 0x00cc00ff, 0x000000ff, 0x00000055 },	// fluo green
 		{ 0xaa0000ff, 0xcc0000ff, 0x000000ff, 0x00000055 },	// red
+		{ 0x000066ff, 0x000088ff, 0xbbeeffff, 0xbbeeff55 },	// blue
 };
 
 static void *
