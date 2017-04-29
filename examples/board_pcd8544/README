@@ -1,0 +1,7 @@
+board_pcd8544
+
+(C) 2017 Francisco Demartino <demartino.francisco@gmail.com>
+
+Based on the ssd1306 example by Doug Szumski <d.s.szumski@gmail.com>
+
+This sample code demonstrates the use of the PCD8544 part.
