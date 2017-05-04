@@ -34,9 +34,9 @@ while !tags.eof?
 	next if key[4] == 'm' or key[4] == 't'  or key[4] == 's'  or key[4] == 'e'  or key[4] == 'v';
 	next if key[0].match(/[us]?int[0-9]+_t/);
 	next if key[0] == "ROM_BASED";
-	
+
 	key[1].gsub!(/.*\/|\.[ch]$/,"");
-	
+
 	unless $files.key? key[1]
 		$files[key[1]] = Hash.new
 	end
@@ -56,11 +56,11 @@ links = Array.new;
 
 	use = File.new(ARGV[i])
 #	puts "<<<<<<<<FILE " + ARGV[i]
-	
+
 	fil = ARGV[i].gsub(/.*\/|\.[ch]$/,"");
 
 	while !use.eof?
-		 
+
 		line = use.readline;
 		next if line.match(/[ \t]*\/\//);
 		line.gsub!(/[^a-zA-Z0-9_]/, " ");
@@ -72,7 +72,7 @@ links = Array.new;
 				unless $files[$syms[w]][w].key? fil
 	#				puts w + " is in " + $syms[w]
 					$files[$syms[w]][w][fil] = 1
-					
+
 					sym=w
 					unless modules.key? fil
 						modules[fil] = Array.new
@@ -87,7 +87,7 @@ links = Array.new;
 
 $files.keys.each { |fil|
 #	puts "File #{fil} ?"
-	$files[fil].keys.each { |sym| 
+	$files[fil].keys.each { |sym|
 	#	puts "\tSym #{sym} : #{$files[fil][sym].length} ?"
 		if $files[fil][sym].length > 0
 			unless modules.key? fil

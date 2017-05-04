@@ -41,7 +41,10 @@
 #define O_BINARY 0
 #endif
 
-void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
+void
+avr_load_firmware(
+		avr_t * avr,
+		elf_firmware_t * firmware)
 {
 	if (firmware->frequency)
 		avr->frequency = firmware->frequency;
@@ -70,10 +73,17 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 	}
 #endif
 
-	avr_loadcode(avr, firmware->flash, firmware->flashsize, firmware->flashbase);
-	avr->codeend = firmware->flashsize + firmware->flashbase - firmware->datasize;
+	avr_loadcode(avr, firmware->flash,
+			firmware->flashsize, firmware->flashbase);
+	avr->codeend = firmware->flashsize +
+			firmware->flashbase - firmware->datasize;
+
 	if (firmware->eeprom && firmware->eesize) {
-		avr_eeprom_desc_t d = { .ee = firmware->eeprom, .offset = 0, .size = firmware->eesize };
+		avr_eeprom_desc_t d = {
+				.ee = firmware->eeprom,
+				.offset = 0,
+				.size = firmware->eesize
+		};
 		avr_ioctl(avr, AVR_IOCTL_EEPROM_SET, &d);
 	}
 	if (firmware->fuse)
@@ -81,22 +91,18 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 	if (firmware->lockbits)
 		avr->lockbits = firmware->lockbits[0];
 	// load the default pull up/down values for ports
-	for (int i = 0; i < 8; i++)
-		if (firmware->external_state[i].port == 0)
-			break;
-		else {
-			avr_ioport_external_t e = {
-				.name = firmware->external_state[i].port,
-				.mask = firmware->external_state[i].mask,
-				.value = firmware->external_state[i].value,
-			};
-			avr_ioctl(avr, AVR_IOCTL_IOPORT_SET_EXTERNAL(e.name), &e);
-		}
+	for (int i = 0; i < 8 && firmware->external_state[i].port; i++) {
+		avr_ioport_external_t e = {
+			.name = firmware->external_state[i].port,
+			.mask = firmware->external_state[i].mask,
+			.value = firmware->external_state[i].value,
+		};
+		avr_ioctl(avr, AVR_IOCTL_IOPORT_SET_EXTERNAL(e.name), &e);
+	}
 	avr_set_command_register(avr, firmware->command_register_addr);
 	avr_set_console_register(avr, firmware->console_register_addr);
 
 	// rest is initialization of the VCD file
-
 	if (firmware->tracecount == 0)
 		return;
 	avr->vcd = malloc(sizeof(*avr->vcd));
@@ -106,25 +112,49 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 		avr->vcd,
 		firmware->traceperiod >= 1000 ? firmware->traceperiod : 1000);
 
-	AVR_LOG(avr, LOG_TRACE, "Creating VCD trace file '%s'\n", avr->vcd->filename);
+	AVR_LOG(avr, LOG_TRACE, "Creating VCD trace file '%s'\n",
+			avr->vcd->filename);
+
 	for (int ti = 0; ti < firmware->tracecount; ti++) {
-		if (firmware->trace[ti].mask == 0xff || firmware->trace[ti].mask == 0) {
+		if (firmware->trace[ti].kind == AVR_MMCU_TAG_VCD_PORTPIN) {
+			avr_irq_t * irq = avr_io_getirq(avr,
+					AVR_IOCTL_IOPORT_GETIRQ(firmware->trace[ti].mask),
+					firmware->trace[ti].addr);
+			if (irq) {
+				char name[16];
+				sprintf(name, "%c%d", firmware->trace[ti].mask,
+						firmware->trace[ti].addr);
+				avr_vcd_add_signal(avr->vcd, irq, 1,
+					firmware->trace[ti].name[0] ?
+						firmware->trace[ti].name : name);
+			}
+		} else if (firmware->trace[ti].kind == AVR_MMCU_TAG_VCD_IRQ) {
+			avr_irq_t * bit = avr_get_interrupt_irq(avr, firmware->trace[ti].mask);
+			if (bit && firmware->trace[ti].addr < AVR_INT_IRQ_COUNT)
+				avr_vcd_add_signal(avr->vcd,
+						&bit[firmware->trace[ti].addr],
+						firmware->trace[ti].mask == 0xff ? 8 : 1,
+						firmware->trace[ti].name);
+		} else if (firmware->trace[ti].mask == 0xff ||
+				firmware->trace[ti].mask == 0) {
 			// easy one
 			avr_irq_t * all = avr_iomem_getirq(avr,
 					firmware->trace[ti].addr,
 					firmware->trace[ti].name,
 					AVR_IOMEM_IRQ_ALL);
 			if (!all) {
-				AVR_LOG(avr, LOG_ERROR, "ELF: %s: unable to attach trace to address %04x\n",
+				AVR_LOG(avr, LOG_ERROR,
+					"ELF: %s: unable to attach trace to address %04x\n",
 					__FUNCTION__, firmware->trace[ti].addr);
 			} else {
-				avr_vcd_add_signal(avr->vcd, all, 8, firmware->trace[ti].name);
+				avr_vcd_add_signal(avr->vcd, all, 8,
+						firmware->trace[ti].name);
 			}
 		} else {
-			int count = 0;
-			for (int bi = 0; bi < 8; bi++)
-				if (firmware->trace[ti].mask & (1 << bi))
-					count++;
+			int count = __builtin_popcount(firmware->trace[ti].mask);
+		//	for (int bi = 0; bi < 8; bi++)
+		//		if (firmware->trace[ti].mask & (1 << bi))
+		//			count++;
 			for (int bi = 0; bi < 8; bi++)
 				if (firmware->trace[ti].mask & (1 << bi)) {
 					avr_irq_t * bit = avr_iomem_getirq(avr,
@@ -132,18 +162,21 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 							firmware->trace[ti].name,
 							bi);
 					if (!bit) {
-						AVR_LOG(avr, LOG_ERROR, "ELF: %s: unable to attach trace to address %04x\n",
+						AVR_LOG(avr, LOG_ERROR,
+							"ELF: %s: unable to attach trace to address %04x\n",
 							__FUNCTION__, firmware->trace[ti].addr);
 						break;
 					}
 
 					if (count == 1) {
-						avr_vcd_add_signal(avr->vcd, bit, 1, firmware->trace[ti].name);
+						avr_vcd_add_signal(avr->vcd,
+								bit, 1, firmware->trace[ti].name);
 						break;
 					}
 					char comp[128];
 					sprintf(comp, "%s.%d", firmware->trace[ti].name, bi);
-					avr_vcd_add_signal(avr->vcd, bit, 1, firmware->trace[ti].name);
+					avr_vcd_add_signal(avr->vcd,
+							bit, 1, firmware->trace[ti].name);
 				}
 		}
 	}
@@ -153,13 +186,19 @@ void avr_load_firmware(avr_t * avr, elf_firmware_t * firmware)
 		avr_vcd_start(avr->vcd);
 }
 
-static void elf_parse_mmcu_section(elf_firmware_t * firmware, uint8_t * src, uint32_t size)
+static void
+elf_parse_mmcu_section(
+		elf_firmware_t * firmware,
+		uint8_t * src,
+		uint32_t size)
 {
+//	hdump(".mmcu", src, size);
 	while (size) {
 		uint8_t tag = *src++;
 		uint8_t ts = *src++;
 		int next = size > 2 + ts ? 2 + ts : size;
-	//	printf("elf_parse_mmcu_section %d, %d / %d\n", tag, ts, size);
+	//	printf("elf_parse_mmcu_section %2d, size %2d / remains %3d\n",
+	//			tag, ts, size);
 		switch (tag) {
 			case AVR_MMCU_TAG_FREQUENCY:
 				firmware->frequency =
@@ -186,18 +225,29 @@ static void elf_parse_mmcu_section(elf_firmware_t * firmware, uint8_t * src, uin
 						firmware->external_state[i].port = src[2];
 						firmware->external_state[i].mask = src[1];
 						firmware->external_state[i].value = src[0];
-						AVR_LOG(NULL, LOG_TRACE, "AVR_MMCU_TAG_PORT_EXTERNAL_PULL[%d] %c:%02x:%02x\n",
+#if 0
+						AVR_LOG(NULL, LOG_DEBUG,
+							"AVR_MMCU_TAG_PORT_EXTERNAL_PULL[%d] %c:%02x:%02x\n",
 							i, firmware->external_state[i].port,
 							firmware->external_state[i].mask,
 							firmware->external_state[i].value);
+#endif
 						break;
 					}
 			}	break;
+			case AVR_MMCU_TAG_VCD_PORTPIN:
+			case AVR_MMCU_TAG_VCD_IRQ:
 			case AVR_MMCU_TAG_VCD_TRACE: {
 				uint8_t mask = src[0];
 				uint16_t addr = src[1] | (src[2] << 8);
 				char * name = (char*)src + 3;
-				AVR_LOG(NULL, LOG_TRACE, "AVR_MMCU_TAG_VCD_TRACE %04x:%02x - %s\n", addr, mask, name);
+
+#if 0
+				AVR_LOG(NULL, LOG_DEBUG,
+						"VCD_TRACE %d %04x:%02x - %s\n", tag,
+						addr, mask, name);
+#endif
+				firmware->trace[firmware->tracecount].kind = tag;
 				firmware->trace[firmware->tracecount].mask = mask;
 				firmware->trace[firmware->tracecount].addr = addr;
 				strncpy(firmware->trace[firmware->tracecount].name, name,
@@ -234,7 +284,7 @@ elf_copy_section(
 		return -1;
 
 	memcpy(*dest, data->d_buf, data->d_size);
-	AVR_LOG(NULL, LOG_TRACE, "Loaded %zu %s\n", data->d_size, name);
+	AVR_LOG(NULL, LOG_DEBUG, "Loaded %zu %s\n", data->d_size, name);
 
 	return 0;
 }
@@ -362,14 +412,14 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 	if (data_text) {
 	//	hdump("code", data_text->d_buf, data_text->d_size);
 		memcpy(firmware->flash + offset, data_text->d_buf, data_text->d_size);
-		AVR_LOG(NULL, LOG_TRACE, "Loaded %zu .text at address 0x%x\n",
+		AVR_LOG(NULL, LOG_DEBUG, "Loaded %zu .text at address 0x%x\n",
 				(unsigned int)data_text->d_size, firmware->flashbase);
 		offset += data_text->d_size;
 	}
 	if (data_data) {
 	//	hdump("data", data_data->d_buf, data_data->d_size);
 		memcpy(firmware->flash + offset, data_data->d_buf, data_data->d_size);
-		AVR_LOG(NULL, LOG_TRACE, "Loaded %zu .data\n", data_data->d_size);
+		AVR_LOG(NULL, LOG_DEBUG, "Loaded %zu .data\n", data_data->d_size);
 		offset += data_data->d_size;
 		firmware->datasize = data_data->d_size;
 	}
