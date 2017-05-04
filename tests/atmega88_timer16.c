@@ -38,17 +38,17 @@ AVR_MCU(F_CPU, "atmega88");
  * Opening it with gtkwave will show you the data being read & written to these
  * It also demonstrate how you can use unused pins to generate your own traces, with
  * your own events to be displayed.
- * 
- * Here the port B first 2 bits are used to display when a tick occurs, and when a 
+ *
+ * Here the port B first 2 bits are used to display when a tick occurs, and when a
  * TCNT reset occurs.
  */
 const struct avr_mmcu_vcd_trace_t _mytrace[]  _MMCU_ = {
-	{ AVR_MCU_VCD_SYMBOL("TCNT1L"), .what = (void*)&TCNT1L, },	
-	{ AVR_MCU_VCD_SYMBOL("TCNT1H"), .what = (void*)&TCNT1H, },	
-	{ AVR_MCU_VCD_SYMBOL("tick"), .mask = (1 << 0), .what = (void*)&PORTB, },	
-	{ AVR_MCU_VCD_SYMBOL("reset_timer"), .mask = (1 << 1), .what = (void*)&PORTB, },	
-	{ AVR_MCU_VCD_SYMBOL("OC2A"), .mask = (1 << 3), .what = (void*)&PORTB, },
+	{ AVR_MCU_VCD_SYMBOL("TCNT1L"), .what = (void*)&TCNT1L, },
+	{ AVR_MCU_VCD_SYMBOL("TCNT1H"), .what = (void*)&TCNT1H, },
 };
+AVR_MCU_VCD_PORT_PIN('B', 3, "OC2A");
+AVR_MCU_VCD_PORT_PIN('B', 1, "reset_timer");
+AVR_MCU_VCD_PORT_PIN('B', 0, "tick");
 
 volatile uint16_t tcnt;
 
@@ -60,7 +60,7 @@ ISR(TIMER2_COMPA_vect)		// handler for Output Compare 2 overflow interrupt
 }
 
 int main()
-{	
+{
 	//
 	// start the 16 bits timer, with default "normal" waveform
 	// and no interupt enabled. This just increments TCNT1
@@ -70,7 +70,7 @@ int main()
 	TCCR1B |= (0<<CS12 | 1<<CS11 | 1<<CS10);
 
 	DDRB = 0x0B;
-	
+
 	//
 	// now enable a tick counter
 	// using an asynchronous mode
@@ -84,7 +84,7 @@ int main()
 	TIMSK2  |= (1 << OCIE2A);
 
 	sei();
-	
+
 	int count = 0;
 	while (count++ < 100) {
 		// we read TCNT1, which should contain some sort of incrementing value

@@ -28,7 +28,7 @@
 typedef struct avr_irq_hook_t {
 	struct avr_irq_hook_t * next;
 	int busy;	// prevent reentrance of callbacks
-	
+
 	struct avr_irq_t * chain;	// raise the IRQ on this too - optional if "notify" is on
 	avr_irq_notify_t notify;	// called when IRQ is raised - optional if "chain" is on
 	void * param;				// "notify" parameter
@@ -39,11 +39,18 @@ _avr_irq_pool_add(
 		avr_irq_pool_t * pool,
 		avr_irq_t * irq)
 {
-	if ((pool->count & 0xf) == 0) {
-		pool->irq = (avr_irq_t**)realloc(pool->irq,
-				(pool->count + 16) * sizeof(avr_irq_t *));
+	int insert = 0;
+	/* lookup a slot */
+	for (; insert < pool->count && pool->irq[insert]; insert++)
+		;
+	if (insert == pool->count) {
+		if ((pool->count & 0xf) == 0) {
+			pool->irq = (avr_irq_t**)realloc(pool->irq,
+					(pool->count + 16) * sizeof(avr_irq_t *));
+		}
+		pool->count++;
 	}
-	pool->irq[pool->count++] = irq;
+	pool->irq[insert] = irq;
 	irq->pool = pool;
 }
 
@@ -92,7 +99,7 @@ avr_alloc_irq(
 	avr_irq_t * irq = (avr_irq_t*)malloc(sizeof(avr_irq_t) * count);
 	avr_init_irq(pool, irq, base, count, names);
 	for (int i = 0; i < count; i++)
-		irq[i].flags |= IRQ_FLAG_ALLOC;	
+		irq[i].flags |= IRQ_FLAG_ALLOC;
 	return irq;
 }
 
@@ -143,7 +150,7 @@ avr_irq_register_notify(
 {
 	if (!irq || !notify)
 		return;
-	
+
 	avr_irq_hook_t *hook = irq->hook;
 	while (hook) {
 		if (hook->notify == notify && hook->param == param)
@@ -182,9 +189,10 @@ avr_irq_unregister_notify(
 }
 
 void
-avr_raise_irq(
+avr_raise_irq_float(
 		avr_irq_t * irq,
-		uint32_t value)
+		uint32_t value,
+		int floating)
 {
 	if (!irq)
 		return ;
@@ -193,7 +201,9 @@ avr_raise_irq(
 	if (irq->value == output &&
 			(irq->flags & IRQ_FLAG_FILTERED) && !(irq->flags & IRQ_FLAG_INIT))
 		return;
-	irq->flags &= ~IRQ_FLAG_INIT;
+	irq->flags &= ~(IRQ_FLAG_INIT | IRQ_FLAG_FLOATING);
+	if (floating)
+		irq->flags |= IRQ_FLAG_FLOATING;
 	avr_irq_hook_t *hook = irq->hook;
 	while (hook) {
 		avr_irq_hook_t * next = hook->next;
@@ -203,15 +213,23 @@ avr_raise_irq(
 			if (hook->notify)
 				hook->notify(irq, output,  hook->param);
 			if (hook->chain)
-				avr_raise_irq(hook->chain, output);
+				avr_raise_irq_float(hook->chain, output, floating);
 			hook->busy--;
-		}			
+		}
 		hook = next;
 	}
 	// the value is set after the callbacks are called, so the callbacks
 	// can themselves compare for old/new values between their parameter
 	// they are passed (new value) and the previous irq->value
 	irq->value = output;
+}
+
+void
+avr_raise_irq(
+		avr_irq_t * irq,
+		uint32_t value)
+{
+	avr_raise_irq_float(irq, value, !!(irq->flags & IRQ_FLAG_FLOATING));
 }
 
 void
@@ -258,4 +276,19 @@ avr_unconnect_irq(
 		prev = hook;
 		hook = hook->next;
 	}
+}
+
+uint8_t
+avr_irq_get_flags(
+		avr_irq_t * irq )
+{
+	return irq->flags;
+}
+
+void
+avr_irq_set_flags(
+		avr_irq_t * irq,
+		uint8_t flags )
+{
+	irq->flags = flags;
 }

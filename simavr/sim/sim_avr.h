@@ -67,10 +67,12 @@ enum {
  * The current log level is kept in avr->log.
  */
 enum {
-	LOG_OUTPUT = 0,
+	LOG_NONE = 0,
+	LOG_OUTPUT,
 	LOG_ERROR,
 	LOG_WARNING,
 	LOG_TRACE,
+	LOG_DEBUG,
 };
 
 
@@ -300,7 +302,7 @@ typedef struct avr_t {
 
 	// DEBUG ONLY -- value ignored if CONFIG_SIMAVR_TRACE = 0
 	uint8_t	trace : 1,
-			log : 2; // log level, default to 1
+			log : 4; // log level, default to 1
 
 	// Only used if CONFIG_SIMAVR_TRACE is defined
 	struct avr_trace_data_t *trace_data;
