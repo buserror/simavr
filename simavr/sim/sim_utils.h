@@ -26,6 +26,7 @@
 #define __SIM_UTILS_H__
 
 #include <stdint.h>
+#include <string.h>
 
 typedef struct argv_t {
 	uint32_t size, argc;
@@ -47,5 +48,14 @@ argv_p
 argv_parse(
 	argv_p	argv,
 	char * line );
+
+#ifdef __MINGW32__
+/*
+ * There is no strsep function in MinGW library.
+ * The one implemented here comes from public domain:
+ * http://unixpapa.com/incnote/string.html
+ */
+char * strsep(char **sp, char *sep);
+#endif
 
 #endif /* __SIM_UTILS_H__ */
