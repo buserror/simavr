@@ -122,6 +122,8 @@ LDFLAGS 	+= -lelf
 
 ifeq (${WIN}, Msys)
 LDFLAGS      += -lws2_32
+else
+CFLAGS       += -fPIC
 endif
 
 ifeq (${shell uname}, Linux)
