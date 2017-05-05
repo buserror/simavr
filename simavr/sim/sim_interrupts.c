@@ -114,9 +114,9 @@ avr_raise_interrupt(
 		return 0;
 	if (vector->pending) {
 		if (vector->trace)
-			printf("IRQ%"PRId8":I=%d already raised (enabled %"PRId8") (cycle %"PRId64" pc 0x%"PRIx32")\n",
+			printf("IRQ%"PRId8":I=%d already raised (enabled %"PRId8") (cycle %"PRIu64" pc 0x%"PRIx32")\n",
 				vector->vector, !!avr->sreg[S_I], avr_regbit_get(avr, vector->enable),
-				(long long int)avr->cycle, avr->pc);
+				avr->cycle, avr->pc);
 		return 0;
 	}
 	if (vector->trace)
