@@ -82,6 +82,16 @@ ifeq (${shell uname}, Darwin)
   endif
  endif
 else
+ifeq (${shell uname -o}, Msys)
+ WIN         := Msys
+ AVR_ROOT    := ${shell echo "${AVR32_HOME}" | tr '\\' '/'}
+ AVR_INC     := ${AVR_ROOT}/avr
+ AVR         := ${AVR_ROOT}/bin/avr-
+ IPATH       += ${PREFIX}/include
+ CFLAGS      += -I${PREFIX}/include
+ LDFLAGS     += -L/lib -L/local/lib
+ CFLAGS      += -DNO_COLOR
+else
  LINUX_AVR_ROOTS := /usr/lib/avr /usr/avr /opt/cross/avr/avr /usr/local/avr
  AVR_ROOT := $(firstword $(wildcard $(LINUX_AVR_ROOTS)))
  ifeq (${AVR_ROOT},)
@@ -90,20 +100,6 @@ else
  AVR_INC 	:= ${AVR_ROOT}
  AVR 		:= avr-
 endif
-
-# FIXME uname -o doesn't work on bsd derivatives
-#WIN := ${shell uname -o}
-
-ifeq (${WIN}, Msys)
-AVR_ROOT    := ${shell echo "${AVR32_HOME}" | tr '\\' '/'}
-AVR_INC     := ${AVR_ROOT}/avr
-AVR         := ${AVR_ROOT}/bin/avr-
-IPATH       += ${PREFIX}/include
-CFLAGS      += -I${PREFIX}/include
-LDFLAGS		+= -L/lib -L/local/lib
-CFLAGS 		+= -DNO_COLOR
-else
-CFLAGS 		+= -fPIC
 endif
 
 CPPFLAGS	+= --std=gnu99 -Wall

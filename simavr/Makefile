@@ -34,7 +34,15 @@ all:
 	$(MAKE) obj config
 	$(MAKE) libsimavr ${target}
 
+# Include common parameters
 include ../Makefile.common
+
+# The name of the target binary after instalation
+ifeq (${WIN}, Msys)
+target_bin = simavr.exe
+else
+target_bin = simavr
+endif
 
 cores	:= ${wildcard cores/*.c}
 sim		:= ${wildcard sim/sim_*.c} ${wildcard sim/avr_*.c}
@@ -113,7 +121,7 @@ ifeq (${shell uname}, Linux)
 	ln -sf libsimavr.so.1 $(DESTDIR)/lib/libsimavr.so
 endif
 	$(MKDIR) $(DESTDIR)/bin
-	$(INSTALL) ${OBJ}/${target}.elf $(DESTDIR)/bin/simavr
+	$(INSTALL) ${OBJ}/${target}.elf $(DESTDIR)/bin/$(target_bin)
 
 # Needs 'fpm', oneline package manager. Install with 'gem install fpm'
 # This generates 'mock' debian files, without all the policy, scripts
