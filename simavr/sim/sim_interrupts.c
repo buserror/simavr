@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
+#include <inttypes.h>
 #include "sim_interrupts.h"
 #include "sim_avr.h"
 #include "sim_core.h"
@@ -72,11 +73,11 @@ avr_register_vector(
 			AVR_INT_IRQ_COUNT, names);
 	table->vector[table->vector_count++] = vector;
 	if (vector->trace)
-		printf("IRQ%d registered (enabled %04x:%d)\n",
+		printf("IRQ%"PRId8" registered (enabled %04"PRIx32":%"PRId32")\n",
 			vector->vector, vector->enable.reg, vector->enable.bit);
 
 	if (!vector->enable.reg)
-		AVR_LOG(avr, LOG_WARNING, "IRQ%d No 'enable' bit !\n",
+		AVR_LOG(avr, LOG_WARNING, "IRQ%"PRId8" No 'enable' bit !\n",
 			vector->vector);
 }
 
@@ -113,13 +114,13 @@ avr_raise_interrupt(
 		return 0;
 	if (vector->pending) {
 		if (vector->trace)
-			printf("IRQ%d:I=%d already raised (enabled %d) (cycle %lld pc 0x%x)\n",
+			printf("IRQ%"PRId8":I=%d already raised (enabled %"PRId8") (cycle %"PRId64" pc 0x%"PRIx32")\n",
 				vector->vector, !!avr->sreg[S_I], avr_regbit_get(avr, vector->enable),
 				(long long int)avr->cycle, avr->pc);
 		return 0;
 	}
 	if (vector->trace)
-		printf("IRQ%d raising (enabled %d)\n",
+		printf("IRQ%"PRId8" raising (enabled %"PRId8")\n",
 			vector->vector, avr_regbit_get(avr, vector->enable));
 	// always mark the 'raised' flag to one, even if the interrupt is disabled
 	// this allow "polling" for the "raised" flag, like for non-interrupt
@@ -143,7 +144,7 @@ avr_raise_interrupt(
 			avr->interrupt_state = 1;
 		if (avr->state == cpu_Sleeping) {
 			if (vector->trace)
-				printf("IRQ%d Waking CPU due to interrupt\n",
+				printf("IRQ%"PRId8" Waking CPU due to interrupt\n",
 					vector->vector);
 			avr->state = cpu_Running;	// in case we were sleeping
 		}
@@ -160,7 +161,7 @@ avr_clear_interrupt(
 	if (!vector)
 		return;
 	if (vector->trace)
-		printf("IRQ%d cleared\n", vector->vector);
+		printf("IRQ%"PRId8" cleared\n", vector->vector);
 	vector->pending = 0;
 
 	avr_raise_irq(vector->irq + AVR_INT_IRQ_PENDING, 0);
@@ -269,7 +270,7 @@ avr_service_interrupts(
 		avr->interrupt_state = avr_has_pending_interrupts(avr);
 	} else {
 		if (vector && vector->trace)
-			printf("IRQ%d calling\n", vector->vector);
+			printf("IRQ%"PRId8" calling\n", vector->vector);
 		_avr_push_addr(avr, avr->pc);
 		avr_sreg_set(avr, S_I, 0);
 		avr->pc = vector->vector * avr->vector_size;
