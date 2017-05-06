@@ -159,6 +159,12 @@ typedef struct avr_t {
 	avr_io_addr_t		rampz;	// optional, only for ELPM/SPM on >64Kb cores
 	avr_io_addr_t		eind;	// optional, only for EIJMP/EICALL on >64Kb cores
 	uint8_t				address_size;	// 2, or 3 for cores >128KB in flash
+	struct {
+		avr_regbit_t		porf;
+		avr_regbit_t		extrf;
+		avr_regbit_t		borf;
+		avr_regbit_t		wdrf;
+	} reset_flags;
 
 	// filled by the ELF data, this allow tracking of invalid jumps
 	uint32_t			codeend;
