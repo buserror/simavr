@@ -102,6 +102,7 @@ avr_init(
 	avr->address_size = avr->eind ? 3 : 2;
 	avr->log = 1;
 	avr_reset(avr);
+	avr_regbit_set(avr, avr->reset_flags.porf);		// by  default set to power-on reset
 	return 0;
 }
 
