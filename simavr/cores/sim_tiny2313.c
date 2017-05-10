@@ -26,6 +26,7 @@
 #include "avr_ioport.h"
 #include "avr_uart.h"
 #include "avr_timer.h"
+#include "avr_acomp.h"
 
 static void init(struct avr_t * avr);
 static void reset(struct avr_t * avr);
@@ -45,6 +46,7 @@ static const struct mcu_t {
 	avr_ioport_t	porta, portb, portd;
 	avr_uart_t		uart;
 	avr_timer_t		timer0,timer1;
+	avr_acomp_t		acomp;
 } mcu = {
 	.core = {
 		.mmcu = "attiny2313",
@@ -178,7 +180,25 @@ static const struct mcu_t {
 				}
 			}
 		}
-	}
+	},
+
+	.acomp = {
+		.r_acsr = ACSR,
+		.acis = { AVR_IO_REGBIT(ACSR, ACIS0), AVR_IO_REGBIT(ACSR, ACIS1) },
+		.acic = AVR_IO_REGBIT(ACSR, ACIC),
+		.aco = AVR_IO_REGBIT(ACSR, ACO),
+		.acbg = AVR_IO_REGBIT(ACSR, ACBG),
+		.disabled = AVR_IO_REGBIT(ACSR, ACD),
+
+		.timer_name = '1',
+
+		.ac = {
+			.enable = AVR_IO_REGBIT(ACSR, ACIE),
+			.raised = AVR_IO_REGBIT(ACSR, ACI),
+			.vector = ANA_COMP_vect,
+		}
+	},
+
 };
 
 static avr_t * make()
@@ -204,6 +224,7 @@ static void init(struct avr_t * avr)
 	avr_uart_init(avr, &mcu->uart);
 	avr_timer_init(avr, &mcu->timer0);
 	avr_timer_init(avr, &mcu->timer1);
+	avr_acomp_init(avr, &mcu->acomp);
 }
 
 static void reset(struct avr_t * avr)

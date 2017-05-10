@@ -31,6 +31,7 @@
 #include "avr_timer.h"
 #include "avr_spi.h"
 #include "avr_twi.h"
+#include "avr_acomp.h"
 
 void m1281_init(struct avr_t * avr);
 void m1281_reset(struct avr_t * avr);
@@ -50,6 +51,7 @@ const struct mcu_t {
 	avr_extint_t	extint;
 	avr_ioport_t	porta, portb, portc, portd, porte, portf, portg;
 	avr_uart_t		uart0,uart1;
+	avr_acomp_t		acomp;
 	avr_adc_t		adc;
 	avr_timer_t		timer0,timer1,timer2,timer3;
 	avr_spi_t		spi;
@@ -95,6 +97,30 @@ const struct mcu_t {
 
 	AVR_UARTX_DECLARE(0, PRR0, PRUSART0),
 	AVR_UARTX_DECLARE(1, PRR1, PRUSART1),
+
+	.acomp = {
+		.mux_inputs = 8,
+		.mux = { AVR_IO_REGBIT(ADMUX, MUX0), AVR_IO_REGBIT(ADMUX, MUX1),
+				AVR_IO_REGBIT(ADMUX, MUX2) },
+		.pradc = AVR_IO_REGBIT(PRR0, PRADC),
+		.aden = AVR_IO_REGBIT(ADCSRA, ADEN),
+		.acme = AVR_IO_REGBIT(ADCSRB, ACME),
+
+		.r_acsr = ACSR,
+		.acis = { AVR_IO_REGBIT(ACSR, ACIS0), AVR_IO_REGBIT(ACSR, ACIS1) },
+		.acic = AVR_IO_REGBIT(ACSR, ACIC),
+		.aco = AVR_IO_REGBIT(ACSR, ACO),
+		.acbg = AVR_IO_REGBIT(ACSR, ACBG),
+		.disabled = AVR_IO_REGBIT(ACSR, ACD),
+
+		.timer_name = '1',
+
+		.ac = {
+			.enable = AVR_IO_REGBIT(ACSR, ACIE),
+			.raised = AVR_IO_REGBIT(ACSR, ACI),
+			.vector = ANALOG_COMP_vect,
+		}
+	},
 
 	.adc = {
 		.r_admux = ADMUX,
@@ -460,6 +486,7 @@ void m1281_init(struct avr_t * avr)
 	avr_ioport_init(avr, &mcu->portg);
 	avr_uart_init(avr, &mcu->uart0);
 	avr_uart_init(avr, &mcu->uart1);
+	avr_acomp_init(avr, &mcu->acomp);
 	avr_adc_init(avr, &mcu->adc);
 	avr_timer_init(avr, &mcu->timer0);
 	avr_timer_init(avr, &mcu->timer1);

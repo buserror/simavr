@@ -31,6 +31,7 @@
 #include "avr_timer.h"
 #include "avr_spi.h"
 #include "avr_usb.h"
+#include "avr_acomp.h"
 
 void usb162_init(struct avr_t * avr);
 void usb162_reset(struct avr_t * avr);
@@ -50,6 +51,7 @@ const struct mcu_t {
 	avr_timer_t		timer0,timer1;
 	avr_spi_t		spi;
 	avr_usb_t		usb;
+	avr_acomp_t		acomp;
 } mcu_usb162 = {
 	.core = {
 		.mmcu = "at90usb162",
@@ -212,6 +214,22 @@ const struct mcu_t {
 		.usb_com_vect=USB_COM_vect,
 		.usb_gen_vect=USB_GEN_vect,
 	},
+	.acomp = {
+		.r_acsr = ACSR,
+		.acis = { AVR_IO_REGBIT(ACSR, ACIS0), AVR_IO_REGBIT(ACSR, ACIS1) },
+		.acic = AVR_IO_REGBIT(ACSR, ACIC),
+		.aco = AVR_IO_REGBIT(ACSR, ACO),
+		.acbg = AVR_IO_REGBIT(ACSR, ACBG),
+		.disabled = AVR_IO_REGBIT(ACSR, ACD),
+
+		.timer_name = '1',
+
+		.ac = {
+			.enable = AVR_IO_REGBIT(ACSR, ACIE),
+			.raised = AVR_IO_REGBIT(ACSR, ACI),
+			.vector = ANALOG_COMP_vect,
+		}
+	}
 };
 
 static avr_t * make()
@@ -240,6 +258,7 @@ void usb162_init(struct avr_t * avr)
 	avr_timer_init(avr, &mcu->timer1);
 	avr_spi_init(avr, &mcu->spi);
 	avr_usb_init(avr, &mcu->usb);
+	avr_acomp_init(avr, &mcu->acomp);
 }
 
 void usb162_reset(struct avr_t * avr)
