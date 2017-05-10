@@ -31,6 +31,7 @@
 #include "avr_ioport.h"
 #include "avr_adc.h"
 #include "avr_timer.h"
+#include "avr_acomp.h"
 
 void tx5_init(struct avr_t * avr);
 void tx5_reset(struct avr_t * avr);
@@ -44,6 +45,7 @@ struct mcu_t {
 	avr_watchdog_t	watchdog;
 	avr_extint_t	extint;
 	avr_ioport_t	portb;
+	avr_acomp_t		acomp;
 	avr_adc_t		adc;
 	avr_timer_t	timer0, timer1;
 };
@@ -78,6 +80,26 @@ const struct mcu_t SIM_CORENAME = {
 			.vector = PCINT0_vect,
 		},
 		.r_pcint = PCMSK,
+	},
+	.acomp = {
+		.mux_inputs = 4,
+		.mux = { AVR_IO_REGBIT(ADMUX, MUX0), AVR_IO_REGBIT(ADMUX, MUX1),
+				AVR_IO_REGBIT(ADMUX, MUX2), AVR_IO_REGBIT(ADMUX, MUX3) },
+		.pradc = AVR_IO_REGBIT(PRR, PRADC),
+		.aden = AVR_IO_REGBIT(ADCSRA, ADEN),
+		.acme = AVR_IO_REGBIT(ADCSRB, ACME),
+
+		.r_acsr = ACSR,
+		.acis = { AVR_IO_REGBIT(ACSR, ACIS0), AVR_IO_REGBIT(ACSR, ACIS1) },
+		.aco = AVR_IO_REGBIT(ACSR, ACO),
+		.acbg = AVR_IO_REGBIT(ACSR, ACBG),
+		.disabled = AVR_IO_REGBIT(ACSR, ACD),
+
+		.ac = {
+			.enable = AVR_IO_REGBIT(ACSR, ACIE),
+			.raised = AVR_IO_REGBIT(ACSR, ACI),
+			.vector = ANA_COMP_vect,
+		}
 	},
 	.adc = {
 		.r_admux = ADMUX,
