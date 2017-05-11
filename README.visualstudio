@@ -1,0 +1,29 @@
+Version: Visual Studio 2015 Community
+Other requirements:  Atmel Studio 6.1 to build the sample AVR application
+
+Instructions:
+
+1. open simavr/simavr.sln
+
+2. set config to debug x86  (not x64)
+3. right click on visual-studio project and set at startup project
+4. build/build_solution   It should build, but with many warnings. (Thanks Visual Studio for being different.)
+5. In the debug menu, select start with debugging.
+
+A console window should open up, saying Hello, Sim-AVR on Windows!  This an an AVR application running on sim-avr, printing over the UART.
+
+
+The visual-studio project is located in examples/visual-studio.  It is based off the run-avr.c file.  Modify it how you like.  The UART is the only tested peripheral.
+
+Inside examples/visual-studio, there is a folder called atmel-studio-avr-serial-output, which contains an Atmel Studio 6.1 project which is used to generate the .hex file.  For convenience, the prebuilt hex file is provided.
+
+Limitations:
+
+
+GDB disabled
+Only the Atmega644 is enabled, as that is what I needed for my project.  Other cores do build, some do not.
+Only the UART has been tested so far.
+Simple programs of mine run, but this does comprehensively test anything.  The simple AVR core functionality works well enough to print things over the serial port.
+
+This is a serious WIP, and I may not have a lot of time to contribute in the future, but hopefully someone will find this useful.
+

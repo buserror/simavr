@@ -54,9 +54,37 @@ int read_hex_string(const char * src, uint8_t * buffer, int maxlen)
     while (*src && maxlen) {
         char c = *src++;
         switch (c) {
-            case 'a' ... 'f':   b = (b << 4) | (c - 'a' + 0xa); break;
-            case 'A' ... 'F':   b = (b << 4) | (c - 'A' + 0xa); break;
-            case '0' ... '9':   b = (b << 4) | (c - '0'); break;
+			case 'a':
+			case 'b':
+			case 'c':
+			case 'd':
+			case 'e':
+			case 'f':			
+				b = (b << 4) | (c - 'a' + 0xa); break;
+
+			case 'A':
+			case 'B':
+			case 'C':
+			case 'D':
+			case 'E':
+			case 'F':
+
+
+				b = (b << 4) | (c - 'A' + 0xa); break;
+
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+
+               b = (b << 4) | (c - '0'); break;
+
             default:
                 if (c > ' ') {
                     fprintf(stderr, "%s: huh '%c' (%s)\n", __FUNCTION__, c, src);

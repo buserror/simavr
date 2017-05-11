@@ -103,7 +103,13 @@ void crash(avr_t* avr)
 #else
 #define T(w)
 #define REG_TOUCH(a, r)
+
+#ifdef _MSC_VER
+#define STATE(a, ...)
+#else
 #define STATE(_f, args...)
+#endif
+
 #define SREG()
 
 void crash(avr_t* avr)

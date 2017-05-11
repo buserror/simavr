@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+
+#include "vs-hacks.h"
 #include "sim_irq.h"
 #include "sim_interrupts.h"
 #include "sim_cmds.h"

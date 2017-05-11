@@ -33,7 +33,11 @@
 #include "avr/avr_mcu_section.h"
 
 #define AVR_KIND_DECL
+#ifdef _MSC_VER
+#include "vs_sim_core_decl.h"
+#else
 #include "sim_core_decl.h"
+#endif
 
 static void
 std_logger(
