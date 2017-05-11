@@ -160,8 +160,8 @@ sim_core_config.h ${OBJ}/cores.deps: $(cores) Makefile
 	for core in cores/*.c ; do \
 		file=$$core; global=$${core/cores\/sim_}; global=$${global/.c}; \
 		upper=$$(echo $$global|tr '[a-z]' '[A-Z]'); \
-		if $(CC) -E $(CFLAGS) ${AVR_CPPFLAGS} $$file \
-			>>$(DEBUGLOG) 2>&1 ; then \
+		echo $(CC) -E $(CFLAGS) ${AVR_CPPFLAGS} $$file; \
+		if $(CC) -E $(CFLAGS) ${AVR_CPPFLAGS} $$file >>$(DEBUGLOG) 2>&1 ; then \
 			conf+="#define CONFIG_$$upper 1\n"; \
 			obj=$${file/.c/.o} ; obj=$${obj/cores\/}; \
 			printf "\$${OBJ}/libsimavr.a: \$${OBJ}/$$obj\n">>${OBJ}/cores.deps ; \
