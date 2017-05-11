@@ -98,6 +98,7 @@ static inline uint8_t avr_regbit_from_value(
 	avr_regbit_t rb,
 	uint8_t value)
 {
+  (void)avr; // suppress compiler warning
 	uint16_t a = rb.reg;
 	if (!a)
 		return 0;
