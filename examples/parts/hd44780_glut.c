@@ -28,7 +28,7 @@
 #include <GL/glut.h>
 #endif
 
-#include "font.h"	// generated with gimp
+#include "hd44780_font.h"	// generated with gimp
 
 static GLuint font_texture;
 static int charwidth = 5;
