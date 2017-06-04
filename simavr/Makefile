@@ -18,8 +18,7 @@
 
 SHELL 			:= ${shell which bash}
 SIMAVR_VERSION	:= ${shell \
-	{ git log -1 --tags --simplify-by-decoration --pretty="format:%d"|\
-		sed -e 's/[\(\) ]//g'; } || \
+	git describe --abbrev=0 --tags || \
 	echo "unknown" }
 SIMAVR_REVISION	= 2
 
