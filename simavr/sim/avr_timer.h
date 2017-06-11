@@ -39,6 +39,7 @@ enum {
 enum {
 	TIMER_IRQ_OUT_PWM0 = 0,
 	TIMER_IRQ_OUT_PWM1,
+	TIMER_IRQ_IN_ICP,	// input capture
 	TIMER_IRQ_OUT_COMP,	// comparator pins output IRQ
 
 	TIMER_IRQ_COUNT = TIMER_IRQ_OUT_COMP + AVR_TIMER_COMP_COUNT

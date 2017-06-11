@@ -21,7 +21,7 @@
 	You should have received a copy of the GNU General Public License
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
-#define _GNU_SOURCE /* for strdupa */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -33,6 +33,8 @@
 #include "sim_utils.h"
 
 DEFINE_FIFO(avr_vcd_log_t, avr_vcd_fifo);
+
+#define strdupa(__s) strcpy(alloca(strlen(__s)+1), __s)
 
 static void
 _avr_vcd_notify(
@@ -396,8 +398,8 @@ avr_vcd_flush_log(
 
 	while (!avr_vcd_fifo_isempty(&vcd->log)) {
 		avr_vcd_log_t l = avr_vcd_fifo_read(&vcd->log);
-		// 1ns base
-		uint64_t base = avr_cycles_to_nsec(vcd->avr, l.when - vcd->start);
+		// 10ns base -- 100MHz should be enough
+		uint64_t base = avr_cycles_to_nsec(vcd->avr, l.when - vcd->start) / 10;
 
 		/*
 		 * if that trace was seen in this nsec already, we fudge the
@@ -523,7 +525,7 @@ avr_vcd_start(
 		return -1;
 	}
 
-	fprintf(vcd->output, "$timescale 1ns $end\n");	// 1ns base
+	fprintf(vcd->output, "$timescale 10ns $end\n");	// 10ns base, aka 100MHz
 	fprintf(vcd->output, "$scope module logic $end\n");
 
 	for (int i = 0; i < vcd->signal_count; i++) {

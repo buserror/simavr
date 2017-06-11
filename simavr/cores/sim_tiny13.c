@@ -28,6 +28,7 @@
 #include "avr_ioport.h"
 #include "avr_timer.h"
 #include "avr_adc.h"
+#include "avr_acomp.h"
 
 #define _AVR_IO_H_
 #define __ASSEMBLER__
@@ -44,6 +45,7 @@ static const struct mcu_t {
 	avr_extint_t	extint;
 	avr_ioport_t	portb;
 	avr_timer_t		timer0;
+	avr_acomp_t		acomp;
 	avr_adc_t       adc;
 } mcu = {
 	.core = {
@@ -119,6 +121,26 @@ static const struct mcu_t {
 			}
 		}
 	},
+
+	.acomp = {
+		.mux_inputs = 4,
+		.mux = { AVR_IO_REGBIT(ADMUX, MUX0), AVR_IO_REGBIT(ADMUX, MUX1) },
+		.aden = AVR_IO_REGBIT(ADCSRA, ADEN),
+		.acme = AVR_IO_REGBIT(ADCSRB, ACME),
+
+		.r_acsr = ACSR,
+		.acis = { AVR_IO_REGBIT(ACSR, ACIS0), AVR_IO_REGBIT(ACSR, ACIS1) },
+		.aco = AVR_IO_REGBIT(ACSR, ACO),
+		.acbg = AVR_IO_REGBIT(ACSR, ACBG),
+		.disabled = AVR_IO_REGBIT(ACSR, ACD),
+
+		.ac = {
+			.enable = AVR_IO_REGBIT(ACSR, ACIE),
+			.raised = AVR_IO_REGBIT(ACSR, ACI),
+			.vector = ANA_COMP_vect,
+		}
+	},
+
 	.adc = {
 		.r_admux = ADMUX,
 		.mux = { AVR_IO_REGBIT(ADMUX, MUX0),
@@ -185,6 +207,7 @@ static void init(struct avr_t * avr)
 	avr_extint_init(avr, &mcu->extint);
 	avr_ioport_init(avr, &mcu->portb);
 	avr_timer_init(avr, &mcu->timer0);
+	avr_acomp_init(avr, &mcu->acomp);
 	avr_adc_init(avr, &mcu->adc);
 }
 

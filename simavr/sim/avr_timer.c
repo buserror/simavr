@@ -662,6 +662,7 @@ avr_timer_write(
 	if (new_cs != cs || new_mode != mode || new_as2 != as2) {
 	/* cs */
 		if (new_cs == 0) {
+			p->cs_div_value = 0;		// reset prescaler
 			// cancel everything
 			avr_timer_cancel_all_cycle_timers(avr, p, 1);
 
@@ -827,13 +828,16 @@ avr_timer_reset(
 			avr_connect_irq(&port->irq[TIMER_IRQ_OUT_COMP + compi], req.irq[0]);
 		}
 	}
+
+	avr_irq_register_notify(port->irq + TIMER_IRQ_IN_ICP, avr_timer_irq_icp, p);
+
 	avr_ioport_getirq_t req = {
 		.bit = p->icp
 	};
 	if (avr_ioctl(port->avr, AVR_IOCTL_IOPORT_GETIRQ_REGBIT, &req) > 0) {
 		// cool, got an IRQ for the input capture pin
 		//printf("%s-%c ICP Connecting PIN IRQ %d\n", __func__, p->name, req.irq[0]->irq);
-		avr_irq_register_notify(req.irq[0], avr_timer_irq_icp, p);
+		avr_connect_irq(req.irq[0], port->irq + TIMER_IRQ_IN_ICP);
 	}
 	p->ext_clock_flags &= ~(AVR_TIMER_EXTCLK_FLAG_STARTED | AVR_TIMER_EXTCLK_FLAG_TN |
 							AVR_TIMER_EXTCLK_FLAG_AS2 | AVR_TIMER_EXTCLK_FLAG_REVDIR);
@@ -843,6 +847,7 @@ avr_timer_reset(
 static const char * irq_names[TIMER_IRQ_COUNT] = {
 	[TIMER_IRQ_OUT_PWM0] = "8>pwm0",
 	[TIMER_IRQ_OUT_PWM1] = "8>pwm1",
+	[TIMER_IRQ_IN_ICP] = "<icp",
 	[TIMER_IRQ_OUT_COMP + 0] = ">compa",
 	[TIMER_IRQ_OUT_COMP + 1] = ">compb",
 	[TIMER_IRQ_OUT_COMP + 2] = ">compc",
