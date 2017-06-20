@@ -355,7 +355,7 @@ avr_timer_tcnt_read(
 	avr->data[p->r_tcnt] = tcnt;
 	if (p->r_tcnth)
 		avr->data[p->r_tcnth] = tcnt >> 8;
-	
+
 	return avr_core_watch_read(avr, addr);
 }
 
@@ -370,7 +370,7 @@ avr_timer_cancel_all_cycle_timers(
 			timer->comp[compi].comp_cycles = 0;
 		timer->tov_cycles = 0;
 	}
-	
+
 
 	avr_cycle_timer_cancel(avr, avr_timer_tov, timer);
 	avr_cycle_timer_cancel(avr, avr_timer_compa, timer);
@@ -391,7 +391,7 @@ avr_timer_tcnt_write(
 
 	if (!p->tov_top)
 		return;
-		
+
 	if (tcnt >= p->tov_top)
 		tcnt = 0;
 
@@ -585,7 +585,7 @@ avr_timer_reconfigure(
 			AVR_LOG(avr, LOG_WARNING, "TIMER: %s-%c unsupported timer mode wgm=%d (%d)\n",
 					__FUNCTION__, p->name, mode, p->mode.kind);
 		}
-	}	
+	}
 }
 
 static void
@@ -922,7 +922,7 @@ avr_timer_init(
 	 */
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
 		p->comp[compi].timer = p;
-		
+
 		avr_register_vector(avr, &p->comp[compi].interrupt);
 
 		if (p->comp[compi].r_ocr) // not all timers have all comparators
