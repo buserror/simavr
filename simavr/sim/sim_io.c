@@ -162,7 +162,6 @@ avr_io_getirq(
 		port = port->next;
 	}
 	return NULL;
-	
 }
 
 avr_irq_t *

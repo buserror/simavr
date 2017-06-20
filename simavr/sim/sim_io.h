@@ -110,7 +110,7 @@ avr_io_getirq(
 // tracing changes of values into a register
 // Note that the values do not "magically" change, they change only
 // when the AVR code attempt to read and write at that address
-// 
+//
 // the "index" is a bit number, or ALL bits if index == 8
 #define AVR_IOMEM_IRQ_ALL 8
 avr_irq_t *
