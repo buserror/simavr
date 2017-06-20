@@ -192,7 +192,7 @@ avr_acomp_reset(avr_io_t * port)
 	avr_acomp_register_dependencies(p, p->acme);
 
 	// mux
-	for (int i = 0; i < ARRAY_SIZE(p->mux); ++i) {
+	for (unsigned int i = 0; i < ARRAY_SIZE(p->mux); ++i) {
 		avr_acomp_register_dependencies(p, p->mux[i]);
 	}
 }

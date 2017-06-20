@@ -196,7 +196,7 @@ elf_parse_mmcu_section(
 	while (size) {
 		uint8_t tag = *src++;
 		uint8_t ts = *src++;
-		int next = size > 2 + ts ? 2 + ts : size;
+		unsigned int next = size > 2u + ts ? 2u + ts : size;
 	//	printf("elf_parse_mmcu_section %2d, size %2d / remains %3d\n",
 	//			tag, ts, size);
 		switch (tag) {
@@ -297,7 +297,7 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 	int fd; // File Descriptor
 
 	if ((fd = open(file, O_RDONLY | O_BINARY)) == -1 ||
-			(read(fd, &elf_header, sizeof(elf_header))) < sizeof(elf_header)) {
+			(read(fd, &elf_header, sizeof(elf_header))) < (ssize_t)sizeof(elf_header)) {
 		AVR_LOG(NULL, LOG_ERROR, "could not read %s\n", file);
 		perror(file);
 		close(fd);
@@ -386,7 +386,7 @@ int elf_read_firmware(const char * file, elf_firmware_t * firmware)
 
 					// insert new element, keep the array sorted
 					int insert = -1;
-					for (int si = 0; si < firmware->symbolcount && insert == -1; si++)
+					for (unsigned int si = 0; si < firmware->symbolcount && insert == -1; si++)
 						if (firmware->symbol[si]->addr >= s->addr)
 							insert = si;
 					if (insert == -1)

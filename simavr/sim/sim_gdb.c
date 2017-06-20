@@ -64,7 +64,7 @@ gdb_watch_find(
 		const avr_gdb_watchpoints_t * w, 
 		uint32_t addr )
 {
-	for (int i = 0; i < w->len; i++) {
+	for (unsigned int i = 0; i < w->len; i++) {
 		if (w->points[i].addr > addr) {
 			return -1;
 		} else if (w->points[i].addr == addr) {
@@ -84,7 +84,7 @@ gdb_watch_find_range(
 		const avr_gdb_watchpoints_t * w, 
 		uint32_t addr )
 {
-	for (int i = 0; i < w->len; i++) {
+	for (unsigned int i = 0; i < w->len; i++) {
 		if (w->points[i].addr > addr) {
 			return -1;
 		} else if (w->points[i].addr <= addr && addr < w->points[i].addr + w->points[i].size) {
@@ -119,8 +119,8 @@ gdb_watch_add_or_update(
 	}
 
 	/* Find the insertion point. */
-	for (i = 0; i < w->len; i++) {
-		if (w->points[i].addr > addr) {
+	for (unsigned int j = 0; j < w->len; j++) {
+		if (w->points[j].addr > addr) {
 			break;
 		}
 	}
@@ -150,7 +150,7 @@ gdb_watch_rm(
 		uint32_t addr )
 {
 	int i = gdb_watch_find(w, addr);
-	if (i == -1) {
+	if (i < 0) {
 		return -1;
 	}
 
@@ -159,8 +159,8 @@ gdb_watch_rm(
 		return 0;
 	}
 
-	for (i = i + 1; i < w->len; i++) {
-		w->points[i - 1] = w->points[i];
+	for (unsigned int j = i + 1; j < w->len; i++) {
+		w->points[j - 1] = w->points[j];
 	}
 
 	w->len--;
@@ -363,17 +363,17 @@ gdb_handle_command(
 			addr &= 0xffffff;
 			if (addr < avr->flashend) {
 				src = avr->flash + addr;
-			} else if (addr >= 0x800000 && (addr - 0x800000) <= avr->ramend) {
+			} else if (addr >= 0x800000u && (addr - 0x800000u) <= avr->ramend) {
 				src = avr->data + addr - 0x800000;
-			} else if (addr == (0x800000 + avr->ramend + 1) && len == 2) {
+			} else if (addr == (0x800000u + avr->ramend + 1) && len == 2) {
 				// Allow GDB to read a value just after end of stack.
 				// This is necessary to make instruction stepping work when stack is empty
 				AVR_LOG(avr, LOG_TRACE,
 						"GDB: read just past end of stack %08x, %08x; returning zero\n", addr, len);
 				gdb_send_reply(g, "0000");
 				break;
-			} else if (addr >= 0x810000 && (addr - 0x810000) <= avr->e2end) {
-				avr_eeprom_desc_t ee = {.offset = (addr - 0x810000)};
+			} else if (addr >= 0x810000u && (addr - 0x810000u) <= avr->e2end) {
+				avr_eeprom_desc_t ee = {.offset = (addr - 0x810000u)};
 				avr_ioctl(avr, AVR_IOCTL_EEPROM_GET, &ee);
 				if (ee.ee)
 					src = ee.ee;

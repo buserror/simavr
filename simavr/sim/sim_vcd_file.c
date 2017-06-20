@@ -79,7 +79,7 @@ avr_vcd_input_parse_line(
 		argv_p v )
 {
 	avr_cycle_count_t res = 0;
-	int vi = 0;
+	unsigned int vi = 0;
 
 	if (v->argc == 0)
 		return res;
@@ -90,7 +90,7 @@ avr_vcd_input_parse_line(
 		vcd->period = res;
 		vi++;
 	}
-	for (int i = vi; i < v->argc; i++) {
+	for (unsigned int i = vi; i < v->argc; i++) {
 		char * a = v->argv[i];
 		uint32_t val = 0;
 		int floating = 0;

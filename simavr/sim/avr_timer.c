@@ -246,7 +246,7 @@ avr_timer_irq_ext_clock(
 		case avr_timer_wgm_ctc:
 			{
 				int max = (1 << p->wgm_op[0].size)-1;
-				if (++p->tov_base > max) {
+				if (max < 0 || ++p->tov_base > (unsigned)max) {
 					// overflow occured
 					p->tov_base = 0;
 					overflow = 1;

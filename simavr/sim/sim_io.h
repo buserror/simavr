@@ -33,7 +33,7 @@ extern "C" {
  * see avr_eeprom.* for an example, and avr_ioctl().
  */
 #define AVR_IOCTL_DEF(_a,_b,_c,_d) \
-	(((_a) << 24)|((_b) << 16)|((_c) << 8)|((_d)))
+	(unsigned)(((_a) << 24)|((_b) << 16)|((_c) << 8)|((_d)))
 
 /*
  * IO module base struct

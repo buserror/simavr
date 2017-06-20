@@ -117,7 +117,7 @@ avr_register_io_write(
 			// if the muxer not already installed, allocate a new slot
 			if (avr->io[a].w.c != _avr_io_mux_write) {
 				int no = avr->io_shared_io_count++;
-				if (avr->io_shared_io_count > ARRAY_SIZE(avr->io_shared_io)) {
+				if (avr->io_shared_io_count > (int)ARRAY_SIZE(avr->io_shared_io)) {
 					AVR_LOG(avr, LOG_ERROR,
 							"IO: %s(): Too many shared IO registers.\n", __func__);
 					abort();
@@ -133,7 +133,7 @@ avr_register_io_write(
 			}
 			int no = (intptr_t)avr->io[a].w.param;
 			int d = avr->io_shared_io[no].used++;
-			if (avr->io_shared_io[no].used > ARRAY_SIZE(avr->io_shared_io[0].io)) {
+			if (avr->io_shared_io[no].used > (int)ARRAY_SIZE(avr->io_shared_io[0].io)) {
 				AVR_LOG(avr, LOG_ERROR,
 						"IO: %s(): Too many callbacks on %04x.\n",
 						__func__, addr);
