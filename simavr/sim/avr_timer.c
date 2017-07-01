@@ -498,13 +498,13 @@ avr_timer_configure(
 						__FUNCTION__, p->name, top, 'A'+compi, ocr);
 			}
 		}
-		if (ocr && ocr <= top) {
+		if (ocr <= top) {
 			p->comp[compi].comp_cycles = comp_cycles;
 
 			if (p->trace & (avr_timer_trace_compa << compi)) printf(
 					"TIMER: %s-%c %c %.2fHz = %d cycles\n",
 					__FUNCTION__, p->name,
-					'A'+compi, resulting_clock / ocr,
+					'A'+compi, resulting_clock / (ocr+1),
 					(int)comp_cycles);
 		}
 	}
