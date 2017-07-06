@@ -24,6 +24,7 @@
 #define __SIM_HEX_H___
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
