@@ -187,7 +187,7 @@ sim_core_decl.h: sim_core_config.h $(cores) Makefile
 	for core in $$(grep -r avr_kind_t cores/|awk -F '[ :]' '{print $$1 "=" $$3;}') ; do \
 		file=$${core/=*}; global=$${core/*=}; \
 		upper=$$global; upper=$${upper/.c}; \
-		upper=$$(echo $$upper|tr '[a-z]' '[A-Z]'); \
+		upper=$$(echo $$global|tr '[a-z]' '[A-Z]'); \
 		decl+="#if CONFIG_$$upper\nextern avr_kind_t $$global;\n#endif\n"; \
 		array+="#if CONFIG_$$upper\n\t&$$global,\n#endif\n"; \
 	done ; \
