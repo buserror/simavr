@@ -33,7 +33,7 @@ extern "C" {
  * see avr_eeprom.* for an example, and avr_ioctl().
  */
 #define AVR_IOCTL_DEF(_a,_b,_c,_d) \
-	(((_a) << 24)|((_b) << 16)|((_c) << 8)|((_d)))
+	(unsigned)(((_a) << 24)|((_b) << 16)|((_c) << 8)|((_d)))
 
 /*
  * IO module base struct
@@ -110,7 +110,7 @@ avr_io_getirq(
 // tracing changes of values into a register
 // Note that the values do not "magically" change, they change only
 // when the AVR code attempt to read and write at that address
-// 
+//
 // the "index" is a bit number, or ALL bits if index == 8
 #define AVR_IOMEM_IRQ_ALL 8
 avr_irq_t *

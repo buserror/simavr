@@ -76,7 +76,7 @@ avr_init_irq(
 {
 	memset(irq, 0, sizeof(avr_irq_t) * count);
 
-	for (int i = 0; i < count; i++) {
+	for (unsigned int i = 0; i < count; i++) {
 		irq[i].irq = base + i;
 		irq[i].flags = IRQ_FLAG_INIT;
 		if (pool)
@@ -98,7 +98,7 @@ avr_alloc_irq(
 {
 	avr_irq_t * irq = (avr_irq_t*)malloc(sizeof(avr_irq_t) * count);
 	avr_init_irq(pool, irq, base, count, names);
-	for (int i = 0; i < count; i++)
+	for (unsigned int i = 0; i < count; i++)
 		irq[i].flags |= IRQ_FLAG_ALLOC;
 	return irq;
 }
@@ -121,7 +121,7 @@ avr_free_irq(
 {
 	if (!irq || !count)
 		return;
-	for (int i = 0; i < count; i++) {
+	for (unsigned int i = 0; i < count; i++) {
 		avr_irq_t * iq = irq + i;
 		if (iq->pool)
 			_avr_irq_pool_remove(iq->pool, iq);
