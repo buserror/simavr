@@ -43,13 +43,12 @@ CFLAGS		+= -O2 -Wall -Wextra -Werror -Wno-unused-parameter \
 			-Wno-unused-result -Wno-missing-field-initializers \
 			-Wno-sign-compare
 CFLAGS		+= -g
-CORE_CFLAGS	= -nostdinc -DAVR_CORE=1
+CORE_CFLAGS	= -DAVR_CORE=1
 
 ifeq (${shell uname}, Darwin)
  # gcc 4.2 from MacOS is really not up to scratch anymore
  CC			= clang
  AVR_ROOT 	:= "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/"
- AVR_INC 	:= ${AVR_ROOT}/avr/
  AVR 		:= ${AVR_ROOT}/bin/avr-
  # Thats for MacPorts libelf
  ifeq (${shell test -d /opt/local && echo Exists}, Exists)
@@ -62,7 +61,6 @@ ifeq (${shell uname}, Darwin)
   CC		= clang
   IPATH		+= /opt/local/include /opt/local/include/libelf
   LFLAGS	= -L/opt/local/lib/
-  AVR_INC 	:= /opt/local/avr
   AVR 		:= /opt/local/bin/avr-
  else
   # That's for Homebrew libelf and avr-gcc support
@@ -79,17 +77,10 @@ ifeq (${shell uname}, Darwin)
    LFLAGS		= -L$(HOMEBREW_PREFIX)/lib/
    CFLAGS		+= -I/$(HOMEBREW_PREFIX)/include/libelf
    AVR_ROOT		:= $(firstword $(wildcard $(HOMEBREW_PREFIX)/Cellar/avr-libc/*/))
-   AVR_INC		:= ${AVR_ROOT}/avr
    AVR			:= $(HOMEBREW_PREFIX)/bin/avr-
   endif
  endif
 else
- LINUX_AVR_ROOTS := /usr/lib/avr /usr/avr /opt/cross/avr/avr /usr/local/avr
- AVR_ROOT := $(firstword $(wildcard $(LINUX_AVR_ROOTS)))
- ifeq (${AVR_ROOT},)
-  $(error No avr-libc root directory found. Tried the following paths: $(LINUX_AVR_ROOTS))
- endif
- AVR_INC 	:= ${AVR_ROOT}
  AVR 		:= avr-
 endif
 
@@ -98,7 +89,6 @@ endif
 
 ifeq (${WIN}, Msys)
 AVR_ROOT    := ${shell echo "${AVR32_HOME}" | tr '\\' '/'}
-AVR_INC     := ${AVR_ROOT}/avr
 AVR         := ${AVR_ROOT}/bin/avr-
 IPATH       += ${PREFIX}/include
 CFLAGS      += -I${PREFIX}/include
@@ -111,7 +101,7 @@ endif
 CPPFLAGS	+= --std=gnu99 -Wall
 CPPFLAGS	+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
 
-AVR_CPPFLAGS= ${CPPFLAGS} -idirafter ${AVR_INC}/include
+AVR_CPPFLAGS	= ${CPPFLAGS} -I${SIMAVR}/cores
 
 CC 			?= clang
 AR 			?= ar
@@ -139,6 +129,12 @@ else
 # allow the shared library to be found in the build directory
 LFLAGS		+= -Wl,-rpath,${LIBDIR}
 endif
+endif
+
+ifeq (${V}, 1)
+E		=
+else
+E		= @
 endif
 
 # The code is compiled "optimized" to the max.
@@ -170,34 +166,25 @@ endif
 
 # this rule has precedence
 ${OBJ}/sim_%.o : cores/sim_%.c
-ifeq ($(V),1)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(CORE_CFLAGS) -MMD \
-		${AVR_CPPFLAGS} \
-		$<  -c -o $@
-else
-	@$(CC) $(CPPFLAGS) $(CFLAGS) $(CFLAGS) $(CORE_CFLAGS) -MMD \
-		${AVR_CPPFLAGS} \
-		$<  -c -o $@
+ifneq ($(E),)
 	@echo CORE $<
 endif
+	${E}$(CC) $(CPPFLAGS) $(CFLAGS) $(CORE_CFLAGS) -MMD \
+		${AVR_CPPFLAGS} \
+		$<  -c -o $@
 
 ${OBJ}/%.o: %.c
-ifeq ($(V),1)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD \
-		$<  -c -o $@
-else
-	@$(CC) $(CPPFLAGS) $(CFLAGS) -MMD \
-		$<  -c -o $@
+ifneq ($(E),)
 	@echo CC $<
 endif
+	${E}$(CC) $(CPPFLAGS) $(CFLAGS) -MMD \
+		$<  -c -o $@
 
 ${OBJ}/%.elf:
-ifeq ($(V),1)
-	$(CC) -MMD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
-else
+ifneq ($(E),)
 	@echo LD $@
-	@$(CC) -MMD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
 endif
+	${E}$(CC) -MMD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
 
 obj: ${OBJ}
 
