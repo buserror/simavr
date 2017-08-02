@@ -59,9 +59,9 @@ typedef struct avr_gdb_t {
 /**
  * Returns the index of the watchpoint if found, -1 otherwise.
  */
-static int 
+static int
 gdb_watch_find(
-		const avr_gdb_watchpoints_t * w, 
+		const avr_gdb_watchpoints_t * w,
 		uint32_t addr )
 {
 	for (int i = 0; i < w->len; i++) {
@@ -79,9 +79,9 @@ gdb_watch_find(
  * Contrary to gdb_watch_find, this actually checks the address against
  * a watched memory _range_.
  */
-static int 
+static int
 gdb_watch_find_range(
-		const avr_gdb_watchpoints_t * w, 
+		const avr_gdb_watchpoints_t * w,
 		uint32_t addr )
 {
 	for (int i = 0; i < w->len; i++) {
@@ -98,10 +98,10 @@ gdb_watch_find_range(
 /**
  * Returns -1 on error, 0 otherwise.
  */
-static int 
+static int
 gdb_watch_add_or_update(
-		avr_gdb_watchpoints_t * w, 
-		enum avr_gdb_watch_type kind, 
+		avr_gdb_watchpoints_t * w,
+		enum avr_gdb_watch_type kind,
 		uint32_t addr,
 		uint32_t size )
 {
@@ -143,10 +143,10 @@ gdb_watch_add_or_update(
 /**
  * Returns -1 on error or if the specified point does not exist, 0 otherwise.
  */
-static int 
+static int
 gdb_watch_rm(
-		avr_gdb_watchpoints_t * w, 
-		enum avr_gdb_watch_type kind, 
+		avr_gdb_watchpoints_t * w,
+		enum avr_gdb_watch_type kind,
 		uint32_t addr )
 {
 	int i = gdb_watch_find(w, addr);
@@ -168,16 +168,16 @@ gdb_watch_rm(
 	return 0;
 }
 
-static void 
+static void
 gdb_watch_clear(
 		avr_gdb_watchpoints_t * w )
 {
 	w->len = 0;
 }
 
-static void 
+static void
 gdb_send_reply(
-		avr_gdb_t * g, 
+		avr_gdb_t * g,
 		char * cmd )
 {
 	uint8_t reply[1024];
@@ -193,26 +193,26 @@ gdb_send_reply(
 	send(g->s, reply, dst - reply + 3, 0);
 }
 
-static void 
+static void
 gdb_send_quick_status(
-		avr_gdb_t * g, 
+		avr_gdb_t * g,
 		uint8_t signal )
 {
 	char cmd[64];
 
 	sprintf(cmd, "T%02x20:%02x;21:%02x%02x;22:%02x%02x%02x00;",
-		signal ? signal : 5, g->avr->data[R_SREG], 
+		signal ? signal : 5, g->avr->data[R_SREG],
 		g->avr->data[R_SPL], g->avr->data[R_SPH],
 		g->avr->pc & 0xff, (g->avr->pc>>8)&0xff, (g->avr->pc>>16)&0xff);
 	gdb_send_reply(g, cmd);
 }
 
-static int 
+static int
 gdb_change_breakpoint(
-		avr_gdb_watchpoints_t * w, 
-		int set, 
+		avr_gdb_watchpoints_t * w,
+		int set,
 		enum avr_gdb_watch_type kind,
-		uint32_t addr, 
+		uint32_t addr,
 		uint32_t size )
 {
 	DBG(printf("set %d kind %d addr %08x len %d\n", set, kind, addr, len);)
@@ -226,10 +226,10 @@ gdb_change_breakpoint(
 	return -1;
 }
 
-static int 
+static int
 gdb_write_register(
-		avr_gdb_t * g, 
-		int regi, 
+		avr_gdb_t * g,
+		int regi,
 		uint8_t * src )
 {
 	switch (regi) {
@@ -251,10 +251,10 @@ gdb_write_register(
 	return 1;
 }
 
-static int 
+static int
 gdb_read_register(
-		avr_gdb_t * g, 
-		int regi, 
+		avr_gdb_t * g,
+		int regi,
 		char * rep )
 {
 	switch (regi) {
@@ -271,16 +271,16 @@ gdb_read_register(
 			sprintf(rep, "%02x%02x", g->avr->data[R_SPL], g->avr->data[R_SPH]);
 			break;
 		case 34:
-			sprintf(rep, "%02x%02x%02x00", 
+			sprintf(rep, "%02x%02x%02x00",
 				g->avr->pc & 0xff, (g->avr->pc>>8)&0xff, (g->avr->pc>>16)&0xff);
 			break;
 	}
 	return strlen(rep);
 }
 
-static void 
+static void
 gdb_handle_command(
-		avr_gdb_t * g, 
+		avr_gdb_t * g,
 		char * cmd )
 {
 	avr_t * avr = g->avr;
@@ -329,19 +329,19 @@ gdb_handle_command(
 			uint8_t *src = (uint8_t*)rep;
 			for (int i = 0; i < 35; i++)
 				src += gdb_write_register(g, i, src);
-			gdb_send_reply(g, "OK");										
+			gdb_send_reply(g, "OK");
 		}	break;
 		case 'g': {	// read all general purpose registers
 			char * dst = rep;
 			for (int i = 0; i < 35; i++)
 				dst += gdb_read_register(g, i, dst);
-			gdb_send_reply(g, rep);						
+			gdb_send_reply(g, rep);
 		}	break;
 		case 'p': {	// read register
 			unsigned int regi = 0;
 			sscanf(cmd, "%x", &regi);
 			gdb_read_register(g, regi, rep);
-			gdb_send_reply(g, rep);			
+			gdb_send_reply(g, rep);
 		}	break;
 		case 'P': {	// write register
 			unsigned int regi = 0;
@@ -352,7 +352,7 @@ gdb_handle_command(
 			sscanf(cmd, "%x", &regi);
 			read_hex_string(val, (uint8_t*)rep, strlen(val));
 			gdb_write_register(g, regi, (uint8_t*)rep);
-			gdb_send_reply(g, "OK");										
+			gdb_send_reply(g, "OK");
 		}	break;
 		case 'm': {	// read memory
 			avr_flashaddr_t addr;
@@ -406,19 +406,19 @@ gdb_handle_command(
 			}
 			if (addr < 0xffff) {
 				read_hex_string(start + 1, avr->flash + addr, strlen(start+1));
-				gdb_send_reply(g, "OK");			
+				gdb_send_reply(g, "OK");
 			} else if (addr >= 0x800000 && (addr - 0x800000) <= avr->ramend) {
 				read_hex_string(start + 1, avr->data + addr - 0x800000, strlen(start+1));
-				gdb_send_reply(g, "OK");							
+				gdb_send_reply(g, "OK");
 			} else if (addr >= 0x810000 && (addr - 0x810000) <= avr->e2end) {
 				read_hex_string(start + 1, (uint8_t*)rep, strlen(start+1));
 				avr_eeprom_desc_t ee = {.offset = (addr - 0x810000), .size = len, .ee = (uint8_t*)rep };
 				avr_ioctl(avr, AVR_IOCTL_EEPROM_SET, &ee);
-				gdb_send_reply(g, "OK");							
+				gdb_send_reply(g, "OK");
 			} else {
 				AVR_LOG(avr, LOG_ERROR, "GDB: write memory error %08x, %08x\n", addr, len);
 				gdb_send_reply(g, "E01");
-			}		
+			}
 		}	break;
 		case 'c': {	// continue
 			avr->state = cpu_Running;
@@ -471,9 +471,9 @@ gdb_handle_command(
 	}
 }
 
-static int 
+static int
 gdb_network_handler(
-		avr_gdb_t * g, 
+		avr_gdb_t * g,
 		uint32_t dosleep )
 {
 	fd_set read_set;
@@ -492,7 +492,7 @@ gdb_network_handler(
 
 	if (ret == 0)
 		return 0;
-	
+
 	if (FD_ISSET(g->listen, &read_set)) {
 		g->s = accept(g->listen, NULL, NULL);
 
@@ -504,12 +504,12 @@ gdb_network_handler(
         int i = 1;
         setsockopt (g->s, IPPROTO_TCP, TCP_NODELAY, &i, sizeof (i));
 		g->avr->state = cpu_Stopped;
-		printf("%s connection opened\n", __FUNCTION__);		
+		printf("%s connection opened\n", __FUNCTION__);
 	}
-		
+
 	if (g->s != -1 && FD_ISSET(g->s, &read_set)) {
 		uint8_t buffer[1024];
-		
+
 		ssize_t r = recv(g->s, buffer, sizeof(buffer)-1, 0);
 
 		if (r == 0) {
@@ -560,10 +560,10 @@ gdb_network_handler(
  * If an applicable watchpoint exists for addr, stop the cpu and send a status report.
  * type is one of AVR_GDB_WATCH_READ, AVR_GDB_WATCH_WRITE depending on the type of access.
  */
-void 
+void
 avr_gdb_handle_watchpoints(
-		avr_t * avr, 
-		uint16_t addr, 
+		avr_t * avr,
+		uint16_t addr,
 		enum avr_gdb_watch_type type )
 {
 	avr_gdb_t *g = avr->gdb;
@@ -581,7 +581,7 @@ avr_gdb_handle_watchpoints(
 				5, g->avr->data[R_SREG],
 				g->avr->data[R_SPL], g->avr->data[R_SPH],
 				g->avr->pc & 0xff, (g->avr->pc>>8)&0xff, (g->avr->pc>>16)&0xff,
-				kind & AVR_GDB_WATCH_ACCESS ? "awatch" : 
+				kind & AVR_GDB_WATCH_ACCESS ? "awatch" :
 					kind & AVR_GDB_WATCH_WRITE ? "watch" : "rwatch",
 				addr | 0x800000);
 		gdb_send_reply(g, cmd);
@@ -590,16 +590,16 @@ avr_gdb_handle_watchpoints(
 	}
 }
 
-int 
+int
 avr_gdb_processor(
-		avr_t * avr, 
+		avr_t * avr,
 		int sleep )
 {
 	if (!avr || !avr->gdb)
-		return 0;	
+		return 0;
 	avr_gdb_t * g = avr->gdb;
 
-	if (avr->state == cpu_Running && 
+	if (avr->state == cpu_Running &&
 			gdb_watch_find(&g->breakpoints, avr->pc) != -1) {
 		DBG(printf("avr_gdb_processor hit breakpoint at %08x\n", avr->pc);)
 		gdb_send_quick_status(g, 0);
@@ -613,7 +613,7 @@ avr_gdb_processor(
 }
 
 
-int 
+int
 avr_gdb_init(
 		avr_t * avr )
 {
@@ -629,7 +629,7 @@ avr_gdb_init(
 		AVR_LOG(avr, LOG_ERROR, "GDB: Can't initialize network");
 		goto error;
 	}
-	
+
 	if ((g->listen = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
 		AVR_LOG(avr, LOG_ERROR, "GDB: Can't create socket: %s", strerror(errno));
 		goto error;
@@ -657,7 +657,7 @@ avr_gdb_init(
 	// change default run behaviour to use the slightly slower versions
 	avr->run = avr_callback_run_gdb;
 	avr->sleep = avr_callback_sleep_gdb;
-	
+
 	return 0;
 
 error:
@@ -668,7 +668,7 @@ error:
 	return -1;
 }
 
-void 
+void
 avr_deinit_gdb(
 		avr_t * avr )
 {

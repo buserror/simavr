@@ -98,12 +98,12 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%s: Error creating the AVR core\n", argv[0]);
 		exit(1);
 	}
-	strcpy(flash_data->avr_flash_path,  "simusb_flash.bin");
-	flash_data->avr_flash_fd = 0;
+	strcpy(flash_data.avr_flash_path,  "simusb_flash.bin");
+	flash_data.avr_flash_fd = 0;
 	// register our own functions
-	avr->special_init = avr_special_init;
-	avr->special_deinit = avr_special_deinit;
-	avr->special_data = &flash_data;
+	avr->custom.init = avr_special_init;
+	avr->custom.deinit = avr_special_deinit;
+	avr->custom.data = &flash_data;
 	//avr->reset = NULL;
 	avr_init(avr);
 	avr->frequency = 8000000;

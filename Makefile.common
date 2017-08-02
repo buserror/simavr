@@ -39,7 +39,9 @@ SIMAVR		:= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && ech
 # get the first character of what the compiler says it is, unless it's 'x86_64' doh
 ARCH 		:= ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
 
-CFLAGS		+= -O2 -Wall
+CFLAGS		+= -O2 -Wall -Wextra -Werror -Wno-unused-parameter \
+			-Wno-unused-result -Wno-missing-field-initializers \
+			-Wno-sign-compare
 CFLAGS		+= -g
 CORE_CFLAGS	= -nostdinc -DAVR_CORE=1
 
