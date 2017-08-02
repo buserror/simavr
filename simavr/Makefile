@@ -50,23 +50,20 @@ IPATH	+= ../../shared
 # Static library
 #
 ${OBJ}/libsimavr.a	:	${sim_o}
-ifeq ($(V),1)
-	$(AR) cru $@ $^ && $(RANLIB) $@
-else
+ifneq ($(E),)
 	@echo AR $@
-	@$(AR) cru $@ $^ && $(RANLIB) $@
 endif
+	${E}$(AR) cru $@ $^ && $(RANLIB) $@
 
 #
 # Shared library (Linux)
 #
 ${OBJ}/libsimavr.so.1	:	${sim_o}
-ifeq ($(V),1)
-	$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^ ${filter-out -lsimavr, $(LDFLAGS)}
-else
+ifneq ($(E),)
 	@echo SHARED $@
-	@$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^ ${filter-out -lsimavr, $(LDFLAGS)}
 endif
+	${E}$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^ \
+		${filter-out -lsimavr, $(LDFLAGS)}
 
 ${OBJ}/libsimavr.so		: ${OBJ}/libsimavr.so.1
 	ln -sf libsimavr.so.1 $@
@@ -74,7 +71,7 @@ ${OBJ}/libsimavr.so		: ${OBJ}/libsimavr.so.1
 libsimavr	: config ${OBJ}/libsimavr.a
 # shared library won't work that easily on non-linux
 ifeq (${shell uname}, Linux)
-libsimavr	:	${OBJ}/libsimavr.so
+libsimavr	: ${OBJ}/libsimavr.so
 endif
 
 ${OBJ}/${target}.elf	: ${OBJ}/${target}.o
@@ -166,6 +163,7 @@ sim_core_config.h ${OBJ}/cores.deps: $(cores) Makefile
 			printf "\$${OBJ}/libsimavr.a: \$${OBJ}/$$obj\n">>${OBJ}/cores.deps ; \
 			printf "\$${OBJ}/libsimavr.so.1: \$${OBJ}/$$obj\n">>${OBJ}/cores.deps ; \
 		else \
+			conf+="#undef CONFIG_$$upper\n"; \
 			echo WARNING $$file did not compile, check your avr-gcc toolchain; \
 		fi \
 	done ; \
