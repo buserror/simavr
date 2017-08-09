@@ -48,7 +48,7 @@ CORE_CFLAGS	= -DAVR_CORE=1
 ifeq (${shell uname}, Darwin)
  # gcc 4.2 from MacOS is really not up to scratch anymore
  CC			= clang
- AVR_ROOT 	:= "/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/"
+ AVR_ROOT 	:= "/Applications/Arduino.app/Contents/Java/hardware/tools/avr/"
  AVR 		:= ${AVR_ROOT}/bin/avr-
  # Thats for MacPorts libelf
  ifeq (${shell test -d /opt/local && echo Exists}, Exists)
