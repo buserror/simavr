@@ -976,6 +976,7 @@ run_one_again:
 				case 0x9518: 	// RETI -- Return from Interrupt -- 1001 0101 0001 1000
 					avr_sreg_set(avr, S_I, 1);
 					avr_interrupt_reti(avr);
+					FALLTHROUGH
 				case 0x9508: {	// RET -- Return -- 1001 0101 0000 1000
 					new_pc = _avr_pop_addr(avr);
 					cycle += 1 + avr->address_size;

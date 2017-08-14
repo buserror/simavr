@@ -26,6 +26,16 @@
 extern "C" {
 #endif
 
+#ifndef __has_attribute
+	#define __has_attribute(x) 0
+#endif
+
+#if __has_attribute(fallthrough)
+	#define FALLTHROUGH __attribute__((fallthrough));
+#else
+	#define FALLTHROUGH
+#endif
+
 #include "sim_irq.h"
 #include "sim_interrupts.h"
 #include "sim_cmds.h"

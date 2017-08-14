@@ -140,8 +140,10 @@ avr_adc_read_h(
 	switch (p->read_status) {
 		case 0:
 			avr_adc_read_l(avr, p->r_adcl, param);
+			FALLTHROUGH
 		case 1:
 			p->read_status = 2;
+			FALLTHROUGH
 		default:
 			return avr_core_watch_read(avr, addr);
 	}
