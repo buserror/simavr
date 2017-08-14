@@ -104,8 +104,10 @@ void displayCB(void)		/* function called whenever redisplay needed */
 			switch (i) {
 				case 3:
 					dy += 3.0f * pixsize;
+					FALLTHROUGH
 				case 6:
 					dy += 3.0f * pixsize;
+					FALLTHROUGH
 				case 0:
 					dx += 1.0f * pixsize;
 					glVertex2f(dx + size, dy + size); glVertex2f(dx, dy + size); glVertex2f(dx, dy); glVertex2f(dx + size, dy);
