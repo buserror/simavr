@@ -184,12 +184,39 @@ ${OBJ}/%.elf:
 ifneq ($(E),)
 	@echo LD $@
 endif
-	${E}$(CC) -MMD ${CFLAGS}  ${LFLAGS} -o $@ $^ $(LDFLAGS)
+	${E}$(CC) -MMD ${CFLAGS}  ${LFLAGS} -o $@ ${filter %.o,$^} $(LDFLAGS)
+
+
+.PRECIOUS: ${OBJ}/%.a ${OBJ}/%.so.1
+#
+# Static library
+#
+${OBJ}/%.a:
+ifneq ($(E),)
+	@echo AR $@
+endif
+	${E}$(AR) cru $@ ${filter %.o,$^} && $(RANLIB) $@
+
+#
+# Shared library (Linux)
+#
+${OBJ}/%.so.1: ${OBJ}/%.a
+ifneq ($(E),)
+	@echo SHARED $@
+endif
+	${E}$(CC) -o $@ -shared \
+		-Wl,--whole-archive,-soname,${basename ${notdir $@}}.1 \
+		${filter %.o %.a,$^} \
+		 -Wl,--no-whole-archive \
+		${filter-out -l%, $(LDFLAGS)} ${EXTRA_LDFLAGS}
+
+${OBJ}/%.so: ${OBJ}/%.so.1
+	ln -sf ${notdir $<} $@
 
 obj: ${OBJ}
 
 ${OBJ}:
-	@mkdir -p ${OBJ}
+	${E}mkdir -p ${OBJ}
 
 clean-${OBJ}:
 	rm -rf ${OBJ}

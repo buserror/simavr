@@ -38,25 +38,14 @@ endif
 #
 # Static library
 #
-static_lib = $(target).a
-
-${OBJ}/${static_lib} : ${objects}
-${OBJ}/${static_lib} :
-	$(AR) cru $@ $^
-${target}: ${OBJ}/${static_lib}
-
+${OBJ}/${target}.a: ${objects}
+${target}: ${OBJ}/${target}.a
 #
 # Shared library (Linux only)
 #
-shared_lib = ${target}.so.1
-
-${OBJ}/${shared_lib} : ${objects}
-${OBJ}/${shared_lib} :
-	${CC} -shared -Wl,-soname,${shared_lib} $^ -o $@
 ifeq (${shell uname}, Linux)
-${target}: ${OBJ}/${shared_lib}
+${target}: ${OBJ}/${target}.so
 endif
-	@echo $@ done
 
 clean: clean-${OBJ}
 	rm -rf *.hex *.a *.axf *.vcd .*.swo .*.swp .*.swm .*.swn *.so *.o
