@@ -37,7 +37,7 @@ avr_interrupt_init(
 	avr_int_table_p table = &avr->interrupts;
 	memset(table, 0, sizeof(*table));
 
-	static const char *names[] = { ">global_int_pending", ">global_int_running" };
+	static const char *names[] = { ">avr.int.pending", ">avr.int.running" };
 	avr_init_irq(&avr->irq_pool, table->irq,
 			0, // base number
 			AVR_INT_IRQ_COUNT, names);
@@ -66,7 +66,10 @@ avr_register_vector(
 
 	avr_int_table_p table = &avr->interrupts;
 
-	static const char *names[] = { ">int_pending", ">int_running" };
+	char name0[48], name1[48];
+	sprintf(name0, ">avr.int.%02x.pending", vector->vector);
+	sprintf(name1, ">avr.int.%02x.running", vector->vector);
+	const char *names[2] = { name0, name1 };
 	avr_init_irq(&avr->irq_pool, vector->irq,
 			vector->vector * 256, // base number
 			AVR_INT_IRQ_COUNT, names);
