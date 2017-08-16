@@ -26,38 +26,95 @@
 #include "avr_extint.h"
 #include "avr_ioport.h"
 
-typedef struct avr_extint_poll_context_t {
-	uint32_t	eint_no; // index of particular interrupt source we are monitoring
-	avr_extint_t *extint;
-} avr_extint_poll_context_t;
+static int
+avr_extint_read_pin(
+		avr_extint_t * p,
+		int eint_no) // index of interrupt source
+{
+	avr_t * avr = p->io.avr;
+	char port = p->eint[eint_no].port_ioctl & 0xFF;
+	avr_ioport_state_t iostate;
+	if (avr_ioctl(avr, AVR_IOCTL_IOPORT_GETSTATE( port ), &iostate) < 0)
+		return -1;
+	uint8_t bit = ( iostate.pin >> p->eint[eint_no].port_pin ) & 1;
+	return (int)bit;
+}
 
-static avr_cycle_count_t avr_extint_poll_level_trig(
+static uint8_t
+avr_extint_get_mode(
+		avr_extint_t * p,
+		int eint_no) // index of interrupt source
+{
+	avr_t * avr = p->io.avr;
+	uint8_t isc_bits = p->eint[eint_no].isc[1].reg ? 2 : 1;
+	uint8_t mode = avr_regbit_get_array(avr, p->eint[eint_no].isc, isc_bits);
+
+	// Asynchronous interrupts, eg int2 in m16, m32 etc. support only down/up
+	if (isc_bits == 1)
+		mode +=2;
+	return mode;
+}
+
+static avr_cycle_count_t
+avr_extint_poll_level_trig(
 		struct avr_t * avr,
 		avr_cycle_count_t when,
 		void * param)
 {
 	avr_extint_poll_context_t *poll = (avr_extint_poll_context_t *)param;
 	avr_extint_t * p = (avr_extint_t *)poll->extint;
+	int eint_no = poll->eint_no;
+	uint8_t mode = avr_extint_get_mode(p, eint_no);
 
-	char port = p->eint[poll->eint_no].port_ioctl & 0xFF;
-	avr_ioport_state_t iostate;
-	if (avr_ioctl(avr, AVR_IOCTL_IOPORT_GETSTATE( port ), &iostate) < 0)
-		goto terminate_poll;
-	uint8_t bit = ( iostate.pin >> p->eint[poll->eint_no].port_pin ) & 1;
+	if (mode)
+		goto terminate_poll; // only poll while in level triggering mode
+	if (!avr_regbit_get(avr, p->eint[eint_no].vector.enable))
+		goto terminate_poll; // only poll while External Interrupt Request X Enable flag is set
+	int bit = avr_extint_read_pin(p, eint_no);
 	if (bit)
 		goto terminate_poll; // Only poll while pin level remains low
 
 	if (avr->sreg[S_I]) {
-		uint8_t raised = avr_regbit_get(avr, p->eint[poll->eint_no].vector.raised) || p->eint[poll->eint_no].vector.pending;
+		uint8_t raised = avr_regbit_get(avr, p->eint[eint_no].vector.raised) || p->eint[eint_no].vector.pending;
 		if (!raised)
-			avr_raise_interrupt(avr, &p->eint[poll->eint_no].vector);
+			avr_raise_interrupt(avr, &p->eint[eint_no].vector);
 	}
 
 	return when+1;
 
 terminate_poll:
-	free(poll);
+	//free(poll);
+	poll->is_polling = 0;
 	return 0;
+}
+
+static void
+avr_extint_fire_and_start_poll(
+		avr_extint_t * p,
+		int eint_no) // index of interrupt source
+{
+	avr_t * avr = p->io.avr;
+	if (avr_regbit_get(avr, p->eint[eint_no].vector.enable)) {
+		if (avr->sreg[S_I]) {
+			uint8_t raised = avr_regbit_get(avr, p->eint[eint_no].vector.raised) || p->eint[eint_no].vector.pending;
+			if (!raised)
+				avr_raise_interrupt(avr, &p->eint[eint_no].vector);
+		}
+		if (p->eint[eint_no].strict_lvl_trig) {
+			//if (avr_cycle_timer_status(avr, avr_extint_poll_level_trig, p) == 0)
+			//avr_extint_poll_context_t *poll = malloc(sizeof(avr_extint_poll_context_t));
+			avr_extint_poll_context_t *poll = p->poll_contexts + eint_no;
+			if (poll &&
+					!poll->is_polling
+				//(avr_cycle_timer_status(avr, avr_extint_poll_level_trig, poll) == 0)
+					) {
+				//poll->eint_no = (uint32_t)eint_no;
+				//poll->extint = p;
+				avr_cycle_timer_register(avr, 1, avr_extint_poll_level_trig, poll);
+				poll->is_polling = 1;
+			}
+		}
+	}
 }
 
 static avr_extint_t * avr_extint_get(avr_t * avr)
@@ -128,13 +185,7 @@ static void avr_extint_irq_notify(struct avr_irq_t * irq, uint32_t value, void *
 	int up = !irq->value && value;
 	int down = irq->value && !value;
 
-	// ?? uint8_t isc_bits = p->eint[irq->irq + 1].isc->reg ? 2 : 1;
-	uint8_t isc_bits = p->eint[irq->irq].isc[1].reg ? 2 : 1;
-	uint8_t mode = avr_regbit_get_array(avr, p->eint[irq->irq].isc, isc_bits);
-
-	// Asynchronous interrupts, eg int2 in m16, m32 etc. support only down/up
-	if (isc_bits == 1)
-		mode +=2;
+	uint8_t mode = avr_extint_get_mode(p, (int)irq->irq);
 
 	switch (mode) {
 		case 0: // Level triggered (low level) interrupt
@@ -148,19 +199,7 @@ static void avr_extint_irq_notify(struct avr_irq_t * irq, uint32_t value, void *
 					to turn this feature off. In this case bahaviour will be similar to the falling edge interrupt.
 				 */
 				if (!value) {
-					if (avr->sreg[S_I]) {
-						uint8_t raised = avr_regbit_get(avr, p->eint[irq->irq].vector.raised) || p->eint[irq->irq].vector.pending;
-						if (!raised)
-							avr_raise_interrupt(avr, &p->eint[irq->irq].vector);
-					}
-					if (p->eint[irq->irq].strict_lvl_trig) {
-						avr_extint_poll_context_t *poll = malloc(sizeof(avr_extint_poll_context_t));
-						if (poll) {
-							poll->eint_no = irq->irq;
-							poll->extint = p;
-							avr_cycle_timer_register(avr, 1, avr_extint_poll_level_trig, poll);
-						}
-					}
+					avr_extint_fire_and_start_poll(p, (int)irq->irq);
 				}
 			}
 			break;
@@ -176,6 +215,102 @@ static void avr_extint_irq_notify(struct avr_irq_t * irq, uint32_t value, void *
 			if (up)
 				avr_raise_interrupt(avr, &p->eint[irq->irq].vector);
 			break;
+	}
+}
+
+/* For interrupt flag reset by writing a logical one to it */
+static void
+avr_extint_flags_write(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
+{
+	avr_extint_t * p = (avr_extint_t *)param;
+
+	uint8_t mask = 0;
+
+	for (int i = 0; i < EXTINT_COUNT; i++) {
+		if (!p->eint[i].vector.raised.reg)
+			break;
+		if (addr == p->eint[i].vector.raised.reg) {
+			mask |= p->eint[i].vector.raised.mask << p->eint[i].vector.raised.bit;
+		}
+	}
+
+	uint8_t masked_v = v & ~(mask);
+	masked_v |= (avr->data[addr] & ~v) & mask;
+	avr_core_watch_write(avr, addr, masked_v);
+}
+
+/*
+ * With level mode capable interrupts,
+ * when the External Interrupt Request Enable bits changes to the "enabled" state,
+ * we must fire interrupt and start polling if other conditions met.
+*/
+static void
+avr_extint_mask_write(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
+{
+	avr_extint_t * p = (avr_extint_t *)param;
+
+	int changed = avr->data[addr] != v;
+	avr_core_watch_write(avr, addr, v);
+
+	if (!changed)
+		return;
+	for (int i = 0; i < EXTINT_COUNT; i++) {
+		if (!p->eint[i].isc[1].reg)
+			continue; // no level trig mode available
+		if (addr == p->eint[i].vector.enable.reg) {
+			uint8_t mode = avr_extint_get_mode(p, i);
+			if (mode)
+				continue;
+			int bit = avr_extint_read_pin(p, i);
+			if (bit)
+				continue;
+			//if (!avr_regbit_get(avr, p->eint[i].vector.enable)) continue;
+			avr_extint_fire_and_start_poll(p, i);
+		}
+	}
+}
+
+/*
+ * With level mode capable interrupts,
+ * when the Interrupt Sense Control bits changes to the "level" mode,
+ * we must fire interrupt and start polling if other conditions met.
+*/
+static void
+avr_extint_isc_write(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
+{
+	avr_extint_t * p = (avr_extint_t *)param;
+
+	int changed = avr->data[addr] != v;
+	avr_core_watch_write(avr, addr, v);
+
+	if (!changed)
+		return;
+	for (int i = 0; i < EXTINT_COUNT; i++) {
+		if (!p->eint[i].isc[1].reg)
+			continue; // no level trig mode available
+		if ((addr == p->eint[i].isc[0].reg) ||
+			(addr == p->eint[i].isc[1].reg)) {
+			uint8_t mode = avr_extint_get_mode(p, i);
+			if (mode)
+				continue;
+			int bit = avr_extint_read_pin(p, i);
+			if (bit)
+				continue;
+			//if (!avr_regbit_get(avr, p->eint[i].vector.enable)) continue;
+			avr_extint_fire_and_start_poll(p, i);
+		}
 	}
 }
 
@@ -219,10 +354,23 @@ void avr_extint_init(avr_t * avr, avr_extint_t * p)
 	p->io = _io;
 
 	avr_register_io(avr, &p->io);
-	for (int i = 0; i < EXTINT_COUNT; i++)
+	for (int i = 0; i < EXTINT_COUNT; i++) {
+		p->poll_contexts[i].eint_no = i;
+		p->poll_contexts[i].extint = p;
 		avr_register_vector(avr, &p->eint[i].vector);
+		if (p->eint[i].vector.raised.reg)
+			avr_register_io_write(avr, p->eint[i].vector.raised.reg, avr_extint_flags_write, p);
+		if (p->eint[i].isc[1].reg) {
+			// level triggering available
+			avr_register_io_write(avr, p->eint[i].vector.enable.reg, avr_extint_mask_write, p);
+			avr_register_io_write(avr, p->eint[i].isc[0].reg, avr_extint_isc_write, p);
+			if (p->eint[i].isc[0].reg != p->eint[i].isc[1].reg)
+				avr_register_io_write(avr, p->eint[i].isc[1].reg, avr_extint_isc_write, p);
+		}
+	}
 
 	// allocate this module's IRQ
 	avr_io_setirqs(&p->io, AVR_IOCTL_EXTINT_GETIRQ(), EXTINT_COUNT, NULL);
+
 }
 

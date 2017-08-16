@@ -18,8 +18,7 @@
 
 SHELL 			:= ${shell which bash}
 SIMAVR_VERSION	:= ${shell \
-	{ git log -1 --tags --simplify-by-decoration --pretty="format:%d"|\
-		sed -e 's/[\(\) ]//g'; } || \
+	git describe --abbrev=0 --tags || \
 	echo "unknown" }
 SIMAVR_REVISION	= 2
 
@@ -51,46 +50,25 @@ IPATH	+= ../../shared
 # Static library
 #
 ${OBJ}/libsimavr.a	:	${sim_o}
-ifeq ($(V),1)
-	$(AR) cru $@ $^ && $(RANLIB) $@
-else
-	@echo AR $@
-	@$(AR) cru $@ $^ && $(RANLIB) $@
-endif
 
-#
-# Shared library (Linux)
-#
-${OBJ}/libsimavr.so.1	:	${sim_o}
-ifeq ($(V),1)
-	$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^ ${filter-out -lsimavr, $(LDFLAGS)}
-else
-	@echo SHARED $@
-	@$(CC) -shared -Wl,-soname,libsimavr.so.1 -o $@ $^ ${filter-out -lsimavr, $(LDFLAGS)}
-endif
-
-${OBJ}/libsimavr.so		: ${OBJ}/libsimavr.so.1
-	ln -sf libsimavr.so.1 $@
 
 libsimavr	: config ${OBJ}/libsimavr.a
 # shared library won't work that easily on non-linux
-ifeq (${WIN},)
 ifeq (${shell uname}, Linux)
-libsimavr	:	${OBJ}/libsimavr.so
-endif
+libsimavr	: ${OBJ}/libsimavr.so
 endif
 
+${OBJ}/${target}.elf	: libsimavr
 ${OBJ}/${target}.elf	: ${OBJ}/${target}.o
 
 ${target}	: ${OBJ}/${target}.elf
 
 # FIXME uname -o doesn't work on BSD
 #ifeq (${shell uname -o}, Msys)
-ifeq (${WIN},)
+#	ln -sf $< $@.exe
+#else
 	ln -sf $< $@
-else
-	ln -sf $< $@.exe
-endif
+#endif
 
 clean: clean-${OBJ}
 	rm -rf ${target} *.a *.so *.exe
@@ -101,28 +79,29 @@ PREFIX = ${DESTDIR}
 
 install : all
 	$(MKDIR) $(DESTDIR)/include/simavr/avr
+	$(MKDIR) $(DESTDIR)/include/simavr/parts
 	$(INSTALL) -m644 sim/*.h $(DESTDIR)/include/simavr/
 	$(INSTALL) -m644 sim_core_*.h $(DESTDIR)/include/simavr/
 	$(INSTALL) -m644 sim/avr/*.h $(DESTDIR)/include/simavr/avr/
+	$(INSTALL) -m644 ../examples/parts/*.h $(DESTDIR)/include/simavr/parts/
 	$(MKDIR) $(DESTDIR)/lib
 	$(INSTALL) ${OBJ}/libsimavr.a $(DESTDIR)/lib/
+	$(INSTALL) ../examples/parts/${OBJ}/libsimavrparts.a $(DESTDIR)/lib/
 	$(MKDIR) $(DESTDIR)/lib/pkgconfig/
 	sed -e "s|PREFIX|${PREFIX}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
 		simavr-avr.pc >$(DESTDIR)/lib/pkgconfig/simavr-avr.pc
 	sed -e "s|PREFIX|${PREFIX}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
 		simavr.pc >$(DESTDIR)/lib/pkgconfig/simavr.pc
-ifeq (${WIN},)
+	sed -e "s|PREFIX|${PREFIX}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
+		simavrparts.pc >$(DESTDIR)/lib/pkgconfig/simavrparts.pc
 ifeq (${shell uname}, Linux)
 	$(INSTALL) ${OBJ}/libsimavr.so.1 $(DESTDIR)/lib/
+	$(INSTALL) ../examples/parts/${OBJ}/libsimavrparts.so.1 $(DESTDIR)/lib/
 	ln -sf libsimavr.so.1 $(DESTDIR)/lib/libsimavr.so
-endif
+	ln -sf libsimavrparts.so.1 $(DESTDIR)/lib/libsimavrparts.so
 endif
 	$(MKDIR) $(DESTDIR)/bin
-ifeq (${WIN},)
 	$(INSTALL) ${OBJ}/${target}.elf $(DESTDIR)/bin/simavr
-else
-	$(INSTALL) ${OBJ}/${target}.elf $(DESTDIR)/bin/simavr.exe
-endif
 
 # Needs 'fpm', oneline package manager. Install with 'gem install fpm'
 # This generates 'mock' debian files, without all the policy, scripts
@@ -174,8 +153,8 @@ sim_core_config.h ${OBJ}/cores.deps: $(cores) Makefile
 			conf+="#define CONFIG_$$upper 1\n"; \
 			obj=$${file/.c/.o} ; obj=$${obj/cores\/}; \
 			printf "\$${OBJ}/libsimavr.a: \$${OBJ}/$$obj\n">>${OBJ}/cores.deps ; \
-			printf "\$${OBJ}/libsimavr.so.1: \$${OBJ}/$$obj\n">>${OBJ}/cores.deps ; \
 		else \
+			conf+="#undef CONFIG_$$upper\n"; \
 			echo WARNING $$file did not compile, check your avr-gcc toolchain; \
 		fi \
 	done ; \

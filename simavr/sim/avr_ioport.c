@@ -177,7 +177,7 @@ avr_ioport_ioctl(
 	avr_ioport_t * p = (avr_ioport_t *)port;
 	avr_t * avr = p->io.avr;
 	int res = -1;
-	
+
 	// all IOCTls require some sort of valid parameter, bail if not
 	if (!io_param)
 		return -1;

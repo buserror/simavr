@@ -43,11 +43,18 @@ enum {
 // Get the internal IRQ corresponding to the INT
 #define AVR_IOCTL_EXTINT_GETIRQ() AVR_IOCTL_DEF('i','n','t',' ')
 
+typedef struct avr_extint_t avr_extint_t;
+
+// This is a context for the cycle timer handling the "level" mode triggering
+typedef struct avr_extint_poll_context_t {
+	int32_t	eint_no;	// index of particular interrupt source we are monitoring
+	int32_t	is_polling; // is this interrupt polling cycle active?
+	avr_extint_t *extint;
+} avr_extint_poll_context_t;
+
 /*
  * This module is just a "relay" for the pin change IRQ in the IO port
  * module. We hook up to their IRQ and raise out interrupt vectors as needed
- *
- * "isc" is handled, apart from the "level" mode that doesn't make sense here (?)
  */
 typedef struct avr_extint_t {
 	avr_io_t	io;
@@ -60,6 +67,8 @@ typedef struct avr_extint_t {
 		uint8_t			port_pin;		// pin number in said port
 		uint8_t			strict_lvl_trig;// enforces a repetitive interrupt triggering while the pin is held low
 	}	eint[EXTINT_COUNT];
+
+	avr_extint_poll_context_t poll_contexts[EXTINT_COUNT];
 
 } avr_extint_t;
 

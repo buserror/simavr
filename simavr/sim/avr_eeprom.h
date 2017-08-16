@@ -111,7 +111,7 @@ typedef struct avr_eeprom_desc_t {
 #define AVR_EEPROM_DECLARE_8BIT(_vector) \
 	.eeprom = {\
 		.size = E2END+1,\
-		.r_eearl = EEARL,\
+		.r_eearl = EEAR,\
 		.r_eedr = EEDR,\
 		.r_eecr = EECR,\
 		.eepm = { AVR_IO_REGBIT(EECR, EEPM0), AVR_IO_REGBIT(EECR, EEPM1) },\

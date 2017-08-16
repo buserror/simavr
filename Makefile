@@ -9,7 +9,7 @@ RELEASE	?= 0
 
 .PHONY: doc
 
-all:	build-simavr build-tests build-examples
+all:	build-simavr build-tests build-examples build-parts
 
 build-simavr:
 	$(MAKE) -C simavr RELEASE=$(RELEASE)
@@ -19,6 +19,9 @@ build-tests: build-simavr
 
 build-examples: build-simavr
 	$(MAKE) -C examples RELEASE=$(RELEASE)
+
+build-parts: build-examples
+	$(MAKE) -C examples/parts RELEASE=$(RELEASE)
 
 install:
 	$(MAKE) -C simavr install RELEASE=$(RELEASE)
@@ -30,5 +33,6 @@ clean:
 	$(MAKE) -C simavr clean
 	$(MAKE) -C tests clean
 	$(MAKE) -C examples clean
+	$(MAKE) -C examples/parts clean
 	$(MAKE) -C doc clean
 
