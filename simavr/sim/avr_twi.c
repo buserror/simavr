@@ -95,7 +95,7 @@ _avr_twi_status_get(
 
 static avr_cycle_count_t
 avr_twi_set_state_timer(
-		struct avr_t * avr,
+		struct avr_cycle_timer_pool_t * pool,
 		avr_cycle_count_t when,
 		void * param)
 {
@@ -119,8 +119,10 @@ _avr_twi_delay_state(
 {
 	p->next_twstate = state;
 	// TODO: calculate clock rate, convert to cycles, and use that
-	avr_cycle_timer_register_usec(
-			p->io.avr, twi_cycles, avr_twi_set_state_timer, p);
+	if ( avr_cycle_timer_register_usec(
+			&(p->io.avr->cycle_timers), twi_cycles, avr_twi_set_state_timer, p) < 0 ) {
+		AVR_LOG(p->io.avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+	}
 }
 
 static void

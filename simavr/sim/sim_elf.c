@@ -47,7 +47,7 @@ avr_load_firmware(
 		elf_firmware_t * firmware)
 {
 	if (firmware->frequency)
-		avr->frequency = firmware->frequency;
+		avr->clock.frequency = firmware->frequency;
 	if (firmware->vcc)
 		avr->vcc = firmware->vcc;
 	if (firmware->avcc)
@@ -56,6 +56,10 @@ avr_load_firmware(
 		avr->aref = firmware->aref;
 #if CONFIG_SIMAVR_TRACE && ELF_SYMBOLS
 	int scount = firmware->flashsize >> 1;
+	if ( avr->trace_data->codeline != NULL ) {
+		free(avr->trace_data->codeline);
+		avr->trace_data->codeline = NULL;
+	}
 	avr->trace_data->codeline = malloc(scount * sizeof(avr_symbol_t*));
 	memset(avr->trace_data->codeline, 0, scount * sizeof(avr_symbol_t*));
 
@@ -102,6 +106,12 @@ avr_load_firmware(
 	avr_set_command_register(avr, firmware->command_register_addr);
 	avr_set_console_register(avr, firmware->console_register_addr);
 
+	// if avr is reused disconnect any trace recordings
+	if (avr->vcd != NULL) {
+		avr_vcd_close(avr->vcd);
+		free(avr->vcd);
+		avr->vcd = NULL;
+	}
 	// rest is initialization of the VCD file
 	if (firmware->tracecount == 0)
 		return;
@@ -446,3 +456,29 @@ elf_read_firmware(
 	return 0;
 }
 
+
+void elf_close_firmware(elf_firmware_t * firmware) {
+	if ( firmware->flash != NULL ) {
+		free(firmware->flash);
+	}
+	if ( firmware->eeprom != NULL ) {
+		free(firmware->eeprom);
+	}
+	if ( firmware->fuse != NULL ) {
+		free(firmware->fuse);
+	}
+	if ( firmware->lockbits != NULL ) {
+		free(firmware->fuse);
+	}
+#if ELF_SYMBOLS
+	if ( firmware->symbol != NULL ) {
+		for ( size_t symbolcount = 0; symbolcount < firmware->symbolcount ; symbolcount  ++ ) {
+			if ( firmware->symbol[symbolcount] != NULL ) {
+				free(firmware->symbol[symbolcount]);
+			}
+		}
+		free(firmware->symbol);
+	}
+#endif
+	memset(firmware,0,sizeof(elf_firmware_t));
+}

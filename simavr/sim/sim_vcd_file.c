@@ -52,7 +52,7 @@ avr_vcd_init(
 	memset(vcd, 0, sizeof(avr_vcd_t));
 	vcd->avr = avr;
 	vcd->filename = strdup(filename);
-	vcd->period = avr_usec_to_cycles(vcd->avr, period);
+	vcd->period = avr_usec_to_cycles(&(vcd->avr->clock), period);
 
 	return 0;
 }
@@ -178,7 +178,7 @@ avr_vcd_input_read(
  */
 static avr_cycle_count_t
 _avr_vcd_input_timer(
-		struct avr_t * avr,
+		struct avr_cycle_timer_pool_t * pool,
 		avr_cycle_count_t when,
 		void * param)
 {
@@ -209,12 +209,12 @@ _avr_vcd_input_timer(
 		AVR_LOG(vcd->avr, LOG_TRACE,
 				"%s Finished reading, ending simavr\n",
 				vcd->filename);
-		avr->state = cpu_Done;
+		vcd->avr->state = cpu_Done;
 		return 0;
 	}
 	log = avr_vcd_fifo_read_at(&vcd->log, 0);
 
-	when += avr_usec_to_cycles(avr, log.when - stamp);
+	when += avr_usec_to_cycles(&(vcd->avr->clock), log.when - stamp);
 
 	return when;
 }
@@ -246,8 +246,10 @@ avr_vcd_init_input(
 		if (v->line[0] == '#') {
 			vcd->start = 0;
 			avr_vcd_input_parse_line(vcd, v);
-			avr_cycle_timer_register_usec(vcd->avr,
-						vcd->period, _avr_vcd_input_timer, vcd);
+			if ( avr_cycle_timer_register_usec(&(vcd->avr->cycle_timers),
+						vcd->period, _avr_vcd_input_timer, vcd) < 0 ) {
+				AVR_LOG(vcd->avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+			}
 			break;
 		}
 		// ignore multiline stuff
@@ -332,6 +334,10 @@ avr_vcd_close(
 
 	/* dispose of any link and hooks */
 	for (int i = 0; i < vcd->signal_count; i++) {
+		if (    ( vcd->signal[i].size < 1 )
+			 || ( vcd->signal[i].alias == 0 ) ) {
+			continue;
+		}
 		avr_vcd_signal_t * s = &vcd->signal[i];
 
 		avr_free_irq(&s->irq, 1);
@@ -400,7 +406,7 @@ avr_vcd_flush_log(
 	while (!avr_vcd_fifo_isempty(&vcd->log)) {
 		avr_vcd_log_t l = avr_vcd_fifo_read(&vcd->log);
 		// 10ns base -- 100MHz should be enough
-		uint64_t base = avr_cycles_to_nsec(vcd->avr, l.when - vcd->start) / 10;
+		uint64_t base = avr_cycles_to_nsec(&(vcd->avr->clock), l.when - vcd->start) / 10;
 
 		/*
 		 * if that trace was seen in this nsec already, we fudge the
@@ -434,7 +440,7 @@ avr_vcd_flush_log(
 
 static avr_cycle_count_t
 _avr_vcd_timer(
-		struct avr_t * avr,
+		struct avr_cycle_timer_pool_t * avr,
 		avr_cycle_count_t when,
 		void * param)
 {
@@ -461,7 +467,7 @@ _avr_vcd_notify(
 	avr_vcd_signal_t * s = (avr_vcd_signal_t*)irq;
 	avr_vcd_log_t l = {
 		.sigindex = s->irq.irq,
-		.when = vcd->avr->cycle,
+		.when = vcd->avr->clock.cycle,
 		.value = value,
 		.floating = !!(avr_irq_get_flags(irq) & IRQ_FLAG_FLOATING),
 	};
@@ -483,13 +489,33 @@ avr_vcd_add_signal(
 		int signal_bit_size,
 		const char * name )
 {
-	if (vcd->signal_count == AVR_VCD_MAX_SIGNALS) {
+	return  ( avr_vcd_add_sig(vcd,signal_irq,signal_bit_size,name) < 0 ? -1 : 0 );
+}
+
+int
+avr_vcd_add_sig(
+		avr_vcd_t * vcd,
+		avr_irq_t * signal_irq,
+		int signal_bit_size,
+		const char * name )
+{
+	if (    ( vcd->signal_count == AVR_VCD_MAX_SIGNALS)
+		 || ( signal_bit_size < 1 ) ) {
 		AVR_LOG(vcd->avr, LOG_ERROR,
 			" %s: unable add signal '%s'\n",
 			__FUNCTION__, name);
 		return -1;
 	}
-	int index = vcd->signal_count++;
+
+	int index = -1;
+
+	while (    ( ++ index < vcd->signal_count )
+			&& (    ( vcd->signal[index].size < 1 )
+				 || ( vcd->signal[index].alias == 0 ) ) );
+	if ( index >= vcd->signal_count ) {
+		index = vcd->signal_count ++;
+	}
+
 	avr_vcd_signal_t * s = &vcd->signal[index];
 	strncpy(s->name, name, sizeof(s->name));
 	s->size = signal_bit_size;
@@ -508,15 +534,34 @@ avr_vcd_add_signal(
 	avr_irq_register_notify(&s->irq, _avr_vcd_notify, vcd);
 
 	avr_connect_irq(signal_irq, &s->irq);
-	return 0;
+	return  index;
 }
 
+int
+avr_vcd_remove_signal(
+	avr_vcd_t * vcd,
+	int index,
+	avr_irq_t * signal_irq)
+{
+
+
+	if (    ( index >= vcd->signal_count )
+		 || ( index < 0 ) ) {
+		return -1;
+	}
+	avr_vcd_stop(vcd);
+	avr_irq_unregister_notify(&(vcd->signal[index].irq),_avr_vcd_notify,vcd);
+	avr_unconnect_irq(signal_irq,&(vcd->signal[index].irq));
+	avr_free_irq(&(vcd->signal[index].irq), 1);
+	memset(&(vcd->signal[index]),0,sizeof(avr_vcd_signal_t));
+	return 0;
+}
 
 int
 avr_vcd_start(
 		avr_vcd_t * vcd)
 {
-	vcd->start = vcd->avr->cycle;
+	vcd->start = vcd->avr->clock.cycle;
 	avr_vcd_fifo_reset(&vcd->log);
 
 	if (vcd->input) {
@@ -538,6 +583,11 @@ avr_vcd_start(
 	fprintf(vcd->output, "$scope module logic $end\n");
 
 	for (int i = 0; i < vcd->signal_count; i++) {
+		if (    ( vcd->signal[i].size < 1 )
+			 || ( vcd->signal[i].alias == 0 ) ) {
+			// signal removed from list  and not replaced
+			continue;
+		}
 		fprintf(vcd->output, "$var wire %d %c %s $end\n",
 			vcd->signal[i].size, vcd->signal[i].alias, vcd->signal[i].name);
 	}
@@ -547,13 +597,20 @@ avr_vcd_start(
 
 	fprintf(vcd->output, "$dumpvars\n");
 	for (int i = 0; i < vcd->signal_count; i++) {
+		if (    ( vcd->signal[i].size < 1 )
+			 || ( vcd->signal[i].alias == 0 ) ) {
+			// signal removed from list  and not replaced
+			continue;
+		}
 		avr_vcd_signal_t * s = &vcd->signal[i];
 		char out[48];
 		fprintf(vcd->output, "%s\n",
 				_avr_vcd_get_float_signal_text(s, out));
 	}
 	fprintf(vcd->output, "$end\n");
-	avr_cycle_timer_register(vcd->avr, vcd->period, _avr_vcd_timer, vcd);
+	if ( avr_cycle_timer_register(&(vcd->avr->cycle_timers), vcd->period, _avr_vcd_timer, vcd) < 0 ) {
+		AVR_LOG(vcd->avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+	}
 	return 0;
 }
 
@@ -561,8 +618,8 @@ int
 avr_vcd_stop(
 		avr_vcd_t * vcd)
 {
-	avr_cycle_timer_cancel(vcd->avr, _avr_vcd_timer, vcd);
-	avr_cycle_timer_cancel(vcd->avr, _avr_vcd_input_timer, vcd);
+	avr_cycle_timer_cancel(&(vcd->avr->cycle_timers), _avr_vcd_timer, vcd);
+	avr_cycle_timer_cancel(&(vcd->avr->cycle_timers), _avr_vcd_input_timer, vcd);
 
 	avr_vcd_flush_log(vcd);
 

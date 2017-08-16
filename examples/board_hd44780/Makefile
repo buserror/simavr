@@ -41,6 +41,7 @@ include ${simavr}/Makefile.common
 
 board = ${OBJ}/${target}.elf
 
+${board} : ${OBJ}/parts_logger.o
 ${board} : ${OBJ}/ac_input.o
 ${board} : ${OBJ}/hd44780.o
 ${board} : ${OBJ}/hd44780_glut.o

@@ -43,6 +43,7 @@ atmega1280_${target}.axf: ${simavr}/examples/shared/avr_twi_master.h
 board = ${OBJ}/${target}.elf
 
 ${board} : ${OBJ}/${target}.o
+${board} : ${OBJ}/parts_logger.o
 ${board} : ${OBJ}/i2c_eeprom.o
 
 ${target}: ${board}

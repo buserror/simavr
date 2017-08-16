@@ -49,6 +49,8 @@
 #define __HD44780_H__
 
 #include "sim_irq.h"
+#include "sim_cycle_timers.h"
+#include "parts_logger.h"
 
 enum {
     IRQ_HD44780_ALL = 0,	// Only if (msb) RW:E:RS:D7:D6:D5:D4 (lsb)  configured
@@ -94,7 +96,7 @@ enum {
 typedef struct hd44780_t
 {
 	avr_irq_t * irq;
-	struct avr_t * avr;
+	avr_cycle_timer_pool_t * cycle_timers;
 	int		w, h;				// width and height of the LCD
 
 	uint16_t cursor;			// offset in vram
@@ -106,6 +108,7 @@ typedef struct hd44780_t
 	uint8_t  readpins;
 
 	uint16_t flags;				// LCD flags ( HD44780_FLAG_*)
+	parts_logger_t logger;
 } hd44780_t;
 
 void
@@ -114,6 +117,17 @@ hd44780_init(
 		struct hd44780_t * b,
 		int width,
 		int height );
+
+void
+hd44780_initialize(
+		avr_irq_pool_t *irq_pool,
+		avr_cycle_timer_pool_t * cycle_timers,
+		struct hd44780_t * b,
+		int width,
+		int height );
+
+void hd44780_reset(hd44780_t * b);
+
 void
 hd44780_print(
 		struct hd44780_t *b);

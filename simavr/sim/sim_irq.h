@@ -100,6 +100,7 @@ avr_init_irq(
 		uint32_t base,
 		uint32_t count,
 		const char ** names /* optional */);
+
 //! Returns the current IRQ flags
 uint8_t
 avr_irq_get_flags(

@@ -22,13 +22,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "sim_cycle_timers.h"
 #include "avr_flash.h"
 
-static avr_cycle_count_t avr_progen_clear(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t avr_progen_clear(avr_cycle_timer_pool_t * pool, avr_cycle_count_t when, void * param)
 {
 	avr_flash_t * p = (avr_flash_t *)param;
 	avr_regbit_clear(p->io.avr, p->selfprgen);
-	AVR_LOG(avr, LOG_WARNING, "FLASH: avr_progen_clear - SPM not received, clearing PRGEN bit\n");
+	AVR_LOG(p->io.avr, LOG_WARNING, "FLASH: avr_progen_clear - SPM not received, clearing PRGEN bit\n");
 	return 0;
 }
 
@@ -42,7 +43,9 @@ static void avr_flash_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void * p
 //	printf("** avr_flash_write %02x\n", v);
 
 	if (avr_regbit_get(avr, p->selfprgen))
-		avr_cycle_timer_register(avr, 4, avr_progen_clear, p); // 4 cycles is very little!
+		if ( avr_cycle_timer_register(&(avr->cycle_timers), 4, avr_progen_clear, p) < 0 ) {; // 4 cycles is very little!
+			AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+		}
 }
 
 static void avr_flash_clear_temppage(avr_flash_t *p)
@@ -68,7 +71,7 @@ static int avr_flash_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param
 
 //	printf("AVR_IOCTL_FLASH_SPM %02x Z:%04x R01:%04x\n", avr->data[p->r_spm], z,r01);
 	if (avr_regbit_get(avr, p->selfprgen)) {
-		avr_cycle_timer_cancel(avr, avr_progen_clear, p);
+		avr_cycle_timer_cancel(&(avr->cycle_timers), avr_progen_clear, p);
 
 		if (avr_regbit_get(avr, p->pgers)) {
 			z &= ~1;

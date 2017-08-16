@@ -136,7 +136,7 @@ avr_timer_comp_on_tov(
 
 static avr_cycle_count_t
 avr_timer_compa(
-		struct avr_t * avr,
+		struct avr_cycle_timer_pool_t * pool,
 		avr_cycle_count_t when,
 		void * param)
 {
@@ -145,7 +145,7 @@ avr_timer_compa(
 
 static avr_cycle_count_t
 avr_timer_compb(
-		struct avr_t * avr,
+		struct avr_cycle_timer_pool_t * pool,
 		avr_cycle_count_t when,
 		void * param)
 {
@@ -154,7 +154,7 @@ avr_timer_compb(
 
 static avr_cycle_count_t
 avr_timer_compc(
-		struct avr_t * avr,
+		struct avr_cycle_timer_pool_t * pool,
 		avr_cycle_count_t when,
 		void * param)
 {
@@ -208,7 +208,7 @@ avr_timer_irq_ext_clock(
 				continue; // ocra used to define TOP
 		}
 		if (p->comp[compi].comp_cycles && (p->tov_base == p->comp[compi].comp_cycles)) {
-				dispatch[compi](avr, avr->cycle, param);
+				dispatch[compi](&(avr->cycle_timers), avr->clock.cycle, param);
 			if (p->wgm_op_mode_kind == avr_timer_wgm_ctc)
 				p->tov_base = 0;
 		}
@@ -278,7 +278,7 @@ avr_timer_irq_ext_clock(
 // timer overflow
 static avr_cycle_count_t
 avr_timer_tov(
-		struct avr_t * avr,
+		avr_cycle_timer_pool_t * pool,
 		avr_cycle_count_t when,
 		void * param)
 {
@@ -299,7 +299,7 @@ avr_timer_tov(
 	}
 
 	if (!start)
-		avr_raise_interrupt(avr, &p->overflow);
+		avr_raise_interrupt(p->io.avr, &p->overflow);
 	p->tov_base = when;
 
 	static const avr_cycle_timer_t dispatch[AVR_TIMER_COMP_COUNT] =
@@ -307,13 +307,15 @@ avr_timer_tov(
 
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
 		if (p->comp[compi].comp_cycles) {
-			if (p->comp[compi].comp_cycles < p->tov_cycles && p->comp[compi].comp_cycles >= (avr->cycle - when)) {
+			if (p->comp[compi].comp_cycles < p->tov_cycles && p->comp[compi].comp_cycles >= (p->io.avr->clock.cycle - when)) {
 				avr_timer_comp_on_tov(p, when, compi);
-				avr_cycle_timer_register(avr,
-					p->comp[compi].comp_cycles - (avr->cycle - next),
-					dispatch[compi], p);
+				if ( avr_cycle_timer_register(&(p->io.avr->cycle_timers),
+					p->comp[compi].comp_cycles - (p->io.avr->clock.cycle - next),
+					dispatch[compi], p) < 0 ) {
+					AVR_LOG(p->io.avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+				}
 			} else if (p->tov_cycles == p->comp[compi].comp_cycles && !start)
-				dispatch[compi](avr, when, param);
+				dispatch[compi](&(p->io.avr->cycle_timers), when, param);
 		}
 	}
 
@@ -329,7 +331,7 @@ _avr_timer_get_current_tcnt(
 			(p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_VIRT)
 			) {
 		if (p->tov_cycles) {
-			uint64_t when = avr->cycle - p->tov_base;
+			uint64_t when = avr->clock.cycle - p->tov_base;
 
 			return (when * (((uint32_t)p->tov_top)+1)) / p->tov_cycles;
 		}
@@ -372,10 +374,10 @@ avr_timer_cancel_all_cycle_timers(
 	}
 
 
-	avr_cycle_timer_cancel(avr, avr_timer_tov, timer);
-	avr_cycle_timer_cancel(avr, avr_timer_compa, timer);
-	avr_cycle_timer_cancel(avr, avr_timer_compb, timer);
-	avr_cycle_timer_cancel(avr, avr_timer_compc, timer);
+	avr_cycle_timer_cancel(&(avr->cycle_timers), avr_timer_tov, timer);
+	avr_cycle_timer_cancel(&(avr->cycle_timers), avr_timer_compa, timer);
+	avr_cycle_timer_cancel(&(avr->cycle_timers), avr_timer_compb, timer);
+	avr_cycle_timer_cancel(&(avr->cycle_timers), avr_timer_compc, timer);
 }
 
 static void
@@ -412,9 +414,11 @@ avr_timer_tcnt_write(
 
 		// this reset the timers bases to the new base
 		if (p->tov_cycles > 1) {
-			avr_cycle_timer_register(avr, p->tov_cycles - cycles, avr_timer_tov, p);
+			if ( avr_cycle_timer_register(&(avr->cycle_timers), p->tov_cycles - cycles, avr_timer_tov, p) < 0 ) {
+				AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+			}
 			p->tov_base = 0;
-			avr_timer_tov(avr, avr->cycle - cycles, p);
+			avr_timer_tov(&(avr->cycle_timers), avr->clock.cycle - cycles, p);
 		}
 
 		//	tcnt = ((avr->cycle - p->tov_base) * p->tov_top) / p->tov_cycles;
@@ -445,7 +449,7 @@ avr_timer_configure(
 
 	if (!use_ext_clock) {
 		if (prescaler != 0)
-			resulting_clock = (float)avr->frequency / prescaler;
+			resulting_clock = (float)avr->clock.frequency / prescaler;
 		p->tov_cycles = prescaler * (top+1);
 		p->tov_cycles_fract = 0.0f;
 		tov_cycles_exact = p->tov_cycles;
@@ -456,9 +460,8 @@ avr_timer_configure(
 		} else {
 			if (prescaler != 0)
 				resulting_clock = p->ext_clock / prescaler;
-			tov_cycles_exact = (float)avr->frequency / p->ext_clock * prescaler * (top+1);
-			// p->tov_cycles = round(tov_cycles_exact); -- don't want libm!
-			p->tov_cycles = tov_cycles_exact + .5f; // Round to integer
+			tov_cycles_exact = (float)avr->clock.frequency / p->ext_clock * prescaler * (top+1);
+			p->tov_cycles = tov_cycles_exact + 0.5f; 
 			p->tov_cycles_fract = tov_cycles_exact - p->tov_cycles;
 		}
 	}
@@ -467,8 +470,8 @@ avr_timer_configure(
 		if (!use_ext_clock || virt_ext_clock) {
 			// clocked internally
 			AVR_LOG(avr, LOG_TRACE, "TIMER: %s-%c TOP %.2fHz = %d cycles = %dusec\n", // TOP there means Timer Overflows Persec ?
-					__FUNCTION__, p->name, ((float)avr->frequency / tov_cycles_exact),
-					(int)p->tov_cycles, (int)avr_cycles_to_usec(avr, p->tov_cycles));
+					__FUNCTION__, p->name, ((float)avr->clock.frequency / tov_cycles_exact),
+					(int)p->tov_cycles, (int)avr_cycles_to_usec(&(avr->clock), p->tov_cycles));
 		} else {
 			// clocked externally from the Tn pin
 			AVR_LOG(avr, LOG_TRACE, "TIMER: %s-%c use ext clock, TOP=%d\n",
@@ -484,7 +487,7 @@ avr_timer_configure(
 		//uint32_t comp_cycles = clock * (ocr + 1);
 		uint32_t comp_cycles;
 		if (virt_ext_clock)
-			comp_cycles = (uint32_t)((float)avr->frequency / p->ext_clock * prescaler * (ocr+1));
+			comp_cycles = (uint32_t)((float)avr->clock.frequency / p->ext_clock * prescaler * (ocr+1));
 		else
 			comp_cycles = prescaler * (ocr + 1);
 
@@ -513,17 +516,21 @@ avr_timer_configure(
 	if (!use_ext_clock || virt_ext_clock) {
 		if (p->tov_cycles > 1) {
 			if (reset) {
-				avr_cycle_timer_register(avr, p->tov_cycles, avr_timer_tov, p);
+				if ( avr_cycle_timer_register(&(avr->cycle_timers), p->tov_cycles, avr_timer_tov, p) < 0 ) {
+					AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+				}
 				// calling it once, with when == 0 tells it to arm the A/B/C timers if needed
 				p->tov_base = 0;
-				avr_timer_tov(avr, avr->cycle, p);
+				avr_timer_tov(&(avr->cycle_timers), avr->clock.cycle, p);
 				p->phase_accumulator = 0.0f;
 			} else {
 				uint64_t orig_tov_base = p->tov_base;
-				avr_cycle_timer_register(avr, p->tov_cycles - (avr->cycle - orig_tov_base), avr_timer_tov, p);
+				if ( avr_cycle_timer_register(&(avr->cycle_timers), p->tov_cycles - (avr->clock.cycle - orig_tov_base), avr_timer_tov, p) < 0 ) {
+					AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+				}
 				// calling it once, with when == 0 tells it to arm the A/B/C timers if needed
 				p->tov_base = 0;
-				avr_timer_tov(avr, orig_tov_base, p);
+				avr_timer_tov(&(avr->cycle_timers), orig_tov_base, p);
 			}
 		}
 	} else {
@@ -777,12 +784,12 @@ avr_timer_ioctl(
 		float new_freq = *((float*)io_param);
 		if (new_freq >= 0.0f) {
 			if (p->as2.reg) {
-				if (new_freq <= port->avr->frequency/4) {
+				if (new_freq <= port->avr->clock.frequency/4) {
 					p->ext_clock = new_freq;
 					res = 0;
 				}
 			} else if (p->ext_clock_pin.reg) {
-				if (new_freq <= port->avr->frequency/2) {
+				if (new_freq <= port->avr->clock.frequency/2) {
 					p->ext_clock = new_freq;
 					res = 0;
 				}

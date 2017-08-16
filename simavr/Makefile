@@ -21,6 +21,7 @@ SIMAVR_VERSION	:= ${shell \
 	git describe --abbrev=0 --tags || \
 	echo "unknown" }
 SIMAVR_REVISION	= 2
+AVR_LIBC_VERSION = "1.8.0svn"
 
 target	= run_avr
 
@@ -34,6 +35,17 @@ all:
 	$(MAKE) libsimavr ${target}
 
 include ../Makefile.common
+
+AVR_LIBC_VERSION_INFO := $(shell \
+( echo "\#include </usr/lib/avr/include/avr/version.h> "; \
+echo "__AVR_LIBC_VERSION_STRING__ __AVR_LIBC_MAJOR__.__AVR_LIBC_MINOR__.__AVR_LIBC_REVISION__" ) | ${AVR}gcc -xc - -E | sed -n 'x;/^\s*$$/{x;/^.*"<stdin>"\?\s*2\s*/{h;};d;};x;s/\s*\.\s*/./g;p;')
+
+GNUC_VERSION_INFO := $(shell \
+( echo "\#include </usr/lib/avr/include/avr/version.h>"; \
+echo "__VERSION__ __GNUC__.__GNUC_MINOR__.__GNUC_PATCHLEVEL__"; ) | ${AVR}gcc -xc - -E | sed -n 'x;/^\s*$$/{x;/^.*"<stdin>"\?\s*2\s*/{h;};d;};x;s/\s\.\s*/./g;p;' )
+AVR_LIBC_VERSION = $(firstword ${AVR_LIBC_VERSION_INFO})
+GNUC_VERSION = $(firstword ${GNUC_VERSION_INFO})
+
 
 cores	:= ${wildcard cores/*.c}
 sim		:= ${wildcard sim/sim_*.c} ${wildcard sim/avr_*.c}
@@ -51,7 +63,6 @@ IPATH	+= ../../shared
 #
 ${OBJ}/libsimavr.a	:	${sim_o}
 
-
 libsimavr	: config ${OBJ}/libsimavr.a
 # shared library won't work that easily on non-linux
 ifeq (${shell uname}, Linux)
@@ -61,8 +72,20 @@ endif
 ${OBJ}/${target}.elf	: libsimavr
 ${OBJ}/${target}.elf	: ${OBJ}/${target}.o
 
-${target}	: ${OBJ}/${target}.elf
+versioninfo.h:
+	echo "#ifndef SIMAVR_VERSION" > $@
+	echo "#define SIMAVR_VERSION \"` echo '${SIMAVR_VERSION}' | sed 's/^[^0-9]\+//;'`\"" >> $@
+	echo "#endif" >> $@
+	echo "#ifndef SIMAVR_AVR_LIBC_VERSION" >> $@
+	echo "#define SIMAVR_AVR_LIBC_VERSION \"${AVR_LIBC_VERSION}\"" >> $@
+	echo "#endif" >> $@
+	echo "#ifndef GNUC_VERSION" >> $@
+	echo "#define GNUC_VERSION \"${GNUC_VERSION}\"" >> $@
+	echo "#endif" >> $@
 
+
+
+${target}	: ${OBJ}/${target}.elf
 # FIXME uname -o doesn't work on BSD
 #ifeq (${shell uname -o}, Msys)
 #	ln -sf $< $@.exe
@@ -86,6 +109,8 @@ install : all
 		simavr-avr.pc >$(DESTDIR)/lib/pkgconfig/simavr-avr.pc
 	sed -e "s|PREFIX|${PREFIX}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
 		simavr.pc >$(DESTDIR)/lib/pkgconfig/simavr.pc
+	sed -e "s|PREFIX|${PREFIX}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
+		simavr-parts.pc >$(DESTDIR)/lib/pkgconfig/simavr-parts.pc
 ifeq (${shell uname}, Linux)
 	$(INSTALL) ${OBJ}/libsimavr.so.1 $(DESTDIR)/lib/
 	ln -sf libsimavr.so.1 $(DESTDIR)/lib/libsimavr.so
@@ -118,7 +143,7 @@ debian:
         usr/bin ) && \
 	echo Done
 
-config: ${OBJ}/cores.deps sim_core_config.h sim_core_decl.h
+config: ${OBJ}/cores.deps sim_core_config.h sim_core_decl.h versioninfo.h
 
 #
 # this tries to preprocess all the cores and decide
@@ -180,3 +205,6 @@ sim_core_decl.h: sim_core_config.h $(cores) Makefile
 	) >sim_core_decl.h
 
 -include ${OBJ}/cores.deps
+
+
+.PHONY: versioninfo.h

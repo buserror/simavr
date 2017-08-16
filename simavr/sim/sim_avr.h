@@ -153,6 +153,25 @@ typedef void (*avr_run_t)(
 #define AVR_FUSE_EXT	2
 
 /*
+ * Main AVR cycle_clock describing the timing of the AVR core, helps to
+ * dis entangle AVR core and parts attached to it as not the whole AVR 
+ * interna need to be passed to cycle_timer callbacks of attached parts.
+ * All internal components store a handle to the AVR core they belong to
+ * anyway
+ */
+
+
+typedef struct avr_clock_t {
+	uint32_t			frequency;	// frequency we are running at
+	avr_cycle_count_t	cycle;		// current cycle
+
+	// these next two allow the core to freely run between cycle timers and also allows
+	// for a maximum run cycle limit... run_cycle_count is set during cycle timer processing.
+	avr_cycle_count_t	run_cycle_count;	// cycles to run before next timer
+	avr_cycle_count_t	run_cycle_limit;	// maximum run cycle interval limit
+} avr_clock_t, * avr_clock_p;
+
+/*
  * Main AVR instance. Some of these fields are set by the AVR "Core" definition files
  * the rest is runtime data (as little as possible)
  */
@@ -181,10 +200,15 @@ typedef struct avr_t {
 	uint32_t			codeend;
 
 	int					state;		// stopped, running, sleeping
+#if 0
 	uint32_t			frequency;	// frequency we are running at
+#endif
 	// mostly used by the ADC for now
 	uint32_t			vcc,avcc,aref; // (optional) voltages in millivolts
 
+	avr_clock_t clock;
+
+#if 0
 	// cycles gets incremented when sleeping and when running; it corresponds
 	// not only to "cycles that runs" but also "cycles that might have run"
 	// like, sleeping.
@@ -194,6 +218,7 @@ typedef struct avr_t {
 	// for a maximum run cycle limit... run_cycle_count is set during cycle timer processing.
 	avr_cycle_count_t	run_cycle_count;	// cycles to run before next timer
 	avr_cycle_count_t	run_cycle_limit;	// maximum run cycle interval limit
+#endif
 
 	/**
 	 * Sleep requests are accumulated in sleep_usec until the minimum sleep value
@@ -207,6 +232,11 @@ typedef struct avr_t {
 	void (*init)(struct avr_t * avr);
 	// called at reset time
 	void (*reset)(struct avr_t * avr);
+	// called when a severe error requires to stop the simulation immediately
+	// usually this is hardwired by avr_init to abort() but may be rewired 
+	// to custom abort function
+	void (*abort)(void * param);
+	void * abortparam;
 
 	struct {
 		// called at init time (for special purposes like using a
@@ -387,6 +417,18 @@ avr_run(
 void
 avr_terminate(
 		avr_t * avr);
+
+// call abort handler to force abort of simulation
+// if not rewired by custom code this will trigger a call to 
+// abort() function
+void
+avr_abort(avr_t * avr);
+
+// used to register an abort handler diverting the abort to allow
+// to cleanup resources before simulator is killed, to reset to
+// default abort() function set handler to NULL
+void
+avr_register_abort_handler(avr_t * avr,void (*handler)(void * param),void * param);
 
 // set an IO register to receive commands from the AVR firmware
 // it's optional, and uses the ELF tags

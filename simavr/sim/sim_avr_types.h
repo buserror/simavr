@@ -30,6 +30,8 @@ extern "C" {
 #include <stdint.h>
 #include <inttypes.h>
 
+#define AVR_CYCLE_COUNT_MAX UINT64_MAX
+
 typedef uint64_t	avr_cycle_count_t;
 typedef uint16_t	avr_io_addr_t;
 
@@ -48,7 +50,8 @@ typedef struct avr_regbit_t {
 // printf() conversion specifier for avr_cycle_count_t
 #define PRI_avr_cycle_count PRIu64
 
-struct avr_t;
+typedef struct avr_clock_t avr_clock_t;
+typedef struct avr_t avr_t;
 
 #ifdef __cplusplus
 };

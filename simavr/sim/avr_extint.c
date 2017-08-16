@@ -32,7 +32,7 @@ typedef struct avr_extint_poll_context_t {
 } avr_extint_poll_context_t;
 
 static avr_cycle_count_t avr_extint_poll_level_trig(
-		struct avr_t * avr,
+		struct avr_cycle_timer_pool_t * pool,
 		avr_cycle_count_t when,
 		void * param)
 {
@@ -41,16 +41,16 @@ static avr_cycle_count_t avr_extint_poll_level_trig(
 
 	char port = p->eint[poll->eint_no].port_ioctl & 0xFF;
 	avr_ioport_state_t iostate;
-	if (avr_ioctl(avr, AVR_IOCTL_IOPORT_GETSTATE( port ), &iostate) < 0)
+	if (avr_ioctl(p->io.avr, AVR_IOCTL_IOPORT_GETSTATE( port ), &iostate) < 0)
 		goto terminate_poll;
 	uint8_t bit = ( iostate.pin >> p->eint[poll->eint_no].port_pin ) & 1;
 	if (bit)
 		goto terminate_poll; // Only poll while pin level remains low
 
-	if (avr->sreg[S_I]) {
-		uint8_t raised = avr_regbit_get(avr, p->eint[poll->eint_no].vector.raised) || p->eint[poll->eint_no].vector.pending;
+	if (p->io.avr->sreg[S_I]) {
+		uint8_t raised = avr_regbit_get(p->io.avr, p->eint[poll->eint_no].vector.raised) || p->eint[poll->eint_no].vector.pending;
 		if (!raised)
-			avr_raise_interrupt(avr, &p->eint[poll->eint_no].vector);
+			avr_raise_interrupt(p->io.avr, &p->eint[poll->eint_no].vector);
 	}
 
 	return when+1;
@@ -150,7 +150,9 @@ static void avr_extint_irq_notify(struct avr_irq_t * irq, uint32_t value, void *
 						if (poll) {
 							poll->eint_no = irq->irq;
 							poll->extint = p;
-							avr_cycle_timer_register(avr, 1, avr_extint_poll_level_trig, poll);
+							if ( avr_cycle_timer_register(&(avr->cycle_timers), 1, avr_extint_poll_level_trig, poll) < 0 ) {
+								AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+							}
 						}
 					}
 				}

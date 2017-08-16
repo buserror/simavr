@@ -114,6 +114,19 @@ avr_vcd_add_signal(
 		int signal_bit_size,
 		const char * name );
 
+int
+avr_vcd_remove_signal(
+	avr_vcd_t * vcd,
+	int index,
+	avr_irq_t * signal_irq);
+
+int
+avr_vcd_add_sig(
+		avr_vcd_t * vcd,
+		avr_irq_t * signal_irq,
+		int signal_bit_size,
+		const char * name );
+
 // Starts recording the signal value into the file
 int
 avr_vcd_start(

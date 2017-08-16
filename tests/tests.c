@@ -46,7 +46,7 @@ void tests_init(int argc, char **argv) {
 }
 
 static avr_cycle_count_t
-cycle_timer_longjmp_cb(struct avr_t *avr, avr_cycle_count_t when, void *param) {
+cycle_timer_longjmp_cb(struct avr_cycle_timer_pool_t *pool, avr_cycle_count_t when, void *param) {
 	jmp_buf *jmp = param;
 	longjmp(*jmp, LJR_CYCLE_TIMER);
 	return 0;	// clear warning
@@ -71,7 +71,7 @@ static int my_avr_run(avr_t * avr)
 
 	// run the cycle timers, get the suggested sleep time
 	// until the next timer is due
-	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
+	avr_cycle_count_t sleep = avr_cycle_timer_process(&(avr->cycle_timers));
 
 	avr->pc = new_pc;
 
@@ -88,7 +88,7 @@ static int my_avr_run(avr_t * avr)
 		// uint32_t usec = avr_cycles_to_usec(avr, sleep);
 		// printf("sleep usec %d cycles %d\n", usec, sleep);
 		// usleep(usec);
-		avr->cycle += 1 + sleep;
+		avr->clock.cycle += 1 + sleep;
 	}
 	// Interrupt servicing might change the PC too, during 'sleep'
 	if (avr->state == cpu_Running || avr->state == cpu_Sleeping)
@@ -122,10 +122,10 @@ int tests_run_test(avr_t *avr, unsigned long run_usec) {
 	jmp_buf jmp;
 	special_deinit_jmpbuf = &jmp;
 	avr->custom.deinit = special_deinit_longjmp_cb;
-	avr_cycle_timer_register_usec(avr, run_usec,
+	avr_cycle_timer_register_usec(&(avr->cycle_timers), run_usec,
 				      cycle_timer_longjmp_cb, &jmp);
 	int reason = setjmp(jmp);
-	tests_cycle_count = avr->cycle;
+	tests_cycle_count = avr->clock.cycle;
 	if (reason == 0) {
 		// setjmp() returned directly, run avr
 		while (1)

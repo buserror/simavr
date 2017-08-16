@@ -99,7 +99,7 @@ uart_pty_flush_incoming(
 
 avr_cycle_count_t
 uart_pty_flush_timer(
-		struct avr_t * avr,
+		struct avr_cycle_timer_pool_t * pool,
 		avr_cycle_count_t when,
 		void * param)
 {
@@ -107,7 +107,7 @@ uart_pty_flush_timer(
 
 	uart_pty_flush_incoming(p);
 	/* always return a cycle NUMBER not a cycle count */
-	return p->xon ? when + avr_hz_to_cycles(p->avr, 1000) : 0;
+	return p->xon ? when + avr_hz_to_cycles(pool->clock, 1000) : 0;
 }
 
 /*
@@ -128,7 +128,7 @@ uart_pty_xon_hook(
 
 	// if the buffer is not flushed, try to do it later
 	if (p->xon)
-			avr_cycle_timer_register(p->avr, avr_hz_to_cycles(p->avr, 1000),
+			avr_cycle_timer_register(p->cycle_timers, avr_hz_to_cycles(p->cycle_timers->clock, 1000),
 						uart_pty_flush_timer, param);
 }
 
@@ -144,7 +144,7 @@ uart_pty_xoff_hook(
 	uart_pty_t * p = (uart_pty_t*)param;
 	TRACE(if (p->xon) printf("uart_pty_xoff_hook\n");)
 	p->xon = 0;
-	avr_cycle_timer_cancel(p->avr, uart_pty_flush_timer, param);
+	avr_cycle_timer_cancel(p->cycle_timers, uart_pty_flush_timer, param);
 }
 
 static void *
@@ -225,8 +225,8 @@ uart_pty_thread(
 }
 
 static const char * irq_names[IRQ_UART_PTY_COUNT] = {
-	[IRQ_UART_PTY_BYTE_IN] = "8<uart_pty.in",
-	[IRQ_UART_PTY_BYTE_OUT] = "8>uart_pty.out",
+	[IRQ_UART_PTY_BYTE_IN] = "8<pty.uart.in",
+	[IRQ_UART_PTY_BYTE_OUT] = "8>pty.uart.out",
 };
 
 void
@@ -234,11 +234,23 @@ uart_pty_init(
 		struct avr_t * avr,
 		uart_pty_t * p)
 {
-	memset(p, 0, sizeof(*p));
+	uart_pty_initialize(&avr->irq_pool,&avr->cycle_timers,p);
+}
 
-	p->avr = avr;
-	p->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_UART_PTY_COUNT, irq_names);
+void
+uart_pty_initialize(
+		avr_irq_pool_t * irq_pool,
+		avr_cycle_timer_pool_t * cycle_timers,
+		uart_pty_t * p)
+{
+	memset(p, 0, sizeof(*p));
+	p->cycle_timers = cycle_timers;
+	p->irq = avr_alloc_irq(irq_pool, 0, IRQ_UART_PTY_COUNT, irq_names);
 	avr_irq_register_notify(p->irq + IRQ_UART_PTY_BYTE_IN, uart_pty_in_hook, p);
+	uart_pty_start(p);
+}
+
+void uart_pty_start(uart_pty_t * p) {
 
 	int hastap = (getenv("SIMAVR_UART_TAP") && atoi(getenv("SIMAVR_UART_TAP"))) ||
 			(getenv("SIMAVR_UART_XTERM") && atoi(getenv("SIMAVR_UART_XTERM"))) ;
@@ -280,19 +292,20 @@ uart_pty_stop(
 
 void
 uart_pty_connect(
+		struct avr_t * avr,
 		uart_pty_t * p,
 		char uart)
 {
 	// disable the stdio dump, as we are sending binary there
 	uint32_t f = 0;
-	avr_ioctl(p->avr, AVR_IOCTL_UART_GET_FLAGS(uart), &f);
+	avr_ioctl(avr, AVR_IOCTL_UART_GET_FLAGS(uart), &f);
 	f &= ~AVR_UART_FLAG_STDIO;
-	avr_ioctl(p->avr, AVR_IOCTL_UART_SET_FLAGS(uart), &f);
+	avr_ioctl(avr, AVR_IOCTL_UART_SET_FLAGS(uart), &f);
 
-	avr_irq_t * src = avr_io_getirq(p->avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_OUTPUT);
-	avr_irq_t * dst = avr_io_getirq(p->avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_INPUT);
-	avr_irq_t * xon = avr_io_getirq(p->avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_OUT_XON);
-	avr_irq_t * xoff = avr_io_getirq(p->avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_OUT_XOFF);
+	avr_irq_t * src = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_OUTPUT);
+	avr_irq_t * dst = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_INPUT);
+	avr_irq_t * xon = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_OUT_XON);
+	avr_irq_t * xoff = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_OUT_XOFF);
 	if (src && dst) {
 		avr_connect_irq(src, p->irq + IRQ_UART_PTY_BYTE_IN);
 		avr_connect_irq(p->irq + IRQ_UART_PTY_BYTE_OUT, dst);

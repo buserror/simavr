@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
 	avr->custom.deinit = avr_special_deinit;
 	avr->custom.data = &flash_data;
 	avr_init(avr);
-	avr->frequency = freq;
+	avr->clock.frequency = freq;
 
 	memcpy(avr->flash + boot_base, boot, boot_size);
 	free(boot);
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 	}
 
 	uart_pty_init(avr, &uart_pty);
-	uart_pty_connect(&uart_pty, '0');
+	uart_pty_connect(avr,&uart_pty, '0');
 
 	while (1) {
 		int state = avr_run(avr);

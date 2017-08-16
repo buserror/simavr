@@ -28,6 +28,7 @@
 #define __AC_INPUT_H__
 
 #include "sim_irq.h"
+#include "parts_logger.h"
 
 
 enum {
@@ -37,8 +38,8 @@ enum {
 
 typedef struct ac_input_t {
     avr_irq_t * irq;
-    struct avr_t * avr;
     uint8_t value;
+	parts_logger_t logger;
 } ac_input_t;
 
 void
@@ -46,4 +47,11 @@ ac_input_init(
 			struct avr_t * avr,
 			ac_input_t * b);
 
+void
+ac_input_initialize(
+			avr_irq_pool_t * irq_pool,
+			avr_cycle_timer_pool_t * cycle_timers,
+			ac_input_t * b);
+
+void ac_reset(avr_cycle_timer_pool_t * cycle_timers,ac_input_t * b);
 #endif

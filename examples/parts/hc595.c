@@ -64,11 +64,11 @@ static void hc595_reset_hook(struct avr_irq_t * irq, uint32_t value, void * para
 }
 
 static const char * irq_names[IRQ_HC595_COUNT] = {
-		[IRQ_HC595_SPI_BYTE_IN] = "8<hc595.in",
-		[IRQ_HC595_SPI_BYTE_OUT] = "8>hc595.chain",
-		[IRQ_HC595_IN_LATCH] = "<hc595.latch",
-		[IRQ_HC595_IN_RESET] = "<hc595.reset",
-		[IRQ_HC595_OUT] = "8>hc595.out",
+		[IRQ_HC595_SPI_BYTE_IN] = "8<hc595.spi.in",
+		[IRQ_HC595_SPI_BYTE_OUT] = "8>hc595.spi.chain",
+		[IRQ_HC595_IN_LATCH] = "<hc595.input.latch",
+		[IRQ_HC595_IN_RESET] = "<hc595.input.reset",
+		[IRQ_HC595_OUT] = "8>hc595.output.out",
 };
 
 void
@@ -76,11 +76,23 @@ hc595_init(
 		struct avr_t * avr,
 		hc595_t *p)
 {
-	p->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_HC595_COUNT, irq_names);
+	hc595_initialize(&avr->irq_pool,p);
+}
+
+void
+hc595_initialize(
+		avr_irq_pool_t * irq_pool,
+		hc595_t *p)
+{
+	p->logger.level = LOG_ERROR;
+	p->irq = avr_alloc_irq(irq_pool, 0, IRQ_HC595_COUNT, irq_names);
 	avr_irq_register_notify(p->irq + IRQ_HC595_SPI_BYTE_IN, hc595_spi_in_hook, p);
 	avr_irq_register_notify(p->irq + IRQ_HC595_IN_LATCH, hc595_latch_hook, p);
 	avr_irq_register_notify(p->irq + IRQ_HC595_IN_RESET, hc595_reset_hook, p);
+	hc595_reset(p); 
+}
 	
+void hc595_reset(hc595_t * p) {
 	p->latch = p->value = 0;
 }
 

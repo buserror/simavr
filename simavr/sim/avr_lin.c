@@ -63,7 +63,7 @@ avr_lin_baud_write(
 	//uint32_t baud = avr->frequency / (lbt * (lbrr + 1));
 	uint32_t word_size = 1 /*start*/+ 8 /*data bits*/+ 1 /*parity*/+ 1 /*stop*/;
 	int cycles_per_bit = lbt * (lbrr + 1);
-	double baud = ((double)avr->frequency) / cycles_per_bit; // can be less than 1
+	double baud = ((double)avr->clock.frequency) / cycles_per_bit; // can be less than 1
 	p->uart.cycles_per_byte = cycles_per_bit * word_size;
 
 	AVR_LOG(avr, LOG_TRACE, "LIN: UART configured to %04x/%04x = %.4f bps, 8 data 1 stop\n", lbt,
@@ -71,7 +71,7 @@ avr_lin_baud_write(
 
 	//p->uart.cycles_per_byte = 1000000 / (baud / word_size);
 	AVR_LOG(avr, LOG_TRACE, "LIN: Roughly %d usec per byte\n",
-			avr_cycles_to_usec(avr, p->uart.cycles_per_byte));
+			avr_cycles_to_usec(&(avr->clock), p->uart.cycles_per_byte));
 }
 
 static void

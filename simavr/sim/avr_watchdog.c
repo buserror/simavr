@@ -30,19 +30,19 @@ static void avr_watchdog_run_callback_software_reset(avr_t * avr)
 }
 
 static avr_cycle_count_t avr_watchdog_timer(
-		struct avr_t * avr, avr_cycle_count_t when, void * param)
+		struct avr_cycle_timer_pool_t * pool, avr_cycle_count_t when, void * param)
 {
 	avr_watchdog_t * p = (avr_watchdog_t *)param;
 
-	if (avr_regbit_get(avr, p->watchdog.enable)) {
-		AVR_LOG(avr, LOG_TRACE, "WATCHDOG: timer fired.\n");
-		avr_raise_interrupt(avr, &p->watchdog);
+	if (avr_regbit_get(p->io.avr, p->watchdog.enable)) {
+		AVR_LOG(p->io.avr, LOG_TRACE, "WATCHDOG: timer fired.\n");
+		avr_raise_interrupt(p->io.avr, &p->watchdog);
 		return when + p->cycle_count;
-	} else if (avr_regbit_get(avr, p->wde)) {
-		AVR_LOG(avr, LOG_TRACE,
+	} else if (avr_regbit_get(p->io.avr, p->wde)) {
+		AVR_LOG(p->io.avr, LOG_TRACE,
 				"WATCHDOG: timer fired without interrupt. Resetting\n");
 
-		p->reset_context.avr_run = avr->run;
+		p->reset_context.avr_run = p->io.avr->run;
 		p->reset_context.wdrf = 1;
 
 		/* Ideally we would perform a reset here via 'avr_reset'
@@ -51,14 +51,14 @@ static avr_cycle_count_t avr_watchdog_timer(
 		 * back which can safely perform the reset for us...  During reset,
 		 * the previous callback can be restored and safely resume.
 		 */
-		avr->run = avr_watchdog_run_callback_software_reset;
+		p->io.avr->run = avr_watchdog_run_callback_software_reset;
 	}
 
 	return 0;
 }
 
 static avr_cycle_count_t avr_wdce_clear(
-		struct avr_t * avr, avr_cycle_count_t when, void * param)
+		struct avr_cycle_timer_pool_t * pool, avr_cycle_count_t when, void * param)
 {
 	avr_watchdog_t * p = (avr_watchdog_t *)param;
 	avr_regbit_clear(p->io.avr, p->wdce);
@@ -75,7 +75,7 @@ static void avr_watchdog_set_cycle_count_and_timer(
 	uint8_t wdp = avr_regbit_get_array(avr, p->wdp, 4);
 
 	p->cycle_count = 2048 << wdp;
-	p->cycle_count = (p->cycle_count * avr->frequency) / 128000;
+	p->cycle_count = (p->cycle_count * avr->clock.frequency) / 128000;
 
 	uint8_t wde = avr_regbit_get(avr, p->wde);
 	uint8_t wdie = avr_regbit_get(avr, p->watchdog.enable);
@@ -96,10 +96,12 @@ static void avr_watchdog_set_cycle_count_and_timer(
 				message[enable_changed][wdp_changed], 2048 << wdp,
 				1 << wdp, (int)p->cycle_count);
 
-		avr_cycle_timer_register(avr, p->cycle_count, avr_watchdog_timer, p);
+		if ( avr_cycle_timer_register(&(avr->cycle_timers), p->cycle_count, avr_watchdog_timer, p) < 0 ) {
+			AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+		}
 	} else if (enable_changed) {
 		AVR_LOG(avr, LOG_TRACE, "WATCHDOG: disabled\n");
-		avr_cycle_timer_cancel(avr, avr_watchdog_timer, p);
+		avr_cycle_timer_cancel(&(avr->cycle_timers), avr_watchdog_timer, p);
 	}
 }
 
@@ -137,7 +139,9 @@ static void avr_watchdog_write(
 		if (wdce_v && wde_v) {
 			avr_regbit_set(avr, p->wdce);
 
-			avr_cycle_timer_register(avr, 4, avr_wdce_clear, p);
+			if ( avr_cycle_timer_register(&(avr->cycle_timers), 4, avr_wdce_clear, p) < 0 ) {
+				AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+			}
 		} else {
 			if (wde_v) // wde can be set but not cleared
 				avr_regbit_set(avr, p->wde);
@@ -161,8 +165,10 @@ static int avr_watchdog_ioctl(
 	if (ctl == AVR_IOCTL_WATCHDOG_RESET) {
 		if (avr_regbit_get(p->io.avr, p->wde) ||
 				avr_regbit_get(p->io.avr, p->watchdog.enable))
-			avr_cycle_timer_register(p->io.avr, p->cycle_count,
-					avr_watchdog_timer, p);
+			if ( avr_cycle_timer_register(&(p->io.avr->cycle_timers), p->cycle_count,
+					avr_watchdog_timer, p)  < 0 ) {
+				AVR_LOG(p->io.avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+			}
 		res = 0;
 	}
 

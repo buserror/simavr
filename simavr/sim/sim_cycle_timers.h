@@ -39,8 +39,10 @@ extern "C" {
 
 #define MAX_CYCLE_TIMERS	64
 
+typedef struct avr_cycle_timer_pool_t avr_cycle_timer_pool_t;
+
 typedef avr_cycle_count_t (*avr_cycle_timer_t)(
-		struct avr_t * avr,
+		struct avr_cycle_timer_pool_t * cycle_timers,
 		avr_cycle_count_t when,
 		void * param);
 
@@ -71,27 +73,34 @@ typedef struct avr_cycle_timer_pool_t {
 	avr_cycle_timer_slot_t timer_slots[MAX_CYCLE_TIMERS];
 	avr_cycle_timer_slot_p timer_free;
 	avr_cycle_timer_slot_p timer;
+	avr_clock_t * clock;
 } avr_cycle_timer_pool_t, *avr_cycle_timer_pool_p;
 
 
 // register for calling 'timer' in 'when' cycles
+#if 0
 void
+#endif
+int
 avr_cycle_timer_register(
-		struct avr_t * avr,
+		struct avr_cycle_timer_pool_t * pool,
 		avr_cycle_count_t when,
 		avr_cycle_timer_t timer,
 		void * param);
 // register a timer to call in 'when' usec
+#if 0
 void
+#endif
+int
 avr_cycle_timer_register_usec(
-		struct avr_t * avr,
+		struct avr_cycle_timer_pool_t * pool,
 		uint32_t when,
 		avr_cycle_timer_t timer,
 		void * param);
 // cancel a previously set timer
 void
 avr_cycle_timer_cancel(
-		struct avr_t * avr,
+		struct avr_cycle_timer_pool_t * pool,
 		avr_cycle_timer_t timer,
 		void * param);
 /*
@@ -100,7 +109,7 @@ avr_cycle_timer_cancel(
  */
 avr_cycle_count_t
 avr_cycle_timer_status(
-		struct avr_t * avr,
+		struct avr_cycle_timer_pool_t * pool,
 		avr_cycle_timer_t timer,
 		void * param);
 
@@ -109,10 +118,10 @@ avr_cycle_timer_status(
 //
 avr_cycle_count_t
 avr_cycle_timer_process(
-		struct avr_t * avr);
+		struct avr_cycle_timer_pool_t * pool);
 void
 avr_cycle_timer_reset(
-		struct avr_t * avr);
+		struct avr_cycle_timer_pool_t * pool);
 
 #ifdef __cplusplus
 };

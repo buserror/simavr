@@ -41,6 +41,8 @@
 #define __SSD1306_VIRT_H__
 
 #include "sim_irq.h"
+#include "sim_avr.h"
+#include "parts_logger.h"
 
 #define SSD1306_VIRT_DATA			1
 #define SSD1306_VIRT_INSTRUCTION 		0
@@ -148,7 +150,6 @@ struct ssd1306_virt_cursor_t
 typedef struct ssd1306_t
 {
 	avr_irq_t * irq;
-	struct avr_t * avr;
 	uint8_t columns, rows, pages;
 	struct ssd1306_virt_cursor_t cursor;
 	uint8_t vram[SSD1306_VIRT_PAGES][SSD1306_VIRT_COLUMNS];
@@ -163,6 +164,7 @@ typedef struct ssd1306_t
 
 	uint8_t twi_selected;
 	uint8_t twi_index;
+	parts_logger_t logger;
 } ssd1306_t;
 
 typedef struct ssd1306_pin_t
@@ -179,7 +181,10 @@ typedef struct ssd1306_wiring_t
 } ssd1306_wiring_t;
 
 void
-ssd1306_init (struct avr_t *avr, struct ssd1306_t * b, int width, int height);
+ssd1306_init (avr_t *avr, struct ssd1306_t * b, int width, int height);
+
+void
+ssd1306_initialize ( avr_irq_pool_t *irq_pool, avr_cycle_timer_pool_t * cycle_timers,struct ssd1306_t * part, int width, int height);
 
 static inline int
 ssd1306_set_flag (ssd1306_t *b, uint16_t bit, int val)
@@ -196,7 +201,7 @@ ssd1306_get_flag (ssd1306_t *b, uint16_t bit)
 }
 
 void
-ssd1306_connect (ssd1306_t * part, ssd1306_wiring_t * wiring);
+ssd1306_connect (avr_t * avr,ssd1306_t * part, ssd1306_wiring_t * wiring);
 
 void
 ssd1306_connect_twi (ssd1306_t * part, ssd1306_wiring_t * wiring);

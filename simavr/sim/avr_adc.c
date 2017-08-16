@@ -27,13 +27,13 @@
 
 static avr_cycle_count_t
 avr_adc_int_raise(
-		struct avr_t * avr, avr_cycle_count_t when, void * param)
+		struct avr_cycle_timer_pool_t * pool, avr_cycle_count_t when, void * param)
 {
 	avr_adc_t * p = (avr_adc_t *)param;
-	if (avr_regbit_get(avr, p->aden)) {
+	if (avr_regbit_get(p->io.avr, p->aden)) {
 		// if the interrupts are not used, still raised the UDRE and TXC flag
-		avr_raise_interrupt(avr, &p->adc);
-		avr_regbit_clear(avr, p->adsc);
+		avr_raise_interrupt(p->io.avr, &p->adc);
+		avr_regbit_clear(p->io.avr, p->adsc);
 		p->first = 0;
 		p->read_status = 0;
 		if( p->adts_mode == avr_adts_free_running )
@@ -227,7 +227,7 @@ avr_adc_write_adcsra(
 	}
 	if (aden && !avr_regbit_get(avr, p->aden)) {
 		// stop ADC
-		avr_cycle_timer_cancel(avr, avr_adc_int_raise, p);
+		avr_cycle_timer_cancel(&(avr->cycle_timers), avr_adc_int_raise, p);
 		avr_regbit_clear(avr, p->adsc);
 		v = avr->data[p->adsc.reg];	// Peter Ross pross@xvid.org
 	}
@@ -244,14 +244,16 @@ avr_adc_write_adcsra(
 		uint32_t div = avr_regbit_get_array(avr, p->adps, ARRAY_SIZE(p->adps));
 		if (!div) div++;
 
-		div = avr->frequency >> div;
+		div = avr->clock.frequency >> div;
 		if (p->first)
 			AVR_LOG(avr, LOG_TRACE, "ADC: starting at %uKHz\n", div / 13 / 100);
 		div /= p->first ? 25 : 13;	// first cycle is longer
 
-		avr_cycle_timer_register(avr,
-				avr_hz_to_cycles(avr, div),
-				avr_adc_int_raise, p);
+		if ( avr_cycle_timer_register(&(avr->cycle_timers),
+				avr_hz_to_cycles(&(avr->clock), div),
+				avr_adc_int_raise, p) < 0 ) {
+			AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+		}
 	}
 	avr_core_watch_write(avr, addr, v);
 	avr_adc_configure_trigger(avr, addr, v, param);
@@ -301,7 +303,7 @@ static void avr_adc_reset(avr_io_t * port)
 	avr_adc_t * p = (avr_adc_t *)port;
 
 	// stop ADC
-	avr_cycle_timer_cancel(p->io.avr, avr_adc_int_raise, p);
+	avr_cycle_timer_cancel(&(p->io.avr->cycle_timers), avr_adc_int_raise, p);
 	avr_regbit_clear(p->io.avr, p->adsc);
 
 	for (int i = 0; i < ADC_IRQ_COUNT; i++)

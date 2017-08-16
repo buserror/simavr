@@ -26,6 +26,8 @@
 #include "sim_network.h"
 #include "sim_irq.h"
 #include "fifo_declare.h"
+#include "sim_avr.h"
+#include "parts_logger.h"
 
 enum {
 	IRQ_UART_UDP_BYTE_IN = 0,
@@ -37,7 +39,7 @@ DECLARE_FIFO(uint8_t,uart_udp_fifo, 512);
 
 typedef struct uart_udp_t {
 	avr_irq_t *	irq;		// irq list
-	struct avr_t *avr;		// keep it around so we can pause it
+	//struct avr_t *avr;		// keep it around so we can pause it
 
 	pthread_t	thread;
 	int 		s;			// socket we chat on
@@ -46,10 +48,15 @@ typedef struct uart_udp_t {
 	int			xon;
 	uart_udp_fifo_t in;
 	uart_udp_fifo_t out;
+	parts_logger_t logger;
 } uart_udp_t;
 
 void uart_udp_init(struct avr_t * avr, uart_udp_t * b);
 
-void uart_udp_connect(uart_udp_t * p, char uart);
+void uart_udp_initialize(avr_irq_pool_t * irq_pool, uart_udp_t * p,int port);
+
+void uart_udp_restart(uart_udp_t * p,int port);
+
+void uart_udp_connect(struct avr_t * avr,uart_udp_t * p, char uart);
 
 #endif /* __UART_UDP_H___ */

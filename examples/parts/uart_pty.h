@@ -26,6 +26,7 @@
 #include <pthread.h>
 #include "sim_irq.h"
 #include "fifo_declare.h"
+#include "sim_cycle_timers.h"
 
 enum {
 	IRQ_UART_PTY_BYTE_IN = 0,
@@ -47,7 +48,7 @@ typedef struct uart_pty_port_t {
 
 typedef struct uart_pty_t {
 	avr_irq_t *	irq;		// irq list
-	struct avr_t *avr;		// keep it around so we can pause it
+	avr_cycle_timer_pool_t *cycle_timers;		// keep it around so we can pause it
 
 	pthread_t	thread;
 	int			xon;
@@ -65,11 +66,21 @@ void
 uart_pty_init(
 		struct avr_t * avr,
 		uart_pty_t * b);
+
+void
+uart_pty_initialize(
+		avr_irq_pool_t * irq_pool,
+		avr_cycle_timer_pool_t * cycle_timers,
+		uart_pty_t * p);
+
+void uart_pty_start(uart_pty_t * p);
+
 void
 uart_pty_stop(uart_pty_t * p);
 
 void
 uart_pty_connect(
+		struct avr_t * avr,
 		uart_pty_t * p,
 		char uart);
 

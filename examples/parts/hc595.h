@@ -29,6 +29,7 @@
 #define __HC595_H__
 
 #include "sim_irq.h"
+#include "parts_logger.h"
 
 /*
  * this one is quite fun, it simulated a 74HC595 shift register
@@ -50,6 +51,7 @@ typedef struct hc595_t {
 	avr_irq_t *	irq;		// irq list
 	uint32_t	latch;		// value "on the pins"
 	uint32_t 	value;		// value shifted in
+	parts_logger_t logger;
 } hc595_t;
 
 void
@@ -57,4 +59,11 @@ hc595_init(
 		struct avr_t * avr,
 		hc595_t *p);
 
+
+void
+hc595_initialize(
+		avr_irq_pool_t * irq_pool,
+		hc595_t *p);
+
+void hc595_reset(hc595_t * p);
 #endif

@@ -26,14 +26,14 @@
 #include <string.h>
 #include "avr_eeprom.h"
 
-static avr_cycle_count_t avr_eempe_clear(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t avr_eempe_clear(struct avr_cycle_timer_pool_t * pool, avr_cycle_count_t when, void * param)
 {
 	avr_eeprom_t * p = (avr_eeprom_t *)param;
 	avr_regbit_clear(p->io.avr, p->eempe);
 	return 0;
 }
 
-static avr_cycle_count_t avr_eei_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t avr_eei_raise(struct avr_cycle_timer_pool_t * pool, avr_cycle_count_t when, void * param)
 {
 	avr_eeprom_t * p = (avr_eeprom_t *)param;
 	avr_raise_interrupt(p->io.avr, &p->ready);
@@ -48,7 +48,9 @@ static void avr_eeprom_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void * 
 	avr_core_watch_write(avr, addr, v);
 
 	if (!eempe && avr_regbit_get(avr, p->eempe)) {
-		avr_cycle_timer_register(avr, 4, avr_eempe_clear, p);
+		if ( avr_cycle_timer_register(&(avr->cycle_timers), 4, avr_eempe_clear, p) < 0 ) {
+			AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+		}
 	}
 
 	uint16_t ee_addr;
@@ -71,7 +73,9 @@ static void avr_eeprom_write(avr_t * avr, avr_io_addr_t addr, uint8_t v, void * 
 		// Automatically clears that bit (?)
 		avr_regbit_clear(avr, p->eempe);
 
-		avr_cycle_timer_register_usec(avr, 3400, avr_eei_raise, p); // 3.4ms here
+		if ( avr_cycle_timer_register_usec(&(avr->cycle_timers), 3400, avr_eei_raise, p) < 0 ) {
+			AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS); // 3.4ms here
+		}
 	}
 	if (avr_regbit_get(avr, p->eere)) {	// read operation
 		avr->data[p->r_eedr] = p->eeprom[ee_addr];

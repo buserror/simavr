@@ -92,6 +92,20 @@ avr_get_time_stamp(
 	return stamp - avr->time_base;
 }
 
+void
+avr_register_abort_handler(avr_t * avr,void (*handler)(void * param),void * param) {
+	avr->abort = handler;
+	avr->abortparam = param;
+}
+
+void
+avr_abort(avr_t * avr) {
+	if ( avr->abort == NULL ) {
+		abort();
+	}
+	avr->abort(avr->abortparam);
+}
+
 int
 avr_init(
 		avr_t * avr)
@@ -110,7 +124,8 @@ avr_init(
 
 	// cpu is in limbo before init is finished.
 	avr->state = cpu_Limbo;
-	avr->frequency = 1000000;	// can be overridden via avr_mcu_section
+	avr->cycle_timers.clock = &(avr->clock);
+	avr->clock.frequency = 1000000;	// can be overridden via avr_mcu_section
 	avr_cmd_init(avr);
 	avr_interrupt_init(avr);
 	if (avr->custom.init)
@@ -140,6 +155,7 @@ avr_terminate(
 	}
 	if (avr->vcd) {
 		avr_vcd_close(avr->vcd);
+		free(avr->vcd);
 		avr->vcd = NULL;
 	}
 	avr_deallocate_ios(avr);
@@ -153,6 +169,16 @@ avr_terminate(
 		avr->io_console_buffer.buf = NULL;
 	}
 	avr->flash = avr->data = NULL;
+#ifdef CONFIG_SIMAVR_TRACE
+	if ( avr->trace_data != NULL ) {
+		if ( avr->trace_data->codeline != NULL ) {
+			free(avr->trace_data->codeline);
+			avr->trace_data->codeline = NULL;
+		}
+		free(avr->trace_data);
+		avr->tace_data = NULL;
+	}
+#endif
 }
 
 void
@@ -169,7 +195,7 @@ avr_reset(
 	for (int i = 0; i < 8; i++)
 		avr->sreg[i] = 0;
 	avr_interrupt_reset(avr);
-	avr_cycle_timer_reset(avr);
+	avr_cycle_timer_reset(&(avr->cycle_timers));
 	if (avr->reset)
 		avr->reset(avr);
 	avr_io_t * port = avr->io_port;
@@ -247,10 +273,11 @@ avr_loadcode(
 	if ((address + size) > avr->flashend+1) {
 		AVR_LOG(avr, LOG_ERROR, "avr_loadcode(): Attempted to load code of size %d but flash size is only %d.\n",
 			size, avr->flashend + 1);
-		abort();
+		avr_abort(avr);
 	}
 	memcpy(avr->flash + address, code, size);
 }
+
 
 /**
  * Accumulates sleep requests (and returns a sleep time of 0) until
@@ -262,7 +289,7 @@ avr_pending_sleep_usec(
 		avr_t * avr,
 		avr_cycle_count_t howLong)
 {
-	avr->sleep_usec += avr_cycles_to_usec(avr, howLong);
+	avr->sleep_usec += avr_cycles_to_usec(&(avr->clock), howLong);
 	uint32_t usec = avr->sleep_usec;
 	if (usec > 200) {
 		avr->sleep_usec = 0;
@@ -306,7 +333,7 @@ avr_callback_run_gdb(
 
 	// run the cycle timers, get the suggested sleep time
 	// until the next timer is due
-	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
+	avr_cycle_count_t sleep = avr_cycle_timer_process(&(avr->cycle_timers));
 
 	avr->pc = new_pc;
 
@@ -321,7 +348,7 @@ avr_callback_run_gdb(
 		 * try to sleep for as long as we can (?)
 		 */
 		avr->sleep(avr, sleep);
-		avr->cycle += 1 + sleep;
+		avr->clock.cycle += 1 + sleep;
 	}
 	// Interrupt servicing might change the PC too, during 'sleep'
 	if (avr->state == cpu_Running || avr->state == cpu_Sleeping)
@@ -369,7 +396,7 @@ avr_callback_run_raw(
 
 	// run the cycle timers, get the suggested sleep time
 	// until the next timer is due
-	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
+	avr_cycle_count_t sleep = avr_cycle_timer_process(&(avr->cycle_timers));
 
 	avr->pc = new_pc;
 
@@ -384,7 +411,7 @@ avr_callback_run_raw(
 		 * try to sleep for as long as we can (?)
 		 */
 		avr->sleep(avr, sleep);
-		avr->cycle += 1 + sleep;
+		avr->clock.cycle += 1 + sleep;
 	}
 	// Interrupt servicing might change the PC too, during 'sleep'
 	if (avr->state == cpu_Running || avr->state == cpu_Sleeping) {
@@ -433,6 +460,9 @@ avr_make_mcu_by_name(
 	}
 
 	avr_t * avr = maker->make();
+	if ( avr == NULL ) {
+		return NULL;
+	}
 	AVR_LOG(avr, LOG_TRACE, "Starting %s - flashend %04x ramend %04x e2end %04x\n",
 			avr->mmcu, avr->flashend, avr->ramend, avr->e2end);
 	return avr;

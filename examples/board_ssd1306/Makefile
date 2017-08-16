@@ -43,6 +43,7 @@ include ${simavr}/Makefile.common
 
 board = ${OBJ}/${target}.elf
 
+${board} : ${OBJ}/parts_logger.o
 ${board} : ${OBJ}/ac_input.o
 ${board} : ${OBJ}/ssd1306_virt.o
 ${board} : ${OBJ}/ssd1306_glut.o

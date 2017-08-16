@@ -125,6 +125,7 @@ avr_free_irq(
 		avr_irq_t * iq = irq + i;
 		if (iq->pool)
 			_avr_irq_pool_remove(iq->pool, iq);
+		iq->pool = NULL;
 		if (iq->name)
 			free((char*)iq->name);
 		iq->name = NULL;

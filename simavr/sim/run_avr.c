@@ -19,6 +19,7 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "versioninfo.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <libgen.h>
@@ -30,12 +31,17 @@
 #include "sim_gdb.h"
 #include "sim_hex.h"
 #include "sim_vcd_file.h"
-
 #include "sim_core_decl.h"
+
+static void 
+display_version(const char * app,int exitcode) {
+    printf("%s version: %s\navr-libc version: %s\ngnuc version: %s\n\n",app,SIMAVR_VERSION,SIMAVR_AVR_LIBC_VERSION,GNUC_VERSION);
+	exit(exitcode);
+}
 
 static void
 display_usage(
-	const char * app)
+	const char * app,int exitcode)
 {
 	printf("Usage: %s [...] <firmware>\n", app);
 	printf( "		[--freq|-f <freq>]  Sets the frequency for an .hex firmware\n"
@@ -50,9 +56,10 @@ display_usage(
 			"       [--input|-i <file>] A .vcd file to use as input signals\n"
 			"       [-v]                Raise verbosity level\n"
 			"                           (can be passed more than once)\n"
+            "       [--version]         Print the version of simavr and exit"
 			"       <firmware>          A .hex or an ELF file. ELF files are\n"
-			"                           prefered, and can include debugging syms\n");
-	exit(1);
+			"                           prefered, and can include debugging syms\n\n");
+    display_version(app,exitcode);
 }
 
 static void
@@ -65,7 +72,7 @@ list_cores()
 			printf("%s ", avr_kind[i]->names[ti]);
 		printf("\n");
 	}
-	exit(1);
+	exit(0);
 }
 
 static avr_t * avr = NULL;
@@ -77,7 +84,7 @@ sig_int(
 	printf("signal caught, simavr terminating\n");
 	if (avr)
 		avr_terminate(avr);
-	exit(0);
+	exit(1);
 }
 
 int
@@ -97,28 +104,30 @@ main(
 	const char *vcd_input = NULL;
 
 	if (argc == 1)
-		display_usage(basename(argv[0]));
+		display_usage(basename(argv[0]),1);
 
 	for (int pi = 1; pi < argc; pi++) {
 		if (!strcmp(argv[pi], "--list-cores")) {
 			list_cores();
 		} else if (!strcmp(argv[pi], "-h") || !strcmp(argv[pi], "--help")) {
-			display_usage(basename(argv[0]));
+			display_usage(basename(argv[0]),0);
+        } else if (!strcmp(argv[pi], "--version")) {
+            display_version(basename(argv[0]),0);
 		} else if (!strcmp(argv[pi], "-m") || !strcmp(argv[pi], "--mcu")) {
 			if (pi < argc-1)
 				snprintf(name, sizeof(name), "%s", argv[++pi]);
 			else
-				display_usage(basename(argv[0]));
+				display_usage(basename(argv[0]),1);
 		} else if (!strcmp(argv[pi], "-f") || !strcmp(argv[pi], "--freq")) {
 			if (pi < argc-1)
 				f_cpu = atoi(argv[++pi]);
 			else
-				display_usage(basename(argv[0]));
+				display_usage(basename(argv[0]),1);
 		} else if (!strcmp(argv[pi], "-i") || !strcmp(argv[pi], "--input")) {
 			if (pi < argc-1)
 				vcd_input = argv[++pi];
 			else
-				display_usage(basename(argv[0]));
+				display_usage(basename(argv[0]),1);
 		} else if (!strcmp(argv[pi], "-t") || !strcmp(argv[pi], "--trace")) {
 			trace++;
 		} else if (!strcmp(argv[pi], "--vcd-trace-name")) {

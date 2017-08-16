@@ -41,6 +41,7 @@ board = ${OBJ}/${target}.elf
 
 ${board} : ${OBJ}/ac_input.o
 ${board} : ${OBJ}/ds1338_virt.o
+${board} : ${OBJ}/parts_logger.o
 ${board} : ${OBJ}/${target}.o
 
 ${target}: ${board}

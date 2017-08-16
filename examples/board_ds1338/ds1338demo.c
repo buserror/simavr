@@ -55,14 +55,14 @@ int main(int argc, char *argv[])
 	ds1338_virt_init(avr, &ds1338_virt);
 
 	// Hook up the TWI bus
-	ds1338_virt_attach_twi(&ds1338_virt, AVR_IOCTL_TWI_GETIRQ(0));
+	ds1338_virt_attach_twi(avr,&ds1338_virt, AVR_IOCTL_TWI_GETIRQ(0));
 
 	// Connect the square wave output
 	ds1338_pin_t wiring = {
 		.port = 'D',
 		.pin = 3
 	};
-	ds1338_virt_attach_square_wave_output (&ds1338_virt, &wiring);
+	ds1338_virt_attach_square_wave_output (avr,&ds1338_virt, &wiring);
 
 	// Even if not setup at startup, activate gdb if crashing
 	avr->gdb_port = 1234;

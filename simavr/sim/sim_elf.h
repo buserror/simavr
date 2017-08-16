@@ -92,6 +92,7 @@ avr_load_firmware(
 	avr_t * avr,
 	elf_firmware_t * firmware);
 
+void elf_close_firmware(elf_firmware_t * firmware);
 #ifdef __cplusplus
 };
 #endif

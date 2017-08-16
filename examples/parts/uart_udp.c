@@ -37,6 +37,7 @@ DEFINE_FIFO(uint8_t,uart_udp_fifo);
 static void uart_udp_in_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	uart_udp_t * p = (uart_udp_t*)param;
+	parts_global_logger(&p->logger,LOG_DEBUG,"uart_udp_in_hook %02x\n", value);
 //	printf("uart_udp_in_hook %02x\n", value);
 	uart_udp_fifo_write(&p->in, value);
 }
@@ -48,13 +49,16 @@ static void uart_udp_in_hook(struct avr_irq_t * irq, uint32_t value, void * para
 static void uart_udp_xon_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	uart_udp_t * p = (uart_udp_t*)param;
-//	if (!p->xon)
+	if (!p->xon) {
+		parts_global_logger(&p->logger,LOG_DEBUG,"uart_udp_xon_hook\n");
 //		printf("uart_udp_xon_hook\n");
-	p->xon = 1;
+		p->xon = 1;
+	}
 	// try to empty our fifo, the uart_udp_xoff_hook() will be called when
 	// other side is full
 	while (p->xon && !uart_udp_fifo_isempty(&p->out)) {
 		uint8_t byte = uart_udp_fifo_read(&p->out);
+		parts_global_logger(&p->logger,LOG_DEBUG,"uart_udp_xon_hook send %02x\n", byte);
 	//	printf("uart_udp_xon_hook send %02x\n", byte);
 		avr_raise_irq(p->irq + IRQ_UART_UDP_BYTE_OUT, byte);
 	}
@@ -66,9 +70,11 @@ static void uart_udp_xon_hook(struct avr_irq_t * irq, uint32_t value, void * par
 static void uart_udp_xoff_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	uart_udp_t * p = (uart_udp_t*)param;
-//	if (p->xon)
+	if (p->xon) {
+		parts_global_logger(&p->logger,LOG_DEBUG,"uart_udp_xoff_hook\n");
 //		printf("uart_udp_xoff_hook\n");
-	p->xon = 0;
+		p->xon = 0;
+	}
 }
 
 static void * uart_udp_thread(void * param)
@@ -90,12 +96,25 @@ static void * uart_udp_thread(void * param)
 
 		if (!ret)
 			continue;
+		if ( ret < 0 ) {
+			if (    ( errno == EBADF )
+				 || ( errno == ENOTSOCK ) ) {
+				break;
+			}
+		}
 
 		if (FD_ISSET(p->s, &read_set)) {
 			uint8_t buffer[512];
 
 			socklen_t len = sizeof(p->peer);
 			ssize_t r = recvfrom(p->s, buffer, sizeof(buffer)-1, 0, (struct sockaddr*)&p->peer, &len);
+			if ( r < 0 ) {
+				if (    ( errno == EBADF )
+					 || ( errno == ENOTSOCK ) ) {
+					break;
+				}
+				continue;
+			}
 
 		//	hdump("udp recv", buffer, r);
 
@@ -113,7 +132,13 @@ static void * uart_udp_thread(void * param)
 			while (!uart_udp_fifo_isempty(&p->in) && dst < (buffer+sizeof(buffer)))
 				*dst++ = uart_udp_fifo_read(&p->in);
 			socklen_t len = dst - buffer;
-			/*size_t r = */sendto(p->s, buffer, len, 0, (struct sockaddr*)&p->peer, sizeof(p->peer));
+			ssize_t r = sendto(p->s, buffer, len, 0, (struct sockaddr*)&p->peer, sizeof(p->peer));
+			if ( r < 0 ) {
+				if (    ( errno == EBADF )
+					 || ( errno == ENOTSOCK ) ) {
+					break;
+				}
+			}
 		//	hdump("udp send", buffer, r);
 		}
 	}
@@ -121,18 +146,38 @@ static void * uart_udp_thread(void * param)
 }
 
 static const char * irq_names[IRQ_UART_UDP_COUNT] = {
-	[IRQ_UART_UDP_BYTE_IN] = "8<uart_udp.in",
-	[IRQ_UART_UDP_BYTE_OUT] = "8>uart_udp.out",
+	[IRQ_UART_UDP_BYTE_IN] = "8<udp.uart.in",
+	[IRQ_UART_UDP_BYTE_OUT] = "8>udp.uart.out",
 };
 
 void uart_udp_init(struct avr_t * avr, uart_udp_t * p)
 {
-	p->avr = avr;
-	p->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_UART_UDP_COUNT, irq_names);
+	uart_udp_initialize(&avr->irq_pool,p,4321);
+}
+
+void uart_udp_initialize(avr_irq_pool_t * irq_pool, uart_udp_t * p,int port)
+{
+	memset(p,0,sizeof(uart_udp_t));
+	p->logger.level = LOG_ERROR;
+	p->irq = avr_alloc_irq(irq_pool, 0, IRQ_UART_UDP_COUNT, irq_names);
 	avr_irq_register_notify(p->irq + IRQ_UART_UDP_BYTE_IN, uart_udp_in_hook, p);
+	p->s = -1;
+	uart_udp_restart(p,port);
+}
+
+void uart_udp_restart(uart_udp_t * p,int port) {
+
+	if ( p->s >= 0 ) {
+		close(p->s);
+		p->s = -1;
+		pthread_join(p->thread,NULL);
+	}
 
 	if ((p->s = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
+		parts_global_logger(&p->logger,LOG_ERROR,"%s: Can't create socket: %s", __FUNCTION__, strerror(errno));
+#if 0
 		fprintf(stderr, "%s: Can't create socket: %s", __FUNCTION__, strerror(errno));
+#endif
 		return ;
 	}
 
@@ -141,28 +186,38 @@ void uart_udp_init(struct avr_t * avr, uart_udp_t * p)
 	address.sin_port = htons (4321);
 
 	if (bind(p->s, (struct sockaddr *) &address, sizeof(address))) {
+		parts_global_logger(&p->logger,LOG_ERROR,"%s: Can not bind socket: %s", __FUNCTION__, strerror(errno));
+		p->s = -1;
+#if 0
 		fprintf(stderr, "%s: Can not bind socket: %s", __FUNCTION__, strerror(errno));
+#endif
 		return ;
 	}
 
+#if 0
 	printf("uart_udp_init bridge on port %d\n", 4321);
+#endif
 
-	pthread_create(&p->thread, NULL, uart_udp_thread, p);
+	if ( pthread_create(&p->thread, NULL, uart_udp_thread, p) < 0 ) {
+		close(p->s);
+		p->s = -1;
+	}
+	parts_global_logger(&p->logger,LOG_OUTPUT,"uart_udp_init bridge on port %d\n", 4321);
 
 }
 
-void uart_udp_connect(uart_udp_t * p, char uart)
+void uart_udp_connect(struct avr_t * avr,uart_udp_t * p, char uart)
 {
 	// disable the stdio dump, as we are sending binary there
 	uint32_t f = 0;
-	avr_ioctl(p->avr, AVR_IOCTL_UART_GET_FLAGS(uart), &f);
+	avr_ioctl(avr, AVR_IOCTL_UART_GET_FLAGS(uart), &f);
 	f &= ~AVR_UART_FLAG_STDIO;
-	avr_ioctl(p->avr, AVR_IOCTL_UART_SET_FLAGS(uart), &f);
+	avr_ioctl(avr, AVR_IOCTL_UART_SET_FLAGS(uart), &f);
 
-	avr_irq_t * src = avr_io_getirq(p->avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_OUTPUT);
-	avr_irq_t * dst = avr_io_getirq(p->avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_INPUT);
-	avr_irq_t * xon = avr_io_getirq(p->avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_OUT_XON);
-	avr_irq_t * xoff = avr_io_getirq(p->avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_OUT_XOFF);
+	avr_irq_t * src = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_OUTPUT);
+	avr_irq_t * dst = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_INPUT);
+	avr_irq_t * xon = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_OUT_XON);
+	avr_irq_t * xoff = avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_OUT_XOFF);
 	if (src && dst) {
 		avr_connect_irq(src, p->irq + IRQ_UART_UDP_BYTE_IN);
 		avr_connect_irq(p->irq + IRQ_UART_UDP_BYTE_OUT, dst);

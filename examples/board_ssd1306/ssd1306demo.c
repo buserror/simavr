@@ -166,7 +166,7 @@ main (int argc, char *argv[])
 		.reset.pin = 3,
 	};
 
-	ssd1306_connect (&ssd1306, &wiring);
+	ssd1306_connect (avr,&ssd1306, &wiring);
 
 	printf ("SSD1306 display demo\n   Press 'q' to quit\n");
 

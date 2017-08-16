@@ -595,13 +595,13 @@ avr_usb_pll_write(
 
 avr_cycle_count_t
 sof_generator(
-        struct avr_t * avr,
+        struct avr_cycle_timer_pool_t * pool,
         avr_cycle_count_t when,
         void * param)
 {
 	avr_usb_t * p = (avr_usb_t *) param;
 	//stop sof generation if detached
-	if (avr->data[p->r_usbcon + udcon] & 1)
+	if (p->io.avr->data[p->r_usbcon + udcon] & 1)
 		return 0;
 	else {
 		raise_usb_interrupt(p, sofi);
@@ -689,7 +689,9 @@ avr_usb_ioctl(
 			reset_endpoints(io->avr, p);
 			raise_usb_interrupt(p, eorsti);
 			if (0)
-				avr_cycle_timer_register_usec(io->avr, 1000, sof_generator, p);
+				if ( avr_cycle_timer_register_usec(&(io->avr->cycle_timers), 1000, sof_generator, p) < 0 ) {
+					AVR_LOG(io->avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+				}
 			return 0;
 		default:
 			return -1;

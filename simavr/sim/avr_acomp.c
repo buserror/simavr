@@ -61,24 +61,24 @@ avr_acomp_get_state(
 
 static avr_cycle_count_t
 avr_acomp_sync_state(
-	struct avr_t * avr,
+	struct avr_cycle_timer_pool_t * pool,
 	avr_cycle_count_t when,
 	void * param)
 {
 	avr_acomp_t * p = (avr_acomp_t *)param;
-	if (!avr_regbit_get(avr, p->disabled)) {
+	if (!avr_regbit_get(p->io.avr, p->disabled)) {
 
-		uint8_t cur_state = avr_regbit_get(avr, p->aco);
-		uint8_t new_state = avr_acomp_get_state(avr, p);
+		uint8_t cur_state = avr_regbit_get(p->io.avr, p->aco);
+		uint8_t new_state = avr_acomp_get_state(p->io.avr, p);
 
 		if (new_state != cur_state) {
-			avr_regbit_setto(avr, p->aco, new_state);		// set ACO
+			avr_regbit_setto(p->io.avr, p->aco, new_state);		// set ACO
 
-			uint8_t acis0 = avr_regbit_get(avr, p->acis[0]);
-			uint8_t acis1 = avr_regbit_get(avr, p->acis[1]);
+			uint8_t acis0 = avr_regbit_get(p->io.avr, p->acis[0]);
+			uint8_t acis1 = avr_regbit_get(p->io.avr, p->acis[1]);
 
 			if ((acis0 == 0 && acis1 == 0) || (acis1 == 1 && acis0 == new_state)) {
-				avr_raise_interrupt(avr, &p->ac);
+				avr_raise_interrupt(p->io.avr, &p->ac);
 			}
 
 			avr_raise_irq(p->io.irq + ACOMP_IRQ_OUT, new_state);
@@ -94,7 +94,9 @@ avr_schedule_sync_state(
 	struct avr_t * avr,
 	void *param)
 {
-	avr_cycle_timer_register(avr, 1, avr_acomp_sync_state, param);
+	if ( avr_cycle_timer_register(&(avr->cycle_timers), 1, avr_acomp_sync_state, param) < 0 ) {
+		AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+	}
 }
 
 static void

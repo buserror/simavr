@@ -32,6 +32,7 @@
 
 #include "vhci_usb.h"
 #include "libusb_vhci.h"
+#include "sim_avr.h"
 
 #include <pthread.h>
 #include <string.h>
@@ -51,7 +52,10 @@ vhci_usb_attach_hook(
 {
 	struct vhci_usb_t * p = (struct vhci_usb_t*) param;
 	p->attached = !!value;
+	LOG(p->avr,LOG_OUTPUT,"avr attached: %d\n", p->attached);
+#if 0
 	printf("avr attached: %d\n", p->attached);
+#endif
 }
 
 struct usbsetup {
@@ -93,12 +97,18 @@ control_read(
 		usleep(1000);
 		ret = avr_ioctl(p->avr, AVR_IOCTL_USB_READ, &pkt);
 		if (ret == AVR_IOCTL_USB_NAK) {
+			LOG(p->avr,LOG_OUTPUT," NAK\n");
+#if 0
 			printf(" NAK\n");
+#endif
 			usleep(50000);
 			continue;
 		}
 		if (ret == AVR_IOCTL_USB_STALL) {
+			LOG(p->avr,LOG_OUTPUT," STALL\n");
+#if 0
 			printf(" STALL\n");
+#endif
 			return ret;
 		}
 		assert(ret==0);
@@ -150,7 +160,10 @@ control_write(
 				continue;
 			}
 			if (ret == AVR_IOCTL_USB_STALL) {
+				LOG(p->avr,LOG_OUTPUT," STALL\n");
+#if 0
 				printf(" STALL\n");
+#endif
 				return ret;
 			}
 			assert(ret==0);
@@ -176,13 +189,20 @@ handle_status_change(
         struct usb_vhci_port_stat*prev,
         struct usb_vhci_port_stat*curr)
 {
+
+	char msg[1024];
+
 	if (~prev->status & USB_VHCI_PORT_STAT_POWER
 	        && curr->status & USB_VHCI_PORT_STAT_POWER) {
 		avr_ioctl(p->avr, AVR_IOCTL_USB_VBUS, (void*) 1);
 		if (p->attached) {
 			if (usb_vhci_port_connect(p->fd, 1, USB_VHCI_DATA_RATE_FULL) < 0) {
+				strerror_r(errno,msg,1024);
+				LOG(p->avr,LOG_ERROR,"%s: %s\n","port_connect",msg);
+#if 0
 				perror("port_connect");
-				abort();
+#endif
+				avr_abort(p->avr);
 			}
 		}
 	}
@@ -193,6 +213,7 @@ handle_status_change(
 	if (curr->change & USB_VHCI_PORT_STAT_C_RESET
 	        && ~curr->status & USB_VHCI_PORT_STAT_RESET
 	        && curr->status & USB_VHCI_PORT_STAT_ENABLE) {
+		LOG(p->avr,LOG_DEBUG,"END OF RESET\n");
 //         printf("END OF RESET\n");
 	}
 	if (~prev->status & USB_VHCI_PORT_STAT_RESET
@@ -201,28 +222,48 @@ handle_status_change(
 		usleep(50000);
 		if (curr->status & USB_VHCI_PORT_STAT_CONNECTION) {
 			if (usb_vhci_port_reset_done(p->fd, 1, 1) < 0) {
+				strerror_r(errno,msg,1024);
+				LOG(p->avr,LOG_ERROR,"%s: %s\n","reset_done",msg);
+#if 0
 				perror("reset_done");
-				abort();
+#endif
+				avr_abort(avr);
 			}
 		}
 	}
 	if (~prev->flags & USB_VHCI_PORT_STAT_FLAG_RESUMING
 	        && curr->flags & USB_VHCI_PORT_STAT_FLAG_RESUMING) {
+		LOG(p->avr,LOG_OUTPUT,"port resuming\n");
+#if 0
 		printf("port resuming\n");
+#endif
 		if (curr->status & USB_VHCI_PORT_STAT_CONNECTION) {
+			LOG(p->avr,LOG_OUTPUT,"  completing\n");
+#if 0
 			printf("  completing\n");
+#endif
 			if (usb_vhci_port_resumed(p->fd, 1) < 0) {
+				strerror_r(errno,msg,1024);
+				LOG(p->avr,LOG_ERROR,"%s: %s\n","resumed",msg);
+#if 0
 				perror("resumed");
-				abort();
+#endif
+				avr_abort(avr);
 			}
 		}
 	}
 	if (~prev->status & USB_VHCI_PORT_STAT_SUSPEND
 	        && curr->status & USB_VHCI_PORT_STAT_SUSPEND)
+		LOG(p->avr,LOG_OUTPUT,"port suspedning\n");
+#if 0
 		printf("port suspedning\n");
+#endif
 	if (prev->status & USB_VHCI_PORT_STAT_ENABLE
 	        && ~curr->status & USB_VHCI_PORT_STAT_ENABLE)
+		LOG(p->avr,LOG_OUTPUT,"port disabled\n");
+#if 0
 		printf("port disabled\n");
+#endif
 
 	*prev = *curr;
 }
@@ -285,15 +326,25 @@ vhci_usb_thread(
 	struct usb_vhci_port_stat port_status;
 	int id, busnum;
 	char*busid;
+	char msg[1024];
 	p->fd = usb_vhci_open(1, &id, &busnum, &busid);
 
 	if (p->fd < 0) {
+		strerror_r(errno,msg,1024);
+		LOG(p->avr,LOG_ERROR,"%s: %s\n","open vhci failed",msg);
+		LOG(p->avr,LOG_ERROR,"driver loaded, and access bits ok?\n");
+#if 0
 		perror("open vhci failed");
 		printf("driver loaded, and access bits ok?\n");
-		abort();
+#endif
+		avr_abort(avr);
+		return;
 	}
+	LOG(p->avr,LOG_OUTPUT,"Created virtual usb host with 1 port at %s (bus# %d)\n", busid, busnum);
+#if 0
 	printf("Created virtual usb host with 1 port at %s (bus# %d)\n", busid,
 	        busnum);
+#endif
 	memset(&port_status, 0, sizeof port_status);
 
 	bool avrattached = false;
@@ -307,8 +358,13 @@ vhci_usb_thread(
 			if (p->attached && port_status.status & USB_VHCI_PORT_STAT_POWER) {
 				if (usb_vhci_port_connect(p->fd, 1, USB_VHCI_DATA_RATE_FULL)
 				        < 0) {
+					strerror_r(errno,msg,1024);
+					LOG(p->avr,LOG_ERROR,"%s: %s\n","port_connect",msg);
+#if 0
 					perror("port_connect");
-					abort();
+#endif
+					avr_abort(avr);
+					return;
 				}
 			}
 			if (!p->attached) {
@@ -321,8 +377,13 @@ vhci_usb_thread(
 		if (res < 0) {
 			if (errno == ETIMEDOUT || errno == EINTR || errno == ENODATA)
 				continue;
+			strerror_r(errno,msg,1024);
+			LOG(p->avr,LOG_ERROR,"%s: %s\n","fetch work failed",msg);
+#if 0
 			perror("fetch work failed");
-			abort();
+#endif
+			avr_abort(avr);
+			return;
 		}
 
 		switch (wrk.type) {
@@ -344,7 +405,11 @@ vhci_usb_thread(
 				if (res) {
 					if (usb_vhci_fetch_data(p->fd, &wrk.work.urb) < 0) {
 						if (errno != ECANCELED)
+							strerror_r(errno,msg,1024);
+							LOG(p->avr,LOG_ERROR,"%s: %s\n","fetch_data",msg);
+#if 0
 							perror("fetch_data");
+#endif
 						free(wrk.work.urb.buffer);
 						free(wrk.work.urb.iso_packets);
 						usb_vhci_giveback(p->fd, &wrk.work.urb);
@@ -375,16 +440,27 @@ vhci_usb_thread(
 						wrk.work.urb.status = USB_VHCI_STATUS_SUCCESS;
 				}
 				if (usb_vhci_giveback(p->fd, &wrk.work.urb) < 0)
+					strerror_r(errno,msg,1024);
+					LOG(p->avr,LOG_ERROR,"%s: %s\n","giveback",msg);
+#if 0
 					perror("giveback");
+#endif
 				free(wrk.work.urb.buffer);
 				free(wrk.work.urb.iso_packets);
 				break;
 			case USB_VHCI_WORK_TYPE_CANCEL_URB:
+				LOG(p->avr,LOG_OUTPUT,"cancel urb\n");
+#if 0
 				printf("cancel urb\n");
+#endif
 				break;
 			default:
+				LOG(p->avr,LOG_OUTPUT,"illegal work type\n");
+#if 0
 				printf("illegal work type\n");
-				abort();
+#endif
+				avr_abort(p->avr);
+				return;
 		}
 
 	}
@@ -395,11 +471,24 @@ vhci_usb_init(
 		struct avr_t * avr,
 		struct vhci_usb_t * p)
 {
+
+	memset(p,0,sizeof(vhci_usb_t*));
 	p->avr = avr;
-	pthread_t thread;
+	p->fd = -1;
 
-	pthread_create(&thread, NULL, vhci_usb_thread, p);
+	pthread_create(&p->thread, NULL, vhci_usb_thread, p);
 
+}
+
+vhci_usb_close(struct vhci_usb_t * p) {
+	if (p->fd >= 0 ) {
+
+		int fd = p->fd;
+
+		p->fd = -1;
+		usb_vhci_close(fd);
+		pthread_join(p->thread);
+	}
 }
 
 void

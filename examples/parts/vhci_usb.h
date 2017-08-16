@@ -20,6 +20,7 @@
  */
 
 #include <stdbool.h>
+#include <pthread.h>
 
 struct avr_t;
 typedef struct vhci_usb_t {
@@ -27,8 +28,10 @@ typedef struct vhci_usb_t {
 
     bool attached;
     int fd;
+	pthread_t thread;
 } vhci_usb_t;
 
 
 void vhci_usb_connect(struct vhci_usb_t * p, char uart);
 void vhci_usb_init(struct avr_t * avr, struct vhci_usb_t * p);
+void vhci_usb_close(struct vhci_usb_t * p);

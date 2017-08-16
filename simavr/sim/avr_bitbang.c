@@ -151,7 +151,7 @@ static void avr_bitbang_clk_edge(avr_bitbang_t *p)
 	}
 }
 
-static avr_cycle_count_t avr_bitbang_clk_timer(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t avr_bitbang_clk_timer(struct avr_cycle_timer_pool_t * pool, avr_cycle_count_t when, void * param)
 {
 	avr_bitbang_t * p = (avr_bitbang_t *)param;
 
@@ -191,7 +191,7 @@ void avr_bitbang_reset(avr_t *avr, avr_bitbang_t * p)
 	if ( p->buffer_size < 1 || p->buffer_size > 32 ) {
 		AVR_LOG(avr, LOG_ERROR,
 				"Error: bitbang buffer size should be between 1 and 32. set value: %d\n", p->buffer_size);
-		abort();
+		avr_abort(avr);
 	}
 
 }
@@ -216,7 +216,9 @@ void avr_bitbang_start(avr_bitbang_t * p)
 
 	if ( p->clk_generate ) {
 		// master mode, generate clock -> set timer
-		avr_cycle_timer_register(p->avr, (p->clk_cycles/2), avr_bitbang_clk_timer, p);
+		if ( avr_cycle_timer_register(&(p->avr->cycle_timers), (p->clk_cycles/2), avr_bitbang_clk_timer, p) < 0 ) {
+			AVR_LOG(p->avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+		}
 	} else {
 		// slave mode -> attach clock function to clock pin
 		///@todo test
@@ -237,7 +239,7 @@ void avr_bitbang_stop(avr_bitbang_t * p)
 {
 
 	p->enabled = 0;
-	avr_cycle_timer_cancel(p->avr, avr_bitbang_clk_timer, p);
+	avr_cycle_timer_cancel(&(p->avr->cycle_timers), avr_bitbang_clk_timer, p);
 	avr_irq_unregister_notify( avr_io_getirq(p->avr, AVR_IOCTL_IOPORT_GETIRQ( p->p_clk.port ), p->p_clk.pin), avr_bitbang_clk_hook, p);
 }
 

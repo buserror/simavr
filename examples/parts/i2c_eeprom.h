@@ -24,6 +24,8 @@
 #define __I2C_EEPROM_H___
 
 #include "sim_irq.h"
+#include "sim_cycle_timers.h"
+#include "parts_logger.h"
 
 /*
  * This is a generic i2c eeprom; it can be up to 4096 bytes, and can work
@@ -51,6 +53,7 @@ typedef struct i2c_eeprom_t {
 	uint16_t reg_addr;		// read/write address register
 	int size;				// also implies the address size, one or two byte
 	uint8_t ee[4096];
+	parts_logger_t logger;
 } i2c_eeprom_t;
 
 /*
@@ -77,6 +80,17 @@ i2c_eeprom_init(
 		uint8_t mask,
 		uint8_t * data,
 		size_t size);
+
+void
+i2c_eeprom_initialize(
+		avr_irq_pool_t * irq_pool,
+		i2c_eeprom_t * p,
+		uint8_t addr,
+		uint8_t mask,
+		uint8_t * data,
+		size_t size);
+
+void i2c_eeprom_reset(i2c_eeprom_t * p,uint8_t * data,size_t size);
 
 /*
  * Attach the eeprom to the AVR's TWI master code,

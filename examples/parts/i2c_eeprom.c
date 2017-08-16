@@ -46,8 +46,11 @@ i2c_eeprom_in_hook(
 	if (v.u.twi.msg & TWI_COND_STOP) {
 		if (p->selected) {
 			// it was us !
+			parts_global_logger(&p->logger,LOG_TRACE,"eeprom received stop\n");
+#if 0
 			if (p->verbose)
 				printf("eeprom received stop\n");
+#endif
 		}
 		p->selected = 0;
 		p->index = 0;
@@ -62,8 +65,11 @@ i2c_eeprom_in_hook(
 		p->index = 0;
 		if ((p->addr_base & ~p->addr_mask) == (v.u.twi.addr & ~p->addr_mask)) {
 			// it's us !
+			parts_global_logger(&p->logger,LOG_TRACE,"eeprom received start\n");
+#if 0
 			if (p->verbose)
 				printf("eeprom received start\n");
+#endif
 			p->selected = v.u.twi.addr;
 			avr_raise_irq(p->irq + TWI_IRQ_INPUT,
 					avr_twi_irq_msg(TWI_COND_ACK, p->selected, 1));
@@ -89,12 +95,18 @@ i2c_eeprom_in_hook(
 				if (p->index == addr_size-1) {
 					// add the slave address, if relevant
 					p->reg_addr += ((p->selected & 1) - p->addr_base) << 7;
+					parts_global_logger(&p->logger,LOG_TRACE,"eeprom set address to 0x%04x\n", p->reg_addr);
+#if 0
 					if (p->verbose)
 						printf("eeprom set address to 0x%04x\n", p->reg_addr);
+#endif
 				}
 			} else {
+				parts_global_logger(&p->logger,LOG_TRACE,"eeprom WRITE data 0x%04x: %02x\n", p->reg_addr, v.u.twi.data);
+#if 0
 				if (p->verbose)
 					printf("eeprom WRITE data 0x%04x: %02x\n", p->reg_addr, v.u.twi.data);
+#endif
 				p->ee[p->reg_addr++] = v.u.twi.data;
 			}
 			p->reg_addr &= (p->size -1);
@@ -104,8 +116,11 @@ i2c_eeprom_in_hook(
 		 * It's a read transaction, just send the next byte back to the master
 		 */
 		if (v.u.twi.msg & TWI_COND_READ) {
+			parts_global_logger(&p->logger,LOG_TRACE,"eeprom READ data 0x%04x: %02x\n", p->reg_addr, p->ee[p->reg_addr]);
+#if 0
 			if (p->verbose)
 				printf("eeprom READ data 0x%04x: %02x\n", p->reg_addr, p->ee[p->reg_addr]);
+#endif
 			uint8_t data = p->ee[p->reg_addr++];
 			avr_raise_irq(p->irq + TWI_IRQ_INPUT,
 					avr_twi_irq_msg(TWI_COND_READ, p->selected, data));
@@ -116,8 +131,8 @@ i2c_eeprom_in_hook(
 }
 
 static const char * _ee_irq_names[2] = {
-		[TWI_IRQ_INPUT] = "8>eeprom.out",
-		[TWI_IRQ_OUTPUT] = "32<eeprom.in",
+		[TWI_IRQ_INPUT] = "8>eeprom.twi.out",
+		[TWI_IRQ_OUTPUT] = "32<eeprom.twi.in",
 };
 
 void
@@ -129,15 +144,31 @@ i2c_eeprom_init(
 		uint8_t * data,
 		size_t size)
 {
-	memset(p, 0, sizeof(*p));
-	memset(p->ee, 0xff, sizeof(p->ee));
+	i2c_eeprom_initialize(&avr->irq_pool,p,addr,mask,data,size);
+}
 
+void
+i2c_eeprom_initialize(
+		avr_irq_pool_t * irq_pool,
+		i2c_eeprom_t * p,
+		uint8_t addr,
+		uint8_t mask,
+		uint8_t * data,
+		size_t size)
+{
+
+
+	memset(p, 0, sizeof(*p));
+
+	p->irq = avr_alloc_irq(irq_pool, 0, 2, _ee_irq_names);
+	avr_irq_register_notify(p->irq + TWI_IRQ_OUTPUT, i2c_eeprom_in_hook, p);
 	p->addr_base = addr;
 	p->addr_mask = mask;
+	i2c_eeprom_reset(p,data,size);
+}
 
-	p->irq = avr_alloc_irq(&avr->irq_pool, 0, 2, _ee_irq_names);
-	avr_irq_register_notify(p->irq + TWI_IRQ_OUTPUT, i2c_eeprom_in_hook, p);
-
+void i2c_eeprom_reset(i2c_eeprom_t * p,uint8_t * data,size_t size) {
+	memset(p->ee, 0xff, sizeof(p->ee));
 	p->size = size > sizeof(p->ee) ? sizeof(p->ee) : size;
 	if (data)
 		memcpy(p->ee, data, p->size);
@@ -149,6 +180,7 @@ i2c_eeprom_attach(
 		i2c_eeprom_t * p,
 		uint32_t i2c_irq_base )
 {
+	p->logger.level = LOG_ERROR;
 	// "connect" the IRQs of the eeprom to the TWI/i2c master of the AVR
 	avr_connect_irq(
 		p->irq + TWI_IRQ_INPUT,

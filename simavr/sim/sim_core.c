@@ -1426,13 +1426,13 @@ run_one_again:
 		default: _avr_invalid_opcode(avr);
 
 	}
-	avr->cycle += cycle;
+	avr->clock.cycle += cycle;
 
 	if ((avr->state == cpu_Running) &&
-		(avr->run_cycle_count > cycle) &&
+		(avr->clock.run_cycle_count > cycle) &&
 		(avr->interrupt_state == 0))
 	{
-		avr->run_cycle_count -= cycle;
+		avr->clock.run_cycle_count -= cycle;
 		avr->pc = new_pc;
 		goto run_one_again;
 	}

@@ -20,6 +20,7 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
+V=1
 sources		:= $(wildcard at*.c)
 simavr 		= ..
 
@@ -28,16 +29,20 @@ IPATH 		+= ${simavr}/simavr/sim
 
 tests_src	:= ${wildcard test_*.c}
 
-all: obj axf tests
+all: obj axf elf tests
 
 include ../Makefile.common
 
 tests		:= ${patsubst %.c, ${OBJ}/%.tst, ${tests_src}}
+elfbin		:= ${patsubst %.c, ${OBJ}/%.elf, ${tests_src}}
 
 tests:	${tests}
 	
 axf: ${sources:.c=.axf}
-	
+
+elf: ${elfbin}
+
+${elfbin}: ${OBJ}/tests.o ${patsubst %.elf,%.o,$@}
 
 ${OBJ}/%.tst: tests.c %.c
 ifeq ($(V),1)
@@ -48,7 +53,8 @@ else
 endif
 
 run_tests: all
-	@export LD_LIBRARY_PATH=${simavr}/simavr/${OBJ} ;\
+	set -x;\
+	export LD_LIBRARY_PATH=${simavr}/simavr/${OBJ} ;\
 	num_failed=0 ;\
 	num_run=0 ;\
 	for test in ${OBJ}/test_*.tst; do \
@@ -61,4 +67,4 @@ run_tests: all
 	echo "Tests run: $$num_run  Successes: $$(($$num_run-$$num_failed))  Failures: $$num_failed"
 
 clean: clean-${OBJ}
-	rm -f *.axf *.vcd
+	rm -f *.axf *.vcd *.elf

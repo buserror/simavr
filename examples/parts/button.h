@@ -29,6 +29,7 @@
 #define __BUTTON_H__
 
 #include "sim_irq.h"
+#include "parts_logger.h"
 
 enum {
 	IRQ_BUTTON_OUT = 0,
@@ -37,13 +38,21 @@ enum {
 
 typedef struct button_t {
 	avr_irq_t * irq;	// output irq
-	struct avr_t * avr;
+	avr_cycle_timer_pool_t * cycle_timers;
 	uint8_t value;
+	parts_logger_t logger;
 } button_t;
 
 void
 button_init(
 		struct avr_t * avr,
+		button_t * b,
+		const char * name);
+
+void
+button_initialize(
+		avr_irq_pool_t *irq_pool,
+		avr_cycle_timer_pool_t * cycle_timers,
 		button_t * b,
 		const char * name);
 

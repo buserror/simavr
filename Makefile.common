@@ -185,7 +185,7 @@ endif
 	${E}$(CC) $(CPPFLAGS) $(CFLAGS) -MMD \
 		$<  -c -o $@
 
-${OBJ}/%.elf:
+${OBJ}/%.elf:${OBJ}/%.o
 ifneq ($(E),)
 	@echo LD $@
 endif

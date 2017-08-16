@@ -22,15 +22,15 @@
 #include <stdio.h>
 #include "avr_spi.h"
 
-static avr_cycle_count_t avr_spi_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t avr_spi_raise(struct avr_cycle_timer_pool_t * pool, avr_cycle_count_t when, void * param)
 {
 	avr_spi_t * p = (avr_spi_t *)param;
 	
-	if (avr_regbit_get(avr, p->spe)) {
+	if (avr_regbit_get(p->io.avr, p->spe)) {
 		// in master mode, any byte is sent as it comes..
-		if (avr_regbit_get(avr, p->mstr)) {
-			avr_raise_interrupt(avr, &p->spi);
-			avr_raise_irq(p->io.irq + SPI_IRQ_OUTPUT, avr->data[p->r_spdr]);
+		if (avr_regbit_get(p->io.avr, p->mstr)) {
+			avr_raise_interrupt(p->io.avr, &p->spi);
+			avr_raise_irq(p->io.irq + SPI_IRQ_OUTPUT, p->io.avr->data[p->r_spdr]);
 		}
 	}
 	return 0;
@@ -55,7 +55,9 @@ static void avr_spi_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, voi
 		avr_regbit_clear(avr, p->spi.raised);
 
 		avr_core_watch_write(avr, addr, v);
-		avr_cycle_timer_register_usec(avr, 100, avr_spi_raise, p); // should be speed dependent
+		if ( avr_cycle_timer_register_usec(&(avr->cycle_timers), 100, avr_spi_raise, p) < 0 ) { ; // should be speed dependent 
+			AVR_LOG(avr, LOG_ERROR, "CYCLE: %s: pool is full (%d)!\n", __func__, MAX_CYCLE_TIMERS);
+		}
 	}
 }
 

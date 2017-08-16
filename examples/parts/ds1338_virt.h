@@ -41,6 +41,7 @@
 #include "sim_irq.h"
 #include "sim_avr.h"
 #include "avr_ioport.h"
+#include "parts_logger.h"
 
 // TWI address is fixed
 #define DS1338_VIRT_TWI_ADDR		0xD0
@@ -149,7 +150,7 @@ typedef struct ds1338_pin_t
  * DS1338 I2C clock
  */
 typedef struct ds1338_virt_t {
-	struct avr_t * avr;
+	//struct avr_t * avr;
 	avr_irq_t * irq;		// irq list
 	uint8_t verbose;
 	uint8_t selected;		// selected address
@@ -158,22 +159,31 @@ typedef struct ds1338_virt_t {
 	uint8_t nvram[64];		// battery backed up NVRAM
 	uint16_t rtc;			// RTC counter
 	uint8_t square_wave;
+	parts_logger_t logger;
+	
 } ds1338_virt_t;
 
 void
 ds1338_virt_init(struct avr_t * avr,
                  ds1338_virt_t * p);
+void
+ds1338_virt_initialize(avr_irq_pool_t * irq_pool,
+				avr_cycle_timer_pool_t  * cycle_timers,
+                 ds1338_virt_t * p);
+
+void 
+ds1338_reset(avr_cycle_timer_pool_t * cycle_timers, ds1338_virt_t *p);
 
 /*
  * Attach the ds1307 to the AVR's TWI master code,
  * pass AVR_IOCTL_TWI_GETIRQ(0) for example as i2c_irq_base
  */
 void
-ds1338_virt_attach_twi(ds1338_virt_t * p,
+ds1338_virt_attach_twi(avr_t * avr,ds1338_virt_t * p,
                        uint32_t i2c_irq_base);
 
 void
-ds1338_virt_attach_square_wave_output(ds1338_virt_t * p,
+ds1338_virt_attach_square_wave_output(avr_t * avr,ds1338_virt_t * p,
                                       ds1338_pin_t * wiring);
 
 static inline int

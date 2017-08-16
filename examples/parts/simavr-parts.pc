@@ -1,0 +1,10 @@
+prefix=PREFIX
+exec_prefix=${prefix}
+includedir=${prefix}/include
+libdir=${exec_prefix}/lib
+
+Name: simavr-parts
+Description: Atmel(tm) AVR 8 bits simulator component library
+Version: VERSION
+Cflags: -I${includedir}/simavr/parts -I${includedir}/simavr
+Libs: -L${libdir} -lsimavrparts -lsimavr -lelf 

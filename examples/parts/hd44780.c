@@ -69,7 +69,7 @@ _hd44780_clear_screen(
  */
 static avr_cycle_count_t
 _hd44780_busy_timer(
-		struct avr_t * avr,
+		struct avr_cycle_timer_pool_t * pool,
         avr_cycle_count_t when, void * param)
 {
 	hd44780_t *b = (hd44780_t *) param;
@@ -107,7 +107,11 @@ hd44780_write_data(
 {
 	uint32_t delay = 37; // uS
 	b->vram[b->cursor] = b->datapins;
+	b->logger.level = LOG_ERROR;
+	parts_global_logger(&b->logger,LOG_OUTPUT,"hd44780_write_data %02x\n", b->datapins);
+#if 0
 	printf("hd44780_write_data %02x\n", b->datapins);
+#endif
 	if (hd44780_get_flag(b, HD44780_FLAG_S_C)) {	// display shift ?
 		// TODO display shift
 	} else {
@@ -130,7 +134,10 @@ hd44780_write_command(
 		if (b->datapins & (1 << top))
 			break;
 		else top--;
+	parts_global_logger(&b->logger,LOG_OUTPUT,"hd44780_write_command %02x\n", b->datapins);
+#if 0
 	printf("hd44780_write_command %02x\n", b->datapins);
+#endif
 
 	switch (top) {
 		// Set	DDRAM address
@@ -148,7 +155,10 @@ hd44780_write_command(
 			hd44780_set_flag(b, HD44780_FLAG_N, b->datapins & 8);
 			hd44780_set_flag(b, HD44780_FLAG_F, b->datapins & 4);
 			if (!four && !hd44780_get_flag(b, HD44780_FLAG_D_L)) {
+				parts_global_logger(&b->logger,LOG_OUTPUT,"%s activating 4 bits mode\n", __FUNCTION__);
+#if 0
 				printf("%s activating 4 bits mode\n", __FUNCTION__);
+#endif
 				hd44780_set_flag(b, HD44780_FLAG_LOWNIBBLE, 0);
 			}
 		}	break;
@@ -210,7 +220,10 @@ hd44780_process_write(
 	// write has 8 bits to process
 	if (write) {
 		if (hd44780_get_flag(b, HD44780_FLAG_BUSY)) {
+			parts_global_logger(&b->logger,LOG_OUTPUT,"%s command %02x write when still BUSY\n", __FUNCTION__, b->datapins);
+#if 0
 			printf("%s command %02x write when still BUSY\n", __FUNCTION__, b->datapins);
+#endif
 		}
 		if (b->pinstate & (1 << IRQ_HD44780_RS))	// write data
 			delay = hd44780_write_data(b);
@@ -255,7 +268,7 @@ hd44780_process_read(
 			// the timer too
 			hd44780_set_flag(b, HD44780_FLAG_BUSY, 0);
 			avr_raise_irq(b->irq + IRQ_HD44780_BUSY, 0);
-			avr_cycle_timer_cancel(b->avr, _hd44780_busy_timer, b);
+			avr_cycle_timer_cancel(b->cycle_timers, _hd44780_busy_timer, b);
 		}
 		avr_raise_irq(b->irq + IRQ_HD44780_DATA_OUT, b->readpins);
 
@@ -275,7 +288,7 @@ hd44780_process_read(
 
 static avr_cycle_count_t
 _hd44780_process_e_pinchange(
-		struct avr_t * avr,
+		struct avr_cycle_timer_pool_t * pool,
         avr_cycle_count_t when, void * param)
 {
 	hd44780_t *b = (hd44780_t *) param;
@@ -300,7 +313,7 @@ _hd44780_process_e_pinchange(
 	if (delay) {
 		hd44780_set_flag(b, HD44780_FLAG_BUSY, 1);
 		avr_raise_irq(b->irq + IRQ_HD44780_BUSY, 1);
-		avr_cycle_timer_register_usec(b->avr, delay,
+		avr_cycle_timer_register_usec(b->cycle_timers, delay,
 			_hd44780_busy_timer, b);
 	}
 //	b->oldstate = b->pinstate;
@@ -342,27 +355,27 @@ hd44780_pin_changed_hook(
 	int e = b->pinstate & (1 << IRQ_HD44780_E);
 	// on the E pin rising edge, do stuff otherwise just exit
 	if (!eo && e)
-		avr_cycle_timer_register(b->avr, 1, _hd44780_process_e_pinchange, b);
+		avr_cycle_timer_register(b->cycle_timers, 1, _hd44780_process_e_pinchange, b);
 }
 
 static const char * irq_names[IRQ_HD44780_COUNT] = {
-	[IRQ_HD44780_ALL] = "7=hd44780.pins",
-	[IRQ_HD44780_RS] = "<hd44780.RS",
-	[IRQ_HD44780_RW] = "<hd44780.RW",
-	[IRQ_HD44780_E] = "<hd44780.E",
-	[IRQ_HD44780_D0] = "=hd44780.D0",
-	[IRQ_HD44780_D1] = "=hd44780.D1",
-	[IRQ_HD44780_D2] = "=hd44780.D2",
-	[IRQ_HD44780_D3] = "=hd44780.D3",
-	[IRQ_HD44780_D4] = "=hd44780.D4",
-	[IRQ_HD44780_D5] = "=hd44780.D5",
-	[IRQ_HD44780_D6] = "=hd44780.D6",
-	[IRQ_HD44780_D7] = "=hd44780.D7",
+	[IRQ_HD44780_ALL] = "7=hd44780.pins.all",
+	[IRQ_HD44780_RS] = "<hd44780.input,RS",
+	[IRQ_HD44780_RW] = "<hd44780.input.RW",
+	[IRQ_HD44780_E] = "<hd44780.input.E",
+	[IRQ_HD44780_D0] = "=hd44780.port.D0",
+	[IRQ_HD44780_D1] = "=hd44780.port.D1",
+	[IRQ_HD44780_D2] = "=hd44780.port.D2",
+	[IRQ_HD44780_D3] = "=hd44780.port.D3",
+	[IRQ_HD44780_D4] = "=hd44780.port.D4",
+	[IRQ_HD44780_D5] = "=hd44780.port.D5",
+	[IRQ_HD44780_D6] = "=hd44780.port.D6",
+	[IRQ_HD44780_D7] = "=hd44780.port.D7",
 
-	[IRQ_HD44780_BUSY] = ">hd44780.BUSY",
-	[IRQ_HD44780_ADDR] = "7>hd44780.ADDR",
-	[IRQ_HD44780_DATA_IN] = "8>hd44780.DATA_IN",
-	[IRQ_HD44780_DATA_OUT] = "8>hd44780.DATA_OUT",
+	[IRQ_HD44780_BUSY] = ">hd44780.output.BUSY",
+	[IRQ_HD44780_ADDR] = "7>hd44780.trace.ADDR",
+	[IRQ_HD44780_DATA_IN] = "8>hd44780.data.in",
+	[IRQ_HD44780_DATA_OUT] = "8>hd44780.data.OUT",
 };
 
 void
@@ -372,23 +385,44 @@ hd44780_init(
 		int width,
 		int height )
 {
+	hd44780_initialize(&(avr->irq_pool),&avr->cycle_timers,b,width,height);
+}
+
+void
+hd44780_initialize(
+		avr_irq_pool_t *irq_pool,
+		avr_cycle_timer_pool_t * cycle_timers,
+		struct hd44780_t * b,
+		int width,
+		int height )
+{
 	memset(b, 0, sizeof(*b));
-	b->avr = avr;
+	b->cycle_timers = cycle_timers;
 	b->w = width;
 	b->h = height;
+	b->logger.level = LOG_ERROR;
 	/*
-	 * Register callbacks on all our IRQs
-	 */
-	b->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_HD44780_COUNT, irq_names);
+ 	 * Register callbacks on all our IRQs
+ 	 */
+	b->irq = avr_alloc_irq(irq_pool, 0, IRQ_HD44780_COUNT, irq_names);
 	for (int i = 0; i < IRQ_HD44780_INPUT_COUNT; i++)
 		avr_irq_register_notify(b->irq + i, hd44780_pin_changed_hook, b);
 
+	hd44780_reset(b);
+	parts_global_logger(&b->logger,LOG_OUTPUT,"LCD: %duS is %d cycles for your AVR\n",
+			37, (int)avr_usec_to_cycles(cycle_timers->clock, 37));
+	parts_global_logger(&b->logger,LOG_OUTPUT,"LCD: %duS is %d cycles for your AVR\n",
+			1, (int)avr_usec_to_cycles(cycle_timers->clock, 1));
+#if 0
+	printf("LCD: %duS is %d cycles for your AVR\n",
+			37, (int)avr_usec_to_cycles(cycle_timers->clock, 37));
+	printf("LCD: %duS is %d cycles for your AVR\n",
+			1, (int)avr_usec_to_cycles(cycle_timers->clock, 1));
+#endif
+}
+
+void hd44780_reset(hd44780_t * b) {
 	_hd44780_reset_cursor(b);
 	_hd44780_clear_screen(b);
-
-	printf("LCD: %duS is %d cycles for your AVR\n",
-			37, (int)avr_usec_to_cycles(avr, 37));
-	printf("LCD: %duS is %d cycles for your AVR\n",
-			1, (int)avr_usec_to_cycles(avr, 1));
 }
 

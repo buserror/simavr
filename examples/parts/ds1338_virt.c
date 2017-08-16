@@ -31,6 +31,7 @@
 #include "avr_twi.h"
 #include "ds1338_virt.h"
 #include "sim_time.h"
+#include "sim_avr.h"
 
 
 /*
@@ -58,13 +59,22 @@ ds1338_virt_update(const ds1338_virt_t * const p)
 	{
 		case DS1338_VIRT_SECONDS:
 			if (ds1338_get_flag(p->nvram[p->reg_addr], DS1338_VIRT_CH) == 0) {
+				parts_global_logger(&p->logger,LOG_OUTPUT,"DS1338 clock ticking\n");
+#if 0
 				printf("DS1338 clock ticking\n");
+#endif
 			} else {
+				parts_global_logger(&(p->logger),LOG_OUTPUT,"DS1338 clock stopped\n");
+#if 0
 				printf("DS1338 clock stopped\n");
+#endif
 			}
 			break;
 		case DS1338_VIRT_CONTROL:
+			parts_global_logger(&p->logger,LOG_OUTPUT,"DS1338 control register updated\n");
+#if 0
 			printf("DS1338 control register updated\n");
+#endif
 			// TODO: Check if changing the prescaler resets the clock counter
 			// and if so do it here?
 			break;
@@ -223,7 +233,10 @@ static void
 ds1338_virt_cycle_square_wave(ds1338_virt_t *p)
 {
 	if(!ds1338_get_flag(p->nvram[DS1338_VIRT_CONTROL], DS1338_VIRT_SQWE)) {
+		parts_global_logger(&p->logger,LOG_OUTPUT,"DS1338: SQWE disabled");
+#if 0
 		printf("DS1338: SQWE disabled");
+#endif
 		// Square wave output disabled
 		return;
 	}
@@ -273,17 +286,21 @@ ds1338_print_time(ds1338_virt_t *p)
 	uint8_t year = (p->nvram[DS1338_VIRT_YEAR] & 0xF)
 	                + (p->nvram[DS1338_VIRT_YEAR] >> 4) * 10;
 
+	parts_global_logger(&p->logger,LOG_TRACE,"Time: %02i:%02i:%02i  Day: %i Date: %02i:%02i:%02i PM:%01x\n",
+		        hours, minutes, seconds, day, date, month, year, pm);
+#if 0
 	if(p->verbose)
 		printf("Time: %02i:%02i:%02i  Day: %i Date: %02i:%02i:%02i PM:%01x\n",
 		        hours, minutes, seconds, day, date, month, year, pm);
+#endif
 }
 
 static avr_cycle_count_t
-ds1338_virt_clock_tick(struct avr_t * avr,
+ds1338_virt_clock_tick(struct avr_cycle_timer_pool_t * pool,
                        avr_cycle_count_t when,
                        ds1338_virt_t *p)
 {
-	avr_cycle_count_t next_tick = when + avr_usec_to_cycles(avr, DS1338_CLK_PERIOD_US / 2);
+	avr_cycle_count_t next_tick = when + avr_usec_to_cycles(pool->clock, DS1338_CLK_PERIOD_US / 2);
 
 	if (!ds1338_get_flag(p->nvram[DS1338_VIRT_SECONDS], DS1338_VIRT_CH)) {
 		// Oscillator is enabled. Note that this counter is allowed to wrap.
@@ -299,7 +316,10 @@ ds1338_virt_clock_tick(struct avr_t * avr,
 	if (p->rtc == 0) {
 		// 1 second has passed
 		ds1338_virt_tick_time(p);
+			if ( p->logger.level >= LOG_TRACE )
+#if 0
                 if (p->verbose)
+#endif
 			ds1338_print_time(p);
 	}
 
@@ -330,7 +350,10 @@ ds1338_virt_clock_tick(struct avr_t * avr,
 			ds1338_virt_cycle_square_wave(p);
 			break;
 		default:
+			parts_global_logger(&p->logger,LOG_ERROR,"DS1338 ERROR: PRESCALER MODE INVALID\n");
+#if 0
 			printf("DS1338 ERROR: PRESCALER MODE INVALID\n");
+#endif
 			break;
 	}
 
@@ -338,7 +361,7 @@ ds1338_virt_clock_tick(struct avr_t * avr,
 }
 
 static void
-ds1338_virt_clock_xtal_init(struct avr_t * avr,
+ds1338_virt_clock_xtal_init(struct avr_cycle_timer_pool_t * pool,
                             ds1338_virt_t *p)
 {
 	p->rtc = 0;
@@ -347,14 +370,19 @@ ds1338_virt_clock_xtal_init(struct avr_t * avr,
 	 * Set a timer for half the clock period to allow reconstruction
 	 * of the square wave output at the maximum possible frequency.
 	 */
-	avr_cycle_timer_register_usec(avr,
+	avr_cycle_timer_register_usec(pool,
 	                              DS1338_CLK_PERIOD_US / 2,
 	                              (void *) ds1338_virt_clock_tick,
 	                              p);
 
+	parts_global_logger(&(p->logger),LOG_OUTPUT,"DS1338 clock crystal period %duS or %d cycles\n",
+			DS1338_CLK_PERIOD_US,
+			(int)avr_usec_to_cycles(pool->clock, DS1338_CLK_PERIOD_US));
+#if 0
 	printf("DS1338 clock crystal period %duS or %d cycles\n",
 			DS1338_CLK_PERIOD_US,
-			(int)avr_usec_to_cycles(avr, DS1338_CLK_PERIOD_US));
+			(int)avr_usec_to_cycles(pool->clock, DS1338_CLK_PERIOD_US));
+#endif
 }
 
 /*
@@ -375,8 +403,11 @@ ds1338_virt_in_hook(struct avr_irq_t * irq,
 	if (v.u.twi.msg & TWI_COND_STOP) {
 		if (p->selected) {
 			// Wahoo, it was us!
+			parts_global_logger(&(p->logger),LOG_TRACE,"DS1338 stop\n\n");
+#if 0
 			if (p->verbose)
 				printf("DS1338 stop\n\n");
+#endif
 		}
 		/* We should not zero the register address here because read mode uses the last
 		 * register address stored and write mode always overwrites it.
@@ -396,8 +427,11 @@ ds1338_virt_in_hook(struct avr_irq_t * irq,
 		// Ignore the read write bit
 		if ((v.u.twi.addr >> 1) ==  (DS1338_VIRT_TWI_ADDR >> 1)) {
 			// it's us !
+			parts_global_logger(&(p->logger),LOG_TRACE,"DS1338 start\n");
+#if 0
 			if (p->verbose)
 				printf("DS1338 start\n");
+#endif
 			p->selected = v.u.twi.addr;
 			avr_raise_irq(p->irq + TWI_IRQ_INPUT,
 					avr_twi_irq_msg(TWI_COND_ACK, p->selected, 1));
@@ -416,25 +450,36 @@ ds1338_virt_in_hook(struct avr_irq_t * irq,
 					avr_twi_irq_msg(TWI_COND_ACK, p->selected, 1));
 			// Write to the selected register (see p13. DS1388 datasheet for details)
 			if (p->reg_selected) {
+				parts_global_logger(&p->logger,LOG_TRACE,"DS1338 set register 0x%02x to 0x%02x\n", 
+						p->reg_addr, v.u.twi.data);
+#if 0
 				if (p->verbose)
 					printf("DS1338 set register 0x%02x to 0x%02x\n", 
 						p->reg_addr, v.u.twi.data);
+#endif
 				p->nvram[p->reg_addr] = v.u.twi.data;
 				ds1338_virt_update(p);
 				ds1338_virt_incr_addr(p);
 			// No register selected so select one
 			} else {
+				parts_global_logger(&(p->logger),LOG_TRACE,"DS1338 select register 0x%02x\n",  v.u.twi.data);
+#if 0
 				if (p->verbose)
 					printf("DS1338 select register 0x%02x\n",  v.u.twi.data);
+#endif
 				p->reg_selected = 1;
 				p->reg_addr = v.u.twi.data;
 			}
 		}
 		// Read transaction
 		if (v.u.twi.msg & TWI_COND_READ) {
+			parts_global_logger(&(p->logger),LOG_TRACE,"DS1338 READ data at 0x%02x: 0x%02x\n",
+					p->reg_addr, p->nvram[p->reg_addr]);
+#if 0
 			if (p->verbose)
 				printf("DS1338 READ data at 0x%02x: 0x%02x\n",
 					p->reg_addr, p->nvram[p->reg_addr]);
+#endif
 			uint8_t data = p->nvram[p->reg_addr];
 			ds1338_virt_incr_addr(p);
 			avr_raise_irq(p->irq + TWI_IRQ_INPUT,
@@ -444,9 +489,9 @@ ds1338_virt_in_hook(struct avr_irq_t * irq,
 }
 
 static const char * _ds1338_irq_names[DS1338_IRQ_COUNT] = {
-	[DS1338_TWI_IRQ_INPUT] = "8>ds1338.out",
-	[DS1338_TWI_IRQ_OUTPUT] = "32<ds1338.in",
-	[DS1338_SQW_IRQ_OUT] = ">ds1338_sqw.out",
+	[DS1338_TWI_IRQ_INPUT] = "8>ds1338.twi.out",
+	[DS1338_TWI_IRQ_OUTPUT] = "32<ds1338.twi.in",
+	[DS1338_SQW_IRQ_OUT] = ">ds1338.sqw.out",
 };
 
 /*
@@ -456,34 +501,49 @@ void
 ds1338_virt_init(struct avr_t * avr,
                  ds1338_virt_t * p)
 {
+	p->irq = NULL;
+	ds1338_virt_initialize(&avr->irq_pool,&avr->cycle_timers,p);
+}
+
+void
+ds1338_virt_initialize(avr_irq_pool_t * irq_pool,
+				avr_cycle_timer_pool_t  * cycle_timers,
+                 ds1338_virt_t * p)
+{
+
 	memset(p, 0, sizeof(*p));
 	memset(p->nvram, 0x00, sizeof(p->nvram));
 	// Default for day counter. Strangely it runs from 1-7.
 	p->nvram[DS1338_VIRT_DAY] = 1;
 
-	p->avr = avr;
-
-	p->irq = avr_alloc_irq(&avr->irq_pool, 0, DS1338_IRQ_COUNT, _ds1338_irq_names);
+	p->logger.level = LOG_ERROR;
+	p->irq = avr_alloc_irq(irq_pool, 0, DS1338_IRQ_COUNT, _ds1338_irq_names);
 	avr_irq_register_notify(p->irq + TWI_IRQ_OUTPUT, ds1338_virt_in_hook, p);
 
 	// Start with the oscillator disabled, at least until there is some "battery backup"
 	p->nvram[DS1338_VIRT_SECONDS] |=  (1 << DS1338_VIRT_CH);
 
-	ds1338_virt_clock_xtal_init(avr, p);
+	ds1338_virt_clock_xtal_init(cycle_timers, p);
+}
+
+void 
+ds1338_reset(avr_cycle_timer_pool_t * cycle_timers, ds1338_virt_t *p) {
+	ds1338_virt_clock_xtal_init(cycle_timers, p);
 }
 
 /*
  *  "Connect" the IRQs of the DS1338 to the TWI/i2c master of the AVR.
  */
 void
-ds1338_virt_attach_twi(ds1338_virt_t * p,
+ds1338_virt_attach_twi(avr_t * avr,
+					   ds1338_virt_t * p,
                        uint32_t i2c_irq_base)
 {
 	avr_connect_irq(
 		p->irq + TWI_IRQ_INPUT,
-		avr_io_getirq(p->avr, i2c_irq_base, TWI_IRQ_INPUT));
+		avr_io_getirq(avr, i2c_irq_base, TWI_IRQ_INPUT));
 	avr_connect_irq(
-		avr_io_getirq(p->avr, i2c_irq_base, TWI_IRQ_OUTPUT),
+		avr_io_getirq(avr, i2c_irq_base, TWI_IRQ_OUTPUT),
 		p->irq + TWI_IRQ_OUTPUT);
 }
 
@@ -491,11 +551,12 @@ ds1338_virt_attach_twi(ds1338_virt_t * p,
  * Optionally "connect" the square wave out IRQ to the AVR.
  */
 void
-ds1338_virt_attach_square_wave_output(ds1338_virt_t * p,
+ds1338_virt_attach_square_wave_output(avr_t * avr,
+									  ds1338_virt_t * p,
                                       ds1338_pin_t * wiring)
 {
 	avr_connect_irq(
 		p->irq + DS1338_SQW_IRQ_OUT,
-	        avr_io_getirq(p->avr, AVR_IOCTL_IOPORT_GETIRQ(wiring->port), wiring->pin));
+	        avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ(wiring->port), wiring->pin));
 }
 

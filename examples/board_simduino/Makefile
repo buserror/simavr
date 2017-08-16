@@ -39,6 +39,7 @@ include ${simavr}/Makefile.common
 
 board = ${OBJ}/${target}.elf
 
+${board} : ${OBJ}/parts_logger.o
 ${board} : ${OBJ}/uart_pty.o
 ${board} : ${OBJ}/${target}.o
 

@@ -70,7 +70,7 @@ avr_register_io_read(
 					"IO: %s(%04x : %p/%p): %p/%p\n",
 					__func__, a,
 					avr->io[a].r.c, avr->io[a].r.param, readp, param);
-			abort();
+			avr_abort(avr);
 		}
 	}
 	avr->io[a].r.param = param;
@@ -105,7 +105,7 @@ avr_register_io_write(
 		AVR_LOG(avr, LOG_ERROR,
 				"IO: %s(): IO address 0x%04x out of range (max 0x%04x).\n",
 				__func__, a, MAX_IOs);
-		abort();
+		avr_abort(avr);
 	}
 	/*
 	 * Verifying that some other piece of code is not installed to watch write
@@ -120,7 +120,7 @@ avr_register_io_write(
 				if (avr->io_shared_io_count > ARRAY_SIZE(avr->io_shared_io)) {
 					AVR_LOG(avr, LOG_ERROR,
 							"IO: %s(): Too many shared IO registers.\n", __func__);
-					abort();
+					avr_abort(avr);
 				}
 				AVR_LOG(avr, LOG_TRACE,
 						"IO: %s(%04x): Installing muxer on register.\n",
@@ -137,7 +137,7 @@ avr_register_io_write(
 				AVR_LOG(avr, LOG_ERROR,
 						"IO: %s(): Too many callbacks on %04x.\n",
 						__func__, addr);
-				abort();
+				avr_abort(avr);
 			}
 			avr->io_shared_io[no].io[d].param = param;
 			avr->io_shared_io[no].io[d].c = writep;
