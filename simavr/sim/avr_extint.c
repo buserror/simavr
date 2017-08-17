@@ -72,18 +72,16 @@ avr_extint_poll_level_trig(
 		goto terminate_poll; // only poll while External Interrupt Request X Enable flag is set
 	int bit = avr_extint_read_pin(p, eint_no);
 	if (bit)
-		goto terminate_poll; // Only poll while pin level remains low
+		goto terminate_poll; // only poll while pin level remains low
 
 	if (avr->sreg[S_I]) {
 		uint8_t raised = avr_regbit_get(avr, p->eint[eint_no].vector.raised) || p->eint[eint_no].vector.pending;
 		if (!raised)
 			avr_raise_interrupt(avr, &p->eint[eint_no].vector);
 	}
-
 	return when+1;
 
 terminate_poll:
-	//free(poll);
 	poll->is_polling = 0;
 	return 0;
 }
@@ -101,15 +99,9 @@ avr_extint_fire_and_start_poll(
 				avr_raise_interrupt(avr, &p->eint[eint_no].vector);
 		}
 		if (p->eint[eint_no].strict_lvl_trig) {
-			//if (avr_cycle_timer_status(avr, avr_extint_poll_level_trig, p) == 0)
-			//avr_extint_poll_context_t *poll = malloc(sizeof(avr_extint_poll_context_t));
 			avr_extint_poll_context_t *poll = p->poll_contexts + eint_no;
 			if (poll &&
-					!poll->is_polling
-				//(avr_cycle_timer_status(avr, avr_extint_poll_level_trig, poll) == 0)
-					) {
-				//poll->eint_no = (uint32_t)eint_no;
-				//poll->extint = p;
+				!poll->is_polling) {
 				avr_cycle_timer_register(avr, 1, avr_extint_poll_level_trig, poll);
 				poll->is_polling = 1;
 			}
@@ -117,7 +109,9 @@ avr_extint_fire_and_start_poll(
 	}
 }
 
-static avr_extint_t * avr_extint_get(avr_t * avr)
+static avr_extint_t *
+avr_extint_get(
+		avr_t * avr)
 {
 	if (!avr)
 		return NULL;
@@ -131,7 +125,9 @@ static avr_extint_t * avr_extint_get(avr_t * avr)
 	return NULL;
 }
 
-static uint8_t avr_extint_count(avr_extint_t *extint)
+static uint8_t
+avr_extint_count(
+		avr_extint_t *extint)
 {
 	uint8_t count = 0;
 	if (!extint)
@@ -144,14 +140,10 @@ static uint8_t avr_extint_count(avr_extint_t *extint)
 	return count;
 }
 
-/**
- * @brief avr_extint_is_strict_lvl_trig
- * @param avr
- * @param extint_no: an ext interrupt number, e.g. 0 or 1 (corresponds to INT0 or INT1)
- * @return -1 if irrelevant extint_no given, strict
- * level triggering flag otherwise.
- */
-int avr_extint_is_strict_lvl_trig(avr_t * avr, uint8_t extint_no)
+int
+avr_extint_is_strict_lvl_trig(
+		avr_t * avr,
+		uint8_t extint_no)
 {
 	avr_extint_t *p = avr_extint_get(avr);
 	if (!p || (avr_extint_count(p) <= extint_no))
@@ -161,13 +153,11 @@ int avr_extint_is_strict_lvl_trig(avr_t * avr, uint8_t extint_no)
 	return p->eint[extint_no].strict_lvl_trig;
 }
 
-/**
- * @brief avr_extint_set_strict_lvl_trig
- * @param avr
- * @param extint_no: an ext interrupt number, e.g. 0 or 1 (corresponds to INT0 or INT1)
- * @param strict: new value for level triggering flag
- */
-void avr_extint_set_strict_lvl_trig(avr_t * avr, uint8_t extint_no, uint8_t strict)
+void
+avr_extint_set_strict_lvl_trig(
+		avr_t * avr,
+		uint8_t extint_no,
+		uint8_t strict)
 {
 	avr_extint_t *p = avr_extint_get(avr);
 	if (!p || (avr_extint_count(p) <= extint_no))
@@ -177,7 +167,11 @@ void avr_extint_set_strict_lvl_trig(avr_t * avr, uint8_t extint_no, uint8_t stri
 	p->eint[extint_no].strict_lvl_trig = strict;
 }
 
-static void avr_extint_irq_notify(struct avr_irq_t * irq, uint32_t value, void * param)
+static void
+avr_extint_irq_notify(
+		struct avr_irq_t * irq,
+		uint32_t value,
+		void * param)
 {
 	avr_extint_t * p = (avr_extint_t *)param;
 	avr_t * avr = p->io.avr;
@@ -272,7 +266,6 @@ avr_extint_mask_write(
 			int bit = avr_extint_read_pin(p, i);
 			if (bit)
 				continue;
-			//if (!avr_regbit_get(avr, p->eint[i].vector.enable)) continue;
 			avr_extint_fire_and_start_poll(p, i);
 		}
 	}
@@ -308,13 +301,14 @@ avr_extint_isc_write(
 			int bit = avr_extint_read_pin(p, i);
 			if (bit)
 				continue;
-			//if (!avr_regbit_get(avr, p->eint[i].vector.enable)) continue;
 			avr_extint_fire_and_start_poll(p, i);
 		}
 	}
 }
 
-static void avr_extint_reset(avr_io_t * port)
+static void
+avr_extint_reset(
+		avr_io_t * port)
 {
 	avr_extint_t * p = (avr_extint_t *)port;
 
@@ -349,7 +343,10 @@ static	avr_io_t	_io = {
 	.irq_names = irq_names,
 };
 
-void avr_extint_init(avr_t * avr, avr_extint_t * p)
+void
+avr_extint_init(
+		avr_t * avr,
+		avr_extint_t * p)
 {
 	p->io = _io;
 

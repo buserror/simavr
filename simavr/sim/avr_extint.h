@@ -73,8 +73,16 @@ typedef struct avr_extint_t {
 } avr_extint_t;
 
 void avr_extint_init(avr_t * avr, avr_extint_t * p);
-int avr_extint_is_strict_lvl_trig(avr_t * avr, uint8_t extint_no);
-void avr_extint_set_strict_lvl_trig(avr_t * avr, uint8_t extint_no, uint8_t strict);
+
+int // return -1 if irrelevant extint_no given, strict level triggering flag otherwise.
+avr_extint_is_strict_lvl_trig(
+		avr_t * avr,
+		uint8_t extint_no); //an ext interrupt number, e.g. 0 or 1 (corresponds to INT0 or INT1)
+void
+avr_extint_set_strict_lvl_trig(
+		avr_t * avr,
+		uint8_t extint_no, //an ext interrupt number
+		uint8_t strict); //new strict level triggering flag
 
 
 // Declares a typical INT into a avr_extint_t in a core.
