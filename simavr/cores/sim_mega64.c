@@ -36,9 +36,6 @@ void m64_reset(struct avr_t * avr);
 #define __ASSEMBLER__
 #include "avr/iom64.h"
 
-/*
- * This is a template for all of the 128 devices, hopefully
- */
 const struct mcu_t {
 	avr_t          core;
 	avr_eeprom_t 	eeprom;
@@ -74,27 +71,14 @@ const struct mcu_t {
 		AVR_EXTINT_MEGA_DECLARE(6, 'E', PE6, B),
 		AVR_EXTINT_MEGA_DECLARE(7, 'E', PE7, B),
 	},
-	.porta = {  // no PCINTs in atmega128
-		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
-	},
-	.portb = {
-		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
-	},
-	.portc = {
-		.name = 'C', .r_port = PORTC, .r_ddr = DDRC, .r_pin = PINC,
-	},
-	.portd = {
-		.name = 'D', .r_port = PORTD, .r_ddr = DDRD, .r_pin = PIND,
-	},
-	.porte = {
-		.name = 'E', .r_port = PORTE, .r_ddr = DDRE, .r_pin = PINE,
-	},
-	.portf = {
-		.name = 'F', .r_port = PORTF, .r_ddr = DDRF, .r_pin = PINF,
-	},
-	.portg = {
-		.name = 'G', .r_port = PORTG, .r_ddr = DDRG, .r_pin = PING,
-	},
+
+	AVR_IOPORT_DECLARE(a, 'A', A), // no PCINTs in atmega64
+	AVR_IOPORT_DECLARE(b, 'B', B),
+	AVR_IOPORT_DECLARE(c, 'C', C),
+	AVR_IOPORT_DECLARE(d, 'D', D),
+	AVR_IOPORT_DECLARE(e, 'E', E),
+	AVR_IOPORT_DECLARE(f, 'F', F),
+	AVR_IOPORT_DECLARE(g, 'G', G),
 
 	// no PRUSART
 	AVR_UARTX_DECLARE(0, 0, 0),
@@ -229,7 +213,8 @@ const struct mcu_t {
 			[15] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR1B, CS10), AVR_IO_REGBIT(TCCR1B, CS11), AVR_IO_REGBIT(TCCR1B, CS12) },
-		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */  /* TODO: 2 External clocks */},
+		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTD, 6), /* External clock pin */
 
 		.r_tcnt = TCNT1L,
 		.r_icr = ICR1L,
@@ -296,7 +281,8 @@ const struct mcu_t {
 			[3] = AVR_TIMER_WGM_FASTPWM8(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR2, CS20), AVR_IO_REGBIT(TCCR2, CS21), AVR_IO_REGBIT(TCCR2, CS22) },
-		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */ /* TODO external clock */ },
+		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTD, 7), /* External clock pin */
 
 		.r_tcnt = TCNT2,
 		
@@ -340,7 +326,8 @@ const struct mcu_t {
 			[15] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR3B, CS30), AVR_IO_REGBIT(TCCR3B, CS31), AVR_IO_REGBIT(TCCR3B, CS32) },
-		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */  /* TODO: 2 External clocks */},
+		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTE, 6), /* External clock pin */
 
 		.r_tcnt = TCNT3L,
 		.r_icr = ICR3L,
@@ -396,23 +383,7 @@ const struct mcu_t {
 			.vector = TIMER3_CAPT_vect,
 		},
 	},
-	.spi = {
-
-		.r_spdr = SPDR,
-		.r_spcr = SPCR,
-		.r_spsr = SPSR,
-
-		.spe = AVR_IO_REGBIT(SPCR, SPE),
-		.mstr = AVR_IO_REGBIT(SPCR, MSTR),
-
-		.spr = { AVR_IO_REGBIT(SPCR, SPR0), AVR_IO_REGBIT(SPCR, SPR1), AVR_IO_REGBIT(SPSR, SPI2X) },
-		.spi = {
-			.enable = AVR_IO_REGBIT(SPCR, SPIE),
-			.raised = AVR_IO_REGBIT(SPSR, SPIF),
-			.vector = SPI_STC_vect,
-		},
-	},
-	
+	AVR_SPI_DECLARE(0, 0),
 	.twi = {
 
 		.r_twcr = TWCR,

@@ -73,7 +73,7 @@ const struct mcu_t {
   avr_uart_t       uart1;
   avr_acomp_t      acomp;
   avr_adc_t		   adc;
-  avr_timer_t      timer0, timer1, timer2, timer3;
+  avr_timer_t      timer0, timer1, timer3;
   avr_spi_t        spi;
   avr_twi_t		   twi;
   avr_usb_t        usb;
