@@ -139,9 +139,12 @@ const struct mcu_t {
 	.adc = {
 		.r_admux = ADMUX,
 		.mux = { AVR_IO_REGBIT(ADMUX, MUX0), AVR_IO_REGBIT(ADMUX, MUX1),
-					AVR_IO_REGBIT(ADMUX, MUX2), AVR_IO_REGBIT(ADMUX, MUX3),},
+					AVR_IO_REGBIT(ADMUX, MUX2), AVR_IO_REGBIT(ADMUX, MUX3),
+					AVR_IO_REGBIT(ADMUX, MUX4),AVR_IO_REGBIT(ADCSRB, MUX5),},
 		.ref = { AVR_IO_REGBIT(ADMUX, REFS0), AVR_IO_REGBIT(ADMUX, REFS1)},
-		.ref_values = { [1] = ADC_VREF_AVCC, [3] = ADC_VREF_V110, },
+		.ref_values = { [0] = ADC_VREF_AREF, [1] = ADC_VREF_AVCC,
+			//[2] = Reserved: any constant to mark this?
+			[3] = ADC_VREF_V256 },
 
 		.adlar = AVR_IO_REGBIT(ADMUX, ADLAR),
 		.r_adcsra = ADCSRA,
@@ -154,7 +157,8 @@ const struct mcu_t {
 		.r_adcl = ADCL,
 
 		.r_adcsrb = ADCSRB,
-		.adts = { AVR_IO_REGBIT(ADCSRB, ADTS0), AVR_IO_REGBIT(ADCSRB, ADTS1), AVR_IO_REGBIT(ADCSRB, ADTS2),},
+		.adts = { AVR_IO_REGBIT(ADCSRB, ADTS0), AVR_IO_REGBIT(ADCSRB, ADTS1),
+				  AVR_IO_REGBIT(ADCSRB, ADTS2), AVR_IO_REGBIT(ADCSRB, ADTS3),},
 		.adts_op = {
 			[0] = avr_adts_free_running,
 			[1] = avr_adts_analog_comparator_0,
@@ -164,16 +168,73 @@ const struct mcu_t {
 			[5] = avr_adts_timer_1_compare_match_b,
 			[6] = avr_adts_timer_1_overflow,
 			[7] = avr_adts_timer_1_capture_event,
+			// follows 4 sources for unsupported fast timer4
 		},
 
 		.muxmode = {
 			[0] = AVR_ADC_SINGLE(0), [1] = AVR_ADC_SINGLE(1),
-			[2] = AVR_ADC_SINGLE(2), [3] = AVR_ADC_SINGLE(3),
+
+			// Not available: 2 items
+			[2] = AVR_ADC_DIFF(0, 0,  1), [3] = AVR_ADC_DIFF(0, 0,  1),
+
 			[4] = AVR_ADC_SINGLE(4), [5] = AVR_ADC_SINGLE(5),
-			[6] = AVR_ADC_SINGLE(6), [7] = AVR_ADC_TEMP(),
-			[14] = AVR_ADC_REF(1100),	// 1.1V
-			[15] = AVR_ADC_REF(0),		// GND
+			[6] = AVR_ADC_SINGLE(6), [7] = AVR_ADC_SINGLE(7),
+
+			// Not available: 1 item
+			[ 8] = AVR_ADC_DIFF(0, 0,  10),
+
+			[ 9] = AVR_ADC_DIFF(1, 0,  10),
+
+			// Not available: 1 item
+			[10] = AVR_ADC_DIFF(0, 0, 200),
+
+			[11] = AVR_ADC_DIFF(1, 0, 200),
+
+			// Not available: 4 items
+			[12] = AVR_ADC_DIFF(0, 0,  1), [13] = AVR_ADC_DIFF(0, 0,  1),
+			[14] = AVR_ADC_DIFF(0, 0,  1), [15] = AVR_ADC_DIFF(0, 0,  1),
+
+			[16] = AVR_ADC_DIFF(0, 1,   1),
+
+			// Not available: 3 items
+			[17] = AVR_ADC_DIFF(0, 0,   1),
+			[18] = AVR_ADC_DIFF(0, 0,   1),
+			[19] = AVR_ADC_DIFF(0, 0,   1),
+
+			[20] = AVR_ADC_DIFF(4, 1,   1), [21] = AVR_ADC_DIFF(5, 1,   1),
+			[22] = AVR_ADC_DIFF(6, 1,   1), [23] = AVR_ADC_DIFF(7, 1,   1),
+
+			// Not available: 6 items
+			[24] = AVR_ADC_DIFF(0, 0,   1), [25] = AVR_ADC_DIFF(0, 0,   1),
+			[26] = AVR_ADC_DIFF(0, 0,   1), [27] = AVR_ADC_DIFF(0, 0,   1),
+			[28] = AVR_ADC_DIFF(0, 0,   1), [29] = AVR_ADC_DIFF(0, 0,   1),
+
+			[30] = AVR_ADC_REF(1100),	// 1.1V
+			[31] = AVR_ADC_REF(0),		// GND
+
+			[32] = AVR_ADC_SINGLE( 8), [33] = AVR_ADC_SINGLE( 9),
+			[34] = AVR_ADC_SINGLE(10), [35] = AVR_ADC_SINGLE(11),
+			[36] = AVR_ADC_SINGLE(12), [37] = AVR_ADC_SINGLE(13),
+
+			[38] = AVR_ADC_DIFF(1, 0, 40),
+			[39] = AVR_ADC_TEMP(),
+
+			[40] = AVR_ADC_DIFF(4, 0,   10), [41] = AVR_ADC_DIFF(5, 0,   10),
+			[42] = AVR_ADC_DIFF(6, 0,   10), [43] = AVR_ADC_DIFF(7, 0,   10),
+			[44] = AVR_ADC_DIFF(4, 1,   10), [45] = AVR_ADC_DIFF(5, 1,   10),
+			[46] = AVR_ADC_DIFF(6, 1,   10), [47] = AVR_ADC_DIFF(7, 1,   10),
+
+			[48] = AVR_ADC_DIFF(4, 0,   40), [49] = AVR_ADC_DIFF(5, 0,   40),
+			[50] = AVR_ADC_DIFF(6, 0,   40), [51] = AVR_ADC_DIFF(7, 0,   40),
+			[52] = AVR_ADC_DIFF(4, 1,   40), [53] = AVR_ADC_DIFF(5, 1,   40),
+			[54] = AVR_ADC_DIFF(6, 1,   40), [55] = AVR_ADC_DIFF(7, 1,   40),
+
+			[56] = AVR_ADC_DIFF(4, 0,   200), [57] = AVR_ADC_DIFF(5, 0,   200),
+			[58] = AVR_ADC_DIFF(6, 0,   200), [59] = AVR_ADC_DIFF(7, 0,   200),
+			[60] = AVR_ADC_DIFF(4, 1,   200), [61] = AVR_ADC_DIFF(5, 1,   200),
+			[62] = AVR_ADC_DIFF(6, 1,   200), [63] = AVR_ADC_DIFF(7, 1,   200),
 		},
+
 		.adc = {
 			.enable = AVR_IO_REGBIT(ADCSRA, ADIE),
 			.raised = AVR_IO_REGBIT(ADCSRA, ADIF),
