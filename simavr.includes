@@ -1,0 +1,13 @@
+examples/board_ds1338
+examples/board_hd44780
+examples/board_ssd1306
+examples/board_timer_64led
+examples/extra_board_usb
+examples/parts
+examples/shared
+simavr
+simavr/cores
+simavr/cores/avr
+simavr/sim
+simavr/sim/avr
+tests
