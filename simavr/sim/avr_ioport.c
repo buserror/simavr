@@ -43,27 +43,37 @@ avr_ioport_read(
 }
 
 static void
-avr_ioport_update_irqs(
-		avr_ioport_t * p)
+avr_ioport_update_irqs_ext(
+		avr_ioport_t * p,
+		int32_t selected_pin
+		)
 {
 	avr_t * avr = p->io.avr;
 	uint8_t ddr = avr->data[p->r_ddr];
+	uint8_t floating_pin_mask = 0;
+	int ind_from = 0;
+	int ind_to = 8;
+	if ((selected_pin >= 0) && (selected_pin < 8)) {
+		ind_from = selected_pin;
+		ind_to = selected_pin + 1;
+	}
 	// Set the PORT value if the pin is marked as output
 	// otherwise, if there is an 'external' pullup, set it
 	// otherwise, if the PORT pin was 1 to indicate an
 	// internal pullup, set that.
-	for (int i = 0; i < 8; i++) {
+	for (int i = ind_from; i < ind_to; i++) {
 		if (ddr & (1 << i))
 			avr_raise_irq(p->io.irq + i, (avr->data[p->r_port] >> i) & 1);
 		else if (avr_irq_get_flags(p->io.irq + i) & IRQ_FLAG_FLOATING) {
+			floating_pin_mask |= (1 << i);
 			if (p->external.pull_mask & (1 << i))
-				avr_raise_irq(p->io.irq + i, (p->external.pull_value >> i) & 1);
+				avr_raise_irq(p->io.irq + i, ((p->external.pull_value >> i) & 1));
 			else if ((avr->data[p->r_port] >> i) & 1)
 				avr_raise_irq(p->io.irq + i, 1);
 		}
 	}
 	uint8_t pin = (avr->data[p->r_pin] & ~ddr) | (avr->data[p->r_port] & ddr);
-	pin = (pin & ~p->external.pull_mask) | p->external.pull_value;
+	pin = (pin & ~(p->external.pull_mask & floating_pin_mask)) | (p->external.pull_value & floating_pin_mask);
 	avr_raise_irq(p->io.irq + IOPORT_IRQ_PIN_ALL, pin);
 
 	// if IRQs are registered on the PORT register (for example, VCD dumps) send
@@ -71,9 +81,16 @@ avr_ioport_update_irqs(
 	avr_io_addr_t port_io = AVR_DATA_TO_IO(p->r_port);
 	if (avr->io[port_io].irq) {
 		avr_raise_irq(avr->io[port_io].irq + AVR_IOMEM_IRQ_ALL, avr->data[p->r_port]);
-		for (int i = 0; i < 8; i++)
+		for (int i = ind_from; i < ind_to; i++)
 			avr_raise_irq(avr->io[port_io].irq + i, (avr->data[p->r_port] >> i) & 1);
  	}
+}
+
+static void
+avr_ioport_update_irqs(
+		avr_ioport_t * p)
+{
+	avr_ioport_update_irqs_ext(p, -1);
 }
 
 static void
@@ -128,6 +145,23 @@ avr_ioport_ddr_write(
 	avr_ioport_update_irqs(p);
 }
 
+static void
+_avr_ioport_irq_notify(
+		struct avr_irq_t * irq,
+		uint32_t value,
+		void * param)
+{
+	avr_ioport_t * p = (avr_ioport_t *)param;
+	avr_t * avr = p->io.avr;
+
+	value &= 0xff;
+	uint8_t mask = 1 << irq->irq;
+		// set the real PIN bit. ddr doesn't matter here as it's masked when read.
+	avr->data[p->r_pin] &= ~mask;
+	if (value)
+		avr->data[p->r_pin] |= mask;
+}
+
 /*
  * this is our "main" pin change callback, it can be triggered by either the
  * AVR code, or any external piece of code that see fit to do it.
@@ -141,6 +175,7 @@ avr_ioport_irq_notify(
 {
 	avr_ioport_t * p = (avr_ioport_t *)param;
 	avr_t * avr = p->io.avr;
+	uint8_t ddr = avr->data[p->r_ddr];
 
 	int output = value & AVR_IOPORT_OUTPUT;
 	value &= 0xff;
@@ -149,6 +184,18 @@ avr_ioport_irq_notify(
 	avr->data[p->r_pin] &= ~mask;
 	if (value)
 		avr->data[p->r_pin] |= mask;
+	if ((irq->flags & IRQ_FLAG_FLOATING) && !((ddr & (1 << irq->irq)))) {
+		// do a kind of recursion here to handle pull-ups
+		avr_irq_register_notify(
+			irq,
+			_avr_ioport_irq_notify,
+			param);
+		avr_ioport_update_irqs_ext(p, irq->irq);
+		avr_irq_unregister_notify(
+			irq,
+			_avr_ioport_irq_notify,
+			param);
+	}
 
 	if (output)	// if the IRQ was marked as Output, also do the IO write
 		avr_ioport_write(avr, p->r_port, (avr->data[p->r_port] & ~mask) | (value ? mask : 0), p);
