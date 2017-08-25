@@ -139,6 +139,17 @@ avr_ioport_ddr_write(
 	avr_ioport_t * p = (avr_ioport_t *)param;
 
 	D(if (avr->data[addr] != v) printf("** DDR%c(%02x) = %02x\r\n", p->name, addr, v);)
+	for (int i = 0; i < 8; i++) {
+		uint8_t mask = (1 << i);
+		if ((v & mask) != (avr->data[addr] & mask)) {
+			if (v & mask)
+				(p->io.irq + i)->flags &= ~IRQ_FLAG_FLOATING;
+			else {
+				(p->io.irq + i)->flags |= IRQ_FLAG_FLOATING | IRQ_FLAG_INIT;
+			}
+		}
+	}
+
 	avr_raise_irq(p->io.irq + IOPORT_IRQ_DIRECTION_ALL, v);
 	avr_core_watch_write(avr, addr, v);
 
@@ -213,10 +224,13 @@ avr_ioport_reset(
 		avr_io_t * port)
 {
 	avr_ioport_t * p = (avr_ioport_t *)port;
-	for (int i = 0; i < IOPORT_IRQ_PIN_ALL; i++)
+	for (int i = 0; i < IOPORT_IRQ_PIN_ALL; i++) {
 		avr_irq_register_notify(p->io.irq + i, avr_ioport_irq_notify, p);
-	for (int i = 0; i < IOPORT_IRQ_COUNT; i++)
-		p->io.irq[i].flags |= IRQ_FLAG_INIT | IRQ_FLAG_FLOATING;
+		p->io.irq[i].flags |= IRQ_FLAG_FLOATING;
+	}
+	for (int i = 0; i < IOPORT_IRQ_COUNT; i++) {
+		p->io.irq[i].flags |= IRQ_FLAG_INIT;
+	}
 }
 
 static int
@@ -322,8 +336,11 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 	// allocate this module's IRQ
 	avr_io_setirqs(&p->io, AVR_IOCTL_IOPORT_GETIRQ(p->name), IOPORT_IRQ_COUNT, NULL);
 
-	for (int i = 0; i < IOPORT_IRQ_COUNT; i++)
-		p->io.irq[i].flags |= IRQ_FLAG_FILTERED | IRQ_FLAG_FLOATING;
+	for (int i = 0; i < IOPORT_IRQ_COUNT; i++) {
+		p->io.irq[i].flags |= IRQ_FLAG_FILTERED;
+		if (i < IOPORT_IRQ_PIN_ALL)
+			p->io.irq[i].flags |= IRQ_FLAG_FLOATING;
+	}
 
 	avr_register_io_write(avr, p->r_port, avr_ioport_write, p);
 	avr_register_io_read(avr, p->r_pin, avr_ioport_read, p);
