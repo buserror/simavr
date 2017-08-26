@@ -184,9 +184,9 @@ avr_iomem_getirq(
 		const char * namep[9];
 		for (int ni = 0; ni < 9; ni++) {
 			if (ni < 8)
-				sprintf(d, "=avr.io%04x.%d", addr, ni);
+				sprintf(d, "=avr.io.%04x.%d", addr, ni);
 			else
-				sprintf(d, "8=avr.io%04x.all", addr);
+				sprintf(d, "8=avr.io.%04x.all", addr);
 			namep[ni] = d;
 			d += strlen(d) + 1;
 		}
