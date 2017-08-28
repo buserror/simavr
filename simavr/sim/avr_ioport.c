@@ -249,8 +249,10 @@ avr_ioport_reset(
 		avr_irq_register_notify(p->io.irq + i, avr_ioport_irq_notify, p);
 	for (int i = 0; i < IOPORT_IRQ_COUNT; i++)
 		p->io.irq[i].flags |= IRQ_FLAG_INIT;
-	for (int i = IOPORT_IRQ_PIN0_SRC_IMP; i < (IOPORT_IRQ_PIN0_SRC_IMP + IOPORT_IRQ_PIN_ALL); i++)
+	for (int i = IOPORT_IRQ_PIN0_SRC_IMP; i < (IOPORT_IRQ_PIN0_SRC_IMP + IOPORT_IRQ_PIN_ALL); i++) {
 		avr_irq_register_notify(p->io.irq + i, avr_ioport_irq_src_impedance, p);
+		avr_raise_irq(p->io.irq + i, (p->io.irq + i)->value);
+	}
 }
 
 static int
@@ -366,6 +368,8 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 
 	for (int i = 0; i < IOPORT_IRQ_COUNT; i++)
 		p->io.irq[i].flags |= IRQ_FLAG_FILTERED;
+	for (int i = IOPORT_IRQ_PIN0_SRC_IMP; i < (IOPORT_IRQ_PIN0_SRC_IMP + IOPORT_IRQ_PIN_ALL); i++)
+		(p->io.irq + i)->value = (uint32_t)-1;
 
 	avr_register_io_write(avr, p->r_port, avr_ioport_write, p);
 	avr_register_io_read(avr, p->r_pin, avr_ioport_read, p);
