@@ -43,14 +43,14 @@ avr_ioport_read(
 }
 
 static void
-avr_ioport_update_irqs_ext(
+avr_ioport_update_irqs_pin(
 		avr_ioport_t * p,
 		int32_t selected_pin
 		)
 {
 	avr_t * avr = p->io.avr;
 	uint8_t ddr = avr->data[p->r_ddr];
-	uint8_t floating_pin_mask = 0;
+	uint8_t zstate_pin_mask = 0;
 	int ind_from = 0;
 	int ind_to = 8;
 	if ((selected_pin >= 0) && (selected_pin < 8)) {
@@ -64,8 +64,8 @@ avr_ioport_update_irqs_ext(
 	for (int i = ind_from; i < ind_to; i++) {
 		if (ddr & (1 << i))
 			avr_raise_irq(p->io.irq + i, (avr->data[p->r_port] >> i) & 1);
-		else if (avr_irq_get_flags(p->io.irq + i) & IRQ_FLAG_FLOATING) {
-			floating_pin_mask |= (1 << i);
+		else if ((p->io.irq + IOPORT_IRQ_PIN0_SRC_IMP + i)->value >= AVR_IOPORT_INTRN_PULLUP_IMP) {
+			zstate_pin_mask |= (1 << i);
 			if (p->external.pull_mask & (1 << i))
 				avr_raise_irq(p->io.irq + i, ((p->external.pull_value >> i) & 1));
 			else if ((avr->data[p->r_port] >> i) & 1)
@@ -73,24 +73,26 @@ avr_ioport_update_irqs_ext(
 		}
 	}
 	uint8_t pin = (avr->data[p->r_pin] & ~ddr) | (avr->data[p->r_port] & ddr);
-	pin = (pin & ~(p->external.pull_mask & floating_pin_mask)) | (p->external.pull_value & floating_pin_mask);
+	pin = (pin & ~(p->external.pull_mask & zstate_pin_mask)) | (p->external.pull_value & zstate_pin_mask);
 	avr_raise_irq(p->io.irq + IOPORT_IRQ_PIN_ALL, pin);
 
-	// if IRQs are registered on the PORT register (for example, VCD dumps) send
-	// those as well
-	avr_io_addr_t port_io = AVR_DATA_TO_IO(p->r_port);
-	if (avr->io[port_io].irq) {
-		avr_raise_irq(avr->io[port_io].irq + AVR_IOMEM_IRQ_ALL, avr->data[p->r_port]);
-		for (int i = ind_from; i < ind_to; i++)
-			avr_raise_irq(avr->io[port_io].irq + i, (avr->data[p->r_port] >> i) & 1);
- 	}
 }
 
 static void
 avr_ioport_update_irqs(
 		avr_ioport_t * p)
 {
-	avr_ioport_update_irqs_ext(p, -1);
+	avr_t * avr = p->io.avr;
+
+	avr_ioport_update_irqs_pin(p, -1);
+	// if IRQs are registered on the PORT register (for example, VCD dumps) send
+	// those as well
+	avr_io_addr_t port_io = AVR_DATA_TO_IO(p->r_port);
+	if (avr->io[port_io].irq) {
+		avr_raise_irq(avr->io[port_io].irq + AVR_IOMEM_IRQ_ALL, avr->data[p->r_port]);
+		for (int i = 0; i < 8; i++)
+			avr_raise_irq(avr->io[port_io].irq + i, (avr->data[p->r_port] >> i) & 1);
+ 	}
 }
 
 static void
@@ -142,14 +144,10 @@ avr_ioport_ddr_write(
 	for (int i = 0; i < 8; i++) {
 		uint8_t mask = (1 << i);
 		if ((v & mask) != (avr->data[addr] & mask)) {
-			if (v & mask)
-				(p->io.irq + i)->flags &= ~IRQ_FLAG_FLOATING;
-			else {
-				(p->io.irq + i)->flags |= IRQ_FLAG_FLOATING | IRQ_FLAG_INIT;
-			}
+			if ((v & mask) == 0)
+				(p->io.irq + i)->flags |= IRQ_FLAG_INIT; // invalidate the pin prev.value if it's switched to input
 		}
 	}
-
 	avr_raise_irq(p->io.irq + IOPORT_IRQ_DIRECTION_ALL, v);
 	avr_core_watch_write(avr, addr, v);
 
@@ -186,32 +184,38 @@ avr_ioport_irq_notify(
 {
 	avr_ioport_t * p = (avr_ioport_t *)param;
 	avr_t * avr = p->io.avr;
-	uint8_t ddr = avr->data[p->r_ddr];
 
 	int output = value & AVR_IOPORT_OUTPUT;
 	value &= 0xff;
 	uint8_t mask = 1 << irq->irq;
+	uint32_t prev_val = avr->data[p->r_pin] & mask;
 		// set the real PIN bit. ddr doesn't matter here as it's masked when read.
 	avr->data[p->r_pin] &= ~mask;
 	if (value)
 		avr->data[p->r_pin] |= mask;
-	if ((irq->flags & IRQ_FLAG_FLOATING) && !((ddr & (1 << irq->irq)))) {
+	uint8_t ddr = avr->data[p->r_ddr];
+	avr_irq_t * impedance_irq = p->io.irq + IOPORT_IRQ_PIN0_SRC_IMP + irq->irq;
+	if (impedance_irq
+		&& ((impedance_irq->value >= AVR_IOPORT_INTRN_PULLUP_IMP) || (impedance_irq->flags & IRQ_FLAG_USER))
+		&& !((ddr & (1 << irq->irq)))) {
 		// do a kind of recursion here to handle pull-ups
 		avr_irq_register_notify(
 			irq,
 			_avr_ioport_irq_notify,
 			param);
-		avr_ioport_update_irqs_ext(p, irq->irq);
+		avr_ioport_update_irqs_pin(p, irq->irq);
 		avr_irq_unregister_notify(
 			irq,
 			_avr_ioport_irq_notify,
 			param);
 	}
 
+
 	if (output)	// if the IRQ was marked as Output, also do the IO write
 		avr_ioport_write(avr, p->r_port, (avr->data[p->r_port] & ~mask) | (value ? mask : 0), p);
 
-	if (p->r_pcint) {
+	uint32_t new_val = avr->data[p->r_pin] & mask;
+	if (p->r_pcint && (new_val != prev_val)) {
 		// if the pcint bit is on, try to raise it
 		int raise = avr->data[p->r_pcint] & mask;
 		if (raise)
@@ -219,18 +223,34 @@ avr_ioport_irq_notify(
 	}
 }
 
+void
+avr_ioport_irq_src_impedance(
+		struct avr_irq_t * irq,
+		uint32_t value,
+		void * param)
+{
+	avr_ioport_t * p = (avr_ioport_t *)param;
+	avr_irq_t * pin_irq = p->io.irq + irq->irq - IOPORT_IRQ_PIN0_SRC_IMP;
+	if (!pin_irq)
+		return;
+	pin_irq->flags |= IRQ_FLAG_INIT;
+	irq->value = value;
+	irq->flags |= IRQ_FLAG_USER;
+	avr_raise_irq(pin_irq, pin_irq->value);
+	irq->flags &= ~IRQ_FLAG_USER;
+}
+
 static void
 avr_ioport_reset(
 		avr_io_t * port)
 {
 	avr_ioport_t * p = (avr_ioport_t *)port;
-	for (int i = 0; i < IOPORT_IRQ_PIN_ALL; i++) {
+	for (int i = 0; i < IOPORT_IRQ_PIN_ALL; i++)
 		avr_irq_register_notify(p->io.irq + i, avr_ioport_irq_notify, p);
-		p->io.irq[i].flags |= IRQ_FLAG_FLOATING;
-	}
-	for (int i = 0; i < IOPORT_IRQ_COUNT; i++) {
+	for (int i = 0; i < IOPORT_IRQ_COUNT; i++)
 		p->io.irq[i].flags |= IRQ_FLAG_INIT;
-	}
+	for (int i = IOPORT_IRQ_PIN0_SRC_IMP; i < (IOPORT_IRQ_PIN0_SRC_IMP + IOPORT_IRQ_PIN_ALL); i++)
+		avr_irq_register_notify(p->io.irq + i, avr_ioport_irq_src_impedance, p);
 }
 
 static int
@@ -310,6 +330,14 @@ static const char * irq_names[IOPORT_IRQ_COUNT] = {
 	[IOPORT_IRQ_DIRECTION_ALL] = "8>ddr",
 	[IOPORT_IRQ_REG_PORT] = "8>port",
 	[IOPORT_IRQ_REG_PIN] = "8>pin",
+	[IOPORT_IRQ_PIN0_SRC_IMP] = ">srcimp0",
+	[IOPORT_IRQ_PIN1_SRC_IMP] = ">srcimp1",
+	[IOPORT_IRQ_PIN2_SRC_IMP] = ">srcimp2",
+	[IOPORT_IRQ_PIN3_SRC_IMP] = ">srcimp3",
+	[IOPORT_IRQ_PIN4_SRC_IMP] = ">srcimp4",
+	[IOPORT_IRQ_PIN5_SRC_IMP] = ">srcimp5",
+	[IOPORT_IRQ_PIN6_SRC_IMP] = ">srcimp6",
+	[IOPORT_IRQ_PIN7_SRC_IMP] = ">srcimp7",
 };
 
 static	avr_io_t	_io = {
@@ -336,11 +364,8 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 	// allocate this module's IRQ
 	avr_io_setirqs(&p->io, AVR_IOCTL_IOPORT_GETIRQ(p->name), IOPORT_IRQ_COUNT, NULL);
 
-	for (int i = 0; i < IOPORT_IRQ_COUNT; i++) {
+	for (int i = 0; i < IOPORT_IRQ_COUNT; i++)
 		p->io.irq[i].flags |= IRQ_FLAG_FILTERED;
-		if (i < IOPORT_IRQ_PIN_ALL)
-			p->io.irq[i].flags |= IRQ_FLAG_FLOATING;
-	}
 
 	avr_register_io_write(avr, p->r_port, avr_ioport_write, p);
 	avr_register_io_read(avr, p->r_pin, avr_ioport_read, p);
