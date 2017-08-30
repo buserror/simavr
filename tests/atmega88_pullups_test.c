@@ -49,3 +49,7 @@ static inline void output_value() {
 	putchar(ACSR & _BV(ACO) ? '1':'0');
 }
 
+int main()
+{
+  return 0;
+}
