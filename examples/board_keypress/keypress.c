@@ -1,7 +1,7 @@
 /*
-	ledramp.c
+	keypress.c
 	
-	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Copyright 2017 Al Popov
 
  	This file is part of simavr.
 
