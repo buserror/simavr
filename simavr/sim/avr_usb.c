@@ -235,9 +235,9 @@ ep_fifo_usb_read(
 
 static int
 ep_fifo_usb_write(
-        struct _epstate * epstate,
-        uint8_t * buf,
-        uint8_t len)
+		struct _epstate * epstate,
+		uint8_t * buf,
+		size_t len)
 {
 	if (!epstate->ueconx.epen) {
 		printf("WARNING! Adding bytes to non configured endpoint\n");
@@ -262,9 +262,9 @@ ep_fifo_usb_write(
 
 static uint8_t
 avr_usb_ep_read_bytecount(
-        struct avr_t * avr,
-        avr_io_addr_t addr,
-        void * param)
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		void * param)
 {
 	avr_usb_t * p = (avr_usb_t *) param;
 	return ep_fifo_count(get_epstate(p, current_ep_to_cpu(p)));
@@ -283,7 +283,11 @@ avr_usb_udaddr_write(
 }
 
 static void
-avr_usb_udcon_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+avr_usb_udcon_write(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	avr_usb_t * p = (avr_usb_t *)param;
 
@@ -294,10 +298,10 @@ avr_usb_udcon_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * pa
 
 static void
 avr_usb_uenum_write(
-        struct avr_t * avr,
-        avr_io_addr_t addr,
-        uint8_t v,
-        void * param)
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	assert(v < num_endpoints);
 	avr_core_watch_write(avr, addr, v);
@@ -322,10 +326,10 @@ avr_usb_ep_read_ueintx(
 
 static void
 avr_usb_ep_write_ueintx(
-        struct avr_t * avr,
-        avr_io_addr_t addr,
-        uint8_t v,
-        void * param)
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	avr_usb_t * p = (avr_usb_t *) param;
 	uint8_t ep = current_ep_to_cpu(p);
@@ -359,9 +363,9 @@ avr_usb_ep_write_ueintx(
 
 static uint8_t
 avr_usb_ep_read(
-        struct avr_t * avr,
-        avr_io_addr_t addr,
-        void * param)
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		void * param)
 {
 	avr_usb_t * p = (avr_usb_t *) param;
 	uint8_t laddr = addr - p->r_usbcon;
@@ -382,10 +386,10 @@ avr_usb_ep_read(
 
 static void
 avr_usb_ep_write(
-        struct avr_t * avr,
-        avr_io_addr_t addr,
-        uint8_t v,
-        void * param)
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	avr_usb_t * p = (avr_usb_t *) param;
 	struct _epstate * epstate = get_epstate(p, current_ep_to_cpu(p));
@@ -431,9 +435,9 @@ avr_usb_ep_write(
 
 static uint8_t
 avr_usb_ep_read_data(
-        struct avr_t * avr,
-        avr_io_addr_t addr,
-        void * param)
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		void * param)
 {
 	avr_usb_t * p = (avr_usb_t *) param;
 	int ret = ep_fifo_cpu_readbyte(get_epstate(p, current_ep_to_cpu(p)));
@@ -448,10 +452,10 @@ avr_usb_ep_read_data(
 
 static void
 avr_usb_ep_write_data(
-        struct avr_t * avr,
-        avr_io_addr_t addr,
-        uint8_t v,
-        void * param)
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	avr_usb_t * p = (avr_usb_t *) param;
 	int ret = ep_fifo_cpu_writebyte(get_epstate(p, current_ep_to_cpu(p)), v);
@@ -464,10 +468,10 @@ avr_usb_ep_write_data(
 
 static void
 avr_usb_pll_write(
-        struct avr_t * avr,
-        avr_io_addr_t addr,
-        uint8_t v,
-        void * param)
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 	v |= (v >> 1) & 1;
 	avr_core_watch_write(avr, addr, v);
@@ -476,9 +480,9 @@ avr_usb_pll_write(
 
 avr_cycle_count_t
 sof_generator(
-        struct avr_t * avr,
-        avr_cycle_count_t when,
-        void * param)
+		struct avr_t * avr,
+		avr_cycle_count_t when,
+		void * param)
 {
 	avr_usb_t * p = (avr_usb_t *) param;
 	//stop sof generation if detached
@@ -648,7 +652,9 @@ register_vectors(
 	avr_register_vector(avr, &p->state->gen_vect);
 }
 
-void avr_usb_init(avr_t * avr, avr_usb_t * p)
+void avr_usb_init(
+		avr_t * avr,
+		avr_usb_t * p)
 {
 	p->io = _io;
 
