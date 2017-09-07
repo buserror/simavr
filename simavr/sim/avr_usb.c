@@ -22,7 +22,6 @@
 /* TODO correct reset values */
 /* TODO otg support? */
 /* TODO drop bitfields? */
-/* TODO thread safe ioctls */
 /* TODO dual-bank endpoint buffers */
 /* TODO actually pay attention to endpoint memory allocation ? buggy endpoint configuration doesn't matter in the simulator now. */
 
@@ -30,12 +29,24 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <pthread.h>
 #include "avr_usb.h"
 #include "avr_usb_int.h"
 
+#define min(a,b) ((a)<(b)?(a):(b))
 
+static inline struct timespec ts_add(
+		struct timespec a,
+		struct timespec b)
+{
+	a.tv_sec += b.tv_sec;
+	a.tv_nsec += b.tv_nsec;
+	if (a.tv_nsec >= 1000000000L) {
+		a.tv_sec++ ;  a.tv_nsec = a.tv_nsec - 1000000000L;
+	}
 
-
+	return a;
+}
 
 const uint8_t num_endpoints = 5;//sizeof (struct usb_internal_state.ep_state) / sizeof (struct usb_internal_state.ep_state[0]);
 
@@ -75,7 +86,6 @@ raise_ep_interrupt(
         enum epints irq)
 {
 	struct _epstate * epstate = get_epstate(p, ep);
-	assert(ep < num_endpoints);
 	avr->data[p->r_usbcon + ueint] |= 1 << ep;
 	switch (irq) {
 		case txini:
@@ -172,47 +182,10 @@ ep_fifo_count(
 }
 
 static int
-ep_fifo_cpu_readbyte(
-		struct _epstate * epstate)
-{
-	uint8_t i, j;
-	uint8_t v = epstate->bank[epstate->current_bank].bytes[0];
-
-	if (!epstate->ueconx.epen) {
-		printf("WARNING! Adding bytes to non configured endpoint\n");
-		return -1;
-	}
-
-	if (ep_fifo_empty(epstate))
-		return -2;
-
-	for (i = 0, j = ep_fifo_count(epstate) - 1; i < j; i++)
-		epstate->bank[epstate->current_bank].bytes[i] =
-		        epstate->bank[epstate->current_bank].bytes[i + 1];
-	epstate->bank[epstate->current_bank].tail--;
-	return v;
-}
-
-static int
-ep_fifo_cpu_writebyte(
+host_read_ep_fifo(
 		struct _epstate * epstate,
-		uint8_t v)
-{
-	if (!epstate->ueconx.epen) {
-		printf("WARNING! Adding bytes to non configured endpoint\n");
-		return -1;
-	}
-	if (ep_fifo_full(epstate))
-		return -2;
-
-	epstate->bank[epstate->current_bank].bytes[epstate->bank[epstate->current_bank].tail++] = v;
-	return 0;
-}
-
-static int
-ep_fifo_usb_read(
-		struct _epstate * epstate,
-		uint8_t * buf)
+		uint8_t * buf,
+		size_t sz)
 {
 	if (!epstate->ueconx.epen) {
 		printf("WARNING! Reading from non configured endpoint\n");
@@ -225,15 +198,18 @@ ep_fifo_usb_read(
 		return AVR_IOCTL_USB_NAK;
 	}
 
-	int ret = epstate->bank[epstate->current_bank].tail;
+	if (sz < epstate->bank[epstate->current_bank].tail)
+		printf("WARNING! Loosing bytes in %s\n", __FUNCTION__);
+
+	int ret = min(epstate->bank[epstate->current_bank].tail, sz);
 	memcpy(buf, epstate->bank[epstate->current_bank].bytes,
-	        epstate->bank[epstate->current_bank].tail);
+	        ret);
 	epstate->bank[epstate->current_bank].tail = 0;
-	return ret;
+	return ret + (ret < ep_fifo_size(epstate) ? 0x100 : 0);
 }
 
 static int
-ep_fifo_usb_write(
+host_write_ep_fifo(
 		struct _epstate * epstate,
 		uint8_t * buf,
 		size_t len)
@@ -250,13 +226,13 @@ ep_fifo_usb_write(
 		return AVR_IOCTL_USB_NAK;
 	}
 
-	if (len > ep_fifo_size(epstate)) {
-		printf("EP OVERFI\n");
-		len = sizeof epstate->bank[epstate->current_bank].bytes;
-	}memcpy(epstate->bank[epstate->current_bank].bytes, buf, len);
-	epstate->bank[epstate->current_bank].tail = len;
+	len = min(ep_fifo_size(epstate), len);
 
-	return 0;
+	memcpy(epstate->bank[epstate->current_bank].bytes, buf, len);
+	epstate->bank[epstate->current_bank].tail = len;
+	epstate->ueintx.rwal = 1 & (epstate->uecfg0x.eptype != 0);
+
+	return len;
 }
 
 static uint8_t
@@ -266,7 +242,11 @@ avr_usb_ep_read_bytecount(
 		void * param)
 {
 	avr_usb_t * p = (avr_usb_t *) param;
-	return ep_fifo_count(get_epstate(p, current_ep_to_cpu(p)));
+	if (pthread_mutex_lock(&p->state->mutex))
+		abort();
+	uint8_t ret = ep_fifo_count(get_epstate(p, current_ep_to_cpu(p)));
+	pthread_mutex_unlock(&p->state->mutex);
+	return ret;
 }
 
 static void
@@ -306,22 +286,7 @@ avr_usb_uenum_write(
 	avr_core_watch_write(avr, addr, v);
 }
 
-static uint8_t
-avr_usb_ep_read_ueintx(
-        struct avr_t * avr,
-        avr_io_addr_t addr,
-        void * param)
-{
-	avr_usb_t * p = (avr_usb_t *) param;
-	uint8_t ep = current_ep_to_cpu(p);
-
-	if (p->state->ep_state[ep].uecfg0x.epdir)
-		p->state->ep_state[ep].ueintx.rwal = !ep_fifo_full(get_epstate(p, ep));
-	else
-		p->state->ep_state[ep].ueintx.rwal = !ep_fifo_empty(get_epstate(p, ep));
-
-	return p->state->ep_state[ep].ueintx.v;
-}
+static int can_touch_txini = 1;
 
 static void
 avr_usb_ep_write_ueintx(
@@ -332,18 +297,28 @@ avr_usb_ep_write_ueintx(
 {
 	avr_usb_t * p = (avr_usb_t *) param;
 	uint8_t ep = current_ep_to_cpu(p);
+	struct _epstate * epstate = get_epstate(p, ep);
+	int signalhost = 0;
+
+	if(pthread_mutex_lock(&p->state->mutex))
+		abort();
 
 	union _ueintx * newstate = (union _ueintx*) &v;
-	union _ueintx * curstate = &p->state->ep_state[ep].ueintx;
+	union _ueintx * curstate = &epstate->ueintx;
 
 	if (curstate->rxouti & !newstate->rxouti)
 		curstate->rxouti = 0;
-	if (curstate->txini & !newstate->txini)
-		curstate->txini = 0;
+	if (curstate->txini & !newstate->txini) {
+		if (can_touch_txini) {
+		    curstate->txini = 0;
+		    signalhost = 1;
+		} else
+		    AVR_LOG(avr, LOG_WARNING, "USB: BUG, clearing txini in setup phase\n");
+	}
 	if (curstate->rxstpi & !newstate->rxstpi) {
-		curstate->txini = 1;
-		curstate->rxouti = 0;
 		curstate->rxstpi = 0;
+		can_touch_txini = 1;
+		signalhost = 1;
 	}
 	if (curstate->fifocon & !newstate->fifocon)
 		curstate->fifocon = 0;
@@ -358,6 +333,10 @@ avr_usb_ep_write_ueintx(
 
 	if ((curstate->v & 0xdf) == 0)
 		avr->data[p->r_usbcon + ueint] &= 0xff ^ (1 << ep); // mark ep0 interrupt
+
+	pthread_mutex_unlock(&p->state->mutex);
+	if (signalhost)
+		pthread_cond_signal(&p->state->cpu_action);
 }
 
 static uint8_t
@@ -371,6 +350,8 @@ avr_usb_ep_read(
 	uint8_t v;
 	struct _epstate * epstate = get_epstate(p, current_ep_to_cpu(p));
 
+	if (pthread_mutex_lock(&p->state->mutex))
+		abort();
 	switch(laddr) {
 		case ueconx:  v = epstate->ueconx.v; break;
 		case uecfg0x: v = epstate->uecfg0x.v; break;
@@ -378,8 +359,10 @@ avr_usb_ep_read(
 		case uesta0x: v = epstate->uesta0x.v; break;
 		case uesta1x: v = epstate->uesta1x.v; break;
 		case ueienx:  v = epstate->ueienx.v; break;
+		case ueintx: v = epstate->ueintx.v; break;
 		default:assert(0);
 	}
+	pthread_mutex_unlock(&p->state->mutex);
 	return v;
 }
 
@@ -393,6 +376,9 @@ avr_usb_ep_write(
 	avr_usb_t * p = (avr_usb_t *) param;
 	struct _epstate * epstate = get_epstate(p, current_ep_to_cpu(p));
 	uint8_t laddr = addr - p->r_usbcon;
+
+	if (pthread_mutex_lock(&p->state->mutex))
+		abort();
 
 	switch (laddr) {
 		case ueconx:
@@ -409,9 +395,11 @@ avr_usb_ep_write(
 		case uecfg1x:
 			epstate->uecfg1x.v = v;
 			epstate->uesta0x.cfgok = epstate->uecfg1x.alloc;
-			if (epstate->uecfg0x.eptype == 0)
+			if (epstate->uecfg0x.eptype == 0) {
 				epstate->ueintx.txini = 1;
-			else if (epstate->uecfg0x.epdir) {
+				epstate->ueintx.rwal = 0;
+				epstate->ueintx.fifocon = 0;
+			} else if (epstate->uecfg0x.epdir) {
 				epstate->ueintx.txini = 1;
 				epstate->ueintx.rwal = 1;
 				epstate->ueintx.fifocon = 1;
@@ -430,39 +418,66 @@ avr_usb_ep_write(
 		default:
 			assert(0);
 	}
+	pthread_mutex_unlock(&p->state->mutex);
 }
 
 static uint8_t
-avr_usb_ep_read_data(
+avr_read_ep_fifo(
 		struct avr_t * avr,
 		avr_io_addr_t addr,
 		void * param)
 {
 	avr_usb_t * p = (avr_usb_t *) param;
-	int ret = ep_fifo_cpu_readbyte(get_epstate(p, current_ep_to_cpu(p)));
+	struct _epstate * epstate = get_epstate(p, current_ep_to_cpu(p));
+	uint8_t ret = 0;
 
-	if (ret < 0) {
-		if (ret == -2)
-			raise_ep_interrupt(avr, p, current_ep_to_cpu(p), underfi);
+	if (!epstate->ueconx.epen) {
+		printf("WARNING! Reading bytes from non configured endpoint\n");
 		return 0;
-	} else
-		return (uint8_t) ret;
+	}
+
+	if (ep_fifo_empty(epstate))
+		raise_ep_interrupt(avr, p, current_ep_to_cpu(p), underfi);
+	else {
+		ret = epstate->bank[epstate->current_bank].bytes[0];
+
+		int i,j;
+		for (i = 0, j = ep_fifo_count(epstate) - 1; i < j; i++)
+			epstate->bank[epstate->current_bank].bytes[i] =
+					epstate->bank[epstate->current_bank].bytes[i + 1];
+		epstate->bank[epstate->current_bank].tail--;
+		epstate->ueintx.rwal = !ep_fifo_empty(epstate);
+	}
+	return ret;
 }
 
 static void
-avr_usb_ep_write_data(
+avr_write_ep_fifo(
 		struct avr_t * avr,
 		avr_io_addr_t addr,
 		uint8_t v,
 		void * param)
 {
 	avr_usb_t * p = (avr_usb_t *) param;
-	int ret = ep_fifo_cpu_writebyte(get_epstate(p, current_ep_to_cpu(p)), v);
-	if (ret == 0)
-		return;
+	struct _epstate * epstate = get_epstate(p, current_ep_to_cpu(p));
 
-	if (ret == -2)
+	if (!epstate->ueconx.epen) {
+		printf("WARNING! Adding bytes to non configured endpoint\n");
+		return;
+	}
+
+	if (pthread_mutex_lock(&p->state->mutex))
+		abort();
+
+	if (ep_fifo_full(epstate)) {
+		pthread_mutex_unlock(&p->state->mutex);
 		raise_ep_interrupt(avr, p, current_ep_to_cpu(p), overfi);
+	}
+	else {
+		epstate->bank[epstate->current_bank].bytes[epstate->bank[epstate->current_bank].tail++] = v;
+		epstate->ueintx.rwal = !ep_fifo_full(epstate);
+		pthread_mutex_unlock(&p->state->mutex);
+	}
 }
 
 static void
@@ -494,6 +509,135 @@ sof_generator(
 }
 
 static int
+ioctl_usb_read(
+		avr_usb_t * p,
+		struct avr_io_usb * d)
+{
+	int ret;
+	struct timespec ts;
+	uint8_t ep = d->pipe & 0x7f;
+	struct _epstate * epstate = get_epstate(p, ep);
+
+	if (epstate->ueconx.stallrq) {
+		raise_ep_interrupt(p->io.avr, p, 0, stalledi);
+		return AVR_IOCTL_USB_STALL;
+	}
+	if (ep && !epstate->uecfg0x.epdir)
+		AVR_LOG(p->io.avr, LOG_WARNING, "USB: Host reading from OUT endpoint?\n");
+
+	if (pthread_mutex_lock(&p->state->mutex))
+		abort();
+
+	if (!d->sz && !d->buf && !epstate->ueintx.txini && !epstate->uecfg0x.eptype) {
+		// status already ok for control write
+		pthread_mutex_unlock(&p->state->mutex);
+		return 0;
+	}
+
+	ret = 0;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	if (ep)
+		ts = ts_add(ts, (struct timespec){0, 1000});
+	else
+		ts = ts_add(ts, (struct timespec){0, 10000000L});
+	while (epstate->ueintx.txini && !ret)
+		ret = pthread_cond_timedwait(&p->state->cpu_action, &p->state->mutex, &ts);
+
+	ret = host_read_ep_fifo(epstate, d->buf, d->sz);
+	pthread_mutex_unlock(&p->state->mutex);
+
+	if (ret >= 0) {
+		epstate->ueintx.fifocon = 1 & (epstate->uecfg0x.eptype != 0);
+		raise_ep_interrupt(p->io.avr, p, ep, txini);
+
+		d->sz = ret;
+		ret = 0;
+	}
+
+	return ret;
+}
+
+static int
+ioctl_usb_write(
+		avr_usb_t * p,
+		struct avr_io_usb * d)
+{
+	uint8_t ep = d->pipe & 0x7f;
+	struct _epstate * epstate = get_epstate(p, ep);
+
+	if (ep && epstate->uecfg0x.epdir)
+		AVR_LOG(p->io.avr, LOG_WARNING, "USB: Host writing to IN endpoint?\n");
+
+	if (epstate->ueconx.stallrq) {
+		raise_ep_interrupt(p->io.avr, p, 0, stalledi);
+		return AVR_IOCTL_USB_STALL;
+	}
+
+	if (pthread_mutex_lock(&p->state->mutex))
+		abort();
+	int ret = host_write_ep_fifo(epstate, d->buf, d->sz);
+	if (ret < 0) {
+		pthread_mutex_unlock(&p->state->mutex);
+		return ret;
+	}
+	d->sz = ret;
+	epstate->ueintx.fifocon = 1 & (epstate->uecfg0x.eptype != 0);
+	raise_ep_interrupt(p->io.avr, p, ep, rxouti);
+	pthread_mutex_unlock(&p->state->mutex);
+	return 0;
+}
+
+static int
+ioctl_usb_setup(
+		avr_usb_t * p,
+		struct avr_io_usb * d)
+{
+	int ret = 0;
+	struct timespec ts;
+	uint8_t ep = d->pipe & 0x7f;
+	struct _epstate * epstate = get_epstate(p, ep);
+
+	if (pthread_mutex_lock(&p->state->mutex))
+		abort();
+	epstate->ueconx.stallrq = 0;
+	epstate->ueintx.rxouti = 0;
+	epstate->ueintx.txini = 1;
+
+	assert(d->buf && d->sz==8);
+
+	if (d->buf && d->sz)
+		ret = host_write_ep_fifo(epstate, d->buf, d->sz);
+	pthread_mutex_unlock(&p->state->mutex);
+
+	if (ret < 0)
+		return ret;
+
+	if (pthread_mutex_lock(&p->state->mutex))
+		abort();
+
+	raise_ep_interrupt(p->io.avr, p, ep, rxstpi);
+
+	// wait for cpu to ack setup
+	clock_gettime(CLOCK_REALTIME, &ts);
+	ts.tv_sec += 1;
+	ret = 0;
+	if (d->buf[0] & 0x80) { // control READ
+		while (!ret && (epstate->ueintx.rxstpi || epstate->ueintx.txini))
+			ret = pthread_cond_timedwait(&p->state->cpu_action, &p->state->mutex, &ts);
+		epstate->ueintx.txini = 1;
+	} else { // control WRITE
+		// some implementations, like teensy clear everything on rxstp.. which is wrong
+		// for a ctrl-write.. aparently it's working on real hardware so we ignore txini
+		// changes until stp ack'ed.
+		can_touch_txini = 0;
+		while (!ret && (epstate->ueintx.rxstpi))
+			ret = pthread_cond_timedwait(&p->state->cpu_action, &p->state->mutex, &ts);
+	}
+	pthread_mutex_unlock(&p->state->mutex);
+	return ret;
+}
+
+static int
 avr_usb_ioctl(
 		struct avr_io_t * io,
 		uint32_t ctl,
@@ -501,73 +645,11 @@ avr_usb_ioctl(
 {
 	avr_usb_t * p = (avr_usb_t *) io;
 	struct avr_io_usb * d = (struct avr_io_usb*) io_param;
-	struct _epstate * epstate = 0;
-	int ret;
-	uint8_t ep;
 
 	switch (ctl) {
-		case AVR_IOCTL_USB_READ:
-			ep = d->pipe & 0x7f;
-			epstate = get_epstate(p, ep);
-
-			if (epstate->ueconx.stallrq) {
-				raise_ep_interrupt(io->avr, p, 0, stalledi);
-				return AVR_IOCTL_USB_STALL;
-			}
-			if (ep && !epstate->uecfg0x.epdir)
-				AVR_LOG(io->avr, LOG_WARNING, "USB: Reading from IN endpoint from host??\n");
-
-			ret = ep_fifo_usb_read(epstate, d->buf);
-			if (ret < 0) {
-				// is this correct? It makes the cdc example work.
-				// Linux stops polling the data ep if we send naks,but
-				// according to usb spec nak'ing should be ok.
-				if (epstate->uecfg0x.eptype == 2) {
-					d->sz = 0;
-					return 0;
-				} else
-					return ret;
-			}
-			d->sz = ret;
-			ret = 0;
-			epstate->ueintx.fifocon = 1;
-			raise_ep_interrupt(io->avr, p, ep, txini);
-			return ret;
-		case AVR_IOCTL_USB_WRITE:
-			ep = d->pipe & 0x7f;
-			epstate = get_epstate(p, ep);
-
-			if (ep && epstate->uecfg0x.epdir)
-				AVR_LOG(io->avr, LOG_WARNING, "USB: Writing to IN endpoint from host??\n");
-
-			if (epstate->ueconx.stallrq) {
-				raise_ep_interrupt(io->avr, p, 0, stalledi);
-				return AVR_IOCTL_USB_STALL;
-			}
-
-			ret = ep_fifo_usb_write(epstate, d->buf, d->sz);
-			if (ret < 0)
-				return ret;
-
-			epstate->ueintx.fifocon = 1;
-			raise_ep_interrupt(io->avr, p, ep, rxouti);
-			return 0;
-		case AVR_IOCTL_USB_SETUP:
-			ep = d->pipe & 0x7f;
-			epstate = get_epstate(p, ep);
-
-			epstate->ueconx.stallrq = 0;
-			// teensy actually depends on this (fails to ack rxouti on usb
-			// control read status stage) even if the datasheet clearly states
-			// that one should do so.
-			epstate->ueintx.rxouti = 0;
-
-			ret = ep_fifo_usb_write(epstate, d->buf, d->sz);
-			if (ret < 0)
-				return ret;
-			raise_ep_interrupt(io->avr, p, ep, rxstpi);
-
-			return 0;
+		case AVR_IOCTL_USB_READ: return ioctl_usb_read(p, d);
+		case AVR_IOCTL_USB_WRITE: return ioctl_usb_write(p, d);
+		case AVR_IOCTL_USB_SETUP: return ioctl_usb_setup(p, d);
 		case AVR_IOCTL_USB_RESET:
 			AVR_LOG(io->avr, LOG_TRACE, "USB: __USB_RESET__\n");
 			reset_endpoints(io->avr, p);
@@ -658,6 +740,16 @@ void avr_usb_init(
 
 	p->state = calloc(1, sizeof *p->state);
 
+	pthread_mutexattr_t mutexattr;
+	pthread_mutexattr_init(&mutexattr);
+	pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_ERRORCHECK);
+
+	if (pthread_mutex_init(&p->state->mutex, &mutexattr)) {
+		printf("FATAL: avr_usb mutex init failed\n");
+		abort();
+	}
+	pthread_mutexattr_destroy(&mutexattr);
+
 	avr_register_io(avr, &p->io);
 	register_vectors(avr, p);
 	// allocate this module's IRQ
@@ -667,11 +759,11 @@ void avr_usb_init(
 	avr_register_io_write(avr, p->r_usbcon + udcon, avr_usb_udcon_write, p);
 	avr_register_io_write(avr, p->r_usbcon + uenum, avr_usb_uenum_write, p);
 
-	avr_register_io_read(avr, p->r_usbcon + uedatx, avr_usb_ep_read_data, p);
-	avr_register_io_write(avr, p->r_usbcon + uedatx, avr_usb_ep_write_data, p);
+	avr_register_io_read(avr, p->r_usbcon + uedatx, avr_read_ep_fifo, p);
+	avr_register_io_write(avr, p->r_usbcon + uedatx, avr_write_ep_fifo, p);
 	avr_register_io_read(avr, p->r_usbcon + uebclx, avr_usb_ep_read_bytecount, p); //ro
 
-	avr_register_io_read(avr, p->r_usbcon + ueintx, avr_usb_ep_read_ueintx, p);
+	avr_register_io_read(avr, p->r_usbcon + ueintx, avr_usb_ep_read, p);
 	avr_register_io_write(avr, p->r_usbcon + ueintx, avr_usb_ep_write_ueintx, p);
 
 	register_io_ep_readwrite(avr, p, ueconx);
@@ -683,4 +775,3 @@ void avr_usb_init(
 
 	avr_register_io_write(avr, p->r_pllcsr, avr_usb_pll_write, p);
 }
-
