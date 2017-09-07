@@ -35,10 +35,10 @@
 #include "sim_elf.h"
 #include "sim_hex.h"
 #include "sim_gdb.h"
-#include "vhci_usb.h"
+#include "usbip.h"
 #include "sim_vcd_file.h"
 
-struct vhci_usb_t vhci_usb;
+struct usbip_t * usbip;
 avr_t * avr = NULL;
 avr_vcd_t vcd_file;
 
@@ -58,7 +58,7 @@ void avr_special_init( avr_t* avr, void *data)
 	if(avr->flash) free(avr->flash);
 	// open the file
 	flash_data->avr_flash_fd = open(flash_data->avr_flash_path,
-            O_RDWR|O_CREAT, 0644);
+		O_RDWR|O_CREAT, 0644);
 	if (flash_data->avr_flash_fd < 0) {
 		perror(flash_data->avr_flash_path);
 		exit(1);
@@ -66,7 +66,7 @@ void avr_special_init( avr_t* avr, void *data)
 	// resize and map the file the file
 	(void)ftruncate(flash_data->avr_flash_fd, avr->flashend + 1);
 	avr->flash = (uint8_t*)mmap(NULL, avr->flashend + 1, // 32k is multiple of 4096
-            PROT_READ|PROT_WRITE, MAP_SHARED, flash_data->avr_flash_fd, 0);
+		PROT_READ|PROT_WRITE, MAP_SHARED, flash_data->avr_flash_fd, 0);
 	if (!avr->flash) {
 		fprintf(stderr, "unable to map memory\n");
 		perror(flash_data->avr_flash_path);
@@ -89,7 +89,6 @@ void avr_special_deinit( avr_t* avr, void *data)
 
 int main(int argc, char *argv[])
 {
-//		elf_firmware_t f;
 	const char * pwd = dirname(argv[0]);
 	struct avr_flash flash_data;
 
@@ -98,7 +97,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%s: Error creating the AVR core\n", argv[0]);
 		exit(1);
 	}
-	strcpy(flash_data.avr_flash_path,  "simusb_flash.bin");
+	strcpy(flash_data.avr_flash_path, "simusb_flash.bin");
 	flash_data.avr_flash_fd = 0;
 	// register our own functions
 	avr->custom.init = avr_special_init;
@@ -131,16 +130,22 @@ int main(int argc, char *argv[])
 
 	// even if not setup at startup, activate gdb if crashing
 	avr->gdb_port = 1234;
+	avr_gdb_init(avr);
 	if (0) {
 		//avr->state = cpu_Stopped;
 		avr_gdb_init(avr);
 	}
 
-	vhci_usb_init(avr, &vhci_usb);
-	vhci_usb_connect(&vhci_usb, '0');
-
+	usbip = usbip_create(avr);
+	if (!usbip) {
+		fprintf(stderr, "usbip_create failed\n");
+		exit(1);
+	}
+	pthread_t usb_thread;
+	pthread_create(&usb_thread, NULL, usbip_main, usbip);
 
 	while (1) {
 		avr_run(avr);
 	}
+	usbip_destroy(usbip);
 }
