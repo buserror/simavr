@@ -100,18 +100,25 @@ ssd1306_update_command_register (ssd1306_t *part)
 		case SSD1306_VIRT_SET_COLUMN_LOW_NIBBLE
 		                ... SSD1306_VIRT_SET_COLUMN_LOW_NIBBLE + 0xF:
 			part->spi_data -= SSD1306_VIRT_SET_COLUMN_LOW_NIBBLE;
-			part->cursor.column = (part->cursor.column & 0xF0)
+			if (part->mem_addr_mode == 0x02) {
+				part->cursor.column = (part->cursor.column & 0xF0)
 			                | (part->spi_data & 0xF);
+			}
 			//printf ("SSD1306: SET COLUMN LOW NIBBLE: 0x%02x\n",part->spi_data);
 			SSD1306_CLEAR_COMMAND_REG(part);
 			return;
 		case SSD1306_VIRT_SET_COLUMN_HIGH_NIBBLE
 		                ... SSD1306_VIRT_SET_COLUMN_HIGH_NIBBLE + 0xF:
 			part->spi_data -= SSD1306_VIRT_SET_COLUMN_HIGH_NIBBLE;
-			part->cursor.column = (part->cursor.column & 0xF)
+			if (part->mem_addr_mode == 0x02) {
+				part->cursor.column = (part->cursor.column & 0xF)
 			                | ((part->spi_data & 0xF) << 4);
+			}
 			//printf ("SSD1306: SET COLUMN HIGH NIBBLE: 0x%02x\n", part->spi_data);
 			SSD1306_CLEAR_COMMAND_REG(part);
+			return;
+		case SSD1306_VIRT_MEM_ADDRESSING:
+			part->command_register = part->spi_data;
 			return;
 		case SSD1306_VIRT_SET_SEG_REMAP_0:
 			ssd1306_set_flag (part, SSD1306_FLAG_SEGMENT_REMAP_0,
@@ -156,6 +163,10 @@ ssd1306_update_setting (ssd1306_t *part)
 			ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
 			SSD1306_CLEAR_COMMAND_REG(part);
 			//printf ("SSD1306: CONTRAST SET: 0x%02x\n", part->contrast_register);
+			return;
+		case SSD1306_VIRT_MEM_ADDRESSING:
+			part->mem_addr_mode = part->spi_data & 0x03;
+			SSD1306_CLEAR_COMMAND_REG(part);
 			return;
 		default:
 			// Unknown command

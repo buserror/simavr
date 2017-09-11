@@ -138,6 +138,7 @@ typedef struct ssd1306_t
 	avr_irq_t * irq;
 	struct avr_t * avr;
 	uint8_t columns, rows, pages;
+	uint8_t mem_addr_mode;
 	struct ssd1306_virt_cursor_t cursor;
 	uint8_t vram[SSD1306_VIRT_PAGES][SSD1306_VIRT_COLUMNS];
 	uint16_t flags;
