@@ -24,6 +24,7 @@
  */
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include "ssd1306_glut.h"
@@ -33,6 +34,8 @@
 #else
 #include <GL/glut.h>
 #endif
+
+static bool disp_flip_v, disp_flip_h;
 
 ssd1306_colour_t oled_colour_g;
 float pix_size_g = 1.0;
@@ -46,8 +49,10 @@ float ssd1306_colours[][3] =
 };
 
 void
-ssd1306_gl_init (float pix_size, ssd1306_colour_t oled_colour)
+ssd1306_gl_init (float pix_size, ssd1306_colour_t oled_colour, bool flip_v, bool flip_h)
 {
+	disp_flip_v = flip_v;
+	disp_flip_h = flip_h;
 	pix_size_g = pix_size;
 	oled_colour_g = oled_colour;
 }
@@ -112,10 +117,10 @@ ssd1306_gl_put_pixel_column (uint8_t block_pixel_column, float pixel_opacity,
 static uint8_t
 ssd1306_gl_get_vram_byte (ssd1306_t *part, uint8_t page, uint8_t column)
 {
-	uint8_t seg_remap_default = ssd1306_get_flag (
-	                part, SSD1306_FLAG_SEGMENT_REMAP_0);
-	uint8_t seg_comscan_default = ssd1306_get_flag (
-	                part, SSD1306_FLAG_COM_SCAN_NORMAL);
+	uint8_t seg_remap_default = !!ssd1306_get_flag (
+	                part, SSD1306_FLAG_SEGMENT_REMAP_0) ^ !!disp_flip_h;
+	uint8_t seg_comscan_default = !!ssd1306_get_flag (
+	                part, SSD1306_FLAG_COM_SCAN_NORMAL) ^ !!disp_flip_v;
 
 	if (seg_remap_default && seg_comscan_default)
 	{

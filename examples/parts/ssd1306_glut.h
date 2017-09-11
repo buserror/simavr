@@ -34,6 +34,6 @@ void
 ssd1306_gl_draw (ssd1306_t *part);
 
 void
-ssd1306_gl_init (float pix_size, ssd1306_colour_t oled_colour);
+ssd1306_gl_init (float pix_size, ssd1306_colour_t oled_colour, bool flip_v, bool flip_h);
 
 #endif
