@@ -498,7 +498,6 @@ avr_timer_configure(
 						__FUNCTION__, p->name, top, 'A'+compi, ocr);
 			}
 		}
-		//if (ocr && ocr <= top) {
 		if (ocr <= top) {
 			p->comp[compi].comp_cycles = comp_cycles;
 
