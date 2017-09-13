@@ -1,6 +1,6 @@
 
 /*
-	sim_mega128.c
+	sim_mega64.c
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
  	This file is part of simavr.
 	simavr is free software: you can redistribute it and/or modify
@@ -383,7 +383,7 @@ const struct mcu_t {
 			.vector = TIMER3_CAPT_vect,
 		},
 	},
-	AVR_SPI_DECLARE(0, 0),
+	AVR_SPI_DECLARE(0, 0, 'B', 1, 3, 2, 0),
 	.twi = {
 
 		.r_twcr = TWCR,

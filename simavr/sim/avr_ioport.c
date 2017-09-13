@@ -195,9 +195,9 @@ avr_ioport_irq_notify(
 		avr->data[p->r_pin] |= mask;
 	uint8_t ddr = avr->data[p->r_ddr];
 	avr_irq_t * impedance_irq = p->io.irq + IOPORT_IRQ_PIN0_SRC_IMP + irq->irq;
-	if (impedance_irq
-		&& ((impedance_irq->value >= AVR_IOPORT_INTRN_PULLUP_IMP) || (impedance_irq->flags & IRQ_FLAG_USER))
-		&& !((ddr & (1 << irq->irq)))) {
+	if (impedance_irq &&
+		((impedance_irq->value >= AVR_IOPORT_INTRN_PULLUP_IMP) || (impedance_irq->flags & IRQ_FLAG_USER)) &&
+		!((ddr & (1 << irq->irq)))) {
 		// do a kind of recursion here to handle pull-ups
 		avr_irq_register_notify(
 			irq,

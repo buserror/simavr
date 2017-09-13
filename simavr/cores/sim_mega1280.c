@@ -615,7 +615,7 @@ const struct mcu_t {
 		},
 
 	},
-	AVR_SPI_DECLARE(PRR0, PRSPI),
+	AVR_SPI_DECLARE(PRR0, PRSPI, 'B', 1, 3, 2, 0),
 	.twi = {
 
 		.r_twcr = TWCR,
