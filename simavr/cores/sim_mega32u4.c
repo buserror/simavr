@@ -1,5 +1,5 @@
 /*
-    sim_mega324.c
+    sim_mega32u4.c
 
     Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
@@ -414,7 +414,7 @@ const struct mcu_t {
         }
     },
   //  .timer4 = { /* TODO 10 bits realtime timer */ },
-    AVR_SPI_DECLARE(0, 0),
+    AVR_SPI_DECLARE(PRR0, PRSPI),
 	.twi = {
 
 		.r_twcr = TWCR,
