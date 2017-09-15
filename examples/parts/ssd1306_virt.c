@@ -27,6 +27,7 @@
 
 #include "ssd1306_virt.h"
 #include "avr_spi.h"
+#include "avr_twi.h"
 #include "avr_ioport.h"
 
 /*
@@ -263,6 +264,71 @@ ssd1306_write_command (ssd1306_t *part)
 }
 
 /*
+ * Called when a TWI byte is sent
+ */
+static void
+ssd1306_twi_hook (struct avr_irq_t * irq, uint32_t value, void * param)
+{
+	ssd1306_t * p = (ssd1306_t*) param;
+	avr_twi_msg_irq_t v;
+	v.u.v = value;
+
+	if (v.u.twi.msg & TWI_COND_STOP)
+		p->twi_selected = 0;
+
+	if (v.u.twi.msg & TWI_COND_START) {
+		p->twi_selected = 0;
+		p->twi_index = 0;
+		if (((v.u.twi.addr>>1) & SSD1306_I2C_ADDRESS_MASK) == SSD1306_I2C_ADDRESS) {
+			p->twi_selected = v.u.twi.addr;
+			avr_raise_irq(p->irq + IRQ_SSD1306_TWI_IN,
+					avr_twi_irq_msg(TWI_COND_ACK, p->twi_selected, 1));
+		}
+	}
+
+	if (p->twi_selected) {
+		if (v.u.twi.msg & TWI_COND_WRITE) {
+			avr_raise_irq(p->irq + IRQ_SSD1306_TWI_IN,
+					avr_twi_irq_msg(TWI_COND_ACK, p->twi_selected, 1));
+
+			if (p->twi_index == 0) { // control byte
+				if ((v.u.twi.data & (~(1<<6))) != 0) {
+					printf("%s COND_WRITE %x\n", __FUNCTION__, v.u.twi.data);
+					printf("%s ALERT: unhandled Co bit\n", __FUNCTION__);
+					abort();
+				}
+				p->di_pin = v.u.twi.data ? SSD1306_VIRT_DATA : SSD1306_VIRT_INSTRUCTION;
+			} else {
+				p->spi_data = v.u.twi.data;
+
+				switch (p->di_pin)
+				{
+					case SSD1306_VIRT_DATA:
+						ssd1306_write_data (p);
+						break;
+					case SSD1306_VIRT_INSTRUCTION:
+						ssd1306_write_command (p);
+						break;
+					default:
+						// Invalid value
+						break;
+				}
+			}
+			p->twi_index++;
+		}
+
+		// SSD1306 doesn't support read on serial interfaces
+		// just return 0
+		if (v.u.twi.msg & TWI_COND_READ) {
+			uint8_t data = 0;
+			avr_raise_irq(p->irq + IRQ_SSD1306_TWI_IN,
+					avr_twi_irq_msg(TWI_COND_READ, p->twi_selected, data));
+			p->twi_index++;
+		}
+	}
+}
+
+/*
  * Called when a SPI byte is sent
  */
 static void
@@ -341,7 +407,10 @@ static const char * irq_names[IRQ_SSD1306_COUNT] =
 { [IRQ_SSD1306_SPI_BYTE_IN] = "=ssd1306.SDIN", [IRQ_SSD1306_RESET
                 ] = "<ssd1306.RS", [IRQ_SSD1306_DATA_INSTRUCTION
                 ] = "<ssd1306.RW", [IRQ_SSD1306_ENABLE] = "<ssd1306.E",
-                [IRQ_SSD1306_ADDR] = "7>hd44780.ADDR" };
+                [IRQ_SSD1306_ADDR] = "7>hd44780.ADDR",
+                [IRQ_SSD1306_TWI_OUT] = "32<sdd1306.TWI.out",
+                [IRQ_SSD1306_TWI_IN] = "8>sdd1306.TWI.in",
+};
 
 void
 ssd1306_connect (ssd1306_t * part, ssd1306_wiring_t * wiring)
@@ -364,6 +433,25 @@ ssd1306_connect (ssd1306_t * part, ssd1306_wiring_t * wiring)
 	                                               wiring->data_instruction.port),
 	                               wiring->data_instruction.pin),
 	                part->irq + IRQ_SSD1306_DATA_INSTRUCTION);
+
+	avr_connect_irq (
+	                avr_io_getirq (part->avr,
+	                               AVR_IOCTL_IOPORT_GETIRQ(
+	                                               wiring->reset.port),
+	                               wiring->reset.pin),
+	                part->irq + IRQ_SSD1306_RESET);
+}
+
+void
+ssd1306_connect_twi (ssd1306_t * part, ssd1306_wiring_t * wiring)
+{
+	avr_connect_irq (
+            avr_io_getirq (part->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_OUTPUT),
+            part->irq + IRQ_SSD1306_TWI_OUT);
+
+	avr_connect_irq (
+            part->irq + IRQ_SSD1306_TWI_IN,
+            avr_io_getirq (part->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT));
 
 	avr_connect_irq (
 	                avr_io_getirq (part->avr,
@@ -399,6 +487,8 @@ ssd1306_init (struct avr_t *avr, struct ssd1306_t * part, int width, int height)
 	                         ssd1306_cs_hook, part);
 	avr_irq_register_notify (part->irq + IRQ_SSD1306_DATA_INSTRUCTION,
 	                         ssd1306_di_hook, part);
+	avr_irq_register_notify (part->irq + IRQ_SSD1306_TWI_OUT,
+	                         ssd1306_twi_hook, part);
 
 	printf ("SSD1306: %duS is %d cycles for your AVR\n", 37,
 	        (int) avr_usec_to_cycles (avr, 37));
