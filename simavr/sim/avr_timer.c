@@ -457,7 +457,8 @@ avr_timer_configure(
 			if (prescaler != 0)
 				resulting_clock = p->ext_clock / prescaler;
 			tov_cycles_exact = (float)avr->frequency / p->ext_clock * prescaler * (top+1);
-			p->tov_cycles = round(tov_cycles_exact);
+			// p->tov_cycles = round(tov_cycles_exact); -- don't want libm!
+			p->tov_cycles = tov_cycles_exact + .5f; // Round to integer
 			p->tov_cycles_fract = tov_cycles_exact - p->tov_cycles;
 		}
 	}
