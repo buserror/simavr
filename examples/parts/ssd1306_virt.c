@@ -139,15 +139,39 @@ ssd1306_update_command_register (ssd1306_t *part)
 			//printf ("SSD1306: SET COM OUTPUT SCAN DIRECTION REMAPPED \n");
 			SSD1306_CLEAR_COMMAND_REG(part);
 			return;
+		case SSD1306_VIRT_SCROLL_RIGHT:
+		case SSD1306_VIRT_SCROLL_LEFT:
+			part->command_register = part->spi_data;
+			part->reg_write_sz = 6;
+			return;
+		case SSD1306_VIRT_SCROLL_VR:
+		case SSD1306_VIRT_SCROLL_VL:
+			part->command_register = part->spi_data;
+			part->reg_write_sz = 5;
+			return;
+		case SSD1306_VIRT_SET_RATIO_OSC:
+		case SSD1306_VIRT_MULTIPLEX:
+		case SSD1306_VIRT_SET_OFFSET:
 		case SSD1306_VIRT_MEM_ADDRESSING:
+		case SSD1306_VIRT_SET_LINE:
+		case SSD1306_VIRT_SET_PADS:
+		case SSD1306_VIRT_SET_CHARGE:
+		case SSD1306_VIRT_SET_VCOM:
 			part->command_register = part->spi_data;
 			return;
+		case SSD1306_VIRT_VERT_SCROLL_A:
 		case SSD1306_VIRT_SET_PAGE_ADDR:
 		case SSD1306_VIRT_SET_COL_ADDR:
 			part->reg_write_sz = 2;
 			part->command_register = part->spi_data;
 			return;
+		case SSD1306_VIRT_SCROLL_ON:
+		case SSD1306_VIRT_SCROLL_OFF:
+		case SSD1306_VIRT_RESUME_TO_RAM_CONTENT:
+			SSD1306_CLEAR_COMMAND_REG(part);
+			return;
 		default:
+			printf ("SSD1306: WARNING: unknown/not implemented command %x\n", part->spi_data);
 			// Unknown command
 			return;
 	}
@@ -195,8 +219,26 @@ ssd1306_update_setting (ssd1306_t *part)
 			//printf ("SSD1306: ADDRESSING MODE: 0x%02x\n", part->addr_mode);
 			SSD1306_CLEAR_COMMAND_REG(part);
 			return;
+		case SSD1306_VIRT_SET_LINE:
+		case SSD1306_VIRT_SET_RATIO_OSC:
+		case SSD1306_VIRT_MULTIPLEX:
+		case SSD1306_VIRT_SET_OFFSET:
+		case SSD1306_VIRT_SET_CHARGE:
+		case SSD1306_VIRT_SET_VCOM:
+		case SSD1306_VIRT_SET_PADS:
+			SSD1306_CLEAR_COMMAND_REG(part);
+			return;
+		case SSD1306_VIRT_SCROLL_RIGHT:
+		case SSD1306_VIRT_SCROLL_LEFT:
+		case SSD1306_VIRT_SCROLL_VR:
+		case SSD1306_VIRT_SCROLL_VL:
+		case SSD1306_VIRT_VERT_SCROLL_A:
+		    if (! --part->reg_write_sz)
+			SSD1306_CLEAR_COMMAND_REG(part);
+		    return;
 		default:
 			// Unknown command
+			printf("SSD1306: error: unknown update command %x\n",part->command_register);
 			return;
 	}
 }
