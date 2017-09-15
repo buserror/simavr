@@ -41,7 +41,8 @@ ssd1306_write_data (ssd1306_t *part)
 	if (++(part->cursor.column) >= SSD1306_VIRT_COLUMNS)
 	{
 		part->cursor.column = 0;
-		if (++(part->cursor.page) >= SSD1306_VIRT_PAGES)
+		if ( part->addr_mode == SSD1306_ADDR_MODE_HORZ &&
+			(++(part->cursor.page) >= SSD1306_VIRT_PAGES))
 		{
 			part->cursor.page = 0;
 		}
@@ -57,6 +58,7 @@ ssd1306_write_data (ssd1306_t *part)
 void
 ssd1306_update_command_register (ssd1306_t *part)
 {
+	part->reg_write_sz = 1;
 	switch (part->spi_data)
 	{
 		case SSD1306_VIRT_SET_CONTRAST:
@@ -137,6 +139,14 @@ ssd1306_update_command_register (ssd1306_t *part)
 			//printf ("SSD1306: SET COM OUTPUT SCAN DIRECTION REMAPPED \n");
 			SSD1306_CLEAR_COMMAND_REG(part);
 			return;
+		case SSD1306_VIRT_MEM_ADDRESSING:
+			part->command_register = part->spi_data;
+			return;
+		case SSD1306_VIRT_SET_PAGE_ADDR:
+		case SSD1306_VIRT_SET_COL_ADDR:
+			part->reg_write_sz = 2;
+			part->command_register = part->spi_data;
+			return;
 		default:
 			// Unknown command
 			return;
@@ -156,6 +166,34 @@ ssd1306_update_setting (ssd1306_t *part)
 			ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
 			SSD1306_CLEAR_COMMAND_REG(part);
 			//printf ("SSD1306: CONTRAST SET: 0x%02x\n", part->contrast_register);
+			return;
+		case SSD1306_VIRT_SET_PAGE_ADDR:
+			switch (--part->reg_write_sz) {
+				case 1:
+					part->cursor.page = part->spi_data;
+					break;
+				case 0:
+					//TODO handle virtual page end
+					SSD1306_CLEAR_COMMAND_REG(part);
+			}
+			return;
+
+		case SSD1306_VIRT_SET_COL_ADDR:
+			switch (--part->reg_write_sz) {
+				case 1:
+					part->cursor.column = part->spi_data;
+					break;
+				case 0:
+					//TODO handle virtual col end
+					SSD1306_CLEAR_COMMAND_REG(part);
+			}
+			return;
+		case SSD1306_VIRT_MEM_ADDRESSING:
+			if (part->spi_data > SSD1306_ADDR_MODE_PAGE)
+				printf ("SSD1306: error ADDRESSING_MODE invalid value %x\n", part->spi_data);
+			part->addr_mode = part->spi_data;
+			//printf ("SSD1306: ADDRESSING MODE: 0x%02x\n", part->addr_mode);
+			SSD1306_CLEAR_COMMAND_REG(part);
 			return;
 		default:
 			// Unknown command
@@ -250,6 +288,7 @@ ssd1306_reset_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 		part->flags = 0;
 		part->command_register = 0x00;
 		part->contrast_register = 0x7F;
+		part->addr_mode = SSD1306_ADDR_MODE_PAGE;
 		ssd1306_set_flag (part, SSD1306_FLAG_COM_SCAN_NORMAL, 1);
 		ssd1306_set_flag (part, SSD1306_FLAG_SEGMENT_REMAP_0, 1);
 	}

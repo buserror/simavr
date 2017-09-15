@@ -124,6 +124,13 @@ enum
 	SSD1306_FLAG_DIRTY,			// 1: Needs redisplay...
 };
 
+enum ssd1306_addressing_mode_t
+{
+	SSD1306_ADDR_MODE_HORZ = 0,
+	SSD1306_ADDR_MODE_VERT,
+	SSD1306_ADDR_MODE_PAGE
+};
+
 /*
  * Cursor position in VRAM
  */
@@ -146,6 +153,8 @@ typedef struct ssd1306_t
 	uint8_t cs_pin;
 	uint8_t di_pin;
 	uint8_t spi_data;
+	uint8_t reg_write_sz;
+	enum ssd1306_addressing_mode_t addr_mode;
 } ssd1306_t;
 
 typedef struct ssd1306_pin_t
