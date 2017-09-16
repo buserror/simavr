@@ -99,7 +99,7 @@ initGL (int w, int h, float pix_size)
 
 	// Double buffered, RGB disp mode.
 	glutInitDisplayMode (GLUT_RGB | GLUT_DOUBLE);
-	glutInitWindowSize (w * 4, h * 4);
+	glutInitWindowSize (w, h);
 	window_identifier = glutCreateWindow ("SSD1306 128x64 OLED");
 
 	// Set up projection matrix
@@ -163,7 +163,7 @@ main (int argc, char *argv[])
 
 	// Initialize GLUT system
 	glutInit (&argc, argv);
-	initGL (ssd1306.columns, ssd1306.rows, 0.5);
+	initGL (ssd1306.columns, ssd1306.rows, 2.0);
 
 	pthread_t run;
 	pthread_create (&run, NULL, avr_run_thread, NULL);
