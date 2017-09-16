@@ -112,34 +112,7 @@ ssd1306_gl_put_pixel_column (uint8_t block_pixel_column, float pixel_opacity,
 static uint8_t
 ssd1306_gl_get_vram_byte (ssd1306_t *part, uint8_t page, uint8_t column)
 {
-	uint8_t seg_remap_default = ssd1306_get_flag (
-	                part, SSD1306_FLAG_SEGMENT_REMAP_0);
-	uint8_t seg_comscan_default = ssd1306_get_flag (
-	                part, SSD1306_FLAG_COM_SCAN_NORMAL);
-
-	if (seg_remap_default && seg_comscan_default)
-	{
-		// Normal display
-		return part->vram[page][column];
-	} else if (seg_remap_default && !seg_comscan_default)
-	{
-		// Normal display, mirrored from upper edge
-		return ssd1306_gl_reverse_byte (
-		                part->vram[part->pages - 1 - page][column]);
-	}
-
-	else if (!seg_remap_default && !seg_comscan_default)
-	{
-		// Upside down display
-		return ssd1306_gl_reverse_byte (
-		                part->vram[part->pages - 1 - page][part->columns - 1 - column]);
-	} else if (!seg_remap_default && seg_comscan_default)
-	{
-		// Upside down display, mirrored from upper edge
-		return part->vram[page][part->columns - 1 - column];
-	}
-
-	return 0;
+	return part->vram[page][column];
 }
 
 static void
