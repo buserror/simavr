@@ -178,10 +178,10 @@ ssd1306_gl_draw (ssd1306_t *part)
 
 	glTranslatef (0, 0, 0);
 	glBegin (GL_QUADS);
-	glVertex2f (part->rows, 0);
+	glVertex2f (0, part->rows*pix_size_g);
 	glVertex2f (0, 0);
-	glVertex2f (0, part->columns);
-	glVertex2f (part->rows, part->columns);
+	glVertex2f (part->columns*pix_size_g, 0);
+	glVertex2f (part->columns*pix_size_g, part->rows*pix_size_g);
 	glEnd ();
 
 	// Draw pixels
