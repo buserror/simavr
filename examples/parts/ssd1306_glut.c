@@ -170,7 +170,6 @@ ssd1306_gl_draw (ssd1306_t *part)
 
 	glEnable (GL_BLEND);
 	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glBegin (GL_QUADS);
 
 	// Draw background
 	float opacity = ssd1306_gl_get_pixel_opacity (part->contrast_register);
