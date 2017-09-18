@@ -103,16 +103,20 @@ ssd1306_update_command_register (ssd1306_t *part)
 		case SSD1306_VIRT_SET_COLUMN_LOW_NIBBLE
 		                ... SSD1306_VIRT_SET_COLUMN_LOW_NIBBLE + 0xF:
 			part->spi_data -= SSD1306_VIRT_SET_COLUMN_LOW_NIBBLE;
-			part->cursor.column = (part->cursor.column & 0xF0)
+			if (part->addr_mode == SSD1306_ADDR_MODE_PAGE) {
+				part->cursor.column = (part->cursor.column & 0xF0)
 			                | (part->spi_data & 0xF);
+			}
 			//printf ("SSD1306: SET COLUMN LOW NIBBLE: 0x%02x\n",part->spi_data);
 			SSD1306_CLEAR_COMMAND_REG(part);
 			return;
 		case SSD1306_VIRT_SET_COLUMN_HIGH_NIBBLE
 		                ... SSD1306_VIRT_SET_COLUMN_HIGH_NIBBLE + 0xF:
 			part->spi_data -= SSD1306_VIRT_SET_COLUMN_HIGH_NIBBLE;
-			part->cursor.column = (part->cursor.column & 0xF)
+			if (part->addr_mode == SSD1306_ADDR_MODE_PAGE) {
+				part->cursor.column = (part->cursor.column & 0xF)
 			                | ((part->spi_data & 0xF) << 4);
+			}
 			//printf ("SSD1306: SET COLUMN HIGH NIBBLE: 0x%02x\n", part->spi_data);
 			SSD1306_CLEAR_COMMAND_REG(part);
 			return;
