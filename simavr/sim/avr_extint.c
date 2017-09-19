@@ -74,17 +74,9 @@ static avr_extint_t * avr_extint_get(avr_t * avr)
 	return NULL;
 }
 
-static uint8_t avr_extint_count(avr_extint_t *extint)
+static inline uint8_t avr_extint_exists(avr_extint_t *extint, int8_t extint_no)
 {
-	uint8_t count = 0;
-	if (!extint)
-		return 0;
-	while (count < EXTINT_COUNT) {
-		if (!extint->eint[count].port_ioctl)
-			break;
-		count++;
-	}
-	return count;
+	return (extint_no < EXTINT_COUNT) && (extint->eint[extint_no].port_ioctl);
 }
 
 /**
@@ -97,7 +89,7 @@ static uint8_t avr_extint_count(avr_extint_t *extint)
 int avr_extint_is_strict_lvl_trig(avr_t * avr, uint8_t extint_no)
 {
 	avr_extint_t *p = avr_extint_get(avr);
-	if (!p || (avr_extint_count(p) <= extint_no))
+	if (!p || !avr_extint_exists(p, extint_no))
 		return -1;
 	if (!p->eint[extint_no].isc[1].reg)
 		return -1; // this is edge-only triggered interrupt
@@ -113,7 +105,7 @@ int avr_extint_is_strict_lvl_trig(avr_t * avr, uint8_t extint_no)
 void avr_extint_set_strict_lvl_trig(avr_t * avr, uint8_t extint_no, uint8_t strict)
 {
 	avr_extint_t *p = avr_extint_get(avr);
-	if (!p || (avr_extint_count(p) <= extint_no))
+	if (!p || !avr_extint_exists(p, extint_no))
 		return;
 	if (!p->eint[extint_no].isc[1].reg)
 		return; // this is edge-only triggered interrupt
