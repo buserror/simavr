@@ -62,6 +62,7 @@ ssd1306_update_command_register (ssd1306_t *part)
 	part->reg_write_sz = 1;
 	switch (part->spi_data)
 	{
+		case SSD1306_VIRT_CHARGE_PUMP:
 		case SSD1306_VIRT_SET_CONTRAST:
 			part->command_register = part->spi_data;
 			//printf ("SSD1306: CONTRAST SET COMMAND: 0x%02x\n", part->spi_data);
@@ -231,6 +232,7 @@ ssd1306_update_setting (ssd1306_t *part)
 		case SSD1306_VIRT_SET_CHARGE:
 		case SSD1306_VIRT_SET_VCOM:
 		case SSD1306_VIRT_SET_PADS:
+		case SSD1306_VIRT_CHARGE_PUMP:
 			SSD1306_CLEAR_COMMAND_REG(part);
 			return;
 		case SSD1306_VIRT_SCROLL_RIGHT:
