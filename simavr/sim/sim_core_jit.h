@@ -396,7 +396,7 @@ jit_generate(opcode, "uint16_t z = avr_data[R_ZL] | (avr_data[R_ZH] << 8);\n"
 );
 				}	break;
 				case 0x95d8: {	// ELPM -- Load Program Memory R0 <- (Z) -- 1001 0101 1101 1000
-					if (!avr->rampz)
+					if (!avr_rampz)
 						_avr_invalid_opcode(avr);
 					 {
 jit_generate(opcode, "uint32_t z = avr_data[R_ZL] | (avr_data[R_ZH] << 8) | (avr_data[avr_rampz] << 16);\n"
@@ -441,7 +441,7 @@ jit_generate(opcode, "uint32_t z = avr_data[R_ZL] | (avr_data[R_ZH] << 8) | (avr
 "_sreg = _avr_set_r(avr, _sreg, d, avr_flash[z]);\n"
 "if (op) {\n"
 "z++;\n"
-"_sreg = _avr_set_r(avr, _sreg, avr->rampz, z >> 16);\n"
+"_sreg = _avr_set_r(avr, _sreg, avr_rampz, z >> 16);\n"
 "_avr_set_r16le_hl( R_ZL, z);\n"
 "}\n"
 "cycle += 2; // 3 cycles\n"

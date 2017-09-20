@@ -1039,7 +1039,7 @@ run_one_again:
 					_sreg = _avr_set_r(avr, _sreg, 0, avr->flash[z]);
 				}	end_emit;
 				case 0x95d8: {	// ELPM -- Load Program Memory R0 <- (Z) -- 1001 0101 1101 1000
-					if (!avr->rampz)
+					if (!avr_rampz)
 						_avr_invalid_opcode(avr);
 					emit {
 						uint32_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8) | (avr->data[avr_rampz] << 16);
@@ -1081,7 +1081,7 @@ run_one_again:
 								_sreg = _avr_set_r(avr, _sreg, d, avr->flash[z]);
 								if (op) {
 									z++;
-									_sreg = _avr_set_r(avr, _sreg, avr->rampz, z >> 16);
+									_sreg = _avr_set_r(avr, _sreg, avr_rampz, z >> 16);
 									_avr_set_r16le_hl( R_ZL, z);
 								}
 								cycle += 2; // 3 cycles
