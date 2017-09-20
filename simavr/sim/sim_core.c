@@ -193,8 +193,9 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
  * if it's an IO register (> 31) also (try to) call any callback that was
  * registered to track changes to that register.
  */
-void _avr_set_r(
+uint8_t _avr_set_r(
 	avr_t * avr,
+	uint8_t _sreg,
 	uint16_t r,
 	uint8_t v)
 {
@@ -680,12 +681,12 @@ run_one_again:
 	switch (opcode & 0xf000) {
 		case 0x0000: {
 			switch (opcode) {
-				case 0x0000: {	// NOP
+				case 0x0000: emit {	// NOP
 					STATE("nop\n");
-				}	break;
+				}	end_emit;
 				default: {
 					switch (opcode & 0xfc00) {
-						case 0x0400: {	// CPC -- Compare with carry -- 0000 01rd dddd rrrr
+						case 0x0400: emit {	// CPC -- Compare with carry -- 0000 01rd dddd rrrr
 							get_vd5_vr5(opcode);
 							uint8_t res = vd - vr - SREG_BIT(S_C);
 							STATE("cpc %s[%02x], %s[%02x] = %02x\n", avr_regname(d), vd, avr_regname(r), vr, res);
@@ -719,14 +720,14 @@ run_one_again:
 									uint8_t r = ((opcode) & 0xf) << 1;
 									STATE("movw %s:%s, %s:%s[%02x%02x]\n", avr_regname(d), avr_regname(d+1), avr_regname(r), avr_regname(r+1), avr->data[r+1], avr->data[r]);
 									uint16_t vr = avr->data[r] | (avr->data[r + 1] << 8);
-									_avr_set_r16le(avr, d, vr);
+									_avr_set_r16le(d, vr);
 								}	end_emit;
 								case 0x0200: emit {	// MULS -- Multiply Signed -- 0000 0010 dddd rrrr
 									int8_t r = 16 + (opcode & 0xf);
 									int8_t d = 16 + ((opcode >> 4) & 0xf);
 									int16_t res = ((int8_t)avr->data[r]) * ((int8_t)avr->data[d]);
 									STATE("muls %s[%d], %s[%02x] = %d\n", avr_regname(d), ((int8_t)avr->data[d]), avr_regname(r), ((int8_t)avr->data[r]), res);
-									_avr_set_r16le(avr, 0, res);
+									_avr_set_r16le(0, res);
 									SREG_SETBIT(S_C, (res >> 15) & 1);
 									SREG_SETBIT(S_Z, res == 0);
 									cycle++;
@@ -1036,14 +1037,14 @@ run_one_again:
 					STATE("lpm %s, (Z[%04x]) = %02x\n", avr_regname(0), z, avr->flash[z]);
 					cycle += 2; // 3 cycles
 					_sreg = _avr_set_r(avr, _sreg, 0, avr->flash[z]);
-				}	break;
+				}	end_emit;
 				case 0x95d8: {	// ELPM -- Load Program Memory R0 <- (Z) -- 1001 0101 1101 1000
 					if (!avr->rampz)
 						_avr_invalid_opcode(avr);
 					emit {
 						uint32_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8) | (avr->data[avr_rampz] << 16);
 						STATE("elpm %s, (Z[%02x:%04x])\n", avr_regname(0), z >> 16, z & 0xffff);
-						_sreg = _avr_set_r(avr, sreg, 0, avr->flash[z]);
+						_sreg = _avr_set_r(avr, _sreg, 0, avr->flash[z]);
 						cycle += 2; // 3 cycles
 					}	end_emit;
 				}	break;
@@ -1105,8 +1106,8 @@ run_one_again:
 							if (op == 2) x--;
 							uint8_t vd = _avr_get_ram(avr, x);
 							if (op == 1) x++;
-							_avr_set_r16le_hl(avr, R_XL, x);
-							_avr_set_r(avr, d, vd);
+							_avr_set_r16le_hl(R_XL, x);
+							_sreg = _avr_set_r(avr, _sreg, d, vd);
 						}	end_emit;
 						case 0x920c:
 						case 0x920d:
@@ -1120,7 +1121,7 @@ run_one_again:
 							_sreg = _avr_set_ram(avr, _sreg, x, vd);
 							if (op == 1) x++;
 							_avr_set_r16le_hl( R_XL, x);
-						}	break;
+						}	end_emit;
 						case 0x9009:
 						case 0x900a: emit {	// LD -- Load Indirect from Data using Y -- 1001 000d dddd 10oo
 							int op = opcode & 3;
@@ -1133,7 +1134,7 @@ run_one_again:
 							if (op == 1) y++;
 							_avr_set_r16le_hl( R_YL, y);
 							_sreg = _avr_set_r(avr, _sreg, d, vd);
-						}	break;
+						}	end_emit;
 						case 0x9209:
 						case 0x920a: emit {	// ST -- Store Indirect Data Space Y -- 1001 001d dddd 10oo
 							int op = opcode & 3;
@@ -1153,7 +1154,7 @@ run_one_again:
 							STATE("sts 0x%04x, %s[%02x]\n", x, avr_regname(d), vd);
 							cycle++;
 							_sreg = _avr_set_ram(avr, _sreg, x, vd);
-						}	break;
+						}	end_emit;
 						case 0x9001:
 						case 0x9002: emit {	// LD -- Load Indirect from Data using Z -- 1001 000d dddd 00oo
 							int op = opcode & 3;
@@ -1249,8 +1250,8 @@ run_one_again:
 							get_vd5(opcode);
 							uint8_t res = (SREG_BIT(S_C) ? 0x80 : 0) | vd >> 1;
 							STATE("ror %s[%02x]\n", avr_regname(d), vd);
-							_avr_set_r(avr, d, res);
-							_avr_flags_zcnvs(avr, res, vd);
+							_sreg = _avr_set_r(avr, _sreg, d, res);
+							_sreg = _avr_flags_zcnvs(_sreg, res, vd);
 							SREG();
 						}	end_emit;
 						case 0x940a: emit {	// DEC -- Decrement -- 1001 010d dddd 1010

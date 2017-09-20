@@ -163,6 +163,7 @@ avr_callback_run_jit(
 	avr_t * avr)
 {
 	avr_flashaddr_t new_pc = avr->pc;
+	SREG_START(avr);
 
 	if (avr->state == cpu_Running) {
 		int cycle = 0;

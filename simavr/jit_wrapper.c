@@ -31,8 +31,14 @@ enum {
 };
 
 
-#define SREG_BIT(_b) 		(avr_data[R_SREG] & (1 << (_b)))
-#define SREG_SETBIT(_b, _v) 	avr_data[R_SREG] = (avr_data[R_SREG] & ~(1 << (_b))) | (!!(_v) << (_b));
+#define SREG_BIT(_b) 		(_sreg & (1 << (_b)))
+#define SREG_SETBIT(_b, _v) 	_sreg = (_sreg & ~(1 << (_b))) | (!!(_v) << (_b))
+
+#define READ_SREG_INTO(_avr, _dst) \
+	(_dst) = (avr_data)[R_SREG]
+
+#define SREG_START(_avr)	uint8_t _sreg; READ_SREG_INTO(_avr, _sreg)
+#define SREG_END(_avr)		(avr_data)[R_SREG] = _sreg
 
 /*
  * Core states.
@@ -60,8 +66,9 @@ typedef char int8_t;
 typedef unsigned long avr_flashaddr_t;
 
 const char * avr_regname(uint8_t reg);
-void _avr_set_r(
+uint8_t _avr_set_r(
 	void * avr,
+	uint8_t _sreg,
 	uint16_t r,
 	uint8_t v);
 void
@@ -100,27 +107,20 @@ _avr_flash_read16le(
 {
 	return (avr_flash[addr] | (avr_flash[addr + 1] << 8));
 }
-static inline void
-_avr_set_r16le(
-	void * ignore,
-	uint16_t r,
-	uint16_t v)
-{
-	_avr_set_r(avr, r, v);
-	_avr_set_r(avr, r + 1, v >> 8);
-}
+#define _avr_set_r16le(_r, _v) \
+	{ uint16_t __r = (_r), __v = (_v); \
+	_sreg = _avr_set_r(avr, _sreg, __r, __v); \
+	_sreg = _avr_set_r(avr, _sreg, __r + 1, __v >> 8); }
 
-static inline void
-_avr_set_r16le_hl(
-	void * ignore,
-	uint16_t r,
-	uint16_t v)
-{
-	_avr_set_r(avr, r + 1, v >> 8);
-	_avr_set_r(avr, r , v);
-}
+#define _avr_set_r16le_hl(_r, _v) \
+	{ uint16_t __r = (_r), __v = (_v); \
+	_sreg = _avr_set_r(avr, _sreg, __r + 1, __v >> 8); \
+	_sreg = _avr_set_r(avr, _sreg, __r , __v); }
 
 
+/*
+ * Stack pointer access
+ */
 inline uint16_t _avr_sp_get(void * ignore)
 {
 	return avr_data[R_SPL] | (avr_data[R_SPH] << 8);
@@ -128,18 +128,21 @@ inline uint16_t _avr_sp_get(void * ignore)
 
 inline void _avr_sp_set(void * ignore, uint16_t sp)
 {
-	_avr_set_r16le(avr, R_SPL, sp);
+	SREG_START(avr);
+	_avr_set_r16le(R_SPL, sp);
+	SREG_END(avr);
 }
 
 /*
  * Set any address to a value; split between registers and SRAM
  */
-static inline void _avr_set_ram(void * ignore, uint16_t addr, uint8_t v)
+static inline uint8_t _avr_set_ram(void * ignore, uint8_t _sreg, uint16_t addr, uint8_t v)
 {
 	if (addr < MAX_IOs + 31)
-		_avr_set_r(avr, addr, v);
+		_sreg = _avr_set_r(avr, _sreg, addr, v);
 	else
 		avr_core_watch_write(avr, addr, v);
+	return _sreg;
 }
 
 #define avr_sreg_set(_ignore, flag, ival) \
@@ -161,7 +164,7 @@ _avr_push8(
 	uint16_t v)
 {
 	uint16_t sp = _avr_sp_get(avr);
-	_avr_set_ram(avr, sp, v);
+	_avr_set_ram(avr, 0, sp, v);
 	_avr_sp_set(avr, sp-1);
 }
 
@@ -197,7 +200,7 @@ _avr_push_addr(
 	uint16_t sp = _avr_sp_get(avr);
 	addr >>= 1;
 	for (int i = 0; i < avr_address_size; i++, addr >>= 8, sp--) {
-		_avr_set_ram(avr, sp, addr);
+		_avr_set_ram(avr, 0, sp, addr);
 	}
 	_avr_sp_set(avr, sp);
 	return avr_address_size;
@@ -210,24 +213,29 @@ _avr_push_addr(
  *
 \****************************************************************************/
 
-static  void
-_avr_flags_zns (void * ignore, uint8_t res)
+/* this flushes the caches SREG, call something then reload into the cache */
+#define SREG_FLUSH(__what) { SREG_END(avr); __what ; READ_SREG_INTO(avr, _sreg); }
+
+static  uint8_t
+_avr_flags_zns (uint8_t _sreg, uint8_t res)
 {
 	SREG_SETBIT(S_Z, res == 0);
 	SREG_SETBIT(S_N, (res >> 7) & 1);
 	SREG_SETBIT(S_S, SREG_BIT(S_N) ^ SREG_BIT(S_V));
+	return _sreg;
 }
 
-static  void
-_avr_flags_zns16 (void * ignore, uint16_t res)
+static  uint8_t
+_avr_flags_zns16 (uint8_t _sreg, uint16_t res)
 {
 	SREG_SETBIT(S_Z, res == 0);
 	SREG_SETBIT(S_N, (res >> 15) & 1);
 	SREG_SETBIT(S_S, SREG_BIT(S_N) ^ SREG_BIT(S_V));
+	return _sreg;
 }
 
-static  void
-_avr_flags_add_zns (void * ignore, uint8_t res, uint8_t rd, uint8_t rr)
+static  uint8_t
+_avr_flags_add_zns (uint8_t _sreg, uint8_t res, uint8_t rd, uint8_t rr)
 {
 	/* carry & half carry */
 	uint8_t add_carry = (rd & rr) | (rr & ~res) | (~res & rd);
@@ -236,14 +244,13 @@ _avr_flags_add_zns (void * ignore, uint8_t res, uint8_t rd, uint8_t rr)
 
 	/* overflow */
 	SREG_SETBIT(S_V, (((rd & rr & ~res) | (~rd & ~rr & res)) >> 7) & 1);
-
 	/* zns */
-	_avr_flags_zns(avr, res);
+	return _avr_flags_zns(_sreg, res);
 }
 
 
-static  void
-_avr_flags_sub_zns (void * ignore, uint8_t res, uint8_t rd, uint8_t rr)
+static  uint8_t
+_avr_flags_sub_zns (uint8_t _sreg, uint8_t res, uint8_t rd, uint8_t rr)
 {
 	/* carry & half carry */
 	uint8_t sub_carry = (~rd & rr) | (rr & res) | (res & ~rd);
@@ -254,54 +261,58 @@ _avr_flags_sub_zns (void * ignore, uint8_t res, uint8_t rd, uint8_t rr)
 	SREG_SETBIT(S_V, (((rd & ~rr & ~res) | (~rd & rr & res)) >> 7) & 1);
 
 	/* zns */
-	_avr_flags_zns(avr, res);
+	return _avr_flags_zns(_sreg, res);
 }
 
-static  void
-_avr_flags_Rzns (void * ignore, uint8_t res)
+static  uint8_t
+_avr_flags_Rzns (uint8_t _sreg, uint8_t res)
 {
 	if (res)
 		SREG_SETBIT(S_Z, 0);
 	SREG_SETBIT(S_N, (res >> 7) & 1);
 	SREG_SETBIT(S_S, SREG_BIT(S_N) ^ SREG_BIT(S_V));
+	return _sreg;
 }
 
-static  void
-_avr_flags_sub_Rzns (void * ignore, uint8_t res, uint8_t rd, uint8_t rr)
+static  uint8_t
+_avr_flags_sub_Rzns (uint8_t _sreg, uint8_t res, uint8_t rd, uint8_t rr)
 {
 	/* carry & half carry */
 	uint8_t sub_carry = (~rd & rr) | (rr & res) | (res & ~rd);
 	SREG_SETBIT(S_H, (sub_carry >> 3) & 1);
 	SREG_SETBIT(S_C, (sub_carry >> 7) & 1);
+
 	/* overflow */
 	SREG_SETBIT(S_V, (((rd & ~rr & ~res) | (~rd & rr & res)) >> 7) & 1);
-	_avr_flags_Rzns(avr, res);
+	return _avr_flags_Rzns(_sreg, res);
 }
 
-static  void
-_avr_flags_zcvs (void * ignore, uint8_t res, uint8_t vr)
+static  uint8_t
+_avr_flags_zcvs (uint8_t _sreg, uint8_t res, uint8_t vr)
 {
 	SREG_SETBIT(S_Z, res == 0);
 	SREG_SETBIT(S_C, vr & 1);
 	SREG_SETBIT(S_V, SREG_BIT(S_N) ^ SREG_BIT(S_C));
 	SREG_SETBIT(S_S, SREG_BIT(S_N) ^ SREG_BIT(S_V));
+	return _sreg;
 }
 
-static  void
-_avr_flags_zcnvs (void * ignore, uint8_t res, uint8_t vr)
+static  uint8_t
+_avr_flags_zcnvs (uint8_t _sreg, uint8_t res, uint8_t vr)
 {
 	SREG_SETBIT(S_Z, res == 0);
 	SREG_SETBIT(S_C, vr & 1);
 	SREG_SETBIT(S_N, res >> 7);
 	SREG_SETBIT(S_V, SREG_BIT(S_N) ^ SREG_BIT(S_C));
 	SREG_SETBIT(S_S, SREG_BIT(S_N) ^ SREG_BIT(S_V));
+	return _sreg;
 }
 
-static  void
-_avr_flags_znv0s (void * ignore, uint8_t res)
+static  uint8_t
+_avr_flags_znv0s (uint8_t _sreg, uint8_t res)
 {
 	SREG_SETBIT(S_V, 0);
-	_avr_flags_zns(avr, res);
+	return _avr_flags_zns(_sreg, res);
 }
 
 
@@ -391,6 +402,7 @@ firmware(
 	int cycle = 0;
 
 	jit_avr = _jit_avr;
+	SREG_START(_jit_avr);
 
 //	printf("Hi There %p %p\n", avr_flash, avr_data);
 
@@ -398,5 +410,6 @@ firmware(
 
 exit:
 	*cycles += cycle;
+	SREG_END(avr);
 	return new_pc;
 }

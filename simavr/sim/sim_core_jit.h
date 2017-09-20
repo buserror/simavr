@@ -18,7 +18,7 @@ jit_generate(opcode, "STATE(\"nop\\n\");\n"
 jit_generate(opcode, "get_vd5_vr5(opcode);\n"
 "uint8_t res = vd - vr - SREG_BIT(S_C);\n"
 "STATE(\"cpc %s[%02x], %s[%02x] = %02x\\n\", avr_regname(d), vd, avr_regname(r), vr, res);\n"
-"_avr_flags_sub_Rzns(avr, res, vd, vr);\n"
+"_sreg = _avr_flags_sub_Rzns(_sreg, res, vd, vr);\n"
 "SREG();\n"
 );
 						}	break;
@@ -30,8 +30,8 @@ jit_generate(opcode, "get_vd5_vr5(opcode);\n"
 "} else {\n"
 "STATE(\"add %s[%02x], %s[%02x] = %02x\\n\", avr_regname(d), vd, avr_regname(r), vr, res);\n"
 "}\n"
-"_avr_set_r(avr, d, res);\n"
-"_avr_flags_add_zns(avr, res, vd, vr);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
+"_sreg = _avr_flags_add_zns(_sreg, res, vd, vr);\n"
 "SREG();\n"
 );
 						}	break;
@@ -39,8 +39,8 @@ jit_generate(opcode, "get_vd5_vr5(opcode);\n"
 jit_generate(opcode, "get_vd5_vr5(opcode);\n"
 "uint8_t res = vd - vr - SREG_BIT(S_C);\n"
 "STATE(\"sbc %s[%02x], %s[%02x] = %02x\\n\", avr_regname(d), avr_data[d], avr_regname(r), avr_data[r], res);\n"
-"_avr_set_r(avr, d, res);\n"
-"_avr_flags_sub_Rzns(avr, res, vd, vr);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
+"_sreg = _avr_flags_sub_Rzns(_sreg, res, vd, vr);\n"
 "SREG();\n"
 );
 						}	break;
@@ -51,7 +51,7 @@ jit_generate(opcode, "uint8_t d = ((opcode >> 4) & 0xf) << 1;\n"
 "uint8_t r = ((opcode) & 0xf) << 1;\n"
 "STATE(\"movw %s:%s, %s:%s[%02x%02x]\\n\", avr_regname(d), avr_regname(d+1), avr_regname(r), avr_regname(r+1), avr_data[r+1], avr_data[r]);\n"
 "uint16_t vr = avr_data[r] | (avr_data[r + 1] << 8);\n"
-"_avr_set_r16le(avr, d, vr);\n"
+"_avr_set_r16le(d, vr);\n"
 );
 								}	break;
 								case 0x0200:  {	// MULS -- Multiply Signed -- 0000 0010 dddd rrrr
@@ -59,7 +59,7 @@ jit_generate(opcode, "int8_t r = 16 + (opcode & 0xf);\n"
 "int8_t d = 16 + ((opcode >> 4) & 0xf);\n"
 "int16_t res = ((int8_t)avr_data[r]) * ((int8_t)avr_data[d]);\n"
 "STATE(\"muls %s[%d], %s[%02x] = %d\\n\", avr_regname(d), ((int8_t)avr_data[d]), avr_regname(r), ((int8_t)avr_data[r]), res);\n"
-"_avr_set_r16le(avr, 0, res);\n"
+"_avr_set_r16le(0, res);\n"
 "SREG_SETBIT(S_C, (res >> 15) & 1);\n"
 "SREG_SETBIT(S_Z, res == 0);\n"
 "cycle++;\n"
@@ -99,7 +99,7 @@ jit_generate(opcode, "int8_t r = 16 + (opcode & 0x7);\n"
 "}\n"
 "cycle++;\n"
 "STATE(\"%s %s[%d], %s[%02x] = %d\\n\", name, avr_regname(d), ((int8_t)avr_data[d]), avr_regname(r), ((int8_t)avr_data[r]), res);\n"
-"_avr_set_r16le(avr, 0, res);\n"
+"_avr_set_r16le(0, res);\n"
 "SREG_SETBIT(S_C, c);\n"
 "SREG_SETBIT(S_Z, res == 0);\n"
 "SREG();\n"
@@ -118,8 +118,8 @@ jit_generate(opcode, "int8_t r = 16 + (opcode & 0x7);\n"
 jit_generate(opcode, "get_vd5_vr5(opcode);\n"
 "uint8_t res = vd - vr;\n"
 "STATE(\"sub %s[%02x], %s[%02x] = %02x\\n\", avr_regname(d), vd, avr_regname(r), vr, res);\n"
-"_avr_set_r(avr, d, res);\n"
-"_avr_flags_sub_zns(avr, res, vd, vr);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
+"_sreg = _avr_flags_sub_zns(_sreg, res, vd, vr);\n"
 "SREG();\n"
 );
 				}	break;
@@ -145,7 +145,7 @@ jit_generate(opcode, "get_vd5_vr5(opcode);\n"
 jit_generate(opcode, "get_vd5_vr5(opcode);\n"
 "uint8_t res = vd - vr;\n"
 "STATE(\"cp %s[%02x], %s[%02x] = %02x\\n\", avr_regname(d), vd, avr_regname(r), vr, res);\n"
-"_avr_flags_sub_zns(avr, res, vd, vr);\n"
+"_sreg = _avr_flags_sub_zns(_sreg, res, vd, vr);\n"
 "SREG();\n"
 );
 				}	break;
@@ -157,8 +157,8 @@ jit_generate(opcode, "get_vd5_vr5(opcode);\n"
 "} else {\n"
 "STATE(\"addc %s[%02x], %s[%02x] = %02x\\n\", avr_regname(d), avr_data[d], avr_regname(r), avr_data[r], res);\n"
 "}\n"
-"_avr_set_r(avr, d, res);\n"
-"_avr_flags_add_zns(avr, res, vd, vr);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
+"_sreg = _avr_flags_add_zns(_sreg, res, vd, vr);\n"
 "SREG();\n"
 );
 				}	break;
@@ -176,8 +176,8 @@ jit_generate(opcode, "get_vd5_vr5(opcode);\n"
 "} else {\n"
 "STATE(\"and %s[%02x], %s[%02x] = %02x\\n\", avr_regname(d), vd, avr_regname(r), vr, res);\n"
 "}\n"
-"_avr_set_r(avr, d, res);\n"
-"_avr_flags_znv0s(avr, res);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
+"_sreg = _avr_flags_znv0s(_sreg, res);\n"
 "SREG();\n"
 );
 				}	break;
@@ -189,8 +189,8 @@ jit_generate(opcode, "get_vd5_vr5(opcode);\n"
 "} else {\n"
 "STATE(\"eor %s[%02x], %s[%02x] = %02x\\n\", avr_regname(d), vd, avr_regname(r), vr, res);\n"
 "}\n"
-"_avr_set_r(avr, d, res);\n"
-"_avr_flags_znv0s(avr, res);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
+"_sreg = _avr_flags_znv0s(_sreg, res);\n"
 "SREG();\n"
 );
 				}	break;
@@ -198,8 +198,8 @@ jit_generate(opcode, "get_vd5_vr5(opcode);\n"
 jit_generate(opcode, "get_vd5_vr5(opcode);\n"
 "uint8_t res = vd | vr;\n"
 "STATE(\"or %s[%02x], %s[%02x] = %02x\\n\", avr_regname(d), vd, avr_regname(r), vr, res);\n"
-"_avr_set_r(avr, d, res);\n"
-"_avr_flags_znv0s(avr, res);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
+"_sreg = _avr_flags_znv0s(_sreg, res);\n"
 "SREG();\n"
 );
 				}	break;
@@ -207,7 +207,7 @@ jit_generate(opcode, "get_vd5_vr5(opcode);\n"
 jit_generate(opcode, "get_d5_vr5(opcode);\n"
 "uint8_t res = vr;\n"
 "STATE(\"mov %s, %s[%02x] = %02x\\n\", avr_regname(d), avr_regname(r), vr, res);\n"
-"_avr_set_r(avr, d, res);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
 );
 				}	break;
 				default: _avr_invalid_opcode(avr);
@@ -218,7 +218,7 @@ jit_generate(opcode, "get_d5_vr5(opcode);\n"
 jit_generate(opcode, "get_vh4_k8(opcode);\n"
 "uint8_t res = vh - k;\n"
 "STATE(\"cpi %s[%02x], 0x%02x\\n\", avr_regname(h), vh, k);\n"
-"_avr_flags_sub_zns(avr, res, vh, k);\n"
+"_sreg = _avr_flags_sub_zns(_sreg, res, vh, k);\n"
 "SREG();\n"
 );
 		}	break;
@@ -227,8 +227,8 @@ jit_generate(opcode, "get_vh4_k8(opcode);\n"
 jit_generate(opcode, "get_vh4_k8(opcode);\n"
 "uint8_t res = vh - k - SREG_BIT(S_C);\n"
 "STATE(\"sbci %s[%02x], 0x%02x = %02x\\n\", avr_regname(h), vh, k, res);\n"
-"_avr_set_r(avr, h, res);\n"
-"_avr_flags_sub_Rzns(avr, res, vh, k);\n"
+"_sreg = _avr_set_r(avr, _sreg, h, res);\n"
+"_sreg = _avr_flags_sub_Rzns(_sreg, res, vh, k);\n"
 "SREG();\n"
 );
 		}	break;
@@ -237,8 +237,8 @@ jit_generate(opcode, "get_vh4_k8(opcode);\n"
 jit_generate(opcode, "get_vh4_k8(opcode);\n"
 "uint8_t res = vh - k;\n"
 "STATE(\"subi %s[%02x], 0x%02x = %02x\\n\", avr_regname(h), vh, k, res);\n"
-"_avr_set_r(avr, h, res);\n"
-"_avr_flags_sub_zns(avr, res, vh, k);\n"
+"_sreg = _avr_set_r(avr, _sreg, h, res);\n"
+"_sreg = _avr_flags_sub_zns(_sreg, res, vh, k);\n"
 "SREG();\n"
 );
 		}	break;
@@ -247,8 +247,8 @@ jit_generate(opcode, "get_vh4_k8(opcode);\n"
 jit_generate(opcode, "get_vh4_k8(opcode);\n"
 "uint8_t res = vh | k;\n"
 "STATE(\"ori %s[%02x], 0x%02x\\n\", avr_regname(h), vh, k);\n"
-"_avr_set_r(avr, h, res);\n"
-"_avr_flags_znv0s(avr, res);\n"
+"_sreg = _avr_set_r(avr, _sreg, h, res);\n"
+"_sreg = _avr_flags_znv0s(_sreg, res);\n"
 "SREG();\n"
 );
 		}	break;
@@ -257,8 +257,8 @@ jit_generate(opcode, "get_vh4_k8(opcode);\n"
 jit_generate(opcode, "get_vh4_k8(opcode);\n"
 "uint8_t res = vh & k;\n"
 "STATE(\"andi %s[%02x], 0x%02x\\n\", avr_regname(h), vh, k);\n"
-"_avr_set_r(avr, h, res);\n"
-"_avr_flags_znv0s(avr, res);\n"
+"_sreg = _avr_set_r(avr, _sreg, h, res);\n"
+"_sreg = _avr_flags_znv0s(_sreg, res);\n"
 "SREG();\n"
 );
 		}	break;
@@ -280,10 +280,10 @@ jit_generate(opcode, "uint16_t v = avr_data[R_ZL] | (avr_data[R_ZH] << 8);\n"
 "get_d5_q6(opcode);\n"
 "if (opcode & 0x0200) {\n"
 "STATE(\"st (Z+%d[%04x]), %s[%02x]\\n\", q, v+q, avr_regname(d), avr_data[d]);\n"
-"_avr_set_ram(avr, v+q, avr_data[d]);\n"
+"_sreg = _avr_set_ram(avr, _sreg, v+q, avr_data[d]);\n"
 "} else {\n"
 "STATE(\"ld %s, (Z+%d[%04x])=[%02x]\\n\", avr_regname(d), q, v+q, avr_data[v+q]);\n"
-"_avr_set_r(avr, d, _avr_get_ram(avr, v+q));\n"
+"_sreg = _avr_set_r(avr, _sreg, d, _avr_get_ram(avr, v+q));\n"
 "}\n"
 "cycle += 1; // 2 cycles, 3 for tinyavr\n"
 );
@@ -294,10 +294,10 @@ jit_generate(opcode, "uint16_t v = avr_data[R_YL] | (avr_data[R_YH] << 8);\n"
 "get_d5_q6(opcode);\n"
 "if (opcode & 0x0200) {\n"
 "STATE(\"st (Y+%d[%04x]), %s[%02x]\\n\", q, v+q, avr_regname(d), avr_data[d]);\n"
-"_avr_set_ram(avr, v+q, avr_data[d]);\n"
+"_sreg = _avr_set_ram(avr, _sreg, v+q, avr_data[d]);\n"
 "} else {\n"
 "STATE(\"ld %s, (Y+%d[%04x])=[%02x]\\n\", avr_regname(d), q, v+q, avr_data[d+q]);\n"
-"_avr_set_r(avr, d, _avr_get_ram(avr, v+q));\n"
+"_sreg = _avr_set_r(avr, _sreg, d, _avr_get_ram(avr, v+q));\n"
 "}\n"
 "cycle += 1; // 2 cycles, 3 for tinyavr\n"
 );
@@ -325,7 +325,7 @@ jit_generate(opcode, "STATE(\"sleep\\n\");\n"
 "* details, see the commit message. */\n"
 "if (!avr_has_pending_interrupts(avr) || !SREG_BIT(S_I)) {\n"
 "avr_state = cpu_Sleeping;\n"
-"CORE_SLEEP();\n"
+"SREG_FLUSH(CORE_SLEEP(););\n"
 "}\n"
 );
 				}	break;
@@ -343,12 +343,12 @@ jit_generate(opcode, "STATE(\"break\\n\");\n"
 				}	break;
 				case 0x95a8:  { // WDR -- Watchdog Reset -- 1001 0101 1010 1000
 jit_generate(opcode, "STATE(\"wdr\\n\");\n"
-"avr_ioctl(avr, AVR_IOCTL_WATCHDOG_RESET, 0);\n"
+"SREG_FLUSH(avr_ioctl(avr, AVR_IOCTL_WATCHDOG_RESET, 0));\n"
 );
 				}	break;
 				case 0x95e8:  { // SPM -- Store Program Memory -- 1001 0101 1110 1000
 jit_generate(opcode, "STATE(\"spm\\n\");\n"
-"avr_ioctl(avr, AVR_IOCTL_FLASH_SPM, 0);\n"
+"SREG_FLUSH(avr_ioctl(avr, AVR_IOCTL_FLASH_SPM, 0));\n"
 );
 				}	break;
 				case 0x9409:   // IJMP -- Indirect jump -- 1001 0100 0000 1001
@@ -377,8 +377,9 @@ jit_generate(opcode, "uint32_t z = avr_data[R_ZL] | (avr_data[R_ZH] << 8);\n"
 				case 0x9508: 		// RET -- Return -- 1001 0101 0000 1000
 				case 0x9518:  {	// RETI -- Return from Interrupt -- 1001 0101 0001 1000
 jit_generate(opcode, "if (opcode == 0x9518) {\n"
+"SREG_FLUSH(\n"
 "avr_sreg_set(avr, S_I, 1);\n"
-"avr_interrupt_reti(avr);\n"
+"avr_interrupt_reti(avr) );\n"
 "}\n"
 "new_pc = _avr_pop_addr(avr);\n"
 "cycle += 1 + avr_address_size;\n"
@@ -391,16 +392,16 @@ jit_generate(opcode, "if (opcode == 0x9518) {\n"
 jit_generate(opcode, "uint16_t z = avr_data[R_ZL] | (avr_data[R_ZH] << 8);\n"
 "STATE(\"lpm %s, (Z[%04x]) = %02x\\n\", avr_regname(0), z, avr_flash[z]);\n"
 "cycle += 2; // 3 cycles\n"
-"_avr_set_r(avr, 0, avr_flash[z]);\n"
+"_sreg = _avr_set_r(avr, _sreg, 0, avr_flash[z]);\n"
 );
 				}	break;
 				case 0x95d8: {	// ELPM -- Load Program Memory R0 <- (Z) -- 1001 0101 1101 1000
-					if (!avr_rampz)
+					if (!avr->rampz)
 						_avr_invalid_opcode(avr);
 					 {
 jit_generate(opcode, "uint32_t z = avr_data[R_ZL] | (avr_data[R_ZH] << 8) | (avr_data[avr_rampz] << 16);\n"
 "STATE(\"elpm %s, (Z[%02x:%04x])\\n\", avr_regname(0), z >> 16, z & 0xffff);\n"
-"_avr_set_r(avr, 0, avr_flash[z]);\n"
+"_sreg = _avr_set_r(avr, _sreg, 0, avr_flash[z]);\n"
 "cycle += 2; // 3 cycles\n"
 );
 					}	break;
@@ -412,7 +413,7 @@ jit_generate(opcode, "get_d5(opcode);\n"
 "uint16_t x = _avr_flash_read16le(avr, new_pc);\n"
 "new_pc += 2;\n"
 "STATE(\"lds %s[%02x], 0x%04x\\n\", avr_regname(d), avr_data[d], x);\n"
-"_avr_set_r(avr, d, _avr_get_ram(avr, x));\n"
+"_sreg = _avr_set_r(avr, _sreg, d, _avr_get_ram(avr, x));\n"
 "cycle++; // 2 cycles\n"
 );
 						}	break;
@@ -421,10 +422,10 @@ jit_generate(opcode, "get_d5(opcode);\n"
 jit_generate(opcode, "get_d5(opcode);\n"
 "uint16_t z = avr_data[R_ZL] | (avr_data[R_ZH] << 8);\n"
 "int op = opcode & 1;\n"
-"STATE(\"lpm %s, (Z[%04x]%s) = %02x\\n\", avr_regname(d), z, op ? \"+\" : \"\", avr_flash[z]);\n"
-"_avr_set_r(avr, d, avr_flash[z]);\n"
+"STATE(\"lpm %s, (Z[%04x]%s)\\n\", avr_regname(d), z, op ? \"+\" : \"\");\n"
+"_sreg = _avr_set_r(avr, _sreg, d, avr_flash[z]);\n"
 "if (op)\n"
-"_avr_set_r16le_hl(avr, R_ZL, z + 1);\n"
+"_avr_set_r16le_hl( R_ZL, z + 1);\n"
 "cycle += 2; // 3 cycles\n"
 );
 						}	break;
@@ -437,11 +438,11 @@ jit_generate(opcode, "uint32_t z = avr_data[R_ZL] | (avr_data[R_ZH] << 8) | (avr
 "get_d5(opcode);\n"
 "int op = opcode & 1;\n"
 "STATE(\"elpm %s, (Z[%02x:%04x]%s)\\n\", avr_regname(d), z >> 16, z & 0xffff, op ? \"+\" : \"\");\n"
-"_avr_set_r(avr, d, avr_flash[z]);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, avr_flash[z]);\n"
 "if (op) {\n"
 "z++;\n"
-"_avr_set_r(avr, avr_rampz, z >> 16);\n"
-"_avr_set_r16le_hl(avr, R_ZL, z);\n"
+"_sreg = _avr_set_r(avr, _sreg, avr->rampz, z >> 16);\n"
+"_avr_set_r16le_hl( R_ZL, z);\n"
 "}\n"
 "cycle += 2; // 3 cycles\n"
 );
@@ -466,8 +467,8 @@ jit_generate(opcode, "int op = opcode & 3;\n"
 "if (op == 2) x--;\n"
 "uint8_t vd = _avr_get_ram(avr, x);\n"
 "if (op == 1) x++;\n"
-"_avr_set_r16le_hl(avr, R_XL, x);\n"
-"_avr_set_r(avr, d, vd);\n"
+"_avr_set_r16le_hl(R_XL, x);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, vd);\n"
 );
 						}	break;
 						case 0x920c:
@@ -479,9 +480,9 @@ jit_generate(opcode, "int op = opcode & 3;\n"
 "STATE(\"st %sX[%04x]%s, %s[%02x] \\n\", op == 2 ? \"--\" : \"\", x, op == 1 ? \"++\" : \"\", avr_regname(d), vd);\n"
 "cycle++; // 2 cycles, except tinyavr\n"
 "if (op == 2) x--;\n"
-"_avr_set_ram(avr, x, vd);\n"
+"_sreg = _avr_set_ram(avr, _sreg, x, vd);\n"
 "if (op == 1) x++;\n"
-"_avr_set_r16le_hl(avr, R_XL, x);\n"
+"_avr_set_r16le_hl( R_XL, x);\n"
 );
 						}	break;
 						case 0x9009:
@@ -494,8 +495,8 @@ jit_generate(opcode, "int op = opcode & 3;\n"
 "if (op == 2) y--;\n"
 "uint8_t vd = _avr_get_ram(avr, y);\n"
 "if (op == 1) y++;\n"
-"_avr_set_r16le_hl(avr, R_YL, y);\n"
-"_avr_set_r(avr, d, vd);\n"
+"_avr_set_r16le_hl( R_YL, y);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, vd);\n"
 );
 						}	break;
 						case 0x9209:
@@ -506,9 +507,9 @@ jit_generate(opcode, "int op = opcode & 3;\n"
 "STATE(\"st %sY[%04x]%s, %s[%02x]\\n\", op == 2 ? \"--\" : \"\", y, op == 1 ? \"++\" : \"\", avr_regname(d), vd);\n"
 "cycle++;\n"
 "if (op == 2) y--;\n"
-"_avr_set_ram(avr, y, vd);\n"
+"_sreg = _avr_set_ram(avr, _sreg, y, vd);\n"
 "if (op == 1) y++;\n"
-"_avr_set_r16le_hl(avr, R_YL, y);\n"
+"_avr_set_r16le_hl( R_YL, y);\n"
 );
 						}	break;
 						case 0x9200:  {	// STS -- Store Direct to Data Space, 32 bits -- 1001 0010 0000 0000
@@ -517,7 +518,7 @@ jit_generate(opcode, "get_vd5(opcode);\n"
 "new_pc += 2;\n"
 "STATE(\"sts 0x%04x, %s[%02x]\\n\", x, avr_regname(d), vd);\n"
 "cycle++;\n"
-"_avr_set_ram(avr, x, vd);\n"
+"_sreg = _avr_set_ram(avr, _sreg, x, vd);\n"
 );
 						}	break;
 						case 0x9001:
@@ -530,8 +531,8 @@ jit_generate(opcode, "int op = opcode & 3;\n"
 "if (op == 2) z--;\n"
 "uint8_t vd = _avr_get_ram(avr, z);\n"
 "if (op == 1) z++;\n"
-"_avr_set_r16le_hl(avr, R_ZL, z);\n"
-"_avr_set_r(avr, d, vd);\n"
+"_avr_set_r16le_hl( R_ZL, z);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, vd);\n"
 );
 						}	break;
 						case 0x9201:
@@ -542,14 +543,14 @@ jit_generate(opcode, "int op = opcode & 3;\n"
 "STATE(\"st %sZ[%04x]%s, %s[%02x] \\n\", op == 2 ? \"--\" : \"\", z, op == 1 ? \"++\" : \"\", avr_regname(d), vd);\n"
 "cycle++; // 2 cycles, except tinyavr\n"
 "if (op == 2) z--;\n"
-"_avr_set_ram(avr, z, vd);\n"
+"_sreg = _avr_set_ram(avr, _sreg, z, vd);\n"
 "if (op == 1) z++;\n"
-"_avr_set_r16le_hl(avr, R_ZL, z);\n"
+"_avr_set_r16le_hl( R_ZL, z);\n"
 );
 						}	break;
 						case 0x900f:  {	// POP -- 1001 000d dddd 1111
 jit_generate(opcode, "get_d5(opcode);\n"
-"_avr_set_r(avr, d, _avr_pop8(avr));\n"
+"_sreg = _avr_set_r(avr, _sreg, d, _avr_pop8(avr));\n"
 "T(uint16_t sp = _avr_sp_get(avr);)\n"
 "STATE(\"pop %s (@%04x)[%02x]\\n\", avr_regname(d), sp, avr_data[sp]);\n"
 "cycle++;\n"
@@ -567,8 +568,8 @@ jit_generate(opcode, "get_vd5(opcode);\n"
 jit_generate(opcode, "get_vd5(opcode);\n"
 "uint8_t res = 0xff - vd;\n"
 "STATE(\"com %s[%02x] = %02x\\n\", avr_regname(d), vd, res);\n"
-"_avr_set_r(avr, d, res);\n"
-"_avr_flags_znv0s(avr, res);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
+"_sreg = _avr_flags_znv0s(_sreg, res);\n"
 "SREG_SETBIT(S_C, 1);\n"
 "SREG();\n"
 );
@@ -577,11 +578,11 @@ jit_generate(opcode, "get_vd5(opcode);\n"
 jit_generate(opcode, "get_vd5(opcode);\n"
 "uint8_t res = 0x00 - vd;\n"
 "STATE(\"neg %s[%02x] = %02x\\n\", avr_regname(d), vd, res);\n"
-"_avr_set_r(avr, d, res);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
 "SREG_SETBIT(S_H, ((res >> 3) | (vd >> 3)) & 1);\n"
 "SREG_SETBIT(S_V, res == 0x80);\n"
 "SREG_SETBIT(S_C, res != 0);\n"
-"_avr_flags_zns(avr, res);\n"
+"_sreg = _avr_flags_zns(_sreg, res);\n"
 "SREG();\n"
 );
 						}	break;
@@ -589,16 +590,16 @@ jit_generate(opcode, "get_vd5(opcode);\n"
 jit_generate(opcode, "get_vd5(opcode);\n"
 "uint8_t res = (vd >> 4) | (vd << 4) ;\n"
 "STATE(\"swap %s[%02x] = %02x\\n\", avr_regname(d), vd, res);\n"
-"_avr_set_r(avr, d, res);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
 );
 						}	break;
 						case 0x9403:  {	// INC -- Increment -- 1001 010d dddd 0011
 jit_generate(opcode, "get_vd5(opcode);\n"
 "uint8_t res = vd + 1;\n"
 "STATE(\"inc %s[%02x] = %02x\\n\", avr_regname(d), vd, res);\n"
-"_avr_set_r(avr, d, res);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
 "SREG_SETBIT(S_V, res == 0x80);\n"
-"_avr_flags_zns(avr, res);\n"
+"_sreg = _avr_flags_zns(_sreg, res);\n"
 "SREG();\n"
 );
 						}	break;
@@ -606,8 +607,8 @@ jit_generate(opcode, "get_vd5(opcode);\n"
 jit_generate(opcode, "get_vd5(opcode);\n"
 "uint8_t res = (vd >> 1) | (vd & 0x80);\n"
 "STATE(\"asr %s[%02x]\\n\", avr_regname(d), vd);\n"
-"_avr_set_r(avr, d, res);\n"
-"_avr_flags_zcnvs(avr, res, vd);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
+"_sreg = _avr_flags_zcnvs(_sreg, res, vd);\n"
 "SREG();\n"
 );
 						}	break;
@@ -615,9 +616,9 @@ jit_generate(opcode, "get_vd5(opcode);\n"
 jit_generate(opcode, "get_vd5(opcode);\n"
 "uint8_t res = vd >> 1;\n"
 "STATE(\"lsr %s[%02x]\\n\", avr_regname(d), vd);\n"
-"_avr_set_r(avr, d, res);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
 "SREG_SETBIT(S_N, 0);\n"
-"_avr_flags_zcvs(avr, res, vd);\n"
+"_sreg = _avr_flags_zcvs(_sreg, res, vd);\n"
 "SREG();\n"
 );
 						}	break;
@@ -625,8 +626,8 @@ jit_generate(opcode, "get_vd5(opcode);\n"
 jit_generate(opcode, "get_vd5(opcode);\n"
 "uint8_t res = (SREG_BIT(S_C) ? 0x80 : 0) | vd >> 1;\n"
 "STATE(\"ror %s[%02x]\\n\", avr_regname(d), vd);\n"
-"_avr_set_r(avr, d, res);\n"
-"_avr_flags_zcnvs(avr, res, vd);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
+"_sreg = _avr_flags_zcnvs(_sreg, res, vd);\n"
 "SREG();\n"
 );
 						}	break;
@@ -634,9 +635,9 @@ jit_generate(opcode, "get_vd5(opcode);\n"
 jit_generate(opcode, "get_vd5(opcode);\n"
 "uint8_t res = vd - 1;\n"
 "STATE(\"dec %s[%02x] = %02x\\n\", avr_regname(d), vd, res);\n"
-"_avr_set_r(avr, d, res);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, res);\n"
 "SREG_SETBIT(S_V, res == 0x7f);\n"
-"_avr_flags_zns(avr, res);\n"
+"_sreg = _avr_flags_zns(_sreg, res);\n"
 "SREG();\n"
 );
 						}	break;
@@ -671,10 +672,10 @@ jit_generate(opcode, "avr_flashaddr_t a = ((opcode & 0x01f0) >> 3) | (opcode & 1
 jit_generate(opcode, "get_vp2_k6(opcode);\n"
 "uint16_t res = vp + k;\n"
 "STATE(\"adiw %s:%s[%04x], 0x%02x\\n\", avr_regname(p), avr_regname(p + 1), vp, k);\n"
-"_avr_set_r16le_hl(avr, p, res);\n"
+"_avr_set_r16le_hl( p, res);\n"
 "SREG_SETBIT(S_V, ((~vp & res) >> 15) & 1);\n"
 "SREG_SETBIT(S_C, ((~res & vp) >> 15) & 1);\n"
-"_avr_flags_zns16(avr, res);\n"
+"_sreg = _avr_flags_zns16(_sreg, res);\n"
 "SREG();\n"
 "cycle++;\n"
 );
@@ -683,10 +684,10 @@ jit_generate(opcode, "get_vp2_k6(opcode);\n"
 jit_generate(opcode, "get_vp2_k6(opcode);\n"
 "uint16_t res = vp - k;\n"
 "STATE(\"sbiw %s:%s[%04x], 0x%02x\\n\", avr_regname(p), avr_regname(p + 1), vp, k);\n"
-"_avr_set_r16le_hl(avr, p, res);\n"
+"_avr_set_r16le_hl( p, res);\n"
 "SREG_SETBIT(S_V, ((vp & ~res) >> 15) & 1);\n"
 "SREG_SETBIT(S_C, ((res & ~vp) >> 15) & 1);\n"
-"_avr_flags_zns16(avr, res);\n"
+"_sreg = _avr_flags_zns16(_sreg, res);\n"
 "SREG();\n"
 "cycle++;\n"
 );
@@ -695,7 +696,7 @@ jit_generate(opcode, "get_vp2_k6(opcode);\n"
 jit_generate(opcode, "get_io5_b3mask(opcode);\n"
 "uint8_t res = _avr_get_ram(avr, io) & ~mask;\n"
 "STATE(\"cbi %s[%04x], 0x%02x = %02x\\n\", avr_regname(io), avr_data[io], mask, res);\n"
-"_avr_set_ram(avr, io, res);\n"
+"_sreg = _avr_set_ram(avr, _sreg, io, res);\n"
 "cycle++;\n"
 );
 								}	break;
@@ -717,7 +718,7 @@ jit_generate(opcode, "get_io5_b3mask(opcode);\n"
 jit_generate(opcode, "get_io5_b3mask(opcode);\n"
 "uint8_t res = _avr_get_ram(avr, io) | mask;\n"
 "STATE(\"sbi %s[%04x], 0x%02x = %02x\\n\", avr_regname(io), avr_data[io], mask, res);\n"
-"_avr_set_ram(avr, io, res);\n"
+"_sreg = _avr_set_ram(avr, _sreg, io, res);\n"
 "cycle++;\n"
 );
 								}	break;
@@ -742,7 +743,7 @@ jit_generate(opcode, "get_vd5_vr5(opcode);\n"
 "uint16_t res = vd * vr;\n"
 "STATE(\"mul %s[%02x], %s[%02x] = %04x\\n\", avr_regname(d), vd, avr_regname(r), vr, res);\n"
 "cycle++;\n"
-"_avr_set_r16le(avr, 0, res);\n"
+"_avr_set_r16le(0, res);\n"
 "SREG_SETBIT(S_Z, res == 0);\n"
 "SREG_SETBIT(S_C, (res >> 15) & 1);\n"
 "SREG();\n"
@@ -762,13 +763,13 @@ jit_generate(opcode, "get_vd5_vr5(opcode);\n"
 				case 0xb800:  {	// OUT A,Rr -- 1011 1AAd dddd AAAA
 jit_generate(opcode, "get_d5_a6(opcode);\n"
 "STATE(\"out %s, %s[%02x]\\n\", avr_regname(A), avr_regname(d), avr_data[d]);\n"
-"_avr_set_ram(avr, A, avr_data[d]);\n"
+"_sreg = _avr_set_ram(avr, _sreg, A, avr_data[d]);\n"
 );
 				}	break;
 				case 0xb000:  {	// IN Rd,A -- 1011 0AAd dddd AAAA
 jit_generate(opcode, "get_d5_a6(opcode);\n"
 "STATE(\"in %s, %s[%02x]\\n\", avr_regname(d), avr_regname(A), avr_data[A]);\n"
-"_avr_set_r(avr, d, _avr_get_ram(avr, A));\n"
+"_sreg = _avr_set_r(avr, _sreg, d, _avr_get_ram(avr, A));\n"
 );
 				}	break;
 				default: _avr_invalid_opcode(avr);
@@ -800,7 +801,7 @@ jit_generate(opcode, "get_o12(opcode);\n"
 		case 0xe000:  {	// LDI Rd, K aka SER (LDI r, 0xff) -- 1110 kkkk dddd kkkk
 jit_generate(opcode, "get_h4_k8(opcode);\n"
 "STATE(\"ldi %s, 0x%02x\\n\", avr_regname(h), k);\n"
-"_avr_set_r(avr, h, k);\n"
+"_sreg = _avr_set_r(avr, _sreg, h, k);\n"
 );
 		}	break;
 
@@ -833,7 +834,7 @@ jit_generate(opcode, "int16_t o = ((int16_t)(opcode << 6)) >> 9; // offset\n"
 jit_generate(opcode, "get_vd5_s3_mask(opcode);\n"
 "uint8_t v = (vd & ~mask) | (SREG_BIT(S_T) ? mask : 0);\n"
 "STATE(\"bld %s[%02x], 0x%02x = %02x\\n\", avr_regname(d), vd, mask, v);\n"
-"_avr_set_r(avr, d, v);\n"
+"_sreg = _avr_set_r(avr, _sreg, d, v);\n"
 );
 				}	break;
 				case 0xfa00:
