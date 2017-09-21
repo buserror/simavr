@@ -27,6 +27,7 @@ function quote(line) {
 		accum = "";
 		spewing = 0;
 		sub(/emit/, "");
+		delete flags;
 		print; next;
 	}
 }
@@ -54,13 +55,23 @@ function quote(line) {
 	if (!match($0, "#define")) {
 		spewing = 1;
 		sub(/end_emit/, "break");
-		print "jit_generate(opcode, " accum ");";
+		f = "0";
+		for (key in flags) f = f "+F_" key;
+		print "jit_generate(opcode, " f ","
+		print accum ");";
 	}
 }
 {
 	if (spewing)
 		print;
 	else {
+		if (match($0, /new_pc[ \t]*=/))
+			flags["NO_PC"]++;
+		if (match($0, /opcode/))
+			flags["OP"]++;
+		if (match($0, /TRACE_JUMP/))
+			flags["JUMP"]++;
+		sub(/[ \t]*\/\/.*$/, "", $0);
 		$0 = quote($0);
 		accum = accum "\"" $0 "\\n\"" "\n";
 	}

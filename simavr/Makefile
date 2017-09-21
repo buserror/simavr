@@ -27,7 +27,7 @@ target	= run_avr
 CFLAGS	+= -Werror
 # tracing is useful especialy if you develop simavr core.
 # it otherwise eat quite a bit of few cycles, even disabled
-#CFLAGS	+= -DCONFIG_SIMAVR_TRACE=1
+CFLAGS	+= -DCONFIG_SIMAVR_TRACE=1
 
 all:
 	$(MAKE) obj config

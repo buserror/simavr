@@ -80,6 +80,12 @@ buf_add(
 	buf_add_len(b, t, strlen(t));
 }
 
+enum {
+	F_NO_PC = (1 << 0),
+	F_OP = (1 << 1),
+	F_JUMP = (1 << 2),
+};
+
 avr_flashaddr_t
 avr_translate_firmware(
 	avr_t * avr)
@@ -89,21 +95,25 @@ avr_translate_firmware(
 
 	avr_flashaddr_t	pc = 0;
 
-	void jit_generate_head(uint16_t o) {
+	void jit_generate_head(uint16_t o, uint8_t f) {
 		char * b;
-		if (asprintf(&b, "f%04x: {\nconst uint16_t opcode = 0x%04x;\n", pc, o)) {};
+		if (asprintf(&b, "f%04x: {\n", pc)) {};
 		buf_add(&code, b); free(b);
 		buf_add(&code, "cycle++;");
-		if (asprintf(&b, "new_pc = 0x%04x + 2;\n", pc)) {};
-		buf_add(&code, b); free(b);
+	//	if (!(f & F_NO_PC)) {
+			if (asprintf(&b, "new_pc = 0x%04x;\n", pc + 2)) {};
+			buf_add(&code, b); free(b);
+	//	}
 	//	if (asprintf(&b, "printf(\"%04x: %04x; cycle %%d/%%d\\n\",cycle,howLong);\n", pc, o));
 	//	buf_add(&code, b); free(b);
 		/* this is gcc/tcc 'label as value' C extension. Handy */
 		if (asprintf(&b, "[0x%04x]= &&f%04x,\n", pc/2, pc)) {};
 		buf_add(&jump_table, b); free(b);
 	}
-	void jit_generate_tail(uint16_t o) {
-		buf_add(&code, "if (*is || cycle >= howLong) goto exit;\n}\n");
+	void jit_generate_tail(uint16_t o, uint8_t f) {
+		if (!(o & F_JUMP))
+			buf_add(&code, "if (*is || cycle >= howLong) goto exit;");
+		buf_add(&code, "}\n");
 	}
 	void jit_generate_literal(const char * fmt, ...) {
 		char * b;
@@ -121,20 +131,37 @@ avr_translate_firmware(
 			literal.b_len = 0;
 		}
 	}
-	void jit_generate(uint16_t o, const char * t) {
-		jit_generate_head(o);
+	void jit_generate(uint16_t o, uint8_t f, const char * t) {
+		char *dup = NULL;
+		if (f & F_OP) {
+			char op[8];
+			sprintf(op, "0x%04x", o);
+			dup = strdup(t);
+			t = dup;
+			char * d;
+			while ((d = strstr(t, "opcode")) != NULL)
+				memcpy(d, op, 6);
+		}
+		jit_generate_head(o, f);
 		jit_literal_flush();
 		const char * l = t;
 		do {
 			const char * nl = index(l, '\n');
-			if (strncmp(l, "STATE", 5) || avr->trace)
-				buf_add_len(&code, l, nl-l+1);
+			int out = 1;
+			int size = nl - l + 1;
+			if (out) {
+				out = (!strncmp(l, "STATE", 5) ||
+					!strncmp(l, "T(", 2)) ? avr->trace : 1;
+			}
+			if (out)
+				buf_add_len(&code, l, size);
 			l = nl + 1;
 		} while (*l);
-		jit_generate_tail(o);
+		jit_generate_tail(o, f);
+		if (dup) free(dup);
 	}
 	do {
-		avr_flashaddr_t	new_pc = pc + 2;
+		avr_flashaddr_t	new_pc = pc + 2 + (_avr_is_instruction_32_bits(avr, pc) ? 2 : 0);
 		uint16_t opcode = _avr_flash_read16le(avr, pc);
 		const int avr_rampz = avr->rampz;
 		const int avr_eind = avr->eind;

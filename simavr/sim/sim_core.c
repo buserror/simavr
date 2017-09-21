@@ -1028,7 +1028,7 @@ run_one_again:
 					}
 					new_pc = _avr_pop_addr(avr);
 					cycle += 1 + avr_address_size;
-					STATE("ret%s\n", opcode & 0x10 ? "i" : "");
+					STATE("ret%s [%04x]\n", opcode & 0x10 ? "i" : "", new_pc);
 					TRACE_JUMP();
 					STACK_FRAME_POP();
 				}	end_emit;
