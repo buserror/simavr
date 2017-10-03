@@ -21,7 +21,6 @@
  */
 
 #include "sim_avr.h"
-#include "sim_core_declare.h"
 #include "avr_eeprom.h"
 #include "avr_watchdog.h"
 #include "avr_extint.h"
@@ -33,6 +32,8 @@
 #define _AVR_IO_H_
 #define __ASSEMBLER__
 #include "avr/iotn13.h"
+
+#include "sim_core_declare.h"
 
 static void init(struct avr_t * avr);
 static void reset(struct avr_t * avr);

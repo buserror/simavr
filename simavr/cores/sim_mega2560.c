@@ -21,7 +21,6 @@
  */
 
 #include "sim_avr.h"
-#include "sim_core_declare.h"
 #include "avr_eeprom.h"
 #include "avr_flash.h"
 #include "avr_watchdog.h"
@@ -43,6 +42,8 @@ void m2560_reset(struct avr_t * avr);
 #define __AVR_ATmega2560__
 #endif
 #include "avr/iom2560.h"
+
+#include "sim_core_declare.h"
 
 /*
  * This is a template for all of the 2560 devices, hopefully
