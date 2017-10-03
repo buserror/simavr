@@ -109,6 +109,9 @@ typedef struct avr_uart_t {
 
 	avr_io_addr_t r_ubrrl,r_ubrrh;
 
+	avr_regbit_t	ubrrl;
+	avr_regbit_t	ubrrh;
+
 	avr_int_vector_t rxc;
 	avr_int_vector_t txc;
 	avr_int_vector_t udrc;	
@@ -148,7 +151,9 @@ void avr_uart_init(avr_t * avr, avr_uart_t * port);
 		.usbs = AVR_IO_REGBIT(UCSR ## _name ## C, USBS ## _name), \
 		.ucsz = AVR_IO_REGBITS(UCSR ## _name ## C, UCSZ ## _name ## 0, 0x3), \
 		.ucsz2 = AVR_IO_REGBIT(UCSR ## _name ## B, UCSZ ## _name ## 2), \
-	\
+		.ubrrl = AVR_IO_REGBITS(UBRR ## _name ## L, 0,0xFF), \
+		.ubrrh = AVR_IO_REGBITS(UBRR ## _name ## H, 0,0xF), \
+		\
 		.r_ucsra = UCSR ## _name ## A, \
 		.r_ucsrb = UCSR ## _name ## B, \
 		.r_ucsrc = UCSR ## _name ## C, \
@@ -190,6 +195,8 @@ void avr_uart_init(avr_t * avr, avr_uart_t * port);
 		.usbs = AVR_IO_REGBIT(UCSR ## _rname_ix ## C, USBS ## _rname_ix), \
 		.ucsz = AVR_IO_REGBITS(UCSR ## _rname_ix ## C, UCSZ ## _rname_ix ## 0, 0x3), \
 		.ucsz2 = AVR_IO_REGBIT(UCSR ## _rname_ix ## B, UCSZ ## _rname_ix ## 2), \
+		.ubrrl = AVR_IO_REGBITS(UBRR ## _rname_ix ## L, 0,0xFF), \
+		.ubrrh = AVR_IO_REGBITS(UBRR ## _rname_ix ## H, 0,0xF), \
 	\
 		.r_ucsra = UCSR ## _rname_ix ## A, \
 		.r_ucsrb = UCSR ## _rname_ix ## B, \

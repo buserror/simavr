@@ -222,7 +222,7 @@ avr_uart_baud_write(
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 	avr_core_watch_write(avr, addr, v);
-	uint32_t val = avr->data[p->r_ubrrl] | ((avr->data[p->r_ubrrh]&0x0F) << 8);
+	uint32_t val = avr_regbit_get(avr,p->ubrrl) | (avr_regbit_get(avr,p->ubrrh) << 8);
 
 	const int databits[] = { 5,6,7,8,  /* 'reserved', assume 8 */8,8,8, 9 };
 	int db = databits[avr_regbit_get(avr, p->ucsz) | (avr_regbit_get(avr, p->ucsz2) << 2)];
