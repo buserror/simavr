@@ -36,7 +36,6 @@
 #define PE6	6
 
 #include "sim_avr.h"
-#include "sim_core_declare.h"
 #include "avr_eeprom.h"
 #include "avr_flash.h"
 #include "avr_watchdog.h"
@@ -59,6 +58,8 @@ void m32u4_reset(struct avr_t * avr);
 #define __AVR_ATmega32u4__
 #endif
 #include "avr/iom32u4.h"
+
+#include "sim_core_declare.h"
 
 /*
  * ATmega32u4 definitions

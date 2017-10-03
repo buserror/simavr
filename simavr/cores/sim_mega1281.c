@@ -20,7 +20,6 @@
  */
 
 #include "sim_avr.h"
-#include "sim_core_declare.h"
 #include "avr_eeprom.h"
 #include "avr_flash.h"
 #include "avr_watchdog.h"
@@ -39,6 +38,8 @@ void m1281_reset(struct avr_t * avr);
 #define _AVR_IO_H_
 #define __ASSEMBLER__
 #include "avr/iom1281.h"
+
+#include "sim_core_declare.h"
 
 /*
  * This is a template for all of the 1281 devices, hopefully

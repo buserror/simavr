@@ -71,10 +71,10 @@
 # define _FUSE_HELPER { 0 }
 #endif
 
-#ifdef MCUSR
-# define MCU_STATUS_REG MCUSR
-#else
+#ifdef MCUCSR
 # define MCU_STATUS_REG MCUCSR
+#else
+# define MCU_STATUS_REG MCUSR
 #endif
 
 #ifdef SIGNATURE_0

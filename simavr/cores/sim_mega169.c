@@ -3,7 +3,6 @@
  */
 
 #include "sim_avr.h"
-#include "sim_core_declare.h"
 #include "avr_eeprom.h"
 #include "avr_flash.h"
 #include "avr_watchdog.h"
@@ -29,6 +28,8 @@ void m169p_reset(struct avr_t * avr);
 #if defined(MCUSR) && !defined(MCUCSR)
 #define MCUCSR MCUSR
 #endif
+
+#include "sim_core_declare.h"
 
 const struct mcu_t {
 	avr_t          core;
