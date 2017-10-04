@@ -30,7 +30,7 @@ extern "C" {
 
 #include "fifo_declare.h"
 
-DECLARE_FIFO(uint8_t, uart_fifo, 64);
+DECLARE_FIFO(uint16_t, uart_fifo, 64);
 
 /*
  * The method of "connecting" the the UART from external code is to use 4 IRQS.
@@ -70,6 +70,10 @@ enum {
 	UART_IRQ_OUT_XON,		// signaled (continuously) when input fifo is not full
 	UART_IRQ_OUT_XOFF,		// signaled when input fifo IS full
 	UART_IRQ_COUNT
+};
+
+enum {
+	UART_INPUT_FE = 0x8000		// framing error
 };
 
 // add port number to get the real IRQ
