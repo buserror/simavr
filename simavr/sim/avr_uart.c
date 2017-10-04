@@ -136,14 +136,14 @@ avr_uart_status_read(
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 
-	if(addr == p->fe.reg) {
-		if(!uart_fifo_isempty(&p->input)) {
+	if (addr == p->fe.reg) {
+		if (!uart_fifo_isempty(&p->input)) {
 			uint16_t d = uart_fifo_read_at(&p->input, 0);
 
 			uint8_t st = avr->data[addr];
 
 			st &= ~(p->fe.mask << p->fe.bit);
-			if(d & UART_INPUT_FE) {
+			if (d & UART_INPUT_FE) {
 				st |= p->fe.mask << p->fe.bit;
 			}
 
@@ -153,7 +153,7 @@ avr_uart_status_read(
 
 	uint8_t v = avr_core_watch_read(avr, addr);
 
-	if(addr == p->rxc.raised.reg) {
+	if (addr == p->rxc.raised.reg) {
 		//static uint8_t old = 0xff; if (v != old) printf("UCSRA read %02x\n", v); old = v;
 		//
 		// if RX is enabled, and there is nothing to read, and
@@ -541,7 +541,7 @@ avr_uart_init(
 	// status bits
 	// monitor code that reads the rxc flag, and delay it a bit
 	avr_register_io_read(avr, p->rxc.raised.reg, avr_uart_status_read, p);
-	if(p->fe.reg != p->rxc.raised.reg)
+	if (p->fe.reg != p->rxc.raised.reg)
 		avr_register_io_read(avr, p->fe.reg, avr_uart_status_read, p);
 
 	if (p->udrc.vector)
