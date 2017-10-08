@@ -107,8 +107,6 @@ typedef struct avr_uart_t {
 	avr_regbit_t	upe;		// parity error bit
 	avr_regbit_t	rxb8;		// receive data bit 8
 
-	avr_io_addr_t r_ubrrl,r_ubrrh;
-
 	avr_regbit_t	ubrrl;
 	avr_regbit_t	ubrrh;
 
@@ -157,8 +155,7 @@ void avr_uart_init(avr_t * avr, avr_uart_t * port);
 		.r_ucsra = UCSR ## _name ## A, \
 		.r_ucsrb = UCSR ## _name ## B, \
 		.r_ucsrc = UCSR ## _name ## C, \
-		.r_ubrrl = UBRR ## _name ## L, \
-		.r_ubrrh = UBRR ## _name ## H, \
+	\
 		.rxc = { \
 			.enable = AVR_IO_REGBIT(UCSR ## _name ## B, RXCIE ## _name), \
 			.raised = AVR_IO_REGBIT(UCSR ## _name ## A, RXC ## _name), \
@@ -201,8 +198,7 @@ void avr_uart_init(avr_t * avr, avr_uart_t * port);
 		.r_ucsra = UCSR ## _rname_ix ## A, \
 		.r_ucsrb = UCSR ## _rname_ix ## B, \
 		.r_ucsrc = UCSR ## _rname_ix ## C, \
-		.r_ubrrl = UBRR ## _rname_ix ## L, \
-		.r_ubrrh = UBRR ## _rname_ix ## H, \
+	\
 		.rxc = { \
 			.enable = AVR_IO_REGBIT(UCSR ## _rname_ix ## B, RXCIE ## _rname_ix), \
 			.raised = AVR_IO_REGBIT(UCSR ## _rname_ix ## A, RXC ## _rname_ix), \

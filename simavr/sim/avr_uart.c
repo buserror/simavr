@@ -526,8 +526,8 @@ avr_uart_init(
 		avr_register_io_write(avr, p->udrc.enable.reg, avr_uart_write, p);
 	if (p->r_ucsra)
 		avr_register_io_write(avr, p->r_ucsra, avr_uart_write, p);
-	if (p->r_ubrrl)
-		avr_register_io_write(avr, p->r_ubrrl, avr_uart_baud_write, p);
+	if (p->ubrrl.reg)
+		avr_register_io_write(avr, p->ubrrl.reg, avr_uart_baud_write, p);
 	avr_register_io_write(avr, p->rxen.reg, avr_uart_write, p);
 }
 
