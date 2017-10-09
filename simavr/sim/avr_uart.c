@@ -240,7 +240,7 @@ avr_uart_baud_write(
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 	avr_core_watch_write(avr, addr, v);
-	uint32_t val = avr->data[p->r_ubrrl] | (avr->data[p->r_ubrrh] << 8);
+	uint32_t val = avr_regbit_get(avr,p->ubrrl) | (avr_regbit_get(avr,p->ubrrh) << 8);
 
 	const int databits[] = { 5,6,7,8,  /* 'reserved', assume 8 */8,8,8, 9 };
 	int db = databits[avr_regbit_get(avr, p->ucsz) | (avr_regbit_get(avr, p->ucsz2) << 2)];
@@ -548,8 +548,8 @@ avr_uart_init(
 		avr_register_io_write(avr, p->udrc.enable.reg, avr_uart_write, p);
 	if (p->r_ucsra)
 		avr_register_io_write(avr, p->r_ucsra, avr_uart_write, p);
-	if (p->r_ubrrl)
-		avr_register_io_write(avr, p->r_ubrrl, avr_uart_baud_write, p);
+	if (p->ubrrl.reg)
+		avr_register_io_write(avr, p->ubrrl.reg, avr_uart_baud_write, p);
 	avr_register_io_write(avr, p->rxen.reg, avr_uart_write, p);
 }
 

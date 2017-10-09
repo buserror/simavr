@@ -137,8 +137,7 @@ const struct mcu_t SIM_CORENAME = {
 			.r_ucsra = 0,
 			.r_ucsrb = 0,
 			.r_ucsrc = 0,
-			.r_ubrrl = 0,
-			.r_ubrrh = 0,
+
 
 			.rxc = {
 				.enable = AVR_IO_REGBIT(LINENIR, LENRXOK),
