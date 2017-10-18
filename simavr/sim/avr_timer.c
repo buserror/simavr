@@ -575,9 +575,12 @@ avr_timer_reconfigure(
 				_timer_get_ocr(p, AVR_TIMER_COMPA) : _timer_get_icr(p);
 			avr_timer_configure(p, p->cs_div_value, top, reset);
 		}	break;
-		case avr_timer_wgm_fast_pwm:
-			avr_timer_configure(p, p->cs_div_value, p->wgm_op_mode_size, reset);
-			break;
+		case avr_timer_wgm_fast_pwm: {
+			uint16_t top =
+				(p->mode.top == avr_timer_wgm_reg_icr) ? _timer_get_icr(p) :
+				p->wgm_op_mode_size;
+			avr_timer_configure(p, p->cs_div_value, top, reset);
+		}	break;
 		case avr_timer_wgm_none:
 			avr_timer_configure(p, p->cs_div_value, p->wgm_op_mode_size, reset);
 			break;
