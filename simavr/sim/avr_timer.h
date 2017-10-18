@@ -104,6 +104,7 @@ typedef struct avr_timer_wgm_t {
 #define AVR_TIMER_WGM_FCPWM10() { .kind = avr_timer_wgm_fc_pwm, .size=10 }
 #define AVR_TIMER_WGM_OCPWM() { .kind = avr_timer_wgm_pwm, .top = avr_timer_wgm_reg_ocra }
 #define AVR_TIMER_WGM_ICPWM() { .kind = avr_timer_wgm_pwm, .top = avr_timer_wgm_reg_icr }
+#define AVR_TIMER_WGM_ICFASTPWM() { .kind = avr_timer_wgm_fast_pwm, .top = avr_timer_wgm_reg_icr }
 
 typedef struct avr_timer_comp_t {
 		avr_int_vector_t	interrupt;		// interrupt vector

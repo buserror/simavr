@@ -275,7 +275,7 @@ const struct mcu_t {
 			 [7] = AVR_TIMER_WGM_FASTPWM10(),
 			 // TODO: 8, 9 PWM phase and freq correct ICR & 10, 11
 			 [12] = AVR_TIMER_WGM_ICCTC(),
-			 [14] = AVR_TIMER_WGM_ICPWM(),
+			 [14] = AVR_TIMER_WGM_ICFASTPWM(),
 			 [15] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR1B, CS10), AVR_IO_REGBIT(TCCR1B, CS11), AVR_IO_REGBIT(TCCR1B, CS12) },
@@ -401,7 +401,7 @@ const struct mcu_t {
 			 //		 10
 			 //		 11
 			 [12] = AVR_TIMER_WGM_ICCTC(),
-			 [14] = AVR_TIMER_WGM_ICPWM(),
+			 [14] = AVR_TIMER_WGM_ICFASTPWM(),
 			 [15] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR3B, CS30), AVR_IO_REGBIT(TCCR3B, CS31), AVR_IO_REGBIT(TCCR3B, CS32) },
@@ -478,7 +478,7 @@ const struct mcu_t {
 			 [7] = AVR_TIMER_WGM_FASTPWM10(),
 			 // TODO: 8, 9 PWM phase and freq correct ICR & 10, 11
 			 [12] = AVR_TIMER_WGM_ICCTC(),
-			 [14] = AVR_TIMER_WGM_ICPWM(),
+			 [14] = AVR_TIMER_WGM_ICFASTPWM(),
 			 [15] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR4B, CS40), AVR_IO_REGBIT(TCCR4B, CS41), AVR_IO_REGBIT(TCCR4B, CS42) },
@@ -556,7 +556,7 @@ const struct mcu_t {
 			 [7] = AVR_TIMER_WGM_FASTPWM10(),
 			 // TODO: 8, 9 PWM phase and freq correct ICR & 10, 11
 			 [12] = AVR_TIMER_WGM_ICCTC(),
-			 [14] = AVR_TIMER_WGM_ICPWM(),
+			 [14] = AVR_TIMER_WGM_ICFASTPWM(),
 			 [15] = AVR_TIMER_WGM_OCPWM(),
 		},
 		.cs = { AVR_IO_REGBIT(TCCR5B, CS50), AVR_IO_REGBIT(TCCR5B, CS51), AVR_IO_REGBIT(TCCR5B, CS52) },
