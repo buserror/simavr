@@ -201,6 +201,7 @@ typedef struct avr_t {
 	 * is passed on to the operating system.
 	 */
 	uint32_t 			sleep_usec;
+	uint64_t			sim_start_time_ns;
 
 	// called at init time
 	void (*init)(struct avr_t * avr);

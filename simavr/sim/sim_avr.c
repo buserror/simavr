@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include "sim_avr.h"
 #include "sim_core.h"
@@ -148,6 +149,10 @@ avr_reset(
 		avr->sreg[i] = 0;
 	avr_interrupt_reset(avr);
 	avr_cycle_timer_reset(avr);
+	/* Take simulation start time */
+	struct timespec tp;
+	clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
+	avr->sim_start_time_ns = tp.tv_sec*1E9+tp.tv_nsec;
 	if (avr->reset)
 		avr->reset(avr);
 	avr_io_t * port = avr->io_port;
@@ -311,15 +316,30 @@ avr_callback_run_gdb(
 
 }
 
+/*
+To avoid simulated time and wall clock time to diverge over time
+this function tries to keep them in sync (roughly) by sleeping
+for the time required to match the expected sleep deadline
+in wall clock time.
+*/
 void
 avr_callback_sleep_raw(
-		avr_t * avr,
-		avr_cycle_count_t howLong)
+		avr_t *avr,
+		avr_cycle_count_t how_long)
 {
-	uint32_t usec = avr_pending_sleep_usec(avr, howLong);
-	if (usec > 0) {
-		usleep(usec);
+	struct timespec tp;
+
+	/* figure out how long we should wait to match the sleep deadline */
+	uint64_t deadline_ns = avr_cycles_to_nsec(avr, avr->cycle + how_long);
+	clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
+	uint64_t runtime_ns = (tp.tv_sec*1E9+tp.tv_nsec) - avr->sim_start_time_ns;
+	if (runtime_ns >= deadline_ns) {
+		return;
 	}
+
+	uint64_t sleep_us = (deadline_ns - runtime_ns)/1000;
+	usleep(sleep_us);
+	return;
 }
 
 void
