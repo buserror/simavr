@@ -10,7 +10,7 @@ Once that bridge is setup, launch simduino:
 	Starting atmega328 - flashend 7fff ramend 08ff e2end 03ff
 	atmega328 init
 	read_ihex_file: ATmegaBOOT_168_atmega328.ihex, unsupported check type 03
-	Booloader 7800: 1950
+	Bootloader 7800: 1950
 	uart_pty_init bridge on port *** /dev/pts/11 ***
 	uart_pty_connect: /tmp/simavr-uart0 now points to /dev/pts/11
 	note: export SIMAVR_UART_XTERM=1 and install picocom to get a terminal
