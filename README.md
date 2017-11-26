@@ -87,7 +87,7 @@ Example:
 	};
 
 Will tell _simavr_ to generate a trace everytime the UDR0 register changes and everytime
-the interrupt is raised (in UCSR0A). The *_MMCU_* tag tells gcc that it needs compiling,
+the interrupt is raised (in UCSR0A). The *\_MMCU\_* tag tells gcc that it needs compiling,
 but it won't be linked in your program, so it takes literally zero bytes, this is a code
 section that is private to _simavr_, it's free!
 A program running with these instructions and writing to the serial port will generate
