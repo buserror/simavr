@@ -23,11 +23,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef CLOCK_MONOTONIC_RAW
-#include <time.h>
-#else
+#ifdef __APPLE__
 #include <mach/clock.h>
 #include <mach/mach.h>
+#else
+#include <time.h>
 #endif
 #include <unistd.h>
 #include "sim_avr.h"
@@ -155,17 +155,17 @@ avr_reset(
 	avr_interrupt_reset(avr);
 	avr_cycle_timer_reset(avr);
 	/* Take simulation start time */
-#ifdef CLOCK_MONOTONIC_RAW
-	struct timespec tp;
-	clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
-	avr->sim_start_time_ns = tp.tv_sec*1E9+tp.tv_nsec;
-#else
+#ifdef __APPLE__
 	clock_serv_t cclock;
 	mach_timespec_t mts;
 	host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cclock);
 	clock_get_time(cclock, &mts);
 	mach_port_deallocate(mach_task_self(), cclock);
 	avr->sim_start_time_ns = mts.tv_sec*1E9+mts.tv_nsec;
+#else
+	struct timespec tp;
+	clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
+	avr->sim_start_time_ns = tp.tv_sec*1E9+tp.tv_nsec;
 #endif
 	if (avr->reset)
 		avr->reset(avr);
@@ -344,17 +344,17 @@ avr_callback_sleep_raw(
 	/* figure out how long we should wait to match the sleep deadline */
 	uint64_t deadline_ns = avr_cycles_to_nsec(avr, avr->cycle + how_long);
 	uint64_t current_ns;
-#ifdef CLOCK_MONOTONIC_RAW
-	struct timespec tp;
-	clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
-	current_ns = tp.tv_sec*1E9+tp.tv_nsec;
-#else
+#ifdef __APPLE__
 	clock_serv_t cclock;
 	mach_timespec_t mts;
 	host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cclock);
 	clock_get_time(cclock, &mts);
 	mach_port_deallocate(mach_task_self(), cclock);
 	current_ns = mts.tv_sec*1E9+mts.tv_nsec;
+#else
+	struct timespec tp;
+	clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
+	current_ns = tp.tv_sec*1E9+tp.tv_nsec;
 #endif
 	uint64_t runtime_ns = current_ns - avr->sim_start_time_ns;
 	if (runtime_ns >= deadline_ns) {
