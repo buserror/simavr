@@ -179,7 +179,8 @@ const struct mcu_t SIM_CORENAME = {
 			[0] = AVR_ADC_SINGLE(0), [1] = AVR_ADC_SINGLE(1),
 			[2] = AVR_ADC_SINGLE(2), [3] = AVR_ADC_SINGLE(3),
 			[4] = AVR_ADC_SINGLE(4), [5] = AVR_ADC_SINGLE(5),
-			[6] = AVR_ADC_SINGLE(6), [7] = AVR_ADC_TEMP(),
+			[6] = AVR_ADC_SINGLE(6), [7] = AVR_ADC_SINGLE(7),
+			[8] = AVR_ADC_TEMP(),
 			[14] = AVR_ADC_REF(1100),	// 1.1V
 			[15] = AVR_ADC_REF(0),		// GND
 		},
