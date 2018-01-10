@@ -872,6 +872,15 @@ jit_generate(opcode, 0+F_OP,
 
 		case 0xf000: {
 			switch (opcode & 0xfe00) {
+				case 0xf100: {	/* simavr special opcodes */
+					if (opcode == 0xf1f1)  { // AVR_OVERFLOW_OPCODE
+jit_generate(opcode, 0+F_JUMP+F_NO_PC,
+"printf(\"FLASH overflow, soft reset\\n\");\n"
+"new_pc = 0;\n"
+"TRACE_JUMP();\n"
+);
+					} break;
+				}	break;
 				case 0xf000:
 				case 0xf200:
 				case 0xf400:
