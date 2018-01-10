@@ -96,8 +96,9 @@ int
 avr_init(
 		avr_t * avr)
 {
-	avr->flash = malloc(avr->flashend + 1);
+	avr->flash = malloc(avr->flashend + 4);
 	memset(avr->flash, 0xff, avr->flashend + 1);
+	*((uint16_t*)&avr->flash[avr->flashend + 1]) = AVR_OVERFLOW_OPCODE;
 	avr->codeend = avr->flashend;
 	avr->data = malloc(avr->ramend + 1);
 	memset(avr->data, 0, avr->ramend + 1);

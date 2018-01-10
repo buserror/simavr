@@ -1363,6 +1363,13 @@ run_one_again:
 
 		case 0xf000: {
 			switch (opcode & 0xfe00) {
+				case 0xf100: {	/* simavr special opcodes */
+					if (opcode == 0xf1f1) { // AVR_OVERFLOW_OPCODE
+						printf("FLASH overflow, soft reset\n");
+						new_pc = 0;
+						TRACE_JUMP();
+					}
+				}	break;
 				case 0xf000:
 				case 0xf200:
 				case 0xf400:

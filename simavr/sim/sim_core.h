@@ -129,6 +129,12 @@ static inline void avr_sreg_set(avr_t * avr, uint8_t flag, uint8_t ival)
 				avr_sreg_set(avr, i, (src & (1 << i)) != 0); \
 		}
 
+/*
+ * Opcode is sitting at the end of the flash to catch PC overflows.
+ * Apparently it's used by some code to simulate soft reset?
+ */
+#define AVR_OVERFLOW_OPCODE 0xf1f1
+
 #ifdef __cplusplus
 };
 #endif
