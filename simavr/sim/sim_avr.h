@@ -201,7 +201,7 @@ typedef struct avr_t {
 	 * is passed on to the operating system.
 	 */
 	uint32_t 			sleep_usec;
-	uint64_t			sim_start_time_ns;
+	uint64_t			time_base;	// for avr_get_time_stamp()
 
 	// called at init time
 	void (*init)(struct avr_t * avr);
@@ -476,6 +476,10 @@ uint32_t
 avr_pending_sleep_usec(
 		avr_t * avr,
 		avr_cycle_count_t howLong);
+/* Return the number of 'real time' spent since sim started, in uS */
+uint64_t
+avr_get_time_stamp(
+		avr_t * avr );
 
 #ifdef __cplusplus
 };

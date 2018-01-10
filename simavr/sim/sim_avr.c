@@ -71,6 +71,26 @@ avr_global_logger_get(void)
 	return _avr_global_logger;
 }
 
+uint64_t
+avr_get_time_stamp(
+		avr_t * avr )
+{
+	uint64_t stamp;
+#ifndef CLOCK_MONOTONIC_RAW
+	/* CLOCK_MONOTONIC_RAW isn't portable, here is the POSIX alternative.
+	 * Only downside is that it will drift if the system clock changes */
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	stamp = (((uint64_t)tv.tv_sec) * 1E9) + (tv.tv_usec * 1000);
+#else
+	struct timespec tp;
+	clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
+	stamp = (tp.tv_sec * 1E9) + tp.tv_nsec;
+#endif
+	if (!avr->time_base)
+		avr->time_base = stamp;
+	return stamp - avr->time_base;
+}
 
 int
 avr_init(
@@ -149,10 +169,6 @@ avr_reset(
 		avr->sreg[i] = 0;
 	avr_interrupt_reset(avr);
 	avr_cycle_timer_reset(avr);
-	/* Take simulation start time */
-	struct timespec tp;
-	clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
-	avr->sim_start_time_ns = tp.tv_sec*1E9+tp.tv_nsec;
 	if (avr->reset)
 		avr->reset(avr);
 	avr_io_t * port = avr->io_port;
@@ -327,17 +343,12 @@ avr_callback_sleep_raw(
 		avr_t *avr,
 		avr_cycle_count_t how_long)
 {
-	struct timespec tp;
-
 	/* figure out how long we should wait to match the sleep deadline */
 	uint64_t deadline_ns = avr_cycles_to_nsec(avr, avr->cycle + how_long);
-	clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
-	uint64_t runtime_ns = (tp.tv_sec*1E9+tp.tv_nsec) - avr->sim_start_time_ns;
-	if (runtime_ns >= deadline_ns) {
+	uint64_t runtime_ns = avr_get_time_stamp(avr);
+	if (runtime_ns >= deadline_ns)
 		return;
-	}
-
-	uint64_t sleep_us = (deadline_ns - runtime_ns)/1000;
+	uint64_t sleep_us = (deadline_ns - runtime_ns) / 1000;
 	usleep(sleep_us);
 	return;
 }
