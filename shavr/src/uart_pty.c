@@ -1,4 +1,4 @@
-/*
+/* vim: ts=4
 	uart_pty.c
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>

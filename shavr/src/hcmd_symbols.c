@@ -1,8 +1,22 @@
-/*
- * hcmd_symbols.c
- *
- *  Created on: 15 Oct 2015
- *      Author: michel
+/* vim: ts=4
+	hcmd_symbols.c
+
+	Copyright 2017 Michel Pollet <buserror@gmail.com>
+
+ 	This file is part of simavr.
+
+	simavr is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	simavr is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <stdlib.h>
@@ -13,6 +27,8 @@
 #include <wordexp.h>
 
 #include "history_avr.h"
+
+extern elf_firmware_t *code;
 
 static const char *
 demangle(
@@ -34,12 +50,12 @@ _locate_sym(
 {
 	int size = 1;
 	avr_symbol_t * sym = NULL;
-	for (int i = 0; i < code.symbolcount && !sym; i++) {
-		if (!strcmp(demangle(code.symbol[i]->symbol), name)) {
-			sym = code.symbol[i];
-			if (i < code.symbolcount-1) {
-				if ((code.symbol[i+1]->addr >> 16) == (sym->addr >> 16)) {
-					size = code.symbol[i+1]->addr - sym->addr;
+	for (int i = 0; i < code->symbolcount && !sym; i++) {
+		if (!strcmp(demangle(code->symbol[i]->symbol), name)) {
+			sym = code->symbol[i];
+			if (i < code->symbolcount-1) {
+				if ((code->symbol[i+1]->addr >> 16) == (sym->addr >> 16)) {
+					size = code->symbol[i+1]->addr - sym->addr;
 				//	printf("deduced size %d\r\n", size);
 				}
 			}
@@ -160,12 +176,12 @@ _cmd_dump(
 {
 	int size = 1;
 	avr_symbol_t * sym = NULL;
-	for (int i = 0; i < code.symbolcount; i++) {
-		sym = code.symbol[i];
+	for (int i = 0; i < code->symbolcount; i++) {
+		sym = code->symbol[i];
 		size = 0;
-		if (i < code.symbolcount-1) {
-			if ((code.symbol[i+1]->addr >> 16) == (sym->addr >> 16))
-				size = code.symbol[i+1]->addr - sym->addr;
+		if (i < code->symbolcount-1) {
+			if ((code->symbol[i+1]->addr >> 16) == (sym->addr >> 16))
+				size = code->symbol[i+1]->addr - sym->addr;
 		}
 		if ((sym->addr >> 16) == 0x80 &&
 					strncmp(sym->symbol, "__", 2) &&

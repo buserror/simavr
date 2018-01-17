@@ -1,4 +1,4 @@
-/*
+/* vim: ts=4
 	sim_prepare.c
 
 	Copyright 2017 Michel Pollet <buserror@gmail.com>

@@ -1,4 +1,4 @@
-/*
+/* vim: ts=4
 	sim_args.h
 
 	Copyright 2017 Michel Pollet <buserror@gmail.com>

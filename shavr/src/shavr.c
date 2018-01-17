@@ -1,4 +1,4 @@
-/*
+/* vim: ts=4
 	shavr.c
 
 	Copyright 2017 Michel Pollet <buserror@gmail.com>
@@ -38,15 +38,16 @@
 #include "sim_vcd_file.h"
 
 #include "sim_args.h"
+#include "history_avr.h"
 
 uart_pty_t uart_pty;
 avr_t * avr = NULL;
 avr_vcd_t vcd_file;
-elf_firmware_t code;// = {0};
+elf_firmware_t *code = NULL;
 
 avr_t *
 sim_prepare(
-	sim_args_t * a );
+	sim_args_t * a ); // TODO: Move to a header
 
 
 typedef struct avr_flash_desc_t {
@@ -101,6 +102,16 @@ avr_special_deinit(
 	uart_pty_stop(&uart_pty);
 }
 
+static void *
+avr_run_thread(
+		void * ignore)
+{
+	while (1) {
+		avr_run(avr);
+	}
+	return NULL;
+}
+
 int
 main(
 		int argc,
@@ -119,23 +130,28 @@ main(
 		exit(1);
 	}
 	if (args.flash_file[0]) {
-		strncpy(flash_data.avr_flash_path, args.flash_file, sizeof(flash_data.avr_flash_path));
+		strncpy(flash_data.avr_flash_path,
+			args.flash_file,
+			sizeof(flash_data.avr_flash_path));
 		flash_data.avr_flash_fd = 0;
 		// register our own functions
 		avr->custom.init = avr_special_init;
 		avr->custom.deinit = avr_special_deinit;
 		avr->custom.data = &flash_data;
 	}
-	avr_init(avr);
 
 	uart_pty_init(avr, &uart_pty);
 	uart_pty_connect(&uart_pty, '0');
 
+	code = &args.f;
+
+	history_avr_init();
+
+//	pthread_t run;
+	//pthread_create(&run, NULL, avr_run_thread, NULL);
+
 	printf("Running...\n");
 	while (1) {
-		int state = avr_run(avr);
-		if ( state == cpu_Done || state == cpu_Crashed)
-			break;
+		history_avr_idle();
 	}
-
 }
