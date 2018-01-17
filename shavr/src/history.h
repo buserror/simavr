@@ -22,43 +22,27 @@
 #ifndef HISTORY_H_
 #define HISTORY_H_
 
+#include <sys/queue.h>
 
-typedef struct line_t {
-	struct line_t * next;
-	struct line_t * prev;
+struct history_t;
 
-	int size, len, pos;
-	char * line;
-} line_t, *line_p;
-
-
-typedef struct history_t {
-	int ttyin;
-	int ttyout;
-
-	line_p head, tail;
-	line_p current;
+typedef struct history_params_t {
 	char prompt[32];
-	void * state;
-	int temp;
+	int (*process_line)(
+			struct history_params_t *p,
+			const char *cmd_line);
+} history_params_t;
 
-	void *param;
-	int (*process_line)(struct history_t *h, line_p l);
-
-	//struct history_cmd_list_t * cmd_list;
-} history_t, *history_p;
-
-
-void
-history_init(
-		history_p h);
-
+struct history_t *
+history_new(
+		int ttyin, int ttyout,
+		struct history_params_t * params,
+		void * private_context);
 int
 history_idle(
-		history_p h);
-
+		struct history_t * h);
 void
 history_display(
-		history_p h);
+		struct history_t * h);
 
 #endif /* HISTORY_H_ */

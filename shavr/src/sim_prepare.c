@@ -38,6 +38,7 @@
 static avr_t * avr = NULL;
 static avr_vcd_t input;
 
+// TODO: Signal the run thread and let it terminate
 static void
 sig_int(
 		int sign)

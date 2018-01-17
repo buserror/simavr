@@ -35,14 +35,12 @@
 #include "sim_hex.h"
 #include "sim_gdb.h"
 #include "uart_pty.h"
-#include "sim_vcd_file.h"
 
 #include "sim_args.h"
 #include "history_avr.h"
 
 uart_pty_t uart_pty;
 avr_t * avr = NULL;
-avr_vcd_t vcd_file;
 elf_firmware_t *code = NULL;
 
 avr_t *
@@ -50,10 +48,10 @@ sim_prepare(
 	sim_args_t * a ); // TODO: Move to a header
 
 
-typedef struct avr_flash_desc_t {
-	char avr_flash_path[1024];
-	int avr_flash_fd;
-} avr_flash_desc_t;
+typedef struct shavr_runtime_t {
+	char	avr_flash_path[1024];
+	int		avr_flash_fd;
+} shavr_runtime_t;
 
 // avr special flash initalization
 // here: open and map a file to enable a persistent storage for the flash memory
@@ -62,7 +60,7 @@ avr_special_init(
 		avr_t * avr,
 		void * data)
 {
-	avr_flash_desc_t *flash_data = (avr_flash_desc_t *)data;
+	shavr_runtime_t *flash_data = (shavr_runtime_t *)data;
 
 	printf("%s\n", __func__);
 	// open the file
@@ -89,7 +87,7 @@ avr_special_deinit(
 		avr_t* avr,
 		void * data)
 {
-	avr_flash_desc_t *flash_data = (avr_flash_desc_t *)data;
+	shavr_runtime_t *flash_data = (shavr_runtime_t *)data;
 
 	printf("%s\n", __func__);
 	lseek(flash_data->avr_flash_fd, SEEK_SET, 0);
@@ -107,7 +105,9 @@ avr_run_thread(
 		void * ignore)
 {
 	while (1) {
-		avr_run(avr);
+		int state = avr_run(avr);
+		if (state == cpu_Done || state == cpu_Crashed)
+			break;
 	}
 	return NULL;
 }
@@ -117,7 +117,7 @@ main(
 		int argc,
 		const char *argv[])
 {
-	avr_flash_desc_t flash_data;
+	shavr_runtime_t flash_data;
 	sim_args_t args;
 
 	if (sim_args_parse(&args, argc, argv, NULL)) {
@@ -148,7 +148,7 @@ main(
 	history_avr_init();
 
 //	pthread_t run;
-	//pthread_create(&run, NULL, avr_run_thread, NULL);
+	//pthread_create(&run, NULL, avr_run_thread, avr);
 
 	printf("Running...\n");
 	while (1) {

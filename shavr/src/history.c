@@ -30,6 +30,25 @@
 
 #include "history.h"
 
+typedef struct line_t {
+	TAILQ_ENTRY(line_t)	queue;
+
+	int size, len, pos;
+	char * line;
+} line_t, *line_p;
+
+typedef struct history_t {
+	int ttyin;
+	int ttyout;
+	void * private_context;
+	struct history_params_t *p;
+
+	TAILQ_HEAD(cmd_queue_t,line_t)	cmd;
+	line_p current;
+	void * state;
+	int temp;
+} history_t, *history_p;
+
 static struct termios orig_termios;  /* TERMinal I/O Structure */
 
 void fatal(char *message) {
@@ -105,12 +124,8 @@ line_new(
 {
 	line_p res = malloc(sizeof(line_t));
 	memset(res, 0, sizeof(*res));
-	res->prev = h->tail;
-	if (!h->tail)
-		h->head = res;
-	else
-		h->tail->next = res;
-	h->tail = res;
+
+	TAILQ_INSERT_TAIL(&h->cmd, res, queue);
 	h->current = res;
 	return res;
 }
@@ -136,9 +151,9 @@ history_display(
 		history_p h)
 {
 	char s[16];
-	int pl = strlen(h->prompt);
+	int pl = strlen(h->p->prompt);
 	write(h->ttyout, "\033[0m\r", 5);
-	write(h->ttyout, h->prompt, pl);
+	write(h->ttyout, h->p->prompt, pl);
 	if (h->current) {
 		write(h->ttyout, h->current->line, h->current->len);
 		pl += h->current->pos;
@@ -228,24 +243,28 @@ line_key(
 				}	break;
 				case 13: { // return!!
 					if (h->current->len) {
-						if (!h->process_line || h->process_line(h, h->current)) {
+						if (!h->p->process_line ||
+								h->p->process_line(h->private_context,
+													h->current->line)) {
 							res++;
-							if (h->current != h->tail)
+							if (h->current != TAILQ_LAST(&h->cmd, cmd_queue_t))
 								line_dup(h, h->current);
 							line_new(h);
 						}
 					} else
 						write(1, "\012", 1);	// next line
 				}	break;
-				case 16: { // control-P -- previous line
-					previous_line:
-					if (h->current->prev)
-						h->current = h->current->prev;
+				case 16: {// control-P -- previous line
+					previous_line: ;
+					line_p p = TAILQ_PREV(h->current, cmd_queue_t, queue);
+					if (p)
+						h->current = p;
 				}	break;
 				case 14: {	// control-N -- next line
-					next_line:
-					if (h->current->next)
-						h->current = h->current->next;
+					next_line: ;
+					line_p n = TAILQ_NEXT(h->current, queue);
+					if (n)
+						h->current = n;
 				}	break;
 				case 27: {
 					PT_YIELD(h->state);
@@ -281,7 +300,7 @@ line_key(
 		}	break;
 	}
 
-	if ((insert || delete) && h->current != h->tail) {
+	if ((insert || delete) && h->current != TAILQ_LAST(&h->cmd, cmd_queue_t)) {
 		line_dup(h, h->current);
 	}
 	line_p l = h->current;
@@ -321,13 +340,23 @@ line_key(
 	return res;
 }
 
-
-void
-history_init(
-		history_p h)
+struct history_t *
+history_new(
+		int ttyin, int ttyout,
+		struct history_params_t * params,
+		void * private_context)
 {
-	atexit(tty_atexit);
+	struct history_t * h = malloc(sizeof(*h));
 
+	memset(h, 0, sizeof(*h));
+
+	h->ttyin = ttyin;
+	h->ttyout = ttyout;
+	h->p = params;
+	h->private_context = private_context;
+
+	atexit(tty_atexit);
+	TAILQ_INIT(&h->cmd);
 	/* store current tty settings in orig_termios */
 	if (tcgetattr(h->ttyout, &orig_termios) < 0)
 		fatal("can't get tty settings");
@@ -336,7 +365,10 @@ history_init(
 
 	int fl = fcntl(h->ttyin, F_GETFL);
 	fcntl(0, F_SETFL, fl | O_ASYNC);
+
 	history_display(h);
+
+	return h;
 }
 
 int

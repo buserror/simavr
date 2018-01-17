@@ -33,14 +33,16 @@
 
 int history_redisplay = 0;
 
-
+/*
+ * Called when the user type 'return' on the shell
+ */
 static int
 _history_process_line(
-		struct history_t *h,
-		line_p l )
+		void * param,
+		const char *cmd_line )
 {
 	printf("\r\n");
-	history_cmd_execute(NULL, l->line);
+	history_cmd_execute(NULL, cmd_line);
 
 	return 1;
 }
@@ -103,17 +105,16 @@ callback_sleep_prompt(
 #endif
 }
 
-history_t history = {
-	.ttyin = 0,
-	.ttyout = 1,
+history_params_t history_avr_params = {
 	.prompt = "avr: ",
 	.process_line = _history_process_line,
 };
 
+static struct history_t *history = NULL;
 void history_avr_init()
 {
-	history_init(&history);
-	prompt_fd = history.ttyin;
+	history = history_new(0, 1, &history_avr_params, NULL);
+	prompt_fd = 0; /* ttyin */
 //	avr->sleep = callback_sleep_prompt;
     avr_global_logger_set(raw_std_logger);
 }
@@ -128,9 +129,9 @@ void history_avr_idle()
 		prompt_event++;
 	if (history_redisplay) {
 		history_redisplay = 0;
-		history_display(&history);
+		history_display(history);
 		prompt_event++;
 	}
 	if (prompt_event)
-		history_idle(&history);
+		history_idle(history);
 }
