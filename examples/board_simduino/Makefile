@@ -18,6 +18,7 @@
 
 target=	simduino
 firm_src = ${wildcard atmega*.c}
+#firmware = ${firm_src:.c=.axf}
 firmware = ${firm_src:.c=.hex}
 simavr = ../../
 

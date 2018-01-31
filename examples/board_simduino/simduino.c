@@ -148,6 +148,7 @@ int main(int argc, char *argv[])
 	/* end of flash, remember we are writing /code/ */
 	avr->codeend = avr->flashend;
 	avr->log = 1 + verbose;
+	//avr->log= LOG_DEBUG;
 
 	// even if not setup at startup, activate gdb if crashing
 	avr->gdb_port = 1234;
@@ -164,5 +165,6 @@ int main(int argc, char *argv[])
 		if ( state == cpu_Done || state == cpu_Crashed)
 			break;
 	}
-
+      
+      avr_terminate(avr);	
 }

@@ -31,6 +31,7 @@
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
 #include <avr/sleep.h>
+#include <util/delay.h> 
 
 /*
  * This demonstrate how to use the avr_mcu_section.h file
@@ -57,6 +58,28 @@ int main()
 	stdout = &mystdout;
 
 	printf("Bootloader properly programmed, and ran me! Huzzah!\n");
+
+        DDRB=0xFF;
+        DDRC=0xFF;
+        DDRD=0xFF;
+
+int i =0;	
+while(i<10) {
+  i++;	
+  //digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
+  PORTB=0xFF;
+  PORTC=0xFF;
+  PORTD=0xFF;
+  printf("on\n");
+  _delay_ms(500);                       // wait for a second
+  //digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
+  PORTB=0x00;
+  PORTC=0x00;
+  PORTD=0x00;
+  printf("off\n");
+  _delay_ms(500);                       // wait for a second
+}
+
 
 	// this quits the simulator, since interrupts are off
 	// this is a "feature" that allows running tests cases and exit
