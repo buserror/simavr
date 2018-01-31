@@ -39,10 +39,11 @@ SIMAVR		:= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && ech
 # get the first character of what the compiler says it is, unless it's 'x86_64' doh
 ARCH 		:= ${shell $(CC) -dumpmachine | sed -e 's/^x/i/' -e 's/\(.\).*/\1/'}
 
-CFLAGS		+= -O2 -Wall -Wextra -Wno-unused-parameter \
+CFLAGS		+= -Wall -Wextra -Wno-unused-parameter \
 			-Wno-unused-result -Wno-missing-field-initializers \
 			-Wno-sign-compare
-CFLAGS		+= -g
+#CFLAGS		+= -ggdb
+CFLAGS		+= -O2
 CORE_CFLAGS	= -DAVR_CORE=1
 
 ifeq (${shell uname}, Darwin)
