@@ -636,9 +636,10 @@ run_one_again:
 	 * the end of the flash.
 	 */
 	if (unlikely(avr->pc >= avr->flashend)) {
-		STATE("CRASH\n");
-		crash(avr);
-		return 0;
+	//	STATE("CRASH\n");
+	//	crash(avr);
+	//	return 0;
+	      avr->pc = (avr->pc ) % (avr->flashend+1);
 	}
 
 	uint32_t		opcode = _avr_flash_read16le(avr, avr->pc);
