@@ -705,6 +705,23 @@ avr_timer_write(
 }
 
 /*
+ * write to the "force output compare" bits
+ */
+static void avr_timer_write_foc(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+{
+	avr_timer_t * p = (avr_timer_t *)param;
+
+        /* These are strobe writes, so just decode them, don't store them */
+
+	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
+                if ((addr == p->comp[compi].foc.reg) &&
+                    (v & (1 << p->comp[compi].foc.bit))) {
+                        avr_timer_comp(p, avr->cycle, compi);
+                }
+        }
+}
+
+/*
  * write to the TIFR register. Watch for code that writes "1" to clear
  * pending interrupts.
  */
@@ -936,6 +953,8 @@ avr_timer_init(
 
 		if (p->comp[compi].r_ocr) // not all timers have all comparators
 			avr_register_io_write(avr, p->comp[compi].r_ocr, avr_timer_write_ocr, &p->comp[compi]);
+                if (p->comp[compi].foc.reg)
+                        avr_register_io_write(avr, p->comp[compi].foc.reg, avr_timer_write_foc, p);
 	}
 	avr_register_io_write(avr, p->r_tcnt, avr_timer_tcnt_write, p);
 	avr_register_io_read(avr, p->r_tcnt, avr_timer_tcnt_read, p);

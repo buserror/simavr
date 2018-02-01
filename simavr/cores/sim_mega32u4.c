@@ -331,6 +331,7 @@ const struct mcu_t {
 				.r_ocrh = OCR1AH,	// 16 bits timers have two bytes of it
 				.com = AVR_IO_REGBITS(TCCR1A, COM1A0, 0x3),
 				.com_pin = AVR_IO_REGBIT(PORTB, 5),
+                                .foc = AVR_IO_REGBIT(TCCR1C, FOC1A),
 				.interrupt = {
 					.enable = AVR_IO_REGBIT(TIMSK1, OCIE1A),
 					.raised = AVR_IO_REGBIT(TIFR1, OCF1A),
@@ -342,6 +343,7 @@ const struct mcu_t {
 				.r_ocrh = OCR1BH,
 				.com = AVR_IO_REGBITS(TCCR1A, COM1B0, 0x3),
 				.com_pin = AVR_IO_REGBIT(PORTB, 6),
+                                .foc = AVR_IO_REGBIT(TCCR1C, FOC1B),
 				.interrupt = {
 					.enable = AVR_IO_REGBIT(TIMSK1, OCIE1B),
 					.raised = AVR_IO_REGBIT(TIFR1, OCF1B),
