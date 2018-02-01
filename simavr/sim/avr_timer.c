@@ -120,6 +120,11 @@ avr_timer_comp_on_tov(
 	uint8_t mode = avr_regbit_get(avr, p->comp[comp].com);
 	avr_irq_t * irq = &p->io.irq[TIMER_IRQ_OUT_COMP + comp];
 
+        // only PWM modes have special behaviour on overflow
+        if((p->wgm_op_mode_kind != avr_timer_wgm_pwm) &&
+           (p->wgm_op_mode_kind != avr_timer_wgm_fast_pwm))
+                return;
+
 	switch (mode) {
 		case avr_timer_com_normal: // Normal mode
 			break;
