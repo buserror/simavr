@@ -307,6 +307,7 @@ const struct mcu_t SIM_CORENAME = {
 		.wgm = { AVR_IO_REGBIT(TCCR2A, WGM20), AVR_IO_REGBIT(TCCR2A, WGM21), AVR_IO_REGBIT(TCCR2B, WGM22) },
 		.wgm_op = {
 			[0] = AVR_TIMER_WGM_NORMAL8(),
+			[1] = AVR_TIMER_WGM_FCPWM8(),
 			[2] = AVR_TIMER_WGM_CTC(),
 			[3] = AVR_TIMER_WGM_FASTPWM8(),
 			[7] = AVR_TIMER_WGM_OCPWM(),
@@ -334,7 +335,7 @@ const struct mcu_t SIM_CORENAME = {
 					.enable = AVR_IO_REGBIT(TIMSK2, OCIE2A),
 					.raised = AVR_IO_REGBIT(TIFR2, OCF2A),
 					.vector = TIMER2_COMPA_vect,
-				}
+				},
 			},
 			[AVR_TIMER_COMPB] = {
 				.r_ocr = OCR2B,
