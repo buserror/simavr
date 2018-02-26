@@ -23,14 +23,11 @@ build-examples: build-simavr
 build-parts: build-examples
 	$(MAKE) -C examples/parts RELEASE=$(RELEASE)
 
-install:
+install: build-simavr build-parts
 	$(MAKE) -C simavr install RELEASE=$(RELEASE)
 
 doc:
 	$(MAKE) -C doc RELEASE=$(RELEASE)
-
-install:
-	$(MAKE) -C simavr install
 
 clean:
 	$(MAKE) -C simavr clean
