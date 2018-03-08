@@ -31,6 +31,8 @@
 #include "sim_hex.h"
 #include "sim_vcd_file.h"
 
+#include "uart_pty.h"
+
 #include "sim_core_decl.h"
 
 static void
@@ -45,6 +47,7 @@ display_usage(
 			"       [--trace, -t]       Run full scale decoder trace\n"
 			"       [-ti <vector>]      Add traces for IRQ vector <vector>\n"
 			"       [--gdb|-g]          Listen for gdb connection on port 1234\n"
+		        "       [-pty<0-3>]         provide pty terminal for named uart\n"
 			"       [-ff <.hex file>]   Load next .hex file as flash\n"
 			"       [-ee <.hex file>]   Load next .hex file as eeprom\n"
 			"       [--input|-i <file>] A .vcd file to use as input signals\n"
@@ -95,6 +98,10 @@ main(
 	int trace_vectors[8] = {0};
 	int trace_vectors_count = 0;
 	const char *vcd_input = NULL;
+	struct {
+		uart_pty_t pty;
+		char uart;
+	} use_pty[4] = {{{0}, 0}};
 
 	if (argc == 1)
 		display_usage(basename(argv[0]));
@@ -126,6 +133,14 @@ main(
 				trace_vectors[trace_vectors_count++] = atoi(argv[++pi]);
 		} else if (!strcmp(argv[pi], "-g") || !strcmp(argv[pi], "--gdb")) {
 			gdb++;
+		} else if (!strcmp(argv[pi], "-pty0")) {
+                    use_pty[0].uart = '0';
+		} else if (!strcmp(argv[pi], "-pty1")) {
+                    use_pty[1].uart = '1';
+		} else if (!strcmp(argv[pi], "-pty2")) {
+                    use_pty[2].uart = '2';
+		} else if (!strcmp(argv[pi], "-pty3")) {
+                    use_pty[3].uart = '3';
 		} else if (!strcmp(argv[pi], "-v")) {
 			log++;
 		} else if (!strcmp(argv[pi], "-ee")) {
@@ -209,6 +224,13 @@ main(
 		avr_gdb_init(avr);
 	}
 
+	for (int id = 0; id < 4; id++) {
+		if (use_pty[id].uart != 0) {
+			uart_pty_init(avr, &use_pty[id].pty);
+			uart_pty_connect(&use_pty[id].pty, use_pty[id].uart);
+		}
+	}
+
 	signal(SIGINT, sig_int);
 	signal(SIGTERM, sig_int);
 
@@ -216,6 +238,12 @@ main(
 		int state = avr_run(avr);
 		if (state == cpu_Done || state == cpu_Crashed)
 			break;
+	}
+
+	for (int id = 0; id < 4; id++) {
+		if (use_pty[id].uart != 0) {
+			uart_pty_stop(&use_pty[id].pty);
+		}
 	}
 
 	avr_terminate(avr);

@@ -36,7 +36,7 @@ all:
 include ../Makefile.common
 
 cores	:= ${wildcard cores/*.c}
-sim		:= ${wildcard sim/sim_*.c} ${wildcard sim/avr_*.c}
+sim		:= ${wildcard sim/sim_*.c} ${wildcard sim/avr_*.c} ${wildcard sim/uart_*.c}
 sim_o 	:= ${patsubst sim/%.c, ${OBJ}/%.o, ${sim}}
 
 VPATH	= cores
