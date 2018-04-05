@@ -101,7 +101,7 @@ avr_init(
 	*((uint16_t*)&avr->flash[avr->flashend + 1]) = AVR_OVERFLOW_OPCODE;
 	avr->codeend = avr->flashend;
 	avr->data = malloc(avr->ramend + 1);
-	memset(avr->data, 0, avr->ramend + 1);
+	memset(avr->data, 0xcc, avr->ramend + 1);
 #ifdef CONFIG_SIMAVR_TRACE
 	avr->trace_data = calloc(1, sizeof(struct avr_trace_data_t));
 #endif
