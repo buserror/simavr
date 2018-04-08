@@ -319,7 +319,7 @@ const struct mcu_t {
 			},
 		},
 	},
-	AVR_SPI_DECLARE(PRR, PRSPI),
+	AVR_SPI_DECLARE(PRR, PRSPI, 'B', 1, 3, 2, 0),
 };
 
 static avr_t * make()
