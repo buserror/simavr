@@ -121,6 +121,63 @@ main(
 				display_usage(basename(argv[0]));
 		} else if (!strcmp(argv[pi], "-t") || !strcmp(argv[pi], "--trace")) {
 			trace++;
+		} else if (!strcmp(argv[pi], "--vcd-trace-name")) {
+			if(pi+1>=argc) {
+				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
+				exit(1);
+			}
+			++pi;
+			strncpy(f.tracename, argv[pi], sizeof(f.tracename));
+		} else if (!strcmp(argv[pi], "--add-vcd-trace")) {
+			if(pi+1>=argc) {
+				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
+				exit(1);
+			}
+			++pi;
+			struct {
+				char     kind[64];
+				uint8_t  mask;
+				uint16_t addr;
+				char     name[64];
+			} trace;
+			if(4 != sscanf(argv[pi], "%63[^=]=%63[^@]@0x%hx/0x%hhx", &trace.name[0], &trace.kind[0], &trace.addr, &trace.mask)) {
+				--pi;
+				fprintf(stderr, "%s: format for %s is name=kind@addr/mask.\n", argv[0], argv[pi]);
+				exit(1);
+			}
+
+			/****/ if(!strcmp(trace.kind, "portpin")) {
+				f.trace[f.tracecount].kind = AVR_MMCU_TAG_VCD_PORTPIN;
+			} else if(!strcmp(trace.kind, "irq")) {
+				f.trace[f.tracecount].kind = AVR_MMCU_TAG_VCD_IRQ;
+			} else if(!strcmp(trace.kind, "trace")) {
+				f.trace[f.tracecount].kind = AVR_MMCU_TAG_VCD_TRACE;
+			} else {
+				fprintf(stderr, "%s: unknown trace kind '%s', not one of 'portpin', 'irq', or 'trace'.\n", argv[0], trace.kind);
+				exit(1);
+			}
+			f.trace[f.tracecount].mask = trace.mask;
+			f.trace[f.tracecount].addr = trace.addr;
+			strncpy(f.trace[f.tracecount].name, trace.name, sizeof(f.trace[f.tracecount].name));
+
+			printf(
+				"Adding %s trace on address 0x%04x, mask 0x%02x ('%s')\n",
+				  f.trace[f.tracecount].kind == AVR_MMCU_TAG_VCD_PORTPIN ? "portpin"
+				: f.trace[f.tracecount].kind == AVR_MMCU_TAG_VCD_IRQ     ? "irq"
+				: f.trace[f.tracecount].kind == AVR_MMCU_TAG_VCD_TRACE   ? "trace"
+				: "unknown",
+				f.trace[f.tracecount].addr,
+				f.trace[f.tracecount].mask,
+				f.trace[f.tracecount].name
+			);
+
+			++f.tracecount;
+		} else if (!strcmp(argv[pi], "--vcd-trace-file")) {
+			if(pi+1>=argc) {
+				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
+				exit(1);
+			}
+			strncpy(f.tracename, argv[++pi], sizeof(f.tracename));
 		} else if (!strcmp(argv[pi], "-ti")) {
 			if (pi < argc-1)
 				trace_vectors[trace_vectors_count++] = atoi(argv[++pi]);
