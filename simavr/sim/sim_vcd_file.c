@@ -450,8 +450,12 @@ _avr_vcd_notify(
 {
 	avr_vcd_t * vcd = (avr_vcd_t *)param;
 
-	if (!vcd->output)
+	if (!vcd->output) {
+		AVR_LOG(vcd->avr, LOG_WARNING,
+				"%s: no output\n",
+				__FUNCTION__);
 		return;
+	}
 
 	avr_vcd_signal_t * s = (avr_vcd_signal_t*)irq;
 	avr_vcd_log_t l = {
@@ -478,8 +482,12 @@ avr_vcd_add_signal(
 		int signal_bit_size,
 		const char * name )
 {
-	if (vcd->signal_count == AVR_VCD_MAX_SIGNALS)
+	if (vcd->signal_count == AVR_VCD_MAX_SIGNALS) {
+		AVR_LOG(vcd->avr, LOG_ERROR,
+			" %s: unable add signal '%s'\n",
+			__FUNCTION__, name);
 		return -1;
+	}
 	int index = vcd->signal_count++;
 	avr_vcd_signal_t * s = &vcd->signal[index];
 	strncpy(s->name, name, sizeof(s->name));

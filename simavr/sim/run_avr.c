@@ -183,13 +183,13 @@ main(
 		exit(1);
 	}
 	avr_init(avr);
+	avr->log = (log > LOG_TRACE ? LOG_TRACE : log);
+	avr->trace = trace;
 	avr_load_firmware(avr, &f);
 	if (f.flashbase) {
 		printf("Attempted to load a bootloader at %04x\n", f.flashbase);
 		avr->pc = f.flashbase;
 	}
-	avr->log = (log > LOG_TRACE ? LOG_TRACE : log);
-	avr->trace = trace;
 	for (int ti = 0; ti < trace_vectors_count; ti++) {
 		for (int vi = 0; vi < avr->interrupts.vector_count; vi++)
 			if (avr->interrupts.vector[vi]->vector == trace_vectors[ti])
