@@ -19,6 +19,11 @@ On OSX, we recommend using [homebrew](https://brew.sh):
 
 Otherwise, `make` is enough to just start using __bin/simavr__. To install the __simavr__ command system-wide, `make install RELEASE=1`.
 
+Installation requires some avr tools, libelf, and glut. these can be installed on ubuntu/debian with:
+
+    apt-get install gcc-avr binutils-avr gdb-avr avr-libc libelf-dev freeglut3-dev
+
+
 Supported IOs
 --------------
 * _eeprom_
