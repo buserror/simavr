@@ -140,7 +140,15 @@ main(
 				uint16_t addr;
 				char     name[64];
 			} trace;
-			if(4 != sscanf(argv[pi], "%63[^=]=%63[^@]@0x%hx/0x%hhx", &trace.name[0], &trace.kind[0], &trace.addr, &trace.mask)) {
+			const int n_args = sscanf(
+				argv[pi],
+				"%63[^=]=%63[^@]@0x%hx/0x%hhx",
+				&trace.name[0],
+				&trace.kind[0],
+				&trace.addr,
+				&trace.mask
+			);
+			if(n_args != 4) {
 				--pi;
 				fprintf(stderr, "%s: format for %s is name=kind@addr/mask.\n", argv[0], argv[pi]);
 				exit(1);
@@ -153,7 +161,12 @@ main(
 			} else if(!strcmp(trace.kind, "trace")) {
 				f.trace[f.tracecount].kind = AVR_MMCU_TAG_VCD_TRACE;
 			} else {
-				fprintf(stderr, "%s: unknown trace kind '%s', not one of 'portpin', 'irq', or 'trace'.\n", argv[0], trace.kind);
+				fprintf(
+					stderr,
+					"%s: unknown trace kind '%s', not one of 'portpin', 'irq', or 'trace'.\n",
+					argv[0],
+					trace.kind
+				);
 				exit(1);
 			}
 			f.trace[f.tracecount].mask = trace.mask;
