@@ -202,7 +202,7 @@ const struct mcu_t {
 			},
 		},
 	},
-	AVR_SPI_DECLARE(0, 0),
+	AVR_SPI_DECLARE(PRR0, PRSPI, 'B', 7, 6, 5, 4),
 	.usb = {
 		.name='1',
 		.disabled=AVR_IO_REGBIT(PRR1, PRUSB),// bit in the PRR

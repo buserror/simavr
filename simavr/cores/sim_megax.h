@@ -301,7 +301,7 @@ const struct mcu_t SIM_CORENAME = {
 			},
 		},
 	},
-	AVR_SPI_DECLARE(0, 0),
+	AVR_SPI_DECLARE(0, 0, 'B', 7, 6, 5, 4),
 	.twi = {
 
 		.r_twcr = TWCR,

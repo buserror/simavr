@@ -311,7 +311,7 @@ const struct mcu_t SIM_CORENAME = {
 			},
 		},
 	},
-	AVR_SPI_DECLARE(PRR, PRSPI),
+	AVR_SPI_DECLARE(PRR, PRSPI, 'C', 7, 0, 1, 1),
 };
 #endif /* SIM_CORENAME */
 

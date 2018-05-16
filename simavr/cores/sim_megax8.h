@@ -345,7 +345,7 @@ const struct mcu_t SIM_CORENAME = {
 			}
 		}
 	},
-	AVR_SPI_DECLARE(PRR, PRSPI),
+	AVR_SPI_DECLARE(PRR, PRSPI, 'B', 5, 4, 3, 2),
 	.twi = {
 		.disabled = AVR_IO_REGBIT(PRR,PRTWI),
 

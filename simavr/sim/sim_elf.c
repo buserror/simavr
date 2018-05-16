@@ -37,6 +37,11 @@
 #include "avr_eeprom.h"
 #include "avr_ioport.h"
 
+#include "avr_spi.h"
+#include "avr_uart.h"
+#include "avr_twi.h"
+#include "avr_lin.h"
+
 #ifndef O_BINARY
 #define O_BINARY 0
 #endif
@@ -101,6 +106,31 @@ avr_load_firmware(
 	}
 	avr_set_command_register(avr, firmware->command_register_addr);
 	avr_set_console_register(avr, firmware->console_register_addr);
+
+	// initialize bitbang mode for multi-instance peripherals
+	for (char name = '0'; name < '9'; name++) {
+		if ((firmware->bitbang_on_mask & BITBANG_ON_SPI(name)) != 0) {
+			uint32_t f = 0;
+			avr_ioctl(avr, AVR_IOCTL_SPI_GET_FLAGS(name), &f);
+			f |= AVR_SPI_FLAG_BITBANG_ON;
+			avr_ioctl(avr, AVR_IOCTL_SPI_SET_FLAGS(name), &f);
+		}
+		if ((firmware->bitbang_on_mask & BITBANG_ON_SPI(name - '0')) != 0) {
+			uint32_t f = 0;
+			avr_ioctl(avr, AVR_IOCTL_SPI_GET_FLAGS(name - '0'), &f);
+			f |= AVR_SPI_FLAG_BITBANG_ON;
+			avr_ioctl(avr, AVR_IOCTL_SPI_SET_FLAGS(name - '0'), &f);
+		}
+		if ((firmware->bitbang_on_mask & BITBANG_ON_UART(name)) != 0) {
+			//TODO: implement bitbang mode for UART modeule
+		}
+		if ((firmware->bitbang_on_mask & BITBANG_ON_TWI(name)) != 0) {
+			//TODO: implement bitbang mode for TWI modeule
+		}
+		if ((firmware->bitbang_on_mask & BITBANG_ON_LIN(name)) != 0) {
+			//TODO: implement bitbang mode for LIN modeule
+		}
+	}
 
 	// rest is initialization of the VCD file
 	if (firmware->tracecount == 0)
@@ -266,6 +296,10 @@ elf_parse_mmcu_section(
 			}	break;
 			case AVR_MMCU_TAG_SIMAVR_CONSOLE: {
 				firmware->console_register_addr = src[0] | (src[1] << 8);
+			}	break;
+			case AVR_MMCU_TAG_BITBANG: {
+				firmware->bitbang_on_mask =
+					src[0] | (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
 			}	break;
 		}
 		size -= next;

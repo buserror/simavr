@@ -391,7 +391,7 @@ const struct mcu_t {
 			.vector = TIMER3_CAPT_vect,
 		},
 	},
-	AVR_SPI_DECLARE(0, 0),
+	AVR_SPI_DECLARE(0, 0, 'B', 1, 3, 2, 0),
 	.twi = {
 
 		.r_twcr = TWCR,

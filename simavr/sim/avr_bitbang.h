@@ -48,6 +48,15 @@
 #include "avr_ioport.h"
 
 
+/**
+ * pin structure
+ */
+typedef struct avr_bitbang_iopin_t {
+	uint16_t port : 8;			///< port e.g. 'B'
+	uint16_t pin : 8;		///< pin number
+	avr_ioport_t * ioport;
+	avr_irq_t * irq;
+} avr_bitbang_iopin_t;
 
 
 /// SPI Module initialization and state structure
@@ -73,9 +82,9 @@ typedef struct avr_bitbang_t {
 	uint32_t (*callback_transfer_finished)(uint32_t data, void *param); 	///< callback function to notify about a complete transfer
 																			///		(read received data and write new output data)
 
-	avr_iopin_t	p_clk;		///< clock pin (optional)
-	avr_iopin_t	p_in;		///< data in pin
-	avr_iopin_t	p_out;		///< data out pin
+	avr_bitbang_iopin_t	p_clk;		///< clock pin (optional)
+	avr_bitbang_iopin_t	p_in;		///< data in pin
+	avr_bitbang_iopin_t	p_out;		///< data out pin
 
 // private data
 	uint32_t data;			///< data buffer
@@ -91,6 +100,16 @@ typedef struct avr_bitbang_t {
  * @param p		bitbang structure
  */
 void avr_bitbang_reset(avr_t *avr, avr_bitbang_t * p);
+
+/**
+ * define bitbang pins
+ *
+ * @param p			bitbang structure
+ * @param clk		clock pin
+ * @param in		incoming data pin
+ * @param out		outgoing data pin
+ */
+void avr_bitbang_defpins(avr_bitbang_t * p, avr_iopin_t *clk, avr_iopin_t *in, avr_iopin_t *out);
 
 /**
  * start bitbang transfer
