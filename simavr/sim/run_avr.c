@@ -122,14 +122,14 @@ main(
 		} else if (!strcmp(argv[pi], "-t") || !strcmp(argv[pi], "--trace")) {
 			trace++;
 		} else if (!strcmp(argv[pi], "--vcd-trace-name")) {
-			if(pi+1>=argc) {
+			if (pi+1>=argc) {
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
 				exit(1);
 			}
 			++pi;
 			strncpy(f.tracename, argv[pi], sizeof(f.tracename));
 		} else if (!strcmp(argv[pi], "--add-vcd-trace")) {
-			if(pi+1>=argc) {
+			if (pi+1>=argc) {
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
 				exit(1);
 			}
@@ -148,17 +148,17 @@ main(
 				&trace.addr,
 				&trace.mask
 			);
-			if(n_args != 4) {
+			if (n_args != 4) {
 				--pi;
 				fprintf(stderr, "%s: format for %s is name=kind@addr/mask.\n", argv[0], argv[pi]);
 				exit(1);
 			}
 
-			/****/ if(!strcmp(trace.kind, "portpin")) {
+			/****/ if (!strcmp(trace.kind, "portpin")) {
 				f.trace[f.tracecount].kind = AVR_MMCU_TAG_VCD_PORTPIN;
-			} else if(!strcmp(trace.kind, "irq")) {
+			} else if (!strcmp(trace.kind, "irq")) {
 				f.trace[f.tracecount].kind = AVR_MMCU_TAG_VCD_IRQ;
-			} else if(!strcmp(trace.kind, "trace")) {
+			} else if (!strcmp(trace.kind, "trace")) {
 				f.trace[f.tracecount].kind = AVR_MMCU_TAG_VCD_TRACE;
 			} else {
 				fprintf(
@@ -186,7 +186,7 @@ main(
 
 			++f.tracecount;
 		} else if (!strcmp(argv[pi], "--vcd-trace-file")) {
-			if(pi+1>=argc) {
+			if (pi+1>=argc) {
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
 				exit(1);
 			}
