@@ -122,14 +122,14 @@ main(
 		} else if (!strcmp(argv[pi], "-t") || !strcmp(argv[pi], "--trace")) {
 			trace++;
 		} else if (!strcmp(argv[pi], "--vcd-trace-name")) {
-			if (pi+1>=argc) {
+			if (pi + 1 >= argc) {
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
 				exit(1);
 			}
 			++pi;
 			strncpy(f.tracename, argv[pi], sizeof(f.tracename));
 		} else if (!strcmp(argv[pi], "--add-vcd-trace")) {
-			if (pi+1>=argc) {
+			if (pi + 1 >= argc) {
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
 				exit(1);
 			}
@@ -186,7 +186,7 @@ main(
 
 			++f.tracecount;
 		} else if (!strcmp(argv[pi], "--vcd-trace-file")) {
-			if (pi+1>=argc) {
+			if (pi + 1 >= argc) {
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
 				exit(1);
 			}
