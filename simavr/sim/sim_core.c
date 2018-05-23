@@ -127,8 +127,8 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 		AVR_LOG(avr, LOG_WARNING,
 				"CORE: *** Wrapping write address "
 				"PC=%04x SP=%04x O=%04x v=%02x Address %04x %% %04x --> %04x\n",
-				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), v, addr, (avr->ramend+1), addr % (avr->ramend+1));
-		addr = addr % (avr->ramend+1);
+				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), v, addr, (avr->ramend + 1), addr % (avr->ramend + 1));
+		addr = addr % (avr->ramend + 1);
 	}
 	if (addr < 32) {
 		AVR_LOG(avr, LOG_ERROR, FONT_RED
@@ -164,8 +164,8 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 				"CORE: *** Wrapping read address "
 				"PC=%04x SP=%04x O=%04x Address %04x %% %04x --> %04x\n"
 				FONT_DEFAULT,
-				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), addr, (avr->ramend+1), addr % (avr->ramend+1));
-		addr = addr % (avr->ramend+1);
+				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), addr, (avr->ramend + 1), addr % (avr->ramend + 1));
+		addr = addr % (avr->ramend + 1);
 	}
 
 	if (avr->gdb) {
@@ -1439,5 +1439,3 @@ run_one_again:
 
 	return new_pc;
 }
-
-
