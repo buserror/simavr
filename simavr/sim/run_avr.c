@@ -105,10 +105,12 @@ main(
 		} else if (!strcmp(argv[pi], "-h") || !strcmp(argv[pi], "--help")) {
 			display_usage(basename(argv[0]));
 		} else if (!strcmp(argv[pi], "-m") || !strcmp(argv[pi], "--mcu")) {
-			if (pi < argc-1)
-				strncpy(name, argv[++pi], sizeof(name));
-			else
+			if (pi < argc-1) {
+				strncpy(name, argv[++pi], sizeof(name)-1);
+				name[sizeof(name)-1] = '\0';
+			} else {
 				display_usage(basename(argv[0]));
+			}
 		} else if (!strcmp(argv[pi], "-f") || !strcmp(argv[pi], "--freq")) {
 			if (pi < argc-1)
 				f_cpu = atoi(argv[++pi]);
