@@ -7,6 +7,9 @@
 # For package building, you will need to pass RELEASE=1 to make
 RELEASE	?= 0
 
+DESTDIR = /usr/local
+PREFIX = ${DESTDIR}
+
 .PHONY: doc
 
 all:	build-simavr build-tests build-examples build-parts
@@ -23,8 +26,13 @@ build-examples: build-simavr
 build-parts: build-examples
 	$(MAKE) -C examples/parts RELEASE=$(RELEASE)
 
-install: build-parts
-	$(MAKE) -C simavr install RELEASE=$(RELEASE)
+install: install-simavr install-parts
+
+install-simavr:
+	$(MAKE) -C simavr install RELEASE=$(RELEASE) DESTDIR=$(DESTDIR) PREFIX=$(PREFIX)
+
+install-parts:
+	$(MAKE) -C examples/parts install RELEASE=$(RELEASE) DESTDIR=$(DESTDIR) PREFIX=$(PREFIX)
 
 doc:
 	$(MAKE) -C doc RELEASE=$(RELEASE)

@@ -437,7 +437,7 @@ avr_timer_configure(
 
 	avr_t * avr = p->io.avr;
 	float resulting_clock = 0.0f; // used only for trace
-	float tov_cycles_exact;
+	float tov_cycles_exact = 0;
 
 	uint8_t as2 = p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_AS2;
 	uint8_t use_ext_clock = as2 || (p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_TN);

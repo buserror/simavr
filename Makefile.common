@@ -120,11 +120,16 @@ ifeq (${WIN}, Msys)
 LDFLAGS      += -lws2_32
 endif
 
+# for clock_gettime on RHEL 6.9
+ifneq ("$(wildcard /usr/lib/librt.so)","")
+LDFLAGS            += -lrt
+endif
+
 ifeq (${shell uname}, Linux)
 ifeq ($(RELEASE),1)
 # allow the shared library to be found in the build directory
 # only for linking, the install time location is used at runtime
-LFLAGS		+= -Wl,-rpath-link,${LIBDIR}
+LFLAGS		+= -Wl,-rpath-link,${LIBDIR} -Wl,-rpath,${PREFIX}/lib
 else
 # allow the shared library to be found in the build directory
 LFLAGS		+= -Wl,-rpath,${LIBDIR}

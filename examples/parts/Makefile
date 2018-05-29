@@ -47,5 +47,16 @@ ifeq (${shell uname}, Linux)
 ${target}: ${OBJ}/${target}.so
 endif
 
+install: obj ${target}
+	$(MKDIR) $(DESTDIR)/include/simavr/parts
+	$(INSTALL) -m644 *.h $(DESTDIR)/include/simavr/parts/
+	$(INSTALL) ${OBJ}/libsimavrparts.a $(DESTDIR)/lib/
+	sed -e "s|PREFIX|${PREFIX}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
+		simavrparts.pc >$(DESTDIR)/lib/pkgconfig/simavrparts.pc
+ifeq (${shell uname}, Linux)
+	$(INSTALL) ${OBJ}/libsimavrparts.so.1 $(DESTDIR)/lib/
+	ln -sf libsimavrparts.so.1 $(DESTDIR)/lib/libsimavrparts.so
+endif
+
 clean: clean-${OBJ}
 	rm -rf *.hex *.a *.axf *.vcd .*.swo .*.swp .*.swm .*.swn *.so *.o
