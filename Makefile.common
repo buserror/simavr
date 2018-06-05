@@ -112,7 +112,7 @@ SHELL	 	:= ${shell which bash}
 
 OBJ 		:= obj-${shell $(CC) -dumpmachine}
 LIBDIR		:= ${shell pwd}/${SIMAVR}/${OBJ}
-LDFLAGS 	+= -L${LIBDIR} -lsimavr -lm
+LDFLAGS 	+= -L${LIBDIR} -lsimavr -lm -lpthread
 
 LDFLAGS 	+= -lelf
 
