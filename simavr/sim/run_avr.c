@@ -106,7 +106,7 @@ main(
 			display_usage(basename(argv[0]));
 		} else if (!strcmp(argv[pi], "-m") || !strcmp(argv[pi], "--mcu")) {
 			if (pi < argc-1)
-				strncpy(name, argv[++pi], sizeof(name));
+				snprintf(name, sizeof(name), "%s", argv[++pi]);
 			else
 				display_usage(basename(argv[0]));
 		} else if (!strcmp(argv[pi], "-f") || !strcmp(argv[pi], "--freq")) {
@@ -127,7 +127,7 @@ main(
 				exit(1);
 			}
 			++pi;
-			strncpy(f.tracename, argv[pi], sizeof(f.tracename));
+			snprintf(f.tracename, sizeof(f.tracename), "%s",  argv[pi]);
 		} else if (!strcmp(argv[pi], "--add-vcd-trace")) {
 			if (pi + 1 >= argc) {
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
@@ -190,7 +190,7 @@ main(
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
 				exit(1);
 			}
-			strncpy(f.tracename, argv[++pi], sizeof(f.tracename));
+			snprintf(f.tracename, sizeof(f.tracename), "%s", argv[++pi]);
 		} else if (!strcmp(argv[pi], "-ti")) {
 			if (pi < argc-1)
 				trace_vectors[trace_vectors_count++] = atoi(argv[++pi]);
