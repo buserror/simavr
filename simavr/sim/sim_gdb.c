@@ -320,7 +320,7 @@ gdb_handle_command(
 
 				gdb_send_reply(g, rep);
 				break;
-            }
+			}
 			gdb_send_reply(g, "");
 			break;
 		case '?':
@@ -504,8 +504,8 @@ gdb_network_handler(
 			sleep(5);
 			return 1;
 		}
-        int i = 1;
-        setsockopt (g->s, IPPROTO_TCP, TCP_NODELAY, &i, sizeof (i));
+		int i = 1;
+		setsockopt (g->s, IPPROTO_TCP, TCP_NODELAY, &i, sizeof (i));
 		g->avr->state = cpu_Stopped;
 		printf("%s connection opened\n", __FUNCTION__);
 	}

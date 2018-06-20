@@ -209,8 +209,10 @@ uart_pty_thread(
 				// write them in fifo
 				uint8_t * dst = buffer;
 				while (!uart_pty_fifo_isempty(&p->port[ti].in) &&
-						dst < (buffer + sizeof(buffer)))
-					*dst++ = uart_pty_fifo_read(&p->port[ti].in);
+						(dst - buffer) < sizeof(buffer)) {
+					*dst = uart_pty_fifo_read(&p->port[ti].in);
+					dst++;
+				}
 				size_t len = dst - buffer;
 				TRACE(size_t r =) write(p->port[ti].s, buffer, len);
 				TRACE(if (!p->port[ti].tap) hdump("pty send", buffer, r);)

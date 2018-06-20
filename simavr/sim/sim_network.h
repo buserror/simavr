@@ -42,7 +42,7 @@ extern "C" {
 	(ssize_t)recv( (sockfd), (char *)(buf), (len), (flags))
 #define sleep(x) Sleep((x)*1000)
 
-static inline int network_init()
+static inline int network_init(void)
 {
 	// Windows requires WinSock to be init before use
 	WSADATA wsaData;
@@ -52,7 +52,7 @@ static inline int network_init()
 	return 0;
 }
 
-static inline void network_release()
+static inline void network_release(void)
 {
 	// close WinSock
 	WSACleanup();
@@ -69,13 +69,13 @@ static inline void network_release()
 #include <sys/time.h>
 #include <poll.h>
 
-static inline int network_init()
+static inline int network_init(void)
 {
 	// nothing to do
 	return 0;
 }
 
-static inline void network_release()
+static inline void network_release(void)
 {
 	// nothing to do
 }

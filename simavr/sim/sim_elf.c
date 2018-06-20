@@ -434,10 +434,10 @@ elf_read_firmware(
 	if (data_fuse) {
 		if (elf_copy_section(".fuse", data_fuse, &firmware->fuse))
 			return -1;
-        firmware->fusesize = data_fuse->d_size;
+		firmware->fusesize = data_fuse->d_size;
 	}
 	if (data_lockbits) {
-		if (elf_copy_section(".lock", data_fuse, &firmware->lockbits))
+		if (elf_copy_section(".lock", data_lockbits, &firmware->lockbits))
 			return -1;
 	}
 //	hdump("flash", avr->flash, offset);

@@ -271,7 +271,7 @@ avr_service_interrupts(
 		vector->pending = 0;
 		avr->interrupt_state = avr_has_pending_interrupts(avr);
 	} else {
-		if (vector && vector->trace)
+		if (vector->trace)
 			printf("IRQ%d calling\n", vector->vector);
 		_avr_push_addr(avr, avr->pc);
 		avr_sreg_set(avr, S_I, 0);

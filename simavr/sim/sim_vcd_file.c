@@ -265,13 +265,14 @@ avr_vcd_init_input(
 
 		if (!strcmp(keyword, "$timescale")) {
 			double cnt = 0;
-			vcd->vcd_to_us = 1;
 			char *si = v->argv[1];
+
+			vcd->vcd_to_us = 1;
 			while (si && *si && isdigit(*si))
 				cnt = (cnt * 10) + (*si++ - '0');
-			while (*si == ' ')
+			while (si && *si == ' ')
 				si++;
-			if (!*si)
+			if (si && !*si)
 				si = v->argv[2];
 		//	if (!strcmp(si, "ns")) // TODO: Check that,
 		//		vcd->vcd_to_us = cnt;
