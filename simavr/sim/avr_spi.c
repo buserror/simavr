@@ -3,7 +3,7 @@
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
- 	This file is part of simavr.
+	This file is part of simavr.
 
 	simavr is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -27,11 +27,13 @@ static avr_cycle_count_t avr_spi_raise(struct avr_t * avr, avr_cycle_count_t whe
 	avr_spi_t * p = (avr_spi_t *)param;
 	
 	if (avr_regbit_get(avr, p->spe)) {
-		// in master mode, any byte is sent as it comes..
+		// in master mode, an interrupt is sent at end of transmission
 		if (avr_regbit_get(avr, p->mstr)) {
 			avr_raise_interrupt(avr, &p->spi);
-			avr_raise_irq(p->io.irq + SPI_IRQ_OUTPUT, avr->data[p->r_spdr]);
 		}
+
+		// irq is always raised when SPI is enabled
+		avr_raise_irq(p->io.irq + SPI_IRQ_OUTPUT, avr->data[p->r_spdr]);
 	}
 	return 0;
 }
