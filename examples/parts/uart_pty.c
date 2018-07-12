@@ -175,8 +175,6 @@ uart_pty_thread(
 		struct timeval timo = { 0, 500 };
 		int ret = select(max+1, &read_set, &write_set, NULL, &timo);
 
-		if (!ret)
-			continue;
 		if (ret < 0)
 			break;
 
