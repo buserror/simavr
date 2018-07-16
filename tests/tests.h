@@ -33,6 +33,11 @@ void tests_assert_uart_receive_avr(avr_t *avr,
 			       const char *expected,
 			       char uart);				   
 
+void tests_assert_spi_master_receive_avr(avr_t *avr,
+			       unsigned long run_usec,
+			       const char *expected,
+			       uint8_t spi);
+
 void tests_assert_cycles_at_least(unsigned long n);
 void tests_assert_cycles_at_most(unsigned long n);
 

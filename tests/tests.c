@@ -3,6 +3,8 @@
 #include "sim_elf.h"
 #include "sim_core.h"
 #include "avr_uart.h"
+#include "avr_spi.h"
+
 #include <stdio.h>
 #include <setjmp.h>
 #include <stdlib.h>
@@ -199,6 +201,29 @@ void tests_assert_uart_receive_avr(avr_t *avr,
 	}
 	if (strcmp(buf.str, expected) != 0)
 		_fail(NULL, 0, "UART outputs differ: expected \"%s\", got \"%s\"", expected, buf.str);
+}
+
+void tests_assert_spi_master_receive_avr(avr_t *avr,
+			       unsigned long run_usec,
+			       const char *expected,
+			       uint8_t spi) {
+	struct output_buffer buf;
+	init_output_buffer(&buf);
+
+	avr_irq_register_notify(avr_io_getirq(avr, AVR_IOCTL_SPI_GETIRQ(spi), SPI_IRQ_OUTPUT),
+				buf_output_cb, &buf);
+
+	enum tests_finish_reason reason = tests_run_test(avr, run_usec);
+	if (reason == LJR_CYCLE_TIMER) {
+		if (strcmp(buf.str, expected) == 0) {
+			_fail(NULL, 0, "Simulation did not finish within %lu simulated usec. "
+			     "SPI output is correct and complete.", run_usec);
+		}
+		_fail(NULL, 0, "Simulation did not finish within %lu simulated usec. "
+		     "SPI output so far: \"%s\"", run_usec, buf.str);
+	}
+	if (strcmp(buf.str, expected) != 0)
+		_fail(NULL, 0, "SPI outputs differ: expected \"%s\", got \"%s\"", expected, buf.str);
 }
 
 void tests_assert_uart_receive(const char *elfname,
