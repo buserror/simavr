@@ -17,7 +17,18 @@ On OSX, we recommend using [homebrew](https://brew.sh):
     brew tap osx-cross/avr
     brew install --HEAD simavr
 
-Otherwise, `make` is enough to just start using __bin/simavr__. To install the __simavr__ command system-wide, `make install RELEASE=1`.
+Otherwise, `make` is enough to just start using __bin/simavr__. To install the __simavr__ command system-wide:
+
+```
+sudo make install RELEASE=1
+```
+
+Note that on Ubuntu you may need to intall the following:
+
+```
+sudo apt install libelf-dev freeglut3-dev
+```
+
 
 Supported IOs
 --------------
