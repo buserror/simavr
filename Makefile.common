@@ -67,7 +67,7 @@ ifeq (${shell uname}, Darwin)
   HOMEBREW_PREFIX ?= /usr/local
   ifeq (${shell test -d $(HOMEBREW_PREFIX)/Cellar && echo Exists}, Exists)
    ifneq (${shell test -d $(HOMEBREW_PREFIX)/Cellar/avr-gcc/ && echo Exists}, Exists)
-    $(error Please install avr-gcc: brew tap osx-cross/homebrew-avr ; brew install avr-libc)
+    $(error Please install avr-gcc: brew tap osx-cross/avr ; brew install avr-gcc)
    endif
    ifneq (${shell test -d $(HOMEBREW_PREFIX)/Cellar/libelf/ && echo Exists}, Exists)
     $(error Please install libelf: brew install libelf)
