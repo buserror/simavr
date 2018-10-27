@@ -23,6 +23,7 @@
 #define __SIM_REGBIT_H__
 
 #include "sim_avr.h"
+#include "sim_gdb.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,6 +53,22 @@ static inline uint8_t avr_regbit_set(avr_t * avr, avr_regbit_t rb)
 	return (avr->data[a] >> rb.bit) & rb.mask;
 }
 
+static inline uint8_t avr_regbit_set_shadow(avr_t * avr, avr_regbit_t rb, uint8_t * shadow)
+{
+	uint16_t a = rb.reg;
+	uint8_t m;
+
+	if (!a)
+		return 0;
+	m = rb.mask << rb.bit;
+	if (avr->gdb) {
+		avr_gdb_handle_watchpoints(avr, a, AVR_GDB_WATCH_WRITE);
+	}
+	*shadow = *shadow | m;
+	avr_core_watch_write(avr, a, avr->data[a] | m);
+	return (*shadow >> rb.bit) & rb.mask;
+}
+
 static inline uint8_t avr_regbit_setto(avr_t * avr, avr_regbit_t rb, uint8_t v)
 {
 	uint16_t a = rb.reg;
@@ -62,6 +79,21 @@ static inline uint8_t avr_regbit_setto(avr_t * avr, avr_regbit_t rb, uint8_t v)
 	m = rb.mask << rb.bit;
 	avr_core_watch_write(avr, a, (avr->data[a] & ~(m)) | ((v << rb.bit) & m));
 	return (avr->data[a] >> rb.bit) & rb.mask;
+}
+
+static inline uint8_t avr_regbit_setto_shadow(avr_t * avr, avr_regbit_t rb, uint8_t v, uint8_t * shadow)
+{
+	uint16_t a = rb.reg;
+	uint8_t m;
+
+	if (!a)
+		return 0;
+	m = rb.mask << rb.bit;
+	if (avr->gdb) {
+		avr_gdb_handle_watchpoints(avr, a, AVR_GDB_WATCH_WRITE);
+	}
+	*shadow = (*shadow & ~(m)) | ((v << rb.bit) & m);
+	return (*shadow >> rb.bit) & rb.mask;
 }
 
 /*
@@ -86,6 +118,15 @@ static inline uint8_t avr_regbit_get(avr_t * avr, avr_regbit_t rb)
 		return 0;
 	//uint8_t m = rb.mask << rb.bit;
 	return (avr->data[a] >> rb.bit) & rb.mask;
+}
+
+static inline uint8_t avr_regbit_get_shadow(avr_t * avr, avr_regbit_t rb, uint8_t * shadow)
+{
+	uint16_t a = rb.reg;
+	if (!a)
+		return 0;
+	//uint8_t m = rb.mask << rb.bit;
+	return (*shadow >> rb.bit) & rb.mask;
 }
 
 /*
@@ -124,6 +165,16 @@ static inline uint8_t avr_regbit_clear(avr_t * avr, avr_regbit_t rb)
 	return avr->data[a];
 }
 
+static inline uint8_t avr_regbit_clear_shadow(avr_t * avr, avr_regbit_t rb, uint8_t * shadow)
+{
+	uint16_t a = rb.reg;
+	uint8_t m = rb.mask << rb.bit;
+	if (avr->gdb) {
+		avr_gdb_handle_watchpoints(avr, a, AVR_GDB_WATCH_WRITE);
+	}
+	*shadow = *shadow & ~m;
+	return *shadow;
+}
 
 /*
  * This reads the bits for an array of avr_regbit_t, make up a "byte" with them.
