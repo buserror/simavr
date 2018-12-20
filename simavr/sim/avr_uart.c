@@ -45,7 +45,7 @@
 #define TRACE(_w)
 #endif
 
-DEFINE_FIFO(uint8_t, uart_fifo);
+DEFINE_FIFO(uint16_t, uart_fifo);
 
 static inline void
 avr_uart_clear_interrupt(
@@ -129,34 +129,52 @@ avr_uart_rxc_raise(
 }
 
 static uint8_t
-avr_uart_rxc_read(
+avr_uart_status_read(
 		struct avr_t * avr,
 		avr_io_addr_t addr,
 		void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
+
+	if (addr == p->fe.reg) {
+		if (!uart_fifo_isempty(&p->input)) {
+			uint16_t d = uart_fifo_read_at(&p->input, 0);
+
+			uint8_t st = avr->data[addr];
+
+			st &= ~(p->fe.mask << p->fe.bit);
+			if (d & UART_INPUT_FE) {
+				st |= p->fe.mask << p->fe.bit;
+			}
+
+			avr->data[addr] = st;
+		}
+	}
+
 	uint8_t v = avr_core_watch_read(avr, addr);
 
-	//static uint8_t old = 0xff; if (v != old) printf("UCSRA read %02x\n", v); old = v;
-	//
-	// if RX is enabled, and there is nothing to read, and
-	// the AVR core is reading this register, it's probably
-	// to poll the RXC TXC flag and spinloop
-	// so here we introduce a usleep to make it a bit lighter
-	// on CPU and let data arrive
-	//
-	uint8_t ri = !avr_regbit_get(avr, p->rxen) || !avr_regbit_get(avr, p->rxc.raised);
-	uint8_t ti = !avr_regbit_get(avr, p->txen) || !avr_regbit_get(avr, p->txc.raised);
+	if (addr == p->rxc.raised.reg) {
+		//static uint8_t old = 0xff; if (v != old) printf("UCSRA read %02x\n", v); old = v;
+		//
+		// if RX is enabled, and there is nothing to read, and
+		// the AVR core is reading this register, it's probably
+		// to poll the RXC TXC flag and spinloop
+		// so here we introduce a usleep to make it a bit lighter
+		// on CPU and let data arrive
+		//
+		uint8_t ri = !avr_regbit_get(avr, p->rxen) || !avr_regbit_get(avr, p->rxc.raised);
+		uint8_t ti = !avr_regbit_get(avr, p->txen) || !avr_regbit_get(avr, p->txc.raised);
 
-	if (p->flags & AVR_UART_FLAG_POLL_SLEEP) {
+		if (p->flags & AVR_UART_FLAG_POLL_SLEEP) {
 
-		if (ri && ti)
-			usleep(1);
-	}
-	// if reception is idle and the fifo is empty, tell whomever there is room
-	if (avr_regbit_get(avr, p->rxen) && uart_fifo_isempty(&p->input)) {
-		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, 0);
-		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XON, 1);
+			if (ri && ti)
+				usleep(1);
+		}
+		// if reception is idle and the fifo is empty, tell whomever there is room
+		if (avr_regbit_get(avr, p->rxen) && uart_fifo_isempty(&p->input)) {
+			avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, 0);
+			avr_raise_irq(p->io.irq + UART_IRQ_OUT_XON, 1);
+		}
 	}
 
 	return v;
@@ -182,7 +200,7 @@ avr_uart_read(
 		goto avr_uart_read_check;
 	}
 	if (!uart_fifo_isempty(&p->input)) { // probably redundant check
-		v = uart_fifo_read(&p->input);
+		v = (uint8_t)uart_fifo_read(&p->input) & 0xFF;
 		p->rx_cnt++;
 		if ((p->rx_cnt > 1) && // UART actually has 2-character rx buffer
 				((avr->cycle-p->rxc_raise_time)/p->rx_cnt < p->cycles_per_byte)) {
@@ -222,7 +240,7 @@ avr_uart_baud_write(
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 	avr_core_watch_write(avr, addr, v);
-	uint32_t val = avr->data[p->r_ubrrl] | (avr->data[p->r_ubrrh] << 8);
+	uint32_t val = avr_regbit_get(avr,p->ubrrl) | (avr_regbit_get(avr,p->ubrrh) << 8);
 
 	const int databits[] = { 5,6,7,8,  /* 'reserved', assume 8 */8,8,8, 9 };
 	int db = databits[avr_regbit_get(avr, p->ucsz) | (avr_regbit_get(avr, p->ucsz2) << 2)];
@@ -519,15 +537,19 @@ avr_uart_init(
 
 	avr_register_io_write(avr, p->r_udr, avr_uart_udr_write, p);
 	avr_register_io_read(avr, p->r_udr, avr_uart_read, p);
+
+	// status bits
 	// monitor code that reads the rxc flag, and delay it a bit
-	avr_register_io_read(avr, p->rxc.raised.reg, avr_uart_rxc_read, p);
+	avr_register_io_read(avr, p->rxc.raised.reg, avr_uart_status_read, p);
+	if (p->fe.reg != p->rxc.raised.reg)
+		avr_register_io_read(avr, p->fe.reg, avr_uart_status_read, p);
 
 	if (p->udrc.vector)
 		avr_register_io_write(avr, p->udrc.enable.reg, avr_uart_write, p);
 	if (p->r_ucsra)
 		avr_register_io_write(avr, p->r_ucsra, avr_uart_write, p);
-	if (p->r_ubrrl)
-		avr_register_io_write(avr, p->r_ubrrl, avr_uart_baud_write, p);
+	if (p->ubrrl.reg)
+		avr_register_io_write(avr, p->ubrrl.reg, avr_uart_baud_write, p);
 	avr_register_io_write(avr, p->rxen.reg, avr_uart_write, p);
 }
 

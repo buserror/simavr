@@ -45,6 +45,8 @@ int window_identifier;
 avr_t * avr = NULL;
 ssd1306_t ssd1306;
 
+int win_width, win_height;
+
 static void *
 avr_run_thread (void * ignore)
 {
@@ -71,7 +73,22 @@ keyCB (unsigned char key, int x, int y)
 void
 displayCB (void)
 {
+	const uint8_t seg_remap_default = ssd1306_get_flag (
+	                &ssd1306, SSD1306_FLAG_SEGMENT_REMAP_0);
+	const uint8_t seg_comscan_default = ssd1306_get_flag (
+	                &ssd1306, SSD1306_FLAG_COM_SCAN_NORMAL);
+
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// Set up projection matrix
+	glMatrixMode (GL_PROJECTION);
+	// Start with an identity matrix
+	glLoadIdentity ();
+	glOrtho (0, win_width, 0, win_height, 0, 10);
+	// Apply vertical and horizontal display mirroring
+	glScalef (seg_remap_default ? 1 : -1, seg_comscan_default ? -1 : 1, 1);
+	glTranslatef (seg_remap_default ? 0 : -win_width, seg_comscan_default ? -win_height : 0, 0);
+
 	// Select modelview matrix
 	glMatrixMode (GL_MODELVIEW);
 	glPushMatrix ();
@@ -94,21 +111,13 @@ timerCB (int i)
 int
 initGL (int w, int h, float pix_size)
 {
-	w *= pix_size;
-	h *= pix_size;
+	win_width = w * pix_size;
+	win_height = h * pix_size;
 
 	// Double buffered, RGB disp mode.
 	glutInitDisplayMode (GLUT_RGB | GLUT_DOUBLE);
-	glutInitWindowSize (w * 4, h * 4);
+	glutInitWindowSize (win_width, win_height);
 	window_identifier = glutCreateWindow ("SSD1306 128x64 OLED");
-
-	// Set up projection matrix
-	glMatrixMode (GL_PROJECTION);
-	// Start with an identity matrix
-	glLoadIdentity ();
-	glOrtho (0, w, 0, h, 0, 10);
-	glScalef (1, -1, 1);
-	glTranslatef (0, -1 * h, 0);
 
 	// Set window's display callback
 	glutDisplayFunc (displayCB);
@@ -163,7 +172,7 @@ main (int argc, char *argv[])
 
 	// Initialize GLUT system
 	glutInit (&argc, argv);
-	initGL (ssd1306.columns, ssd1306.rows, 0.5);
+	initGL (ssd1306.columns, ssd1306.rows, 2.0);
 
 	pthread_t run;
 	pthread_create (&run, NULL, avr_run_thread, NULL);

@@ -20,7 +20,6 @@
  */
 
 #include "sim_avr.h"
-#include "sim_core_declare.h"
 #include "avr_eeprom.h"
 #include "avr_flash.h"
 #include "avr_watchdog.h"
@@ -42,6 +41,8 @@ void m1280_reset(struct avr_t * avr);
 #define __AVR_ATmega1280__
 #endif
 #include "avr/iom1280.h"
+
+#include "sim_core_declare.h"
 
 /*
  * This is a template for all of the 1280 devices, hopefully

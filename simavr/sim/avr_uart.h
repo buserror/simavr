@@ -30,7 +30,7 @@ extern "C" {
 
 #include "fifo_declare.h"
 
-DECLARE_FIFO(uint8_t, uart_fifo, 64);
+DECLARE_FIFO(uint16_t, uart_fifo, 64);
 
 /*
  * The method of "connecting" the the UART from external code is to use 4 IRQS.
@@ -72,6 +72,10 @@ enum {
 	UART_IRQ_COUNT
 };
 
+enum {
+	UART_INPUT_FE = 0x8000		// framing error
+};
+
 // add port number to get the real IRQ
 #define AVR_IOCTL_UART_GETIRQ(_name) AVR_IOCTL_DEF('u','a','r',(_name))
 
@@ -107,7 +111,8 @@ typedef struct avr_uart_t {
 	avr_regbit_t	upe;		// parity error bit
 	avr_regbit_t	rxb8;		// receive data bit 8
 
-	avr_io_addr_t r_ubrrl,r_ubrrh;
+	avr_regbit_t	ubrrl;
+	avr_regbit_t	ubrrh;
 
 	avr_int_vector_t rxc;
 	avr_int_vector_t txc;
@@ -148,12 +153,13 @@ void avr_uart_init(avr_t * avr, avr_uart_t * port);
 		.usbs = AVR_IO_REGBIT(UCSR ## _name ## C, USBS ## _name), \
 		.ucsz = AVR_IO_REGBITS(UCSR ## _name ## C, UCSZ ## _name ## 0, 0x3), \
 		.ucsz2 = AVR_IO_REGBIT(UCSR ## _name ## B, UCSZ ## _name ## 2), \
-	\
+		.ubrrl = AVR_IO_REGBITS(UBRR ## _name ## L, 0,0xFF), \
+		.ubrrh = AVR_IO_REGBITS(UBRR ## _name ## H, 0,0xF), \
+		\
 		.r_ucsra = UCSR ## _name ## A, \
 		.r_ucsrb = UCSR ## _name ## B, \
 		.r_ucsrc = UCSR ## _name ## C, \
-		.r_ubrrl = UBRR ## _name ## L, \
-		.r_ubrrh = UBRR ## _name ## H, \
+	\
 		.rxc = { \
 			.enable = AVR_IO_REGBIT(UCSR ## _name ## B, RXCIE ## _name), \
 			.raised = AVR_IO_REGBIT(UCSR ## _name ## A, RXC ## _name), \
@@ -190,12 +196,13 @@ void avr_uart_init(avr_t * avr, avr_uart_t * port);
 		.usbs = AVR_IO_REGBIT(UCSR ## _rname_ix ## C, USBS ## _rname_ix), \
 		.ucsz = AVR_IO_REGBITS(UCSR ## _rname_ix ## C, UCSZ ## _rname_ix ## 0, 0x3), \
 		.ucsz2 = AVR_IO_REGBIT(UCSR ## _rname_ix ## B, UCSZ ## _rname_ix ## 2), \
+		.ubrrl = AVR_IO_REGBITS(UBRR ## _rname_ix ## L, 0,0xFF), \
+		.ubrrh = AVR_IO_REGBITS(UBRR ## _rname_ix ## H, 0,0xF), \
 	\
 		.r_ucsra = UCSR ## _rname_ix ## A, \
 		.r_ucsrb = UCSR ## _rname_ix ## B, \
 		.r_ucsrc = UCSR ## _rname_ix ## C, \
-		.r_ubrrl = UBRR ## _rname_ix ## L, \
-		.r_ubrrh = UBRR ## _rname_ix ## H, \
+	\
 		.rxc = { \
 			.enable = AVR_IO_REGBIT(UCSR ## _rname_ix ## B, RXCIE ## _rname_ix), \
 			.raised = AVR_IO_REGBIT(UCSR ## _rname_ix ## A, RXC ## _rname_ix), \

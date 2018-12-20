@@ -199,9 +199,12 @@ gdb_send_quick_status(
 		uint8_t signal )
 {
 	char cmd[64];
+	uint8_t sreg;
+
+	READ_SREG_INTO(g->avr, sreg);
 
 	sprintf(cmd, "T%02x20:%02x;21:%02x%02x;22:%02x%02x%02x00;",
-		signal ? signal : 5, g->avr->data[R_SREG],
+		signal ? signal : 5, sreg,
 		g->avr->data[R_SPL], g->avr->data[R_SPH],
 		g->avr->pc & 0xff, (g->avr->pc>>8)&0xff, (g->avr->pc>>16)&0xff);
 	gdb_send_reply(g, cmd);
@@ -317,7 +320,7 @@ gdb_handle_command(
 
 				gdb_send_reply(g, rep);
 				break;
-            }
+			}
 			gdb_send_reply(g, "");
 			break;
 		case '?':
@@ -501,8 +504,8 @@ gdb_network_handler(
 			sleep(5);
 			return 1;
 		}
-        int i = 1;
-        setsockopt (g->s, IPPROTO_TCP, TCP_NODELAY, &i, sizeof (i));
+		int i = 1;
+		setsockopt (g->s, IPPROTO_TCP, TCP_NODELAY, &i, sizeof (i));
 		g->avr->state = cpu_Stopped;
 		printf("%s connection opened\n", __FUNCTION__);
 	}
@@ -577,8 +580,11 @@ avr_gdb_handle_watchpoints(
 	if (kind & type) {
 		/* Send gdb reply (see GDB user manual appendix E.3). */
 		char cmd[78];
+		uint8_t sreg;
+
+		READ_SREG_INTO(g->avr, sreg);
 		sprintf(cmd, "T%02x20:%02x;21:%02x%02x;22:%02x%02x%02x00;%s:%06x;",
-				5, g->avr->data[R_SREG],
+				5, sreg,
 				g->avr->data[R_SPL], g->avr->data[R_SPH],
 				g->avr->pc & 0xff, (g->avr->pc>>8)&0xff, (g->avr->pc>>16)&0xff,
 				kind & AVR_GDB_WATCH_ACCESS ? "awatch" :

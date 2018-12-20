@@ -45,6 +45,9 @@
 #define SSD1306_VIRT_DATA			1
 #define SSD1306_VIRT_INSTRUCTION 		0
 
+#define SSD1306_I2C_ADDRESS			0x3C
+#define SSD1306_I2C_ADDRESS_MASK		0xfe
+
 #define SSD1306_VIRT_PAGES			8
 #define SSD1306_VIRT_COLUMNS			128
 
@@ -105,6 +108,8 @@ enum
 	IRQ_SSD1306_DATA_INSTRUCTION,
 	//IRQ_SSD1306_INPUT_COUNT,
 	IRQ_SSD1306_ADDR,		// << For VCD
+	IRQ_SSD1306_TWI_IN,
+	IRQ_SSD1306_TWI_OUT,
 	IRQ_SSD1306_COUNT
 //TODO: Add IRQs for VCD: Internal state etc.
 };
@@ -122,6 +127,13 @@ enum
 	SSD1306_FLAG_BUSY,		// 1: Busy between instruction, 0: ready
 	SSD1306_FLAG_REENTRANT,		// 1: Do not update pins
 	SSD1306_FLAG_DIRTY,			// 1: Needs redisplay...
+};
+
+enum ssd1306_addressing_mode_t
+{
+	SSD1306_ADDR_MODE_HORZ = 0,
+	SSD1306_ADDR_MODE_VERT,
+	SSD1306_ADDR_MODE_PAGE
 };
 
 /*
@@ -146,6 +158,11 @@ typedef struct ssd1306_t
 	uint8_t cs_pin;
 	uint8_t di_pin;
 	uint8_t spi_data;
+	uint8_t reg_write_sz;
+	enum ssd1306_addressing_mode_t addr_mode;
+
+	uint8_t twi_selected;
+	uint8_t twi_index;
 } ssd1306_t;
 
 typedef struct ssd1306_pin_t
@@ -181,4 +198,7 @@ ssd1306_get_flag (ssd1306_t *b, uint16_t bit)
 void
 ssd1306_connect (ssd1306_t * part, ssd1306_wiring_t * wiring);
 
-#endif 
+void
+ssd1306_connect_twi (ssd1306_t * part, ssd1306_wiring_t * wiring);
+
+#endif

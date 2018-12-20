@@ -41,8 +41,8 @@ _timer_get_ocr(
 		int compi)
 {
 	return p->io.avr->data[p->comp[compi].r_ocr] |
-		      (p->comp[compi].r_ocrh ?
-		    		  (p->io.avr->data[p->comp[compi].r_ocrh] << 8) : 0);
+			  (p->comp[compi].r_ocrh ?
+					  (p->io.avr->data[p->comp[compi].r_ocrh] << 8) : 0);
 }
 
 static uint16_t
@@ -437,7 +437,7 @@ avr_timer_configure(
 
 	avr_t * avr = p->io.avr;
 	float resulting_clock = 0.0f; // used only for trace
-	float tov_cycles_exact;
+	float tov_cycles_exact = 0;
 
 	uint8_t as2 = p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_AS2;
 	uint8_t use_ext_clock = as2 || (p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_TN);
@@ -457,7 +457,8 @@ avr_timer_configure(
 			if (prescaler != 0)
 				resulting_clock = p->ext_clock / prescaler;
 			tov_cycles_exact = (float)avr->frequency / p->ext_clock * prescaler * (top+1);
-			p->tov_cycles = round(tov_cycles_exact);
+			// p->tov_cycles = round(tov_cycles_exact); -- don't want libm!
+			p->tov_cycles = tov_cycles_exact + .5f; // Round to integer
 			p->tov_cycles_fract = tov_cycles_exact - p->tov_cycles;
 		}
 	}
@@ -574,9 +575,12 @@ avr_timer_reconfigure(
 				_timer_get_ocr(p, AVR_TIMER_COMPA) : _timer_get_icr(p);
 			avr_timer_configure(p, p->cs_div_value, top, reset);
 		}	break;
-		case avr_timer_wgm_fast_pwm:
-			avr_timer_configure(p, p->cs_div_value, p->wgm_op_mode_size, reset);
-			break;
+		case avr_timer_wgm_fast_pwm: {
+			uint16_t top =
+				(p->mode.top == avr_timer_wgm_reg_icr) ? _timer_get_icr(p) :
+				p->wgm_op_mode_size;
+			avr_timer_configure(p, p->cs_div_value, top, reset);
+		}	break;
 		case avr_timer_wgm_none:
 			avr_timer_configure(p, p->cs_div_value, p->wgm_op_mode_size, reset);
 			break;
@@ -716,7 +720,7 @@ avr_timer_write_pending(
 		cp[compi] = avr_regbit_get(avr, p->comp[compi].interrupt.raised);
 
 	// write the value
-    // avr_core_watch_write(avr, addr, v); // This raises flags instead of clearing it.
+	// avr_core_watch_write(avr, addr, v); // This raises flags instead of clearing it.
 
 	// clear any interrupts & flags
 	avr_clear_interrupt_if(avr, &p->overflow, ov);

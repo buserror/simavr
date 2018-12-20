@@ -22,7 +22,6 @@
  */
 
 #include "sim_avr.h"
-#include "sim_core_declare.h"
 #include "avr_eeprom.h"
 #include "avr_flash.h"
 #include "avr_watchdog.h"
@@ -41,6 +40,8 @@ void m128rfr2_reset(struct avr_t * avr);
 #define _AVR_IO_H_
 #define __ASSEMBLER__
 #include "avr/iom128rfr2.h"
+
+#include "sim_core_declare.h"
 
 /*
  * Temporary hack for mangled avr-libc headers

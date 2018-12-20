@@ -74,31 +74,21 @@ clean: clean-${OBJ}
 	rm -rf ${target} *.a *.so *.exe
 	rm -f sim_core_*.h
 
-DESTDIR = /usr/local
-PREFIX = ${DESTDIR}
-
 install : all
 	$(MKDIR) $(DESTDIR)/include/simavr/avr
-	$(MKDIR) $(DESTDIR)/include/simavr/parts
 	$(INSTALL) -m644 sim/*.h $(DESTDIR)/include/simavr/
 	$(INSTALL) -m644 sim_core_*.h $(DESTDIR)/include/simavr/
 	$(INSTALL) -m644 sim/avr/*.h $(DESTDIR)/include/simavr/avr/
-	$(INSTALL) -m644 ../examples/parts/*.h $(DESTDIR)/include/simavr/parts/
 	$(MKDIR) $(DESTDIR)/lib
 	$(INSTALL) ${OBJ}/libsimavr.a $(DESTDIR)/lib/
-	$(INSTALL) ../examples/parts/${OBJ}/libsimavrparts.a $(DESTDIR)/lib/
 	$(MKDIR) $(DESTDIR)/lib/pkgconfig/
 	sed -e "s|PREFIX|${PREFIX}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
 		simavr-avr.pc >$(DESTDIR)/lib/pkgconfig/simavr-avr.pc
 	sed -e "s|PREFIX|${PREFIX}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
 		simavr.pc >$(DESTDIR)/lib/pkgconfig/simavr.pc
-	sed -e "s|PREFIX|${PREFIX}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
-		simavrparts.pc >$(DESTDIR)/lib/pkgconfig/simavrparts.pc
 ifeq (${shell uname}, Linux)
 	$(INSTALL) ${OBJ}/libsimavr.so.1 $(DESTDIR)/lib/
-	$(INSTALL) ../examples/parts/${OBJ}/libsimavrparts.so.1 $(DESTDIR)/lib/
 	ln -sf libsimavr.so.1 $(DESTDIR)/lib/libsimavr.so
-	ln -sf libsimavrparts.so.1 $(DESTDIR)/lib/libsimavrparts.so
 endif
 	$(MKDIR) $(DESTDIR)/bin
 	$(INSTALL) ${OBJ}/${target}.elf $(DESTDIR)/bin/simavr
@@ -176,7 +166,7 @@ sim_core_decl.h: sim_core_config.h $(cores) Makefile
 	for core in $$(grep -r avr_kind_t cores/|awk -F '[ :]' '{print $$1 "=" $$3;}') ; do \
 		file=$${core/=*}; global=$${core/*=}; \
 		upper=$$global; upper=$${upper/.c}; \
-		upper=$$(echo $$upper|tr '[a-z]' '[A-Z]'); \
+		upper=$$(echo $$global|tr '[a-z]' '[A-Z]'); \
 		decl+="#if CONFIG_$$upper\nextern avr_kind_t $$global;\n#endif\n"; \
 		array+="#if CONFIG_$$upper\n\t&$$global,\n#endif\n"; \
 	done ; \

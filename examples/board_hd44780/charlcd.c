@@ -100,7 +100,7 @@ void displayCB(void)		/* function called whenever redisplay needed */
 			colors[color][2], /* text */
 			colors[color][3] /* shadow */ );
 	glPopMatrix();
-    glutSwapBuffers();
+	glutSwapBuffers();
 }
 
 // gl timer. if the lcd is dirty, refresh display
@@ -164,7 +164,7 @@ main(
 	avr_load_firmware(avr, &f);
 	ac_input_init(avr, &ac_input);
 	avr_connect_irq(ac_input.irq + IRQ_AC_OUT, avr_io_getirq(avr,
-	        AVR_IOCTL_IOPORT_GETIRQ('D'), 2));
+			AVR_IOCTL_IOPORT_GETIRQ('D'), 2));
 
 	hd44780_init(avr, &hd44780, 20, 4);
 

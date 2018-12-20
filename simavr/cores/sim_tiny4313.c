@@ -19,7 +19,6 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "sim_core_declare.h"
 #include "avr_eeprom.h"
 #include "avr_watchdog.h"
 #include "avr_extint.h"
@@ -34,6 +33,8 @@ static void reset(struct avr_t * avr);
 #define _AVR_IO_H_
 #define __ASSEMBLER__
 #include "avr/iotn4313.h"
+
+#include "sim_core_declare.h"
 
 /*
  * This is a template for all of the tinyx5 devices, hopefully
