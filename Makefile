@@ -29,9 +29,6 @@ install:
 doc:
 	$(MAKE) -C doc RELEASE=$(RELEASE)
 
-install:
-	$(MAKE) -C simavr install
-
 clean:
 	$(MAKE) -C simavr clean
 	$(MAKE) -C tests clean
