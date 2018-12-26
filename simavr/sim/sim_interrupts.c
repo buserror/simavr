@@ -114,21 +114,25 @@ avr_raise_interrupt(
 {
 	if (!vector || !vector->vector)
 		return 0;
-	if (vector->pending) {
-		if (vector->trace)
-			printf("IRQ%d:I=%d already raised (enabled %d) (cycle %lld pc 0x%x)\n",
-				vector->vector, !!avr->sreg[S_I], avr_regbit_get(avr, vector->enable),
-				(long long int)avr->cycle, avr->pc);
-		return 0;
-	}
+
 	if (vector->trace)
 		printf("IRQ%d raising (enabled %d)\n",
 			vector->vector, avr_regbit_get(avr, vector->enable));
+
 	// always mark the 'raised' flag to one, even if the interrupt is disabled
 	// this allow "polling" for the "raised" flag, like for non-interrupt
 	// driven UART and so so. These flags are often "write one to clear"
 	if (vector->raised.reg)
 		avr_regbit_set(avr, vector->raised);
+
+	if (vector->pending) {
+		if (vector->trace)
+			printf("IRQ%d:I=%d already raised (enabled %d) (cycle %lld pc 0x%x)\n",
+				vector->vector, !!avr->sreg[S_I], avr_regbit_get(avr, vector->enable),
+				(long long int)avr->cycle, avr->pc);
+
+        return 0;
+	}
 
 	avr_raise_irq(vector->irq + AVR_INT_IRQ_PENDING, 1);
 	avr_raise_irq(avr->interrupts.irq + AVR_INT_IRQ_PENDING, 1);
@@ -271,7 +275,7 @@ avr_service_interrupts(
 		vector->pending = 0;
 		avr->interrupt_state = avr_has_pending_interrupts(avr);
 	} else {
-		if (vector && vector->trace)
+		if (vector->trace)
 			printf("IRQ%d calling\n", vector->vector);
 		_avr_push_addr(avr, avr->pc);
 		avr_sreg_set(avr, S_I, 0);

@@ -41,8 +41,8 @@ _timer_get_ocr(
 		int compi)
 {
 	return p->io.avr->data[p->comp[compi].r_ocr] |
-		      (p->comp[compi].r_ocrh ?
-		    		  (p->io.avr->data[p->comp[compi].r_ocrh] << 8) : 0);
+			  (p->comp[compi].r_ocrh ?
+					  (p->io.avr->data[p->comp[compi].r_ocrh] << 8) : 0);
 }
 
 static uint16_t
@@ -437,7 +437,7 @@ avr_timer_configure(
 
 	avr_t * avr = p->io.avr;
 	float resulting_clock = 0.0f; // used only for trace
-	float tov_cycles_exact;
+	float tov_cycles_exact = 0;
 
 	uint8_t as2 = p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_AS2;
 	uint8_t use_ext_clock = as2 || (p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_TN);
@@ -720,7 +720,7 @@ avr_timer_write_pending(
 		cp[compi] = avr_regbit_get(avr, p->comp[compi].interrupt.raised);
 
 	// write the value
-    // avr_core_watch_write(avr, addr, v); // This raises flags instead of clearing it.
+	// avr_core_watch_write(avr, addr, v); // This raises flags instead of clearing it.
 
 	// clear any interrupts & flags
 	avr_clear_interrupt_if(avr, &p->overflow, ov);

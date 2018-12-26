@@ -372,7 +372,8 @@ ep_fifo_usb_write(
 	if (len > ep_fifo_size(epstate)) {
 		printf("EP OVERFI\n");
 		len = sizeof epstate->bank[epstate->current_bank].bytes;
-	}memcpy(epstate->bank[epstate->current_bank].bytes, buf, len);
+	}
+	memcpy(epstate->bank[epstate->current_bank].bytes, buf, len);
 	epstate->bank[epstate->current_bank].tail = len;
 
 	return 0;

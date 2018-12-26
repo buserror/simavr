@@ -36,7 +36,7 @@ enum {
 DECLARE_FIFO(uint8_t,uart_pty_fifo, 512);
 
 typedef struct uart_pty_port_t {
-	int			tap : 1, crlf : 1;
+	unsigned int	tap : 1, crlf : 1;
 	int 		s;			// socket we chat on
 	char 		slavename[64];
 	uart_pty_fifo_t in;

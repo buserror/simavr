@@ -54,8 +54,8 @@ void m32u4_reset(struct avr_t * avr);
 
 #define _AVR_IO_H_
 #define __ASSEMBLER__
-#ifndef __AVR_ATmega32u4__
-#define __AVR_ATmega32u4__
+#ifndef __AVR_ATmega32U4__
+#define __AVR_ATmega32U4__
 #endif
 #include "avr/iom32u4.h"
 

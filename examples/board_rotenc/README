@@ -1,0 +1,6 @@
+board_rotenc
+
+This sample code demonstrates the use of a virtual Panasonic EVEP rotary
+encoder. The encoder is hooked up to an LED array, and is used to scroll
+an LED up and down. It behaves just like in real life, except contact
+bounce is not modelled.

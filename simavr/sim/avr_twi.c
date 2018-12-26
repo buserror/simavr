@@ -170,7 +170,8 @@ avr_twi_write(
 
 	uint8_t cleared = avr_regbit_get(avr, p->twi.raised);
 
-	/*int cleared = */avr_clear_interrupt_if(avr, &p->twi, twint);
+	/*int cleared = */
+	avr_clear_interrupt_if(avr, &p->twi, twint);
 //	AVR_TRACE(avr, "cleared %d\n", cleared);
 
 	if (!twsto && avr_regbit_get(avr, p->twsto)) {
