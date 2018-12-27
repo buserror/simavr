@@ -372,7 +372,8 @@ avr_callback_sleep_raw(
 		avr_cycle_count_t how_long)
 {
 	/* figure out how long we should wait to match the sleep deadline */
-	uint64_t deadline_ns = avr_cycles_to_nsec(avr, avr->cycle + how_long);
+	//uint64_t deadline_ns = avr_cycles_to_nsec(avr->clock.cycle + how_long);
+	uint64_t deadline_ns = avr_cycles_to_nsec(&(avr->clock),avr->clock.cycle + how_long);
 	uint64_t runtime_ns = avr_get_time_stamp(avr);
 	if (runtime_ns >= deadline_ns)
 		return;

@@ -37,6 +37,7 @@ button_auto_release(
 		void * param)
 {
 	button_t * b = (button_t *)param;
+
 	avr_raise_irq(b->irq + IRQ_BUTTON_OUT, 1);
 	printf("button_auto_release\n");
 	return 0;

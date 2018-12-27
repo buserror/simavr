@@ -135,7 +135,7 @@ avr_raise_interrupt(
 		if (vector->trace)
 			printf("IRQ%d:I=%d already raised (enabled %d) (cycle %lld pc 0x%x)\n",
 				vector->vector, !!avr->sreg[S_I], avr_regbit_get(avr, vector->enable),
-				(long long int)avr->cycle, avr->pc);
+				(long long int)avr->clock.cycle, avr->pc);
 
         return 0;
 	}

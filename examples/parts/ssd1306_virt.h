@@ -204,6 +204,6 @@ void
 ssd1306_connect (avr_t * avr,ssd1306_t * part, ssd1306_wiring_t * wiring);
 
 void
-ssd1306_connect_twi (ssd1306_t * part, ssd1306_wiring_t * wiring);
+ssd1306_connect_twi (avr_t * avr,ssd1306_t * part, ssd1306_wiring_t * wiring);
 
 #endif

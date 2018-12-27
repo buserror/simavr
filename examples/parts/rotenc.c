@@ -35,7 +35,7 @@ const rotenc_pins_t state_table[ROTENC_STATE_COUNT] = {
 
 static avr_cycle_count_t
 rotenc_state_change(
-	avr_t * avr,
+	avr_cycle_timer_pool_t * pool,
 	avr_cycle_count_t when,
 	void * param)
 {
@@ -83,20 +83,21 @@ rotenc_state_change(
  */
 static avr_cycle_count_t
 rotenc_second_state_change(
-	avr_t * avr,
+	avr_cycle_timer_pool_t * pool,
 	avr_cycle_count_t when,
 	void * param)
 {
-	return rotenc_state_change(avr, when, param);
+	return rotenc_state_change(pool, when, param);
 }
 
 static avr_cycle_count_t
 rotenc_button_auto_release(
-	avr_t * avr,
+	avr_cycle_timer_pool_t * pool,
 	avr_cycle_count_t when,
 	void * param)
 {
 	rotenc_t * rotenc = (rotenc_t *) param;
+
 	avr_raise_irq(rotenc->irq + IRQ_ROTENC_OUT_BUTTON_PIN, 1);
 	if (rotenc->verbose) {
 		printf("ROTENC: Button release\n");
@@ -115,7 +116,7 @@ rotenc_button_press(rotenc_t * rotenc)
 
 	// Pull up later
 	avr_cycle_timer_register_usec(
-		rotenc->avr,
+		&(rotenc->avr->cycle_timers),
 		ROTENC_BUTTON_DURATION_US,
 		rotenc_button_auto_release,
 		rotenc);
@@ -133,14 +134,14 @@ rotenc_twist(
 
 	// Half way to detent
 	avr_cycle_timer_register_usec(
-		rotenc->avr,
+		&(rotenc->avr->cycle_timers),
 		ROTENC_CLICK_DURATION_US/2,
 		rotenc_state_change,
 		rotenc);
 
 	// Detent point, 'click'
 	avr_cycle_timer_register_usec(
-		rotenc->avr,
+		&(rotenc->avr->cycle_timers),
 		ROTENC_CLICK_DURATION_US,
 		rotenc_second_state_change,
 		rotenc);

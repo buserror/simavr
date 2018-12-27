@@ -107,6 +107,7 @@ ssd1306_update_command_register (ssd1306_t *part)
 			if (part->addr_mode == SSD1306_ADDR_MODE_PAGE) {
 				part->cursor.column = (part->cursor.column & 0xF0)
 			                | (part->spi_data & 0xF);
+			}
 			parts_global_logger(&part->logger,LOG_DEBUG,"SSD1306: SET COLUMN LOW NIBBLE: 0x%02x\n",part->spi_data);
 			SSD1306_CLEAR_COMMAND_REG(part);
 			return;
@@ -116,6 +117,7 @@ ssd1306_update_command_register (ssd1306_t *part)
 			if (part->addr_mode == SSD1306_ADDR_MODE_PAGE) {
 				part->cursor.column = (part->cursor.column & 0xF)
 			                | ((part->spi_data & 0xF) << 4);
+			}
 			parts_global_logger(&part->logger,LOG_DEBUG,"SSD1306: SET COLUMN HIGH NIBBLE: 0x%02x\n", part->spi_data);
 			SSD1306_CLEAR_COMMAND_REG(part);
 			return;
@@ -253,7 +255,7 @@ ssd1306_update_setting (ssd1306_t *part)
  * whether we are in the process of setting a multi-
  * byte command.
  */
-static void
+void
 ssd1306_write_command (ssd1306_t *part)
 {
 	if (!part->command_register)
@@ -270,7 +272,7 @@ ssd1306_write_command (ssd1306_t *part)
 /*
  * Called when a TWI byte is sent
  */
-static void
+void
 ssd1306_twi_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	ssd1306_t * p = (ssd1306_t*) param;
@@ -335,7 +337,7 @@ ssd1306_twi_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 /*
  * Called when a SPI byte is sent
  */
-static void
+void
 ssd1306_spi_in_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	ssd1306_t * part = (ssd1306_t*) param;
@@ -363,7 +365,7 @@ ssd1306_spi_in_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 /*
  * Called when chip select changes
  */
-static void
+void
 ssd1306_cs_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	ssd1306_t * p = (ssd1306_t*) param;
@@ -375,7 +377,7 @@ ssd1306_cs_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 /*
  * Called when data/instruction changes
  */
-static void
+void
 ssd1306_di_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	ssd1306_t * part = (ssd1306_t*) param;
@@ -386,7 +388,7 @@ ssd1306_di_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 /*
  * Called when a RESET signal is sent
  */
-static void
+void
 ssd1306_reset_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	ssd1306_t * part = (ssd1306_t*) param;
@@ -446,18 +448,19 @@ ssd1306_connect (avr_t * avr,ssd1306_t * part, ssd1306_wiring_t * wiring)
 }
 
 void
-ssd1306_connect_twi (ssd1306_t * part, ssd1306_wiring_t * wiring)
+ssd1306_connect_twi (avr_t * avr,ssd1306_t * part, ssd1306_wiring_t * wiring)
 {
 	avr_connect_irq (
-            avr_io_getirq (part->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_OUTPUT),
+            avr_io_getirq (avr,
+							 AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_OUTPUT),
             part->irq + IRQ_SSD1306_TWI_OUT);
 
 	avr_connect_irq (
             part->irq + IRQ_SSD1306_TWI_IN,
-            avr_io_getirq (part->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT));
+            avr_io_getirq (avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT));
 
 	avr_connect_irq (
-	                avr_io_getirq (part->avr,
+	                avr_io_getirq (avr,
 	                               AVR_IOCTL_IOPORT_GETIRQ(
 	                                               wiring->reset.port),
 	                               wiring->reset.pin),

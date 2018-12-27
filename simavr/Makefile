@@ -109,8 +109,6 @@ install : all
 		simavr-avr.pc >$(DESTDIR)/lib/pkgconfig/simavr-avr.pc
 	sed -e "s|PREFIX|${PREFIX}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
 		simavr.pc >$(DESTDIR)/lib/pkgconfig/simavr.pc
-	sed -e "s|PREFIX|${PREFIX}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
-		simavr-parts.pc >$(DESTDIR)/lib/pkgconfig/simavr-parts.pc
 ifeq (${shell uname}, Linux)
 	$(INSTALL) ${OBJ}/libsimavr.so.1 $(DESTDIR)/lib/
 	ln -sf libsimavr.so.1 $(DESTDIR)/lib/libsimavr.so

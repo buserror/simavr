@@ -52,7 +52,7 @@ install: obj ${target}
 	$(INSTALL) -m644 *.h $(DESTDIR)/include/simavr/parts/
 	$(INSTALL) ${OBJ}/libsimavrparts.a $(DESTDIR)/lib/
 	sed -e "s|PREFIX|${PREFIX}|g" -e "s|VERSION|${SIMAVR_VERSION}|g" \
-		simavrparts.pc >$(DESTDIR)/lib/pkgconfig/simavrparts.pc
+		simavr-parts.pc >$(DESTDIR)/lib/pkgconfig/simavr-parts.pc
 ifeq (${shell uname}, Linux)
 	$(INSTALL) ${OBJ}/libsimavrparts.so.1 $(DESTDIR)/lib/
 	ln -sf libsimavrparts.so.1 $(DESTDIR)/lib/libsimavrparts.so
