@@ -51,6 +51,7 @@ typedef struct uart_pty_t {
 
 	pthread_t	thread;
 	int			xon;
+	int			hastap;
 
 	union {
 		struct {
