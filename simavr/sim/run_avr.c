@@ -42,6 +42,7 @@ display_usage(
 			"		[--mcu|-m <device>] Sets the MCU type for an .hex firmware\n"
 			"       [--list-cores]      List all supported AVR cores and exit\n"
 			"       [--help|-h]         Display this usage message and exit\n"
+			"       [--version]         Display program version and exit\n"
 			"       [--trace, -t]       Run full scale decoder trace\n"
 			"       [-ti <vector>]      Add traces for IRQ vector <vector>\n"
 			"       [--gdb|-g]          Listen for gdb connection on port 1234\n"
@@ -102,6 +103,9 @@ main(
 	for (int pi = 1; pi < argc; pi++) {
 		if (!strcmp(argv[pi], "--list-cores")) {
 			list_cores();
+		} else if (!strcmp(argv[pi], "--version")) {
+			printf("%s %s\n", basename(argv[0]), CONFIG_SIMAVR_VERSION);
+			exit(0);
 		} else if (!strcmp(argv[pi], "-h") || !strcmp(argv[pi], "--help")) {
 			display_usage(basename(argv[0]));
 		} else if (!strcmp(argv[pi], "-m") || !strcmp(argv[pi], "--mcu")) {
