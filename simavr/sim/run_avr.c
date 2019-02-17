@@ -52,7 +52,6 @@ display_usage(
 			"                           (can be passed more than once)\n"
 			"       <firmware>          A .hex or an ELF file. ELF files are\n"
 			"                           prefered, and can include debugging syms\n");
-	exit(1);
 }
 
 static void
@@ -65,7 +64,7 @@ list_cores()
 			printf("%s ", avr_kind[i]->names[ti]);
 		printf("\n");
 	}
-	exit(1);
+	exit(0);
 }
 
 static avr_t * avr = NULL;
@@ -96,29 +95,38 @@ main(
 	int trace_vectors_count = 0;
 	const char *vcd_input = NULL;
 
-	if (argc == 1)
+	if (argc == 1) {
 		display_usage(basename(argv[0]));
+		exit(1);
+	}
 
 	for (int pi = 1; pi < argc; pi++) {
 		if (!strcmp(argv[pi], "--list-cores")) {
 			list_cores();
 		} else if (!strcmp(argv[pi], "-h") || !strcmp(argv[pi], "--help")) {
 			display_usage(basename(argv[0]));
+			exit(0);
 		} else if (!strcmp(argv[pi], "-m") || !strcmp(argv[pi], "--mcu")) {
 			if (pi < argc-1)
 				snprintf(name, sizeof(name), "%s", argv[++pi]);
-			else
+			else {
 				display_usage(basename(argv[0]));
+				exit(1);
+			}
 		} else if (!strcmp(argv[pi], "-f") || !strcmp(argv[pi], "--freq")) {
 			if (pi < argc-1)
 				f_cpu = atoi(argv[++pi]);
-			else
+			else {
 				display_usage(basename(argv[0]));
+				exit(1);
+			}
 		} else if (!strcmp(argv[pi], "-i") || !strcmp(argv[pi], "--input")) {
 			if (pi < argc-1)
 				vcd_input = argv[++pi];
-			else
+			else {
 				display_usage(basename(argv[0]));
+				exit(1);
+			}
 		} else if (!strcmp(argv[pi], "-t") || !strcmp(argv[pi], "--trace")) {
 			trace++;
 		} else if (!strcmp(argv[pi], "--vcd-trace-name")) {
