@@ -38,8 +38,8 @@ display_usage(
 	const char * app)
 {
 	printf("Usage: %s [...] <firmware>\n", app);
-	printf( "		[--freq|-f <freq>]  Sets the frequency for an .hex firmware\n"
-			"		[--mcu|-m <device>] Sets the MCU type for an .hex firmware\n"
+	printf( "       [--freq|-f <freq>]  Sets the frequency for an .hex firmware\n"
+			"       [--mcu|-m <device>] Sets the MCU type for an .hex firmware\n"
 			"       [--list-cores]      List all supported AVR cores and exit\n"
 			"       [--help|-h]         Display this usage message and exit\n"
 			"       [--trace, -t]       Run full scale decoder trace\n"
