@@ -200,9 +200,13 @@ const struct mcu_t SIM_CORENAME = {
 	},
 	.timer1 = {
 		.name = '1',
-		// no wgm bits
+		// timer1 has no wgm bits, but we still need to define a wgm op so that
+		// we can set a proper kind/size to the timer
+		.wgm_op = {
+			[0] = AVR_TIMER_WGM_NORMAL8(),
+		},
 		.cs = { AVR_IO_REGBIT(TCCR1, CS10), AVR_IO_REGBIT(TCCR1, CS11), AVR_IO_REGBIT(TCCR1, CS12), AVR_IO_REGBIT(TCCR1, CS13) },
-		.cs_div = { 0, 0, 1 /* 2 */, 2 /* 4 */, 3 /* 8 */, 4 /* 16 */ },
+		.cs_div = { 0, 0, 1 /* 2 */, 2 /* 4 */, 3 /* 8 */, 4 /* 16 */, 5 /* 32 */, 6 /* 64 */, 7 /* 128 */, 8 /* 256 */, 9 /* 512 */, 10 /* 1024 */, 11 /* 2048 */, 12 /* 4096 */, 13 /* 8192 */, 14 /* 16384 */ },
 
 		.r_tcnt = TCNT1,
 
