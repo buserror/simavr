@@ -25,6 +25,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/time.h>
 #include "sim_avr.h"
 #include "sim_core.h"
 #include "sim_time.h"

@@ -29,6 +29,11 @@
 #include <signal.h>
 #ifdef __APPLE__
 #include <util.h>
+#elif defined (__FreeBSD__)
+#include <sys/types.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <libutil.h>
 #else
 #include <pty.h>
 #endif
