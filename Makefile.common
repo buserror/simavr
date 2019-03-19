@@ -120,8 +120,8 @@ ifeq (${WIN}, Msys)
 LDFLAGS      += -lws2_32
 endif
 
-# for clock_gettime on RHEL 6.9
-ifneq ("$(wildcard /usr/lib/librt.so)","")
+# for clock_gettime on RHEL 6.X
+ifneq ("$(wildcard /usr/lib/librt.so /usr/lib64/librt.so)","")
 LDFLAGS            += -lrt
 endif
 
