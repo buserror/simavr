@@ -21,7 +21,7 @@ Otherwise, `make` is enough to just start using __bin/simavr__. To install the _
 
 Supported IOs
 --------------
-* _eeprom_
+* _eeprom_ (Persistent when env variable SIMAVR_EEPROM_PATH is set)
 * _watchdog_
 * _IO ports_ (including pin interrupts)
 * _Timers_, 8 &16 (Normal, CTC and Fast PWM, the overflow interrupt too)

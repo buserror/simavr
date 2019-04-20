@@ -25,6 +25,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include "avr_eeprom.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 static avr_cycle_count_t avr_eempe_clear(struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
@@ -120,8 +125,13 @@ static int avr_eeprom_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_para
 static void avr_eeprom_dealloc(struct avr_io_t * port)
 {
 	avr_eeprom_t * p = (avr_eeprom_t *)port;
-	if (p->eeprom)
-		free(p->eeprom);
+	if (p->fd != -1) {
+		munmap(p->eeprom, p->eepromFileSize);
+		close(p->fd);
+	} else {
+		if (p->eeprom)
+			free(p->eeprom);
+	}
 	p->eeprom = NULL;
 }
 
@@ -131,14 +141,73 @@ static	avr_io_t	_io = {
 	.dealloc = avr_eeprom_dealloc,
 };
 
+void mapFile(avr_eeprom_t * p, const char * path)
+{
+	if (!path) {
+		p->fd = -1;
+		return;
+	}
+	p->fd = open(path, O_CREAT|O_RDWR, 0666);
+	if (p->fd == -1) {
+		perror("eeprom open");
+		return;
+	}
+
+	long pageSize = sysconf(_SC_PAGESIZE);
+	off_t wantedSize = pageSize * ((p->size / pageSize) + (p->size % pageSize ? 1 : 0));
+	p->eepromFileSize = wantedSize;
+
+	off_t size = lseek(p->fd, 0, SEEK_END);
+	if (size == (off_t) -1) {
+		perror("eeprom lseek");
+		goto error;
+	}
+	char buffer[1024];
+	memset(buffer, 0, 1024);
+	while(size < wantedSize) {
+		off_t toWrite = wantedSize - size;
+		if (toWrite > 1024) {
+			toWrite = 1024;
+		}
+		int written = write(p->fd, buffer, toWrite);
+		if (written == -1) {
+			perror("eeprom write");
+			goto error;
+		}
+		if (written != toWrite) {
+			fprintf(stderr, "eeprom short write\n");
+			goto error;
+		}
+		size += toWrite;
+	}
+
+	p->eeprom = mmap(0, wantedSize, PROT_READ|PROT_WRITE, MAP_SHARED, p->fd, 0);
+	if (p->eeprom == MAP_FAILED) {
+		perror("eeprom mmap");
+		goto error;
+	}
+	fprintf(stderr, "Using %s as EEPROM\n", path);
+	return;
+error:
+	close(p->fd);
+	p->fd = - 1;
+	p->eeprom = 0;
+	p->eepromFileSize = 0;
+	return;
+}
+
+
 void avr_eeprom_init(avr_t * avr, avr_eeprom_t * p)
 {
 	p->io = _io;
 //	printf("%s init (%d bytes) EEL/H:%02x/%02x EED=%02x EEC=%02x\n",
 //			__FUNCTION__, p->size, p->r_eearl, p->r_eearh, p->r_eedr, p->r_eecr);
 
-	p->eeprom = malloc(p->size);
-	memset(p->eeprom, 0xff, p->size);
+	mapFile(p, getenv("SIMAVR_EEPROM_PATH"));
+	if (p->fd == -1) {
+		p->eeprom = malloc(p->size);
+		memset(p->eeprom, 0xff, p->size);
+	}
 	
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->ready);
