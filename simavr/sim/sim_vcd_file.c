@@ -264,7 +264,8 @@ avr_vcd_init_input(
 			continue;
 
 		if (!strcmp(keyword, "$timescale")) {
-			double cnt = 0;
+			// sim_vcd header allows only integer factors of us: 1us, 2us, 3us, 10us, 15us, ...
+			uint64_t cnt = 0;
 			char *si = v->argv[1];
 
 			vcd->vcd_to_us = 1;
@@ -274,9 +275,26 @@ avr_vcd_init_input(
 				si++;
 			if (si && !*si)
 				si = v->argv[2];
-		//	if (!strcmp(si, "ns")) // TODO: Check that,
-		//		vcd->vcd_to_us = cnt;
-		//	printf("cnt %dus; unit %s\n", (int)cnt, si);
+			if (!strcmp(si, "ns")) {
+				if (cnt%1000==0) {
+					// save for conversion
+					cnt/=1000;
+					vcd->vcd_to_us = cnt;
+				} else {
+					perror("Cannot convert timescale from ns to us without loss of precision");
+					return -1;
+				}
+			} else if (!strcmp(si, "us")) {
+				// no calculation here
+				vcd->vcd_to_us = cnt;
+			} else if (!strcmp(si, "ms")) {
+				cnt*=1000;
+				vcd->vcd_to_us = cnt;
+			} else if (!strcmp(si, "s")) {
+				cnt*=1000000;
+				vcd->vcd_to_us = cnt;
+			}
+			// printf("cnt %dus; unit %s\n", (int)cnt, si);
 		} else if (!strcmp(keyword, "$var")) {
 			const char *name = v->argv[4];
 
