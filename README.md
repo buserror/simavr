@@ -17,6 +17,12 @@ On OSX, we recommend using [homebrew](https://brew.sh):
     brew tap osx-cross/avr
     brew install --HEAD simavr
 
+On Ubuntu, SimAVR is available in the Bionic package source:
+
+    apt-get install simavr
+
+(Note that the command is made available under the name `simavr` not `run_avr`.)
+
 Otherwise, `make` is enough to just start using __bin/simavr__. To install the __simavr__ command system-wide, `make install RELEASE=1`.
 
 Supported IOs
