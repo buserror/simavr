@@ -104,6 +104,18 @@ avr_io_getirq(
 		avr_t * avr,
 		uint32_t ctl,
 		int index);
+typedef struct avr_io_instance_t {
+	avr_io_t	io;
+	char name;
+} avr_io_instance_t;
+// finds an IO module instance by its kind (e.g. "port" for ioport, "uart" for usart and so on)
+// and (if applicable) symbolic name (e.g. 'B' for ioport, '0' for uart)
+avr_io_t *
+avr_io_findinstance(
+		avr_t * avr,
+		const char * kind,
+		char name);
+
 
 // get the IRQ for an absolute IO address
 // this allows any code to hook an IRQ in any io address, for example

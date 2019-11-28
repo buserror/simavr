@@ -296,3 +296,31 @@ avr_deallocate_ios(
 	}
 	avr->io_port = NULL;
 }
+
+avr_io_t *
+avr_io_findinstance(
+		avr_t * avr,
+		const char * kind,
+		char name)
+{
+	avr_io_t * io = avr->io_port;
+	while (io) {
+		if (!strcmp(io->kind, kind))
+		{
+			if (!strcmp(kind, "port") ||
+					!strcmp(kind, "uart") ||
+					!strcmp(kind, "usb") ||
+					!strcmp(kind, "spi") ||
+					!strcmp(kind, "twi") ||
+					!strcmp(kind, "timer")) {
+				avr_io_instance_t * io_inst = (avr_io_instance_t *)io;
+				if (io_inst->name == name)
+					return io;
+			} else {
+				return io;
+			}
+		}
+		io = io->next;
+	}
+	return NULL;
+}

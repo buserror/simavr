@@ -60,6 +60,9 @@ typedef struct elf_firmware_t {
 		uint8_t mask, value;
 	} external_state[8];
 
+	// Bitbang turn on for peripheral instance mask, like BITBANG_ON_SPI('0') | BITBANG_ON_UART('1')
+	uint64_t	bitbang_on_mask;
+
 	// register to listen to for commands from the firmware
 	uint16_t	command_register_addr;
 	uint16_t	console_register_addr;

@@ -63,6 +63,7 @@ enum {
 	AVR_MMCU_TAG_VCD_PORTPIN,
 	AVR_MMCU_TAG_VCD_IRQ,
 	AVR_MMCU_TAG_PORT_EXTERNAL_PULL,
+	AVR_MMCU_TAG_BITBANG,
 };
 
 enum {
@@ -71,6 +72,18 @@ enum {
 	SIMAVR_CMD_VCD_STOP_TRACE,
 	SIMAVR_CMD_UART_LOOPBACK,
 };
+
+#define BITBANG_ON_SPI(_name) \
+	((uint64_t)(_name >= '0' ? ((1 << (_name - '0'))&0xFF) : (1 << 8)) << 0)
+
+#define BITBANG_ON_UART(_name) \
+	((uint64_t)((1 << (_name - '0'))&0xFF) << 16)
+
+#define BITBANG_ON_TWI(_name) \
+	((uint64_t)(1) << 24)
+
+#define BITBANG_ON_LIN(_name) \
+	((uint64_t)(1) << 32)
 
 #if __AVR__
 /*
@@ -85,6 +98,12 @@ struct avr_mmcu_long_t {
 	uint8_t tag;
 	uint8_t len;
 	uint32_t val;
+} __attribute__((__packed__));
+
+struct avr_mmcu_longlong_t {
+	uint8_t tag;
+	uint8_t len;
+	uint64_t val;
 } __attribute__((__packed__));
 
 struct avr_mmcu_string_t {
@@ -121,6 +140,13 @@ struct avr_mmcu_vcd_trace_t {
 #define DO_CONCAT2(_a, _b) _a##_b
 #define DO_CONCAT(_a, _b) DO_CONCAT2(_a,_b)
 
+#define AVR_MCU_LONGLONG(_tag, _val) \
+	const struct avr_mmcu_longlong_t DO_CONCAT(DO_CONCAT(_, _tag), __LINE__) _MMCU_ = {\
+		.tag = _tag,\
+		.len = sizeof(struct avr_mmcu_longlong_t) - 2,\
+		.val = _val,\
+	}
+
 #define AVR_MCU_LONG(_tag, _val) \
 	const struct avr_mmcu_long_t DO_CONCAT(DO_CONCAT(_, _tag), __LINE__) _MMCU_ = {\
 		.tag = _tag,\
@@ -130,6 +156,18 @@ struct avr_mmcu_vcd_trace_t {
 
 #define AVR_MCU_BYTE(_tag, _val) \
 	const uint8_t _##_tag _MMCU_ = { _tag, 1, _val }
+
+/*!
+ * This Macro allows you turn on or off a bitbang feature for
+ * peripherals, which support it (plese look code of the corresponding
+ * module to ensure it's implemented).
+ * By default bitbang is off for every peripheral.
+ * You can turn it on using bitmask for specific peripheral instance,
+ * e.g. the following turns it on for SPI0 and for USART1 in SPI mode:
+ *	AVR_MCU_BITBANG(BITBANG_ON_SPI(0) | BITBANG_ON_SPI('1'));
+ */
+#define AVR_MCU_BITBANG(_peripheral_on_mask) \
+	AVR_MCU_LONGLONG(AVR_MMCU_TAG_BITBANG, _peripheral_on_mask)
 
 /*!
  * This Macro allows you to specify traces for the VCD file output

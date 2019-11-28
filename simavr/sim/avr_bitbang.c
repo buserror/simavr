@@ -29,6 +29,7 @@ extern "C" {
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "avr_bitbang.h"
 
@@ -99,7 +100,12 @@ static void avr_bitbang_write_bit(avr_bitbang_t *p)
 
 	// output to HW pin
 	if ( p->p_out.port ) {
-		avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_IOPORT_GETIRQ( p->p_out.port ), p->p_out.pin), bit);
+		avr_raise_irq(p->p_out.irq, bit);
+		uint16_t addr = p->p_out.ioport->r_port;
+		uint8_t value = (p->avr->data[addr] & ~(1 << p->p_out.pin)) | (!!bit << p->p_out.pin);
+		// at least avr->data[addr] update is required, otherwise port state is broken
+		// also triggering vcd signal would be nice here
+		avr_core_watch_write(p->avr, addr, value);
 	}
 
 	// module callback
@@ -130,7 +136,12 @@ static void avr_bitbang_clk_edge(avr_bitbang_t *p)
 
 	// generate clock output on HW pin
 	if ( p->clk_generate && p->p_clk.port ) {
-		avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_IOPORT_GETIRQ( p->p_clk.port ), p->p_clk.pin), clk);
+		avr_raise_irq(p->p_clk.irq, clk);
+		uint16_t addr = p->p_clk.ioport->r_port;
+		uint8_t value = (p->avr->data[addr] & ~(1 << p->p_clk.pin)) | (!!clk << p->p_clk.pin);
+		// at least avr->data[addr] update is required, otherwise port state is broken
+		// also triggering vcd signal would be nice here
+		avr_core_watch_write(p->avr, addr, value);
 	}
 
 	if ( phase ) {
@@ -173,6 +184,36 @@ static void avr_bitbang_clk_hook(struct avr_irq_t * irq, uint32_t value, void * 
 		return;
 
 	avr_bitbang_clk_edge(p);
+}
+
+/**
+ * define bitbang pins
+ *
+ * @param p			bitbang structure
+ * @param clk		clock pin
+ * @param in		incoming data pin
+ * @param out		outgoing data pin
+ */
+void avr_bitbang_defpins(avr_bitbang_t * p, avr_iopin_t *clk, avr_iopin_t *in, avr_iopin_t *out)
+{
+	if (clk) {
+		p->p_clk.port = clk->port;
+		p->p_clk.pin = clk->pin;
+		p->p_clk.ioport = (avr_ioport_t *)avr_io_findinstance(p->avr, "port", clk->port);
+		p->p_clk.irq = avr_io_getirq(p->avr, AVR_IOCTL_IOPORT_GETIRQ( p->p_clk.port ), p->p_clk.pin);
+	}
+	if (in) {
+		p->p_in.port = in->port;
+		p->p_in.pin = in->pin;
+		p->p_in.ioport = (avr_ioport_t *)avr_io_findinstance(p->avr, "port", in->port);
+		p->p_in.irq = avr_io_getirq(p->avr, AVR_IOCTL_IOPORT_GETIRQ( p->p_in.port ), p->p_in.pin);
+	}
+	if (out) {
+		p->p_out.port = out->port;
+		p->p_out.pin = out->pin;
+		p->p_out.ioport = (avr_ioport_t *)avr_io_findinstance(p->avr, "port", out->port);
+		p->p_out.irq = avr_io_getirq(p->avr, AVR_IOCTL_IOPORT_GETIRQ( p->p_out.port ), p->p_out.pin);
+	}
 }
 
 /**
@@ -220,7 +261,7 @@ void avr_bitbang_start(avr_bitbang_t * p)
 	} else {
 		// slave mode -> attach clock function to clock pin
 		///@todo test
-		avr_irq_register_notify( avr_io_getirq(p->avr, AVR_IOCTL_IOPORT_GETIRQ( p->p_clk.port ), p->p_clk.pin), avr_bitbang_clk_hook, p);
+		avr_irq_register_notify( p->p_clk.irq, avr_bitbang_clk_hook, p);
 	}
 
 }
@@ -238,7 +279,7 @@ void avr_bitbang_stop(avr_bitbang_t * p)
 
 	p->enabled = 0;
 	avr_cycle_timer_cancel(p->avr, avr_bitbang_clk_timer, p);
-	avr_irq_unregister_notify( avr_io_getirq(p->avr, AVR_IOCTL_IOPORT_GETIRQ( p->p_clk.port ), p->p_clk.pin), avr_bitbang_clk_hook, p);
+	avr_irq_unregister_notify( p->p_clk.irq, avr_bitbang_clk_hook, p);
 }
 
 #ifdef __cplusplus
