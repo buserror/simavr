@@ -46,55 +46,18 @@ CFLAGS		+= -g
 CORE_CFLAGS	= -DAVR_CORE=1
 
 ifeq (${shell uname}, Darwin)
- # gcc 4.2 from MacOS is really not up to scratch anymore
- CC			= clang
- AVR_ROOT 	:= "/Applications/Arduino.app/Contents/Java/hardware/tools/avr/"
- AVR 		:= ${AVR_ROOT}/bin/avr-
- # Thats for MacPorts libelf
- ifeq (${shell test -d /opt/local && echo Exists}, Exists)
-  ifneq (${shell test -d /opt/local/avr && echo Exists}, Exists)
-   $(error Please install avr-gcc: port install avr-gcc avr-libc)
-  endif
-  ifneq (${shell test -d /opt/local/include/libelf && echo Exists}, Exists)
-   $(error Please install libelf: port install libelf)
-  endif
-  CC		= clang
-  IPATH		+= /opt/local/include /opt/local/include/libelf
-  LFLAGS	= -L/opt/local/lib/
-  AVR 		:= /opt/local/bin/avr-
- else
-  # That's for Homebrew libelf and avr-gcc support
-  HOMEBREW_PREFIX ?= /usr/local
-  ifeq (${shell test -d $(HOMEBREW_PREFIX)/Cellar && echo Exists}, Exists)
-   ifneq (${shell test -d $(HOMEBREW_PREFIX)/Cellar/avr-gcc/ && echo Exists}, Exists)
-    $(error Please install avr-gcc: brew tap osx-cross/homebrew-avr ; brew install avr-libc)
-   endif
-   ifneq (${shell test -d $(HOMEBREW_PREFIX)/Cellar/libelf/ && echo Exists}, Exists)
-    $(error Please install libelf: brew install libelf)
-   endif
-   CC			= clang
-   IPATH		+= $(HOMEBREW_PREFIX)/include
-   LFLAGS		= -L$(HOMEBREW_PREFIX)/lib/
-   CFLAGS		+= -I/$(HOMEBREW_PREFIX)/include/libelf
-   AVR_ROOT		:= $(firstword $(wildcard $(HOMEBREW_PREFIX)/Cellar/avr-libc/*/))
-   AVR			:= $(HOMEBREW_PREFIX)/bin/avr-
-  endif
- endif
-else
- AVR 		:= avr-
+ -include ${ROOT_DIR}/Makefile.common.mac
 endif
 
-# FIXME uname -o doesn't work on bsd derivatives
-#WIN := ${shell uname -o}
+ifeq (${shell uname -o}, Msys)
+ -include ${ROOT_DIR}/Makefile.common.win
+endif
 
-ifeq (${WIN}, Msys)
-AVR_ROOT    := ${shell echo "${AVR32_HOME}" | tr '\\' '/'}
-AVR         := ${AVR_ROOT}/bin/avr-
-IPATH       += ${PREFIX}/include
-CFLAGS      += -I${PREFIX}/include
-LDFLAGS		+= -L/lib -L/local/lib
-CFLAGS 		+= -DNO_COLOR
-else
+ifeq (${shell uname -o}, Cygwin)
+ -include ${ROOT_DIR}/Makefile.common.win
+endif
+
+ifneq (${WIN}, 1)
 CFLAGS 		+= -fPIC
 endif
 
@@ -116,7 +79,7 @@ LDFLAGS 	+= -L${LIBDIR} -lsimavr -lm
 
 LDFLAGS 	+= -lelf
 
-ifeq (${WIN}, Msys)
+ifeq (${WIN}, 1)
 LDFLAGS      += -lws2_32
 endif
 
@@ -142,6 +105,26 @@ else
 E		= @
 endif
 
+.PHONY: debug
+debug:
+ifeq ($(E),)
+	@echo "*****************************************************************************"
+	@echo "ROOT_DIR=${ROOT_DIR}"
+	@echo "ARCH=${ARCH}"
+	@echo "CFLAGS=${CFLAGS}"
+	@echo "CORE_CFLAGS=${CORE_CFLAGS}"
+	@echo "OBJ=${OBJ}"
+	@echo "LIBDIR=${LIBDIR}"
+	@echo "LDFLAGS=${LDFLAGS}"
+	@echo "WIN=${WIN}"
+	@echo "AVR_ROOT=${AVR_ROOT}"
+	@echo "AVR=${AVR}"
+	@echo "IPATH=${IPATH}"
+	@echo "CPPFLAGS=${CPPFLAGS}"
+	@echo "AVR_CPPFLAGS=${AVR_CPPFLAGS}"
+	@echo "*****************************************************************************"
+endif
+
 # The code is compiled "optimized" to the max.
 #
 # The weird "-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000"
@@ -149,16 +132,18 @@ endif
 # otherwise the --gc-sections will delete it.
 
 %.hex: %.axf
-	@${AVR}objcopy -j .text -j .data -j .eeprom -O ihex ${<} ${@}
+	${E}"${AVR}objcopy" -j .text -j .data -j .eeprom -O ihex ${<} ${@}
 
 %.s: %.axf
-	@${AVR}objdump -j .text -j .data -j .bss -d  ${<} > ${@}
+	${E}"${AVR}objdump" -j .text -j .data -j .bss -d  ${<} > ${@}
 
 # --mcall-prologues can be used here, but messes up debugging a little
 %.axf: %.c
+ifneq ($(E),)
 	@echo AVR-CC ${<}
-	@part=${<} ; part=$${part/_*}; \
-	${AVR}gcc -Wall -gdwarf-2 -Os -std=gnu99 \
+endif
+	${E}part=${<} ; part=$${part/_*}; \
+	"${AVR}gcc" -Wall -gdwarf-2 -Os -std=gnu99 \
 			-mmcu=$$part \
 			-DF_CPU=8000000 \
 			-fno-inline-small-functions \
@@ -167,7 +152,7 @@ endif
 			-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000 \
 			-I../simavr/sim/avr -I../../simavr/sim/avr \
 			${^} -o ${@}
-	@${AVR}size ${@}|sed '1d'
+	${E}"${AVR}size" ${@}|sed '1d'
 
 # this rule has precedence
 ${OBJ}/sim_%.o : cores/sim_%.c

@@ -17,9 +17,6 @@
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
 SHELL 			:= ${shell which bash}
-SIMAVR_VERSION	:= ${shell \
-	git describe --abbrev=0 --tags || \
-	echo "unknown" }
 SIMAVR_REVISION	= 2
 
 target	= run_avr
@@ -63,12 +60,11 @@ ${OBJ}/${target}.elf	: ${OBJ}/${target}.o
 
 ${target}	: ${OBJ}/${target}.elf
 
-# FIXME uname -o doesn't work on BSD
-#ifeq (${shell uname -o}, Msys)
-#	ln -sf $< $@.exe
-#else
+ifeq (${WIN}, 1)
+	ln -sf $< $@.exe
+else
 	ln -sf $< $@
-#endif
+endif
 
 clean: clean-${OBJ}
 	rm -rf ${target} *.a *.so *.exe

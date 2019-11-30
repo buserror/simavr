@@ -1,0 +1,7 @@
+WIN         := 1
+AVR_ROOT    := ${shell echo "${AVR32_HOME}" | tr '\\' '/'}
+AVR         := ${AVR_ROOT}/bin/avr-
+IPATH       += ${PREFIX}/include
+CFLAGS      += -I${PREFIX}/include
+CFLAGS 		+= -DNO_COLOR
+LDFLAGS		+= -L/lib -L/local/lib
