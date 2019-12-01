@@ -30,8 +30,8 @@ extern "C" {
 
 // Windows with MinGW
 
-#include <windows.h>
 #include <winsock2.h>
+#include <windows.h>
 #include <ws2tcpip.h>
 
 #define send(sockfd, buf, len, flags) \
