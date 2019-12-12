@@ -38,20 +38,23 @@ display_usage(
 	const char * app)
 {
 	printf("Usage: %s [...] <firmware>\n", app);
-	printf( "       [--freq|-f <freq>]  Sets the frequency for an .hex firmware\n"
-			"       [--mcu|-m <device>] Sets the MCU type for an .hex firmware\n"
-			"       [--list-cores]      List all supported AVR cores and exit\n"
-			"       [--help|-h]         Display this usage message and exit\n"
-			"       [--trace, -t]       Run full scale decoder trace\n"
-			"       [-ti <vector>]      Add traces for IRQ vector <vector>\n"
-      "       [--gdb|-g [<port>]] Listen for gdb connection on <port> (default 1234)\n"
-			"       [-ff <.hex file>]   Load next .hex file as flash\n"
-			"       [-ee <.hex file>]   Load next .hex file as eeprom\n"
-			"       [--input|-i <file>] A .vcd file to use as input signals\n"
-			"       [-v]                Raise verbosity level\n"
-			"                           (can be passed more than once)\n"
-			"       <firmware>          A .hex or an ELF file. ELF files are\n"
-			"                           prefered, and can include debugging syms\n");
+	printf(
+			"       [--freq|-f <freq>]            Sets the frequency for an .hex firmware\n"
+			"       [--mcu|-m <device>]           Sets the MCU type for an .hex firmware\n"
+			"       [--list-cores]                List all supported AVR cores and exit\n"
+			"       [--help|-h]                   Display this usage message and exit\n"
+			"       [--trace, -t]                 Run full scale decoder trace\n"
+			"       [-ti <vector>]                Add traces for IRQ vector <vector>\n"
+      "       [--gdb|-g [<port>]]           Listen for gdb connection on <port> (default 1234)\n"
+			"       [-ff <.hex file>]             Load next .hex file as flash\n"
+			"       [-ee <.hex file>]             Load next .hex file as eeprom\n"
+			"       [--input|-i <file>]           A .vcd file to use as input signals\n"
+      "       [--vcd-trace-file|-o <file>]  A .vcd file to output signals (default gtkwave_trace.vcd)\n"
+      "       [--add-vcd-trace|-a <spec>]   Add trace for <spec>: name={portpin|irq|trace}@addr/mask\n"
+			"       [-v]                          Raise verbosity level\n"
+			"                                     (can be passed more than once)\n"
+			"       <firmware>                    A .hex or an ELF file. ELF files are\n"
+			"                                     prefered, and can include debugging syms\n");
 	exit(1);
 }
 
@@ -122,6 +125,7 @@ main(
 				display_usage(basename(argv[0]));
 		} else if (!strcmp(argv[pi], "-t") || !strcmp(argv[pi], "--trace")) {
 			trace++;
+    } else if (!strcmp(argv[pi], "-a") || !strcmp(argv[pi], "--add-vcd-trace")) {
 		} else if (!strcmp(argv[pi], "--vcd-trace-name")) {
 			if (pi + 1 >= argc) {
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
@@ -129,7 +133,6 @@ main(
 			}
 			++pi;
 			snprintf(f.tracename, sizeof(f.tracename), "%s",  argv[pi]);
-		} else if (!strcmp(argv[pi], "--add-vcd-trace")) {
 			if (pi + 1 >= argc) {
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
 				exit(1);
@@ -186,7 +189,7 @@ main(
 			);
 
 			++f.tracecount;
-		} else if (!strcmp(argv[pi], "--vcd-trace-file")) {
+    } else if (!strcmp(argv[pi], "-o") || !strcmp(argv[pi], "--vcd-trace-file")) {
 			if (pi + 1 >= argc) {
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
 				exit(1);
