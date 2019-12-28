@@ -23,7 +23,13 @@ On Ubuntu, SimAVR is available in the Bionic package source:
 
 (Note that the command is made available under the name `simavr` not `run_avr`.)
 
-Otherwise, `make` is enough to just start using __bin/simavr__. To install the __simavr__ command system-wide, `make install RELEASE=1`.
+Installing from source on Ubuntu 18.04:
+
+	sudo apt-get install pkg-config libelf-dev freeglut3-dev libncurses5-dev gcc-avr avr-libc
+	make
+	make install RELEASE=1 # Optional
+
+`make` is enough to just start using __bin/simavr__. To install the __simavr__ command system-wide, run `make install RELEASE=1`.
 
 Supported IOs
 --------------
