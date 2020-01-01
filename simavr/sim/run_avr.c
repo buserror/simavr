@@ -44,7 +44,7 @@ display_usage(
 			"       [--help|-h]         Display this usage message and exit\n"
 			"       [--trace, -t]       Run full scale decoder trace\n"
 			"       [-ti <vector>]      Add traces for IRQ vector <vector>\n"
-			"       [--gdb|-g]          Listen for gdb connection on port 1234\n"
+			"       [--gdb|-g [<port>]] Listen for gdb connection on <port> (default 1234)\n"
 			"       [-ff <.hex file>]   Load next .hex file as flash\n"
 			"       [-ee <.hex file>]   Load next .hex file as eeprom\n"
 			"       [--input|-i <file>] A .vcd file to use as input signals\n"
@@ -90,6 +90,7 @@ main(
 	int trace = 0;
 	int gdb = 0;
 	int log = 1;
+	int port = 1234;
 	char name[24] = "";
 	uint32_t loadBase = AVR_SEGMENT_OFFSET_FLASH;
 	int trace_vectors[8] = {0};
@@ -196,6 +197,8 @@ main(
 				trace_vectors[trace_vectors_count++] = atoi(argv[++pi]);
 		} else if (!strcmp(argv[pi], "-g") || !strcmp(argv[pi], "--gdb")) {
 			gdb++;
+			if (pi < (argc-2) && argv[pi+1][0] != '-' )
+				port = atoi(argv[++pi]);
 		} else if (!strcmp(argv[pi], "-v")) {
 			log++;
 		} else if (!strcmp(argv[pi], "-ee")) {
@@ -273,7 +276,7 @@ main(
 	}
 
 	// even if not setup at startup, activate gdb if crashing
-	avr->gdb_port = 1234;
+	avr->gdb_port = port;
 	if (gdb) {
 		avr->state = cpu_Stopped;
 		avr_gdb_init(avr);
