@@ -382,8 +382,9 @@ avr_callback_run_raw(
 			return;
 		}
 		/*
-		 * try to sleep for as long as we can (?)
+		 * try to sleep for as long as we can, capped at 1 ms
 		 */
+		if (sleep > 1000) sleep = 1000;
 		avr->sleep(avr, sleep);
 		avr->cycle += 1 + sleep;
 	}
