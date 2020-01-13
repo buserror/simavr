@@ -590,7 +590,7 @@ _avr_flags_znv0s (struct avr_t * avr, uint8_t res)
 
 static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
 {
-	uint16_t o = _avr_flash_read16le(avr, pc) & 0xfc0f;
+	uint16_t o = _avr_flash_read16le(avr, pc) & 0xfe0f;
 	return	o == 0x9200 || // STS ! Store Direct to Data Space
 			o == 0x9000 || // LDS Load Direct from Data Space
 			o == 0x940c || // JMP Long Jump
