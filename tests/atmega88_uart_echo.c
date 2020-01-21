@@ -19,6 +19,7 @@
  * The macro adds a section to the ELF file with useful
  * information for the simulator
  */
+#define F_CPU 8000000L
 #include "avr_mcu_section.h"
 AVR_MCU(F_CPU, "atmega88");
 // tell simavr to listen to commands written in this (unused) register
@@ -95,7 +96,7 @@ int main()
 	cli();
 	printf("Received: %s", buffer);
 
-	// this quits the simulator, since interupts are off
-	// this is a "feature" that allows running tests cases and exit
-	sleep_cpu();
+
+	// this tells simavr to quit with error code 1
+    GPIOR0 = SIMAVR_CMD_EXIT_CODE_1;
 }

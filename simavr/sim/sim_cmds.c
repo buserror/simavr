@@ -180,6 +180,26 @@ _simavr_cmd_uart_loopback(
 	return 0;
 }
 
+static int
+_simavr_cmd_exit_code_0(
+        avr_t * avr,
+        uint8_t v,
+        void * param)
+{
+    exit(0);
+    return 0; //we never execute this, but it prevents a compiler warning
+}
+
+static int
+_simavr_cmd_exit_code_1(
+        avr_t * avr,
+        uint8_t v,
+        void * param)
+{
+    exit(1);
+    return 0; //we never execute this, but it prevents a compiler warning
+}
+
 void
 avr_cmd_init(
 		avr_t * avr)
@@ -190,4 +210,6 @@ avr_cmd_init(
 	avr_cmd_register(avr, SIMAVR_CMD_VCD_START_TRACE, &_simavr_cmd_vcd_start_trace, NULL);
 	avr_cmd_register(avr, SIMAVR_CMD_VCD_STOP_TRACE, &_simavr_cmd_vcd_stop_trace, NULL);
 	avr_cmd_register(avr, SIMAVR_CMD_UART_LOOPBACK, &_simavr_cmd_uart_loopback, NULL);
+    avr_cmd_register(avr, SIMAVR_CMD_EXIT_CODE_0, &_simavr_cmd_exit_code_0, NULL);
+    avr_cmd_register(avr, SIMAVR_CMD_EXIT_CODE_1, &_simavr_cmd_exit_code_1, NULL);
 }
