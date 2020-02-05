@@ -320,6 +320,34 @@ gdb_handle_command(
 
 				gdb_send_reply(g, rep);
 				break;
+			} else if (strncmp(cmd, "RegisterInfo", 12) == 0) {
+				// Send back the information we have on this register (if any).
+				long n = strtol(cmd + 12, NULL, 16);
+				if (n < 32) {
+					// General purpose (8-bit) registers.
+					snprintf(rep, sizeof(rep), "name:r%ld;bitsize:8;offset:0;encoding:uint;format:hex;set:General Purpose Registers;gcc:%ld;dwarf:%ld;", n, n, n);
+					gdb_send_reply(g, rep);
+					break;
+				} else if (n == 32) {
+					// SREG (flags) register.
+					snprintf(rep, sizeof(rep), "name:sreg;bitsize:8;offset:0;encoding:uint;format:binary;set:General Purpose Registers;gcc:32;dwarf:32;");
+					gdb_send_reply(g, rep);
+					break;
+				} else if (n == 33) {
+					// SP register (SPH and SPL combined).
+					snprintf(rep, sizeof(rep), "name:sp;bitsize:16;offset:0;encoding:uint;format:hex;set:General Purpose Registers;gcc:33;dwarf:33;generic:sp;");
+					gdb_send_reply(g, rep);
+					break;
+				} else if (n == 34) {
+					// PC register
+					snprintf(rep, sizeof(rep), "name:pc;bitsize:32;offset:0;encoding:uint;format:hex;set:General Purpose Registers;gcc:34;dwarf:34;generic:pc;");
+					gdb_send_reply(g, rep);
+					break;
+				} else {
+					// Register not available.
+					// By sending back nothing, the debugger knows it has read
+					// all available registers.
+				}
 			}
 			gdb_send_reply(g, "");
 			break;
