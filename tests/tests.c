@@ -16,10 +16,7 @@ int tests_disable_stdout = 1;
 static char *test_name = "(uninitialized test)";
 static int finished = 0;
 
-#ifdef __MINGW32__
-#define restore_stderr()	{}
-#define map_stderr()		{}
-#else
+#if defined(__GLIBC__) && !defined(__MINGW32__)
 static FILE *orig_stderr = NULL;
 #define restore_stderr()	{ if (orig_stderr) stderr = orig_stderr; }
 #define map_stderr()		{ if (tests_disable_stdout) { \
@@ -27,6 +24,9 @@ static FILE *orig_stderr = NULL;
 								fclose(stdout);			\
 								stderr = stdout;		\
 							} }
+#else
+#define restore_stderr()	{}
+#define map_stderr()		{}
 #endif
 
 static void atexit_handler(void) {
