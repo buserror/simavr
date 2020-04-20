@@ -47,7 +47,6 @@ avr_adc_read_l(
 		struct avr_t * avr, avr_io_addr_t addr, void * param)
 {
 	avr_adc_t * p = (avr_adc_t *)param;
-
 	if (p->read_status)	// conversion already done
 		return avr_core_watch_read(avr, addr);
 
@@ -273,7 +272,7 @@ avr_adc_irq_notify(
 	avr_t * avr = p->io.avr;
 
 	switch (irq->irq) {
-		case ADC_IRQ_ADC0 ... ADC_IRQ_ADC7: {
+		case ADC_IRQ_ADC0 ... ADC_IRQ_ADC15: {
 			p->adc_values[irq->irq] = value;
 		} 	break;
 		case ADC_IRQ_TEMP: {
