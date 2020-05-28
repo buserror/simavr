@@ -245,15 +245,16 @@ uart_pty_init(
 	p->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_UART_PTY_COUNT, irq_names);
 	avr_irq_register_notify(p->irq + IRQ_UART_PTY_BYTE_IN, uart_pty_in_hook, p);
 
-	int hastap = (getenv("SIMAVR_UART_TAP") && atoi(getenv("SIMAVR_UART_TAP"))) ||
-			(getenv("SIMAVR_UART_XTERM") && atoi(getenv("SIMAVR_UART_XTERM"))) ;
+	const int hastap = (getenv("SIMAVR_UART_TAP") && atoi(getenv("SIMAVR_UART_TAP"))) ||
+			(getenv("SIMAVR_UART_XTERM") && atoi(getenv("SIMAVR_UART_XTERM")));
+	p->hastap = hastap;
 
 	for (int ti = 0; ti < 1 + hastap; ti++) {
 		int m, s;
 
 		if (openpty(&m, &s, p->port[ti].slavename, NULL, NULL) < 0) {
 			fprintf(stderr, "%s: Can't create pty: %s", __FUNCTION__, strerror(errno));
-			return ;
+			return;
 		}
 		struct termios tio;
 		tcgetattr(m, &tio);
@@ -307,9 +308,9 @@ uart_pty_connect(
 	if (xoff)
 		avr_irq_register_notify(xoff, uart_pty_xoff_hook, p);
 
-	for (int ti = 0; ti < 1; ti++) if (p->port[ti].s) {
+	for (int ti = 0; ti < 1+(p->hastap?1:0); ti++) if (p->port[ti].s) {
 		char link[128];
-		sprintf(link, "/tmp/simavr-uart%s%c", ti == 1 ? "tap" : "", uart);
+		snprintf(link, sizeof(link), "/tmp/simavr-uart%c%s", uart, ti == 1 ? "-tap" : "");
 		unlink(link);
 		if (symlink(p->port[ti].slavename, link) != 0) {
 			fprintf(stderr, "WARN %s: Can't create %s: %s", __func__, link, strerror(errno));
@@ -325,4 +326,3 @@ uart_pty_connect(
 	} else
 		printf("note: export SIMAVR_UART_XTERM=1 and install picocom to get a terminal\n");
 }
-
