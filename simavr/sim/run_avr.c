@@ -47,7 +47,9 @@ display_usage(
 			"       [--gdb|-g [<port>]] Listen for gdb connection on <port> (default 1234)\n"
 			"       [-ff <.hex file>]   Load next .hex file as flash\n"
 			"       [-ee <.hex file>]   Load next .hex file as eeprom\n"
-			"       [--input|-i <file>] A .vcd file to use as input signals\n"
+			"       [--input|-i <file>] A vcd file to use as input signals\n"
+			"       [--output|-o <file>] A vcd file to save the traced signals\n"
+			"       [--add-trace|-at <name=kind@addr/mask>] Add signal to be traced\n"
 			"       [-v]                Raise verbosity level\n"
 			"                           (can be passed more than once)\n"
 			"       <firmware>          A .hex or an ELF file. ELF files are\n"
@@ -122,14 +124,13 @@ main(
 				display_usage(basename(argv[0]));
 		} else if (!strcmp(argv[pi], "-t") || !strcmp(argv[pi], "--trace")) {
 			trace++;
-		} else if (!strcmp(argv[pi], "--vcd-trace-name")) {
+		} else if (!strcmp(argv[pi], "-o") || !strcmp(argv[pi], "--output")) {
 			if (pi + 1 >= argc) {
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
 				exit(1);
 			}
-			++pi;
-			snprintf(f.tracename, sizeof(f.tracename), "%s",  argv[pi]);
-		} else if (!strcmp(argv[pi], "--add-vcd-trace")) {
+			snprintf(f.tracename, sizeof(f.tracename), "%s", argv[++pi]);
+		} else if (!strcmp(argv[pi], "-at") || !strcmp(argv[pi], "--add-trace")) {
 			if (pi + 1 >= argc) {
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
 				exit(1);
@@ -186,12 +187,6 @@ main(
 			);
 
 			++f.tracecount;
-		} else if (!strcmp(argv[pi], "--vcd-trace-file")) {
-			if (pi + 1 >= argc) {
-				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
-				exit(1);
-			}
-			snprintf(f.tracename, sizeof(f.tracename), "%s", argv[++pi]);
 		} else if (!strcmp(argv[pi], "-ti")) {
 			if (pi < argc-1)
 				trace_vectors[trace_vectors_count++] = atoi(argv[++pi]);
