@@ -80,7 +80,7 @@ enum {
  * So the new method declares the string as fixed size, and the parser
  * is forced to skip the zeroes in padding. Dumbo.
  */
-#define _MMCU_ __attribute__((section(".mmcu")))
+#define _MMCU_ __attribute__((section(".mmcu"))) __attribute__((used))
 struct avr_mmcu_long_t {
 	uint8_t tag;
 	uint8_t len;
