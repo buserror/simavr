@@ -348,6 +348,32 @@ gdb_handle_command(
 					// By sending back nothing, the debugger knows it has read
 					// all available registers.
 				}
+			} else if (strncmp(cmd, "Rcmd", 4) == 0) { // monitor command
+				char * args = strchr(cmd, ',');
+				if (args != NULL)
+				{
+					args++;
+					while(args != 0x00) {
+						printf("%s",args);
+						if (strncmp(args, "7265736574", 10) == 0) { // reset matched
+							avr->state = cpu_StepDone;
+							avr_reset(avr);
+							args += 10;
+							printf("Reset\n"); // Remove
+						} else if (strncmp(args, "68616c74", 8) == 0) { // halt matched
+							avr->state = cpu_Stopped;
+							args += 8;
+							printf("Halting\n"); // Remove
+						} else if (strncmp(args, "20", 2) == 0) { // space matched
+							args += 2;
+							printf("Space\n"); // Remove
+						}
+						else{ // no match - end
+							break;
+						}
+					}
+				}
+				gdb_send_reply(g, "OK");
 			}
 			gdb_send_reply(g, "");
 			break;
@@ -495,6 +521,12 @@ gdb_handle_command(
 					gdb_send_reply(g, "");
 					break;
 			}
+		}	break;
+		case 'K': 	// kill
+		case 'D': {	// detach
+			avr->state = cpu_Done;
+			gdb_send_reply(g, "OK");
+			printf("Halted\n"); // Remove
 		}	break;
 		default:
 			gdb_send_reply(g, "");
