@@ -359,14 +359,11 @@ gdb_handle_command(
 							avr->state = cpu_StepDone;
 							avr_reset(avr);
 							args += 10;
-							printf("Reset\n"); // Remove
 						} else if (strncmp(args, "68616c74", 8) == 0) { // halt matched
 							avr->state = cpu_Stopped;
 							args += 8;
-							printf("Halting\n"); // Remove
 						} else if (strncmp(args, "20", 2) == 0) { // space matched
 							args += 2;
-							printf("Space\n"); // Remove
 						}
 						else{ // no match - end
 							break;
@@ -526,7 +523,6 @@ gdb_handle_command(
 		case 'D': {	// detach
 			avr->state = cpu_Done;
 			gdb_send_reply(g, "OK");
-			printf("Halted\n"); // Remove
 		}	break;
 		default:
 			gdb_send_reply(g, "");
