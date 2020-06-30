@@ -350,10 +350,9 @@ gdb_handle_command(
 				}
 			} else if (strncmp(cmd, "Rcmd", 4) == 0) { // monitor command
 				char * args = strchr(cmd, ',');
-				if (args != NULL)
-				{
+				if (args != NULL) {
 					args++;
-					while(args != 0x00) {
+					while (args != 0x00) {
 						printf("%s",args);
 						if (strncmp(args, "7265736574", 10) == 0) { // reset matched
 							avr->state = cpu_StepDone;
@@ -364,10 +363,8 @@ gdb_handle_command(
 							args += 8;
 						} else if (strncmp(args, "20", 2) == 0) { // space matched
 							args += 2;
-						}
-						else{ // no match - end
+						} else // no match - end
 							break;
-						}
 					}
 				}
 				gdb_send_reply(g, "OK");
