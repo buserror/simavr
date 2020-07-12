@@ -205,7 +205,7 @@ main(
 			char * suffix = strrchr(filename, '.');
 			if (suffix && !strcasecmp(suffix, ".hex")) {
 				if (!name[0] || !f_cpu) {
-					fprintf(stderr, "%s: -mcu and -freq are mandatory to load .hex files\n", argv[0]);
+					fprintf(stderr, "%s: --mcu and --freq are mandatory to load .hex files\n", argv[0]);
 					exit(1);
 				}
 				ihex_chunk_p chunk = NULL;
