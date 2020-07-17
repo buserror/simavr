@@ -239,8 +239,27 @@ avr_uart_baud_write(
 		void * param)
 {
 	avr_uart_t * p = (avr_uart_t *)param;
+	if (addr == p->ubrrh.reg) {
+		if (p->ubrrh.reg == p->r_ucsrc) {
+			// UBRRH and UCSRC registers can share the same I/O location.
+			// URSEL bit decides which register gets written. If it's UBRRH,
+			// store to shadow register, else to regular register
+			if ((v & (1 << 7)) == 0) { // URSEL
+				avr_regbit_setto_shadow(avr, p->ubrrh, v, &p->ubrrh_shadow);
+			} else {
+				avr_core_watch_write(avr, addr, v);
+			}
+		} else {
+			// If UBRRH have different I/O locations, update shadow register and
+			// regular register
+			avr_core_watch_write(avr, addr, v);
+			avr_regbit_setto_shadow(avr, p->ubrrh, v, &p->ubrrh_shadow);
+		}
+		return;
+	}
 	avr_core_watch_write(avr, addr, v);
-	uint32_t val = avr_regbit_get(avr,p->ubrrl) | (avr_regbit_get(avr,p->ubrrh) << 8);
+	uint32_t val = avr_regbit_get(avr,p->ubrrl) |
+		(avr_regbit_get_shadow(avr, p->ubrrh, &p->ubrrh_shadow) << 8);
 
 	const int databits[] = { 5,6,7,8,  /* 'reserved', assume 8 */8,8,8, 9 };
 	int db = databits[avr_regbit_get(avr, p->ucsz) | (avr_regbit_get(avr, p->ucsz2) << 2)];
@@ -468,6 +487,9 @@ avr_uart_reset(
 	uart_fifo_reset(&p->input);
 	p->tx_cnt =  0;
 
+	avr_regbit_clear(avr, p->ubrrl);
+	avr_regbit_clear_shadow(avr, p->ubrrh, &p->ubrrh_shadow);
+
 	avr_regbit_set(avr, p->ucsz);
 	avr_uart_regbit_clear(avr, p->ucsz2);
 
@@ -550,6 +572,8 @@ avr_uart_init(
 		avr_register_io_write(avr, p->r_ucsra, avr_uart_write, p);
 	if (p->ubrrl.reg)
 		avr_register_io_write(avr, p->ubrrl.reg, avr_uart_baud_write, p);
+	if (p->ubrrh.reg)
+		avr_register_io_write(avr, p->ubrrh.reg, avr_uart_baud_write, p);
 	avr_register_io_write(avr, p->rxen.reg, avr_uart_write, p);
 }
 

@@ -113,6 +113,7 @@ typedef struct avr_uart_t {
 
 	avr_regbit_t	ubrrl;
 	avr_regbit_t	ubrrh;
+	uint8_t		ubrrh_shadow;
 
 	avr_int_vector_t rxc;
 	avr_int_vector_t txc;
