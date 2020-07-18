@@ -42,6 +42,9 @@ typedef struct avr_int_vector_t {
 	avr_regbit_t 	enable;			// IO register index for the "interrupt enable" flag for this vector
 	avr_regbit_t 	raised;			// IO register index for the register where the "raised" flag is (optional)
 
+	uint8_t 		mask; // Mask for PCINTs. this is needed for chips like the 2560 where PCINT do not align with IRQs
+	int8_t 		shift;	// PCINT8 = E0, PCINT9-15 are on J0-J6. Shift shifts down (<0) or up (>0) for alignment with IRQ#.
+
 	// 'pending' IRQ, and 'running' status as signaled here
 	avr_irq_t		irq[AVR_INT_IRQ_COUNT];
 	uint8_t			pending : 1,	// 1 while scheduled in the fifo
