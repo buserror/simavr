@@ -102,7 +102,17 @@ const struct mcu_t {
 	AVR_IOPORT_DECLARE(f, 'F', F),
 	AVR_IOPORT_DECLARE(g, 'G', G),
 	AVR_IOPORT_DECLARE(h, 'H', H),
-	AVR_IOPORT_DECLARE(j, 'J', J),
+	.portj = {
+		.name = 'J', .r_port = PORTJ, .r_ddr = DDRJ, .r_pin = PINJ,
+		.pcint = {
+			 .enable = AVR_IO_REGBIT(PCICR, PCIE1),
+			 .raised = AVR_IO_REGBIT(PCIFR, PCIF1),
+			 .vector = PCINT1_vect,
+			 .mask = 0b11111110,
+			 .shift = -1
+		},
+		.r_pcint = PCMSK1,
+	},
 	AVR_IOPORT_DECLARE(k, 'K', K),
 	AVR_IOPORT_DECLARE(l, 'L', L),
 
@@ -353,7 +363,7 @@ const struct mcu_t {
 		.r_tcnt = TCNT2,
 		// asynchronous timer source bit.. if set, use 32khz frequency
 		.as2 = AVR_IO_REGBIT(ASSR, AS2),
-		
+
 		.overflow = {
 			 .enable = AVR_IO_REGBIT(TIMSK2, TOIE2),
 			 .raised = AVR_IO_REGBIT(TIFR2, TOV2),

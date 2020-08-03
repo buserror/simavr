@@ -153,7 +153,18 @@ avr_ioport_irq_notify(
 
 	if (p->r_pcint) {
 		// if the pcint bit is on, try to raise it
-		int raise = avr->data[p->r_pcint] & mask;
+		int raisedata = avr->data[p->r_pcint];
+		uint8_t uiRegMask = p->pcint.mask;
+		int8_t iShift = p->pcint.shift;
+		if (uiRegMask) // If mask is 0, do nothing (backwards compat)
+			raisedata &= uiRegMask; // Mask off
+
+		if (iShift>0) // Shift data if necessary for alignment.
+			raisedata <<= iShift;
+		else if (iShift<0)
+			raisedata >>= -iShift;
+
+		int raise = raisedata & mask;
 		if (raise)
 			avr_raise_interrupt(avr, &p->pcint);
 	}
@@ -279,4 +290,3 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 	avr_register_io_write(avr, p->r_pin, avr_ioport_pin_write, p);
 	avr_register_io_write(avr, p->r_ddr, avr_ioport_ddr_write, p);
 }
-
