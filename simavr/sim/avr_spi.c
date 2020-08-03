@@ -2,6 +2,7 @@
 	avr_spi.c
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Modified 2020 by VintagePC <https://github.com/vintagepc> to support clock divisors
 
  	This file is part of simavr.
 
@@ -25,7 +26,7 @@
 static avr_cycle_count_t avr_spi_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
 {
 	avr_spi_t * p = (avr_spi_t *)param;
-	
+
 	if (avr_regbit_get(avr, p->spe)) {
 		// in master mode, any byte is sent as it comes..
 		if (avr_regbit_get(avr, p->mstr)) {
@@ -55,7 +56,13 @@ static void avr_spi_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, voi
 		avr_regbit_clear(avr, p->spi.raised);
 
 		avr_core_watch_write(avr, addr, v);
-		avr_cycle_timer_register_usec(avr, 100, avr_spi_raise, p); // should be speed dependent
+		uint16_t uiClkShift = _avr_spi_clkdiv[avr->data[p->r_spcr]&0b11];
+		// If master && 2X, double rate (half divisor)
+		if (avr_regbit_get(avr, p->mstr) && avr_regbit_get(avr, p->spr[2]))
+			uiClkShift>>=1;
+
+		// We can wait directly in clockshifts, it is a divisor, so /4 means 4 avr cycles to clock out one bit.
+		avr_cycle_timer_register(avr, uiClkShift<<3, avr_spi_raise, p); // *8 since 8 clocks to a byte.
 	}
 }
 
@@ -72,7 +79,7 @@ static void avr_spi_irq_input(struct avr_irq_t * irq, uint32_t value, void * par
 	p->input_data_register = value;
 	avr_raise_interrupt(avr, &p->spi);
 
-	// if in slave mode, 
+	// if in slave mode,
 	// 'output' the byte only when we received one...
 	if (!avr_regbit_get(avr, p->mstr)) {
 		avr_raise_irq(p->io.irq + SPI_IRQ_OUTPUT, avr->data[p->r_spdr]);
@@ -108,4 +115,3 @@ void avr_spi_init(avr_t * avr, avr_spi_t * p)
 	avr_register_io_write(avr, p->r_spdr, avr_spi_write, p);
 	avr_register_io_read(avr, p->r_spdr, avr_spi_read, p);
 }
-

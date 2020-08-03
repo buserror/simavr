@@ -2,6 +2,7 @@
 	avr_spi.h
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Modified 2020 by VintagePC <https://github.com/vintagepc> to support clock divisors
 
  	This file is part of simavr.
 
@@ -45,11 +46,11 @@ typedef struct avr_spi_t {
 	avr_io_addr_t	r_spdr;			// data register
 	avr_io_addr_t	r_spcr;			// control register
 	avr_io_addr_t	r_spsr;			// status register
-	
+
 	avr_regbit_t spe;		// spi enable
 	avr_regbit_t mstr;		// master/slave
 	avr_regbit_t spr[4];	// clock divider
-	
+
 	avr_int_vector_t spi;	// spi interrupt
 
 	uint8_t		input_data_register;
@@ -102,5 +103,7 @@ void avr_spi_init(avr_t * avr, avr_spi_t * port);
 #ifdef __cplusplus
 };
 #endif
+
+static const uint8_t _avr_spi_clkdiv[4] = {4,16,64,128};
 
 #endif /*__AVR_SPI_H__*/
