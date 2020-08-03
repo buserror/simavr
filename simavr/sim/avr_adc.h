@@ -135,7 +135,7 @@ typedef struct avr_adc_t {
 	 * runtime bits
 	 */
 	avr_adc_mux_t	muxmode[64];// maximum 6 bits of mux modes
-	uint16_t		adc_values[8];	// current values on the ADCs
+	uint16_t		adc_values[16];	// current values on the ADCs
 	uint16_t		temp;		// temp sensor reading
 	uint8_t			first;
 	uint8_t			read_status;	// marked one when adcl is read
