@@ -104,6 +104,4 @@ void avr_spi_init(avr_t * avr, avr_spi_t * port);
 };
 #endif
 
-static const uint8_t _avr_spi_clkdiv[4] = {4,16,64,128};
-
 #endif /*__AVR_SPI_H__*/

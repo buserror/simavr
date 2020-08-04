@@ -49,6 +49,8 @@ static uint8_t avr_spi_read(struct avr_t * avr, avr_io_addr_t addr, void * param
 
 static void avr_spi_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
 {
+
+	static const uint8_t _avr_spi_clkdiv[4] = {4,16,64,128};
 	avr_spi_t * p = (avr_spi_t *)param;
 
 	if (addr == p->r_spdr) {
@@ -56,13 +58,13 @@ static void avr_spi_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, voi
 		avr_regbit_clear(avr, p->spi.raised);
 
 		avr_core_watch_write(avr, addr, v);
-		uint16_t uiClkShift = _avr_spi_clkdiv[avr->data[p->r_spcr]&0b11];
+		uint16_t clock_shift = _avr_spi_clkdiv[avr->data[p->r_spcr]&0b11];
 		// If master && 2X, double rate (half divisor)
 		if (avr_regbit_get(avr, p->mstr) && avr_regbit_get(avr, p->spr[2]))
-			uiClkShift>>=1;
+			clock_shift>>=1;
 
 		// We can wait directly in clockshifts, it is a divisor, so /4 means 4 avr cycles to clock out one bit.
-		avr_cycle_timer_register(avr, uiClkShift<<3, avr_spi_raise, p); // *8 since 8 clocks to a byte.
+		avr_cycle_timer_register(avr, clock_shift<<3, avr_spi_raise, p); // *8 since 8 clocks to a byte.
 	}
 }
 
