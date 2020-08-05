@@ -624,6 +624,8 @@ avr_timer_write_ocr(
 				avr_timer_reconfigure(timer, 0); // if OCRA is the top, reconfigure needed
 			}
 			avr_raise_irq(timer->io.irq + TIMER_IRQ_OUT_PWM1, _timer_get_ocr(timer, AVR_TIMER_COMPB));
+			if (sizeof(timer->comp)>2)
+				avr_raise_irq(timer->io.irq + TIMER_IRQ_OUT_PWM2, _timer_get_ocr(timer, AVR_TIMER_COMPC));
 			break;
 		case avr_timer_wgm_fast_pwm:
 			if (oldv != _timer_get_comp_ocr(avr, comp))
@@ -632,6 +634,9 @@ avr_timer_write_ocr(
 					_timer_get_ocr(timer, AVR_TIMER_COMPA));
 			avr_raise_irq(timer->io.irq + TIMER_IRQ_OUT_PWM1,
 					_timer_get_ocr(timer, AVR_TIMER_COMPB));
+			if (sizeof(timer->comp)>2)
+				avr_raise_irq(timer->io.irq + TIMER_IRQ_OUT_PWM2,
+						_timer_get_ocr(timer, AVR_TIMER_COMPC));
 			break;
 		default:
 			AVR_LOG(avr, LOG_WARNING, "TIMER: %s-%c mode %d UNSUPPORTED\n",
@@ -851,6 +856,7 @@ avr_timer_reset(
 static const char * irq_names[TIMER_IRQ_COUNT] = {
 	[TIMER_IRQ_OUT_PWM0] = "8>pwm0",
 	[TIMER_IRQ_OUT_PWM1] = "8>pwm1",
+	[TIMER_IRQ_OUT_PWM2] = "8>pwm2",
 	[TIMER_IRQ_IN_ICP] = "<icp",
 	[TIMER_IRQ_OUT_COMP + 0] = ">compa",
 	[TIMER_IRQ_OUT_COMP + 1] = ">compb",
@@ -883,6 +889,7 @@ avr_timer_init(
 	// pwm value it makes sense not to bother.
 	p->io.irq[TIMER_IRQ_OUT_PWM0].flags |= IRQ_FLAG_FILTERED;
 	p->io.irq[TIMER_IRQ_OUT_PWM1].flags |= IRQ_FLAG_FILTERED;
+	p->io.irq[TIMER_IRQ_OUT_PWM2].flags |= IRQ_FLAG_FILTERED;
 
 	if (p->wgm[0].reg) // these are not present on older AVRs
 		avr_register_io_write(avr, p->wgm[0].reg, avr_timer_write, p);

@@ -39,6 +39,7 @@ enum {
 enum {
 	TIMER_IRQ_OUT_PWM0 = 0,
 	TIMER_IRQ_OUT_PWM1,
+	TIMER_IRQ_OUT_PWM2,
 	TIMER_IRQ_IN_ICP,	// input capture
 	TIMER_IRQ_OUT_COMP,	// comparator pins output IRQ
 
@@ -71,7 +72,7 @@ enum {
 	avr_timer_com_toggle,   // Toggle OCnx on compare match
 	avr_timer_com_clear,    // clear OCnx on compare match
 	avr_timer_com_set,      // set OCnx on compare match
-	
+
 };
 
 enum {
