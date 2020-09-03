@@ -67,6 +67,9 @@ enum {
 
 	// maximum number of IO registers, on normal AVRs
 	MAX_IOs	= 280,	// Bigger AVRs need more than 256-32 (mega1280)
+	// maximum number of callbacks that can be registered for a
+	// single register
+	MAX_REGISTER_CBs = 256,
 };
 
 #define AVR_DATA_TO_IO(v) ((v) - 32)
@@ -300,8 +303,8 @@ typedef struct avr_t {
 		struct {
 			void * param;
 			void * c;
-		} io[4];
-	} io_shared_io[4];
+		} io[MAX_REGISTER_CBs];
+	} io_shared_io[MAX_IOs];
 
 	// flash memory (initialized to 0xff, and code loaded into it)
 	uint8_t *		flash;
