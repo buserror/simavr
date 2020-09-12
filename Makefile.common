@@ -156,8 +156,10 @@ endif
 
 # --mcall-prologues can be used here, but messes up debugging a little
 %.axf: %.c
+ifneq ($(E),)
 	@echo AVR-CC ${<}
-	@part=${<} ; part=$${part/_*}; \
+endif
+	${E}part=${<} ; part=$${part/_*}; \
 	${AVR}gcc -Wall -gdwarf-2 -Os -std=gnu99 \
 			-mmcu=$$part \
 			-DF_CPU=8000000 \
