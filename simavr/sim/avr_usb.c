@@ -686,6 +686,7 @@ avr_usb_ioctl(
 		case AVR_IOCTL_USB_RESET_AND_SOFI:
 			// register SOFI every 1ms and fallthrough to reset.
 			avr_cycle_timer_register_usec(io->avr, 1000, sof_generator, p);
+			// fallthrough
 		case AVR_IOCTL_USB_RESET:
 			AVR_LOG(io->avr, LOG_TRACE, "USB: __USB_RESET__\n");
 			reset_endpoints(io->avr, p);
@@ -798,4 +799,3 @@ void avr_usb_init(avr_t * avr, avr_usb_t * p)
 
 	avr_register_io_write(avr, p->r_pllcsr, avr_usb_pll_write, p);
 }
-
