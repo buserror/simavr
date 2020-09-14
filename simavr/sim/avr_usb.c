@@ -20,7 +20,6 @@
  */
 
 /* TODO correct reset values */
-/* TODO generate sofi every 1ms (when connected) */
 /* TODO otg support? */
 /* TODO drop bitfields? */
 /* TODO thread safe ioctls */
@@ -684,12 +683,13 @@ avr_usb_ioctl(
 			raise_ep_interrupt(io->avr, p, ep, rxstpi);
 
 			return 0;
+		case AVR_IOCTL_USB_RESET_AND_SOFI:
+			// register SOFI every 1ms and fallthrough to reset.
+			avr_cycle_timer_register_usec(io->avr, 1000, sof_generator, p);
 		case AVR_IOCTL_USB_RESET:
 			AVR_LOG(io->avr, LOG_TRACE, "USB: __USB_RESET__\n");
 			reset_endpoints(io->avr, p);
 			raise_usb_interrupt(p, eorsti);
-			if (0)
-				avr_cycle_timer_register_usec(io->avr, 1000, sof_generator, p);
 			return 0;
 		default:
 			return -1;

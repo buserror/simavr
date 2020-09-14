@@ -38,6 +38,7 @@ enum {
 #define AVR_IOCTL_USB_READ AVR_IOCTL_DEF('u','s','b','r')
 #define AVR_IOCTL_USB_SETUP AVR_IOCTL_DEF('u','s','b','s')
 #define AVR_IOCTL_USB_RESET AVR_IOCTL_DEF('u','s','b','R')
+#define AVR_IOCTL_USB_RESET_AND_SOFI AVR_IOCTL_DEF('u','s','b','S')
 #define AVR_IOCTL_USB_VBUS AVR_IOCTL_DEF('u','s','b','V')
 #define AVR_IOCTL_USB_GETIRQ() AVR_IOCTL_DEF('u','s','b',' ')
 
