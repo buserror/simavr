@@ -105,12 +105,22 @@ avr_twi_set_state_timer(
 	return 0;
 }
 
+// Quick exponent helper for integer values > 0.
+static uint32_t _avr_twi_quick_exp(uint8_t base, uint8_t exp)
+{
+	uint32_t result = 1;
+	for (uint8_t i=exp; i>0; i--)
+		result *= base;
+	return result;
+}
+
 /*
  * This is supposed to trigger a timer whose duration is a multiple
  * of 'twi' clock cycles, which should be derived from the prescaler
  * (100khz, 400khz etc).
  * Right now it cheats and uses one twi cycle == one usec.
  */
+
 static void
 _avr_twi_delay_state(
 		avr_twi_t * p,
@@ -118,9 +128,13 @@ _avr_twi_delay_state(
 		uint8_t state)
 {
 	p->next_twstate = state;
-	// TODO: calculate clock rate, convert to cycles, and use that
-	avr_cycle_timer_register_usec(
-			p->io.avr, twi_cycles, avr_twi_set_state_timer, p);
+	uint8_t prescale = avr_regbit_get(p->io.avr, p->twps);
+	uint16_t bitrate =  p->io.avr->data[p->r_twbr];
+	uint32_t clockdiv = 16u+((bitrate<<1u)*_avr_twi_quick_exp(4,prescale));
+	//One TWI cycle is "clockdiv" AVR Cycles. So we can wait in these directly.
+	// printf("Waiting %d cycles\n",clockdiv*twi_cycles);
+	avr_cycle_timer_register(
+			p->io.avr, twi_cycles*clockdiv, avr_twi_set_state_timer, p);
 }
 
 static void
@@ -309,14 +323,14 @@ avr_twi_write(
 						p->state & TWI_COND_ACK ?
 								TWI_MRX_ADR_ACK : TWI_MRX_ADR_NACK);
 			} else {
-				if(p->state & TWI_COND_WRITE){
+				if(p->state & TWI_COND_ADDR){
 					_avr_twi_delay_state(p, 0,
 							p->state & TWI_COND_ACK ?
-									TWI_MTX_DATA_ACK : TWI_MTX_DATA_NACK);
+									TWI_MTX_ADR_ACK : TWI_MTX_ADR_NACK);
 				}else{
 					_avr_twi_delay_state(p, 9,
 							p->state & TWI_COND_ACK ?
-									TWI_MTX_ADR_ACK : TWI_MTX_ADR_NACK);
+									TWI_MTX_DATA_ACK : TWI_MTX_DATA_NACK);
 				}
 			}
 		}
