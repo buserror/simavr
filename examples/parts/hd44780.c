@@ -55,7 +55,7 @@ static void
 _hd44780_clear_screen(
 		hd44780_t *b)
 {
-	memset(b->vram, ' ', 80);
+	memset(b->vram, ' ', 0x80);
 	hd44780_set_flag(b, HD44780_FLAG_DIRTY, 1);
 	avr_raise_irq(b->irq + IRQ_HD44780_ADDR, b->cursor);
 }
@@ -84,14 +84,14 @@ hd44780_kick_cursor(
 	hd44780_t *b)
 {
 	if (hd44780_get_flag(b, HD44780_FLAG_I_D)) {
-		if (b->cursor < 79)
+		if (b->cursor < 0x80-1)
 			b->cursor++;
-		else if (b->cursor < 80+64-1)
+		else if (b->cursor < 0x80+0x40-1)
 			b->cursor++;
 	} else {
-		if (b->cursor < 80 && b->cursor)
+		if (b->cursor < 0x80 && b->cursor)
 			b->cursor--;
-		else if (b->cursor > 80)
+		else if (b->cursor > 0x80)
 			b->cursor--;
 		hd44780_set_flag(b, HD44780_FLAG_DIRTY, 1);
 		avr_raise_irq(b->irq + IRQ_HD44780_ADDR, b->cursor);
@@ -139,7 +139,7 @@ hd44780_write_command(
 			break;
 		// Set	CGRAM address
 		case 6:		// 0 1 ADD ADD ADD ADD ADD ADD ADD
-			b->cursor = 64 + (b->datapins & 0x3f);
+			b->cursor = 0x80 + (b->datapins & 0x3f);
 			break;
 		// Function	set
 		case 5:	{	// 0 0 1 DL N F x x
@@ -246,7 +246,7 @@ hd44780_process_read(
 			delay = 0;	// no raising busy when reading busy !
 
 			// low bits are the current cursor
-			b->readpins = b->cursor < 80 ? b->cursor : b->cursor-64;
+			b->readpins = b->cursor < 0x80 ? b->cursor : b->cursor-0x80;
 			int busy = hd44780_get_flag(b, HD44780_FLAG_BUSY);
 			b->readpins |= busy ? 0x80 : 0;
 
@@ -391,4 +391,3 @@ hd44780_init(
 	printf("LCD: %duS is %d cycles for your AVR\n",
 			1, (int)avr_usec_to_cycles(avr, 1));
 }
-

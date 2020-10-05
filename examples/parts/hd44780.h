@@ -98,7 +98,7 @@ typedef struct hd44780_t
 	int		w, h;				// width and height of the LCD
 
 	uint16_t cursor;			// offset in vram
-	uint8_t  vram[80 + 64];
+	uint8_t  vram[0x80 + 0x40];
 
 	uint16_t pinstate;			// 'actual' LCd data pins (IRQ bit field)
 	// uint16_t oldstate;			/// previous pins
@@ -134,4 +134,4 @@ hd44780_get_flag(
 	return (b->flags &  (1 << bit)) != 0;
 }
 
-#endif 
+#endif
