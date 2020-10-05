@@ -454,7 +454,8 @@ int main() {
 
 Usually, UART0 is used for this purpose. The simplest debug output can be achieved
 by binding \lstinline|stdout| to \lstinline|UART0| as described by the avr-libc
-documentation \cite{libc}, and then using \lstinline|printf| and similar functions.
+documentation, % FIXME: missing citation \cite{libc},
+and then using \lstinline|printf| and similar functions.
 This alternate console output is provided in case using UART0 is not possible or desired.
 
 
@@ -478,7 +479,7 @@ uint32_t opcode = (avr->flash[avr->pc + 1] << 8) | avr->flash[avr->pc];
 As we have seen, \lstinline|avr->pc| represents the byte address in flash memory.
 Therefore, the next instruction is located at \lstinline|avr->pc + 2|. This
 default new program counter may still be altered in the course of processing
-in case of jumps, branches, calls and larger opcodes such as STS\cite{instructionset}.
+in case of jumps, branches, calls and larger opcodes such as STS. % FIXME: missing citation \cite{instructionset}.
 
 Note also that the \ac{AVR} flash addresses are usually represented as word addresses
 (\lstinline|avr->pc >> 1|).
@@ -710,14 +711,16 @@ We have covered how to enable \ac{GDB} support in section
 \ref{subsection:avr_t_initialization}, and when \ac{GDB} handler functions are
 called during the main loop in section \ref{section:mainloop}. In the following,
 we will explain further the methods \simavr employs to communicate with
-\ac{GDB} and how breakpoints and data watchpoints are implemented. For
-a short guide to debugging \ac{AVR} programs with \ac{GDB}, see section
-\ref{section:debugging}
+\ac{GDB} and how breakpoints and data watchpoints are implemented.
+% FIXME: missing reference \ref{section:debugging}
+% For
+% a short guide to debugging \ac{AVR} programs with \ac{GDB}, see section
+% \ref{section:debugging}
 
 \simavr has a fully featured implementation of the \ac{GDB} Remote Serial Protocol,
 which allows it to communicate with \emph{avr-gdb}. A complete reference of
-the protocol can be obtained from the \ac{GDB} manual \cite{gdb}. Essentially,
-communication boils down to packets of the format \lstinline|$packet-data#checksum|.
+the protocol can be obtained from the \ac{GDB} manual. % FIXME: missing citation \cite{gdb}.
+Essentially, communication boils down to packets of the format \lstinline|$packet-data#checksum|.
 The packet data itself consists of a command and its arguments. The syntax of
 all commands supported by \simavr is as follows:
 
