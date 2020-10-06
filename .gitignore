@@ -4,6 +4,7 @@ obj-*
 *.s
 simavr/simavr
 simavr/run_avr
+simavr/run_avr.exe
 *.a
 .tags*
 ._*
