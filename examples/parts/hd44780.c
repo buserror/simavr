@@ -56,6 +56,8 @@ _hd44780_clear_screen(
 		hd44780_t *b)
 {
 	memset(b->vram, ' ', 0x80);
+	b->cursor = 0;
+	hd44780_set_flag(b, HD44780_FLAG_I_D, 2);
 	hd44780_set_flag(b, HD44780_FLAG_DIRTY, 1);
 	avr_raise_irq(b->irq + IRQ_HD44780_ADDR, b->cursor);
 }
