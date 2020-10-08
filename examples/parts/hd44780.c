@@ -32,7 +32,7 @@ hd44780_print(
 		hd44780_t *b)
 {
 	printf("/******************\\\n");
-	const uint8_t offset[] = { 0, 0x40, 0x20, 0x60 };
+	const uint8_t offset[] = { 0x00, 0x40, 0x00 + 20, 0x40 + 20 };
 	for (int i = 0; i < b->h; i++) {
 		printf("| ");
 		fwrite(b->vram + offset[i], 1, b->w, stdout);
@@ -83,16 +83,33 @@ static void
 hd44780_kick_cursor(
 	hd44780_t *b)
 {
-	if (hd44780_get_flag(b, HD44780_FLAG_I_D)) {
-		if (b->cursor < 0x80-1)
+	if (hd44780_get_flag(b, HD44780_FLAG_I_D)) { // incrementing
+		if (b->cursor < 0x80) { // cursor in DDRAM
 			b->cursor++;
-		else if (b->cursor < 0x80+0x40-1)
-			b->cursor++;
-	} else {
-		if (b->cursor < 0x80 && b->cursor)
-			b->cursor--;
-		else if (b->cursor > 0x80)
-			b->cursor--;
+			if (b->cursor >= 0x00 + 40 && b->cursor < 0x40) // jump from end of first memory segment to the start of the second segment
+				b->cursor = 0x40;
+			else if (b->cursor >= 0x40 + 40) // wrap around from the end of the second memory segment to the start of the first segment
+				b->cursor = 0x00;
+		} else { // cursor in CGRAM
+			if (b->cursor == 0x80 + 0x3f) // wrap around in CGRAM
+				b->cursor = 0x80;
+			else
+				b->cursor++;
+		}
+	} else { // decrementing
+		if (b->cursor < 0x80) { // cursor in DDRAM
+			if (b->cursor == 0x40) // fall back from the start of the second memory segment to the end of the first segment
+				b->cursor = 0x00 + 39;
+			else if (b->cursor == 0x00) // wrap around from the start of the first memory segment to the end of the second segment
+				b->cursor = 0x40 + 39;
+			else
+				b->cursor--;
+		} else { // cursor in CGRAM
+			if (b->cursor == 0x80) // wrap around in CGRAM
+				b->cursor = 0x80 + 0x3f;
+			else
+				b->cursor--;
+		}
 		hd44780_set_flag(b, HD44780_FLAG_DIRTY, 1);
 		avr_raise_irq(b->irq + IRQ_HD44780_ADDR, b->cursor);
 	}
@@ -136,6 +153,10 @@ hd44780_write_command(
 		// Set	DDRAM address
 		case 7:		// 1 ADD ADD ADD ADD ADD ADD ADD
 			b->cursor = b->datapins & 0x7f;
+			if (b->cursor >= 0x00 + 40 && b->cursor < 0x40) // illegal address after the first memory segment -> set cursor to start of second segment
+				b->cursor = 0x40;
+			else if (b->cursor >= 0x40 + 40) // illegal address after the second memory segment -> set cursor to start of first segment
+				b->cursor = 0x00;
 			break;
 		// Set	CGRAM address
 		case 6:		// 0 1 ADD ADD ADD ADD ADD ADD ADD

@@ -140,7 +140,7 @@ hd44780_gl_draw(
 	glEnd();
 
 	glColor3f(1.0f, 1.0f, 1.0f);
-	const uint8_t offset[] = { 0, 0x40, 0x20, 0x60 };
+	const uint8_t offset[] = { 0x00, 0x40, 0x00 + 20, 0x40 + 20 };
 	for (int v = 0 ; v < b->h; v++) {
 		glPushMatrix();
 		for (int i = 0; i < b->w; i++) {
