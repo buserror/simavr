@@ -303,6 +303,8 @@ avr_uart_udr_write(
 		if (avr_cycle_timer_status(avr, avr_uart_txc_raise, p) == 0)
 			avr_cycle_timer_register(avr, p->cycles_per_byte,
 					avr_uart_txc_raise, p); // start the tx pump
+	} else if (p->udrc.vector) {
+		avr_raise_interrupt(avr, &p->udrc);
 	}
 }
 
