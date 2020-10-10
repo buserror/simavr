@@ -2,7 +2,7 @@
 # This makefile takes each "at*" file, extracts it's part name
 # And compiles it into an ELF binary.
 # It also disassembles it for debugging purposes.
-# 
+#
 # 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 #
 #	This file is part of simavr.
@@ -28,24 +28,20 @@ IPATH 		+= ${simavr}/simavr/sim
 
 tests_src	:= ${wildcard test_*.c}
 
-all: obj axf tests
+all: obj axf tst
 
 include ../Makefile.common
 
-tests		:= ${patsubst %.c, ${OBJ}/%.tst, ${tests_src}}
+tst: ${patsubst %.c, ${OBJ}/%.tst, ${tests_src}}
 
-tests:	${tests}
-	
 axf: ${sources:.c=.axf}
-	
+
 
 ${OBJ}/%.tst: tests.c %.c
-ifeq ($(V),1)
-	$(CC) -MMD ${CPPFLAGS} ${CFLAGS} ${LFLAGS} -o $@ ${patsubst %.h,, ${^}} $(LDFLAGS)
-else
+ifneq ($(E),)
 	@echo TST $@
-	@$(CC) -MMD ${CPPFLAGS} ${CFLAGS} ${LFLAGS} -o $@ ${patsubst %.h,, ${^}} $(LDFLAGS)
 endif
+	${E}$(CC) -MMD ${CPPFLAGS} ${CFLAGS} ${LFLAGS} -o $@ ${patsubst %.h,, ${^}} $(LDFLAGS)
 
 run_tests: all
 	@export LD_LIBRARY_PATH=${simavr}/simavr/${OBJ} ;\
@@ -58,7 +54,8 @@ run_tests: all
 			num_failed=$$(($$num_failed+1)) ;\
 	    fi ;\
 	done ;\
-	echo "Tests run: $$num_run  Successes: $$(($$num_run-$$num_failed))  Failures: $$num_failed"
+	echo "Tests run: $$num_run  Successes: $$(($$num_run-$$num_failed))  Failures: $$num_failed" ;\
+	exit $$num_failed
 
 clean: clean-${OBJ}
 	rm -f *.axf *.vcd
