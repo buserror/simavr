@@ -1,12 +1,12 @@
 /*
 	button.c
 
-	This defines a sample for a very simple "peripheral" 
+	This defines a sample for a very simple "peripheral"
 	that can talk to an AVR core.
 	It is in fact a bit more involved than strictly necessary,
 	but is made to demonstrante a few useful features that are
 	easy to use.
-	
+
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
  	This file is part of simavr.
@@ -43,7 +43,18 @@ button_auto_release(
 }
 
 /*
- * button press. set the "pin" to zerok and register a timer
+ * button release. set the "pin" to one
+ */
+void
+button_release(
+		button_t * b)
+{
+	avr_cycle_timer_cancel(b->avr, button_auto_release, b);
+	avr_raise_irq(b->irq + IRQ_BUTTON_OUT, 1); // release
+}
+
+/*
+ * button press. set the "pin" to zero and optionally register a timer
  * that will reset it in a few usecs
  */
 void
@@ -52,9 +63,11 @@ button_press(
 		uint32_t duration_usec)
 {
 	avr_cycle_timer_cancel(b->avr, button_auto_release, b);
-	avr_raise_irq(b->irq + IRQ_BUTTON_OUT, 0);// press
-	// register the auto-release
-	avr_cycle_timer_register_usec(b->avr, duration_usec, button_auto_release, b);
+	avr_raise_irq(b->irq + IRQ_BUTTON_OUT, 0); // press
+	if (duration_usec) {
+		// register the auto-release
+		avr_cycle_timer_register_usec(b->avr, duration_usec, button_auto_release, b);
+	}
 }
 
 void
@@ -66,4 +79,3 @@ button_init(
 	b->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_BUTTON_COUNT, &name);
 	b->avr = avr;
 }
-
