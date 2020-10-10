@@ -405,6 +405,8 @@ avr_uart_write(
 	if (new_txen != txen) {
 		if (p->udrc.vector && !new_txen) {
 			avr_uart_clear_interrupt(avr, &p->udrc);
+		} else {
+			avr_regbit_set(avr, p->udrc.raised);
 		}
 	}
 }
