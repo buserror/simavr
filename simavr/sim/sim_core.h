@@ -113,7 +113,7 @@ static inline void avr_sreg_set(avr_t * avr, uint8_t flag, uint8_t ival)
 	if (flag == S_I) {
 		if (ival) {
 			if (!avr->sreg[S_I])
-				avr->interrupt_state = -2;
+				avr->interrupt_state = -1;
 		} else
 			avr->interrupt_state = 0;
 	}
