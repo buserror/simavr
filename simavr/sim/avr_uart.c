@@ -412,9 +412,9 @@ avr_uart_irq_input(
 		return;
 
 	// reserved/not implemented:
-	//avr_uart_regbit_clear(avr, p->fe);
-	//avr_uart_regbit_clear(avr, p->upe);
-	//avr_uart_regbit_clear(avr, p->rxb8);
+	//avr_regbit_clear(avr, p->fe);
+	//avr_regbit_clear(avr, p->upe);
+	//avr_regbit_clear(avr, p->rxb8);
 
 	if (uart_fifo_isempty(&p->input) &&
 			(avr_cycle_timer_status(avr, avr_uart_rxc_raise, p) == 0)
