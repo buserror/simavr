@@ -725,11 +725,14 @@ avr_timer_write_pending(
 		cp[compi] = avr_regbit_get(avr, p->comp[compi].interrupt.raised);
 
 	// write the value
-	// avr_core_watch_write(avr, addr, v); // This raises flags instead of clearing it.
 
-	// clear any interrupts & flags
-	avr_clear_interrupt_if(avr, &p->overflow, ov);
-	avr_clear_interrupt_if(avr, &p->icr, ic);
+	// Don't touch TOV1/ICR if this wasn't the correct write!
+	// It's been observed that writing e.g. OCF1B on a 2560 will clobber TOV
+	// if not using interrupt vectors for overflow.
+	if (v & p->overflow.raised.mask)
+		avr_clear_interrupt_if(avr, &p->overflow, ov);
+	if (v & p->icr.raised.mask)
+		avr_clear_interrupt_if(avr, &p->icr, ic);
 
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++)
 		avr_clear_interrupt_if(avr, &p->comp[compi].interrupt, cp[compi]);
