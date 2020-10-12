@@ -61,17 +61,6 @@ avr_uart_clear_interrupt(
 		avr_regbit_clear(avr, vector->raised);
 }
 
-static inline void
-avr_uart_regbit_clear(
-		avr_t * avr,
-		avr_regbit_t rb)
-{
-	uint16_t a = rb.reg;
-	if (!a)
-		return;
-	avr_regbit_clear(avr, rb);
-}
-
 static avr_cycle_count_t
 avr_uart_txc_raise(
 		struct avr_t * avr,
@@ -225,7 +214,7 @@ avr_uart_read_check:
 		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XON, 1);
 	}
 	if (!uart_fifo_isfull(&p->input)) {
-		avr_uart_regbit_clear(avr, p->dor);
+		avr_regbit_clear(avr, p->dor);
 	}
 
 	return v;
@@ -432,7 +421,7 @@ avr_uart_irq_input(
 			) {
 		avr_cycle_timer_register(avr, p->cycles_per_byte, avr_uart_rxc_raise, p); // start the rx pump
 		p->rx_cnt = 0;
-		avr_uart_regbit_clear(avr, p->dor);
+		avr_regbit_clear(avr, p->dor);
 	} else if (uart_fifo_isfull(&p->input)) {
 		avr_regbit_setto(avr, p->dor, 1);
 	}
@@ -458,7 +447,7 @@ avr_uart_reset(
 	avr_t * avr = p->io.avr;
 	if (p->udrc.vector) {
 		avr_regbit_set(avr, p->udrc.raised);
-		avr_uart_regbit_clear(avr, p->dor);
+		avr_regbit_clear(avr, p->dor);
 	}
 	avr_uart_clear_interrupt(avr, &p->txc);
 	avr_uart_clear_interrupt(avr, &p->rxc);
@@ -469,7 +458,7 @@ avr_uart_reset(
 	p->tx_cnt =  0;
 
 	avr_regbit_set(avr, p->ucsz);
-	avr_uart_regbit_clear(avr, p->ucsz2);
+	avr_regbit_clear(avr, p->ucsz2);
 
 	// DEBUG allow printf without fiddling with enabling the uart
 	avr_regbit_set(avr, p->txen);
