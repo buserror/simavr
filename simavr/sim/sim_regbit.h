@@ -40,7 +40,10 @@ extern "C" {
 /*
  * set/get/clear io register bits in one operation
  */
-static inline uint8_t avr_regbit_set(avr_t * avr, avr_regbit_t rb)
+static inline uint8_t
+avr_regbit_set(
+	avr_t * avr,
+	avr_regbit_t rb)
 {
 	uint16_t a = rb.reg;
 	uint8_t m;
@@ -52,7 +55,11 @@ static inline uint8_t avr_regbit_set(avr_t * avr, avr_regbit_t rb)
 	return (avr->data[a] >> rb.bit) & rb.mask;
 }
 
-static inline uint8_t avr_regbit_setto(avr_t * avr, avr_regbit_t rb, uint8_t v)
+static inline uint8_t
+avr_regbit_setto(
+	avr_t * avr,
+	avr_regbit_t rb,
+	uint8_t v)
 {
 	uint16_t a = rb.reg;
 	uint8_t m;
@@ -67,7 +74,11 @@ static inline uint8_t avr_regbit_setto(avr_t * avr, avr_regbit_t rb, uint8_t v)
 /*
  * Set the 'raw' bits, if 'v' is the unshifted value of the bits
  */
-static inline uint8_t avr_regbit_setto_raw(avr_t * avr, avr_regbit_t rb, uint8_t v)
+static inline uint8_t
+avr_regbit_setto_raw(
+	avr_t * avr,
+	avr_regbit_t rb,
+	uint8_t v)
 {
 	uint16_t a = rb.reg;
 	uint8_t m;
@@ -79,7 +90,10 @@ static inline uint8_t avr_regbit_setto_raw(avr_t * avr, avr_regbit_t rb, uint8_t
 	return (avr->data[a]) & (rb.mask << rb.bit);
 }
 
-static inline uint8_t avr_regbit_get(avr_t * avr, avr_regbit_t rb)
+static inline uint8_t
+avr_regbit_get(
+	avr_t * avr,
+	avr_regbit_t rb)
 {
 	uint16_t a = rb.reg;
 	if (!a)
@@ -93,7 +107,8 @@ static inline uint8_t avr_regbit_get(avr_t * avr, avr_regbit_t rb)
  * set to test then clear register operations.
  * makes cheking register bits before setting easier.
  */
-static inline uint8_t avr_regbit_from_value(
+static inline uint8_t
+avr_regbit_from_value(
 	avr_t * avr __attribute__((unused)),
 	avr_regbit_t rb,
 	uint8_t value)
@@ -107,7 +122,10 @@ static inline uint8_t avr_regbit_from_value(
 /*
  * Return the bit(s) 'in position' instead of zero based
  */
-static inline uint8_t avr_regbit_get_raw(avr_t * avr, avr_regbit_t rb)
+static inline uint8_t
+avr_regbit_get_raw(
+	avr_t * avr,
+	avr_regbit_t rb)
 {
 	uint16_t a = rb.reg;
 	if (!a)
@@ -116,7 +134,10 @@ static inline uint8_t avr_regbit_get_raw(avr_t * avr, avr_regbit_t rb)
 	return (avr->data[a]) & (rb.mask << rb.bit);
 }
 
-static inline uint8_t avr_regbit_clear(avr_t * avr, avr_regbit_t rb)
+static inline uint8_t
+avr_regbit_clear(
+	avr_t * avr,
+	avr_regbit_t rb)
 {
 	uint16_t a = rb.reg;
 	uint8_t m = rb.mask << rb.bit;
@@ -130,7 +151,11 @@ static inline uint8_t avr_regbit_clear(avr_t * avr, avr_regbit_t rb)
  * This allows reading bits like CS0, CS1, CS2 etc even if they are not in the same
  * physical IO register.
  */
-static inline uint8_t avr_regbit_get_array(avr_t * avr, avr_regbit_t *rb, int count)
+static inline uint8_t
+avr_regbit_get_array(
+	avr_t * avr,
+	avr_regbit_t *rb,
+	int count)
 {
 	uint8_t res = 0;
 	int i;
@@ -145,7 +170,8 @@ static inline uint8_t avr_regbit_get_array(avr_t * avr, avr_regbit_t *rb, int co
 /*
  * Does the reverse of avr_regbit_get_array
  */
-static inline void avr_regbit_set_array_from_value(
+static inline void
+avr_regbit_set_array_from_value(
 	avr_t * avr,
 	avr_regbit_t * rb,
 	uint8_t count,
