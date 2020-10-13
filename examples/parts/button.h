@@ -1,12 +1,12 @@
 /*
 	button.h
 
-	This defines a sample for a very simple "peripheral" 
+	This defines a sample for a very simple "peripheral"
 	that can talk to an AVR core.
 	It is in fact a bit more involved than strictly necessary,
 	but is made to demonstrante a few useful features that are
 	easy to use.
-	
+
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
  	This file is part of simavr.
@@ -51,5 +51,9 @@ void
 button_press(
 		button_t * b,
 		uint32_t duration_usec);
+
+void
+button_release(
+		button_t * b);
 
 #endif /* __BUTTON_H__*/
