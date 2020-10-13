@@ -88,10 +88,15 @@ hd44780_kick_cursor(
 	if (hd44780_get_flag(b, HD44780_FLAG_I_D)) { // incrementing
 		if (b->cursor < 0x80) { // cursor in DDRAM
 			b->cursor++;
-			if (b->cursor >= 0x00 + 40 && b->cursor < 0x40) // jump from end of first memory segment to the start of the second segment
-				b->cursor = 0x40;
-			else if (b->cursor >= 0x40 + 40) // wrap around from the end of the second memory segment to the start of the first segment
-				b->cursor = 0x00;
+			if (hd44780_get_flag(b, HD44780_FLAG_N)) { // 2-line display
+				if (b->cursor >= 0x00 + 40 && b->cursor < 0x40) // jump from end of first memory segment to the start of the second segment
+					b->cursor = 0x40;
+				else if (b->cursor >= 0x40 + 40) // wrap around from the end of the second memory segment to the start of the first segment
+					b->cursor = 0x00;
+			} else { // 1-line display
+				if (b->cursor >= 0x00 + 80) // wrap around from the end of the memory to the start
+					b->cursor = 0x00;
+			}
 		} else { // cursor in CGRAM
 			if (b->cursor == 0x80 + 0x3f) // wrap around in CGRAM
 				b->cursor = 0x80;
@@ -100,12 +105,19 @@ hd44780_kick_cursor(
 		}
 	} else { // decrementing
 		if (b->cursor < 0x80) { // cursor in DDRAM
-			if (b->cursor == 0x40) // fall back from the start of the second memory segment to the end of the first segment
-				b->cursor = 0x00 + 39;
-			else if (b->cursor == 0x00) // wrap around from the start of the first memory segment to the end of the second segment
-				b->cursor = 0x40 + 39;
-			else
-				b->cursor--;
+			if (hd44780_get_flag(b, HD44780_FLAG_N)) { // 2-line display
+				if (b->cursor == 0x40) // fall back from the start of the second memory segment to the end of the first segment
+					b->cursor = 0x00 + 39;
+				else if (b->cursor == 0x00) // wrap around from the start of the first memory segment to the end of the second segment
+					b->cursor = 0x40 + 39;
+				else
+					b->cursor--;
+			} else { // 1-line display
+				if (b->cursor == 0x00) // wrap around from the start of the memory to the end
+					b->cursor = 0x00 + 79;
+				else
+					b->cursor--;
+			}
 		} else { // cursor in CGRAM
 			if (b->cursor == 0x80) // wrap around in CGRAM
 				b->cursor = 0x80 + 0x3f;
@@ -155,10 +167,15 @@ hd44780_write_command(
 		// Set	DDRAM address
 		case 7:		// 1 ADD ADD ADD ADD ADD ADD ADD
 			b->cursor = b->datapins & 0x7f;
-			if (b->cursor >= 0x00 + 40 && b->cursor < 0x40) // illegal address after the first memory segment -> set cursor to start of second segment
-				b->cursor = 0x40;
-			else if (b->cursor >= 0x40 + 40) // illegal address after the second memory segment -> set cursor to start of first segment
-				b->cursor = 0x00;
+			if (hd44780_get_flag(b, HD44780_FLAG_N)) { // 2-line display
+				if (b->cursor >= 0x00 + 40 && b->cursor < 0x40) // illegal address after the first memory segment -> set cursor to start of second segment
+					b->cursor = 0x40;
+				else if (b->cursor >= 0x40 + 40) // illegal address after the second memory segment -> set cursor to start of first segment
+					b->cursor = 0x00;
+			} else { // 1-line display
+				if (b->cursor >= 0x00 + 80) // illegal address after valid memory -> set cursor to start
+					b->cursor = 0x00;
+			}
 			break;
 		// Set	CGRAM address
 		case 6:		// 0 1 ADD ADD ADD ADD ADD ADD ADD
