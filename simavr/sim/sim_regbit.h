@@ -140,6 +140,8 @@ avr_regbit_clear(
 	avr_regbit_t rb)
 {
 	uint16_t a = rb.reg;
+	if (!a)
+		return 0;
 	uint8_t m = rb.mask << rb.bit;
 	avr_core_watch_write(avr, a, avr->data[a] & ~m);
 	return avr->data[a];
