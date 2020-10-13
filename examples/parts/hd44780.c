@@ -65,7 +65,7 @@ _hd44780_clear_screen(
 
 
 /*
- * This is called when the delay between operation is triggered
+ * This is called when the delay between operations is triggered
  * without the AVR firmware 'reading' the status byte. It
  * automatically clears the BUSY flag for the next command
  */
@@ -156,7 +156,7 @@ hd44780_write_command(
 		hd44780_t *b)
 {
 	uint32_t delay = 37; // uS
-	int top = 7;	// get highest bit set'm
+	int top = 7;	// get highest bit set
 	while (top)
 		if (b->datapins & (1 << top))
 			break;
@@ -164,7 +164,7 @@ hd44780_write_command(
 	printf("hd44780_write_command %02x\n", b->datapins);
 
 	switch (top) {
-		// Set	DDRAM address
+		// Set DDRAM address
 		case 7:		// 1 ADD ADD ADD ADD ADD ADD ADD
 			b->cursor = b->datapins & 0x7f;
 			if (hd44780_get_flag(b, HD44780_FLAG_N)) { // 2-line display
@@ -177,8 +177,8 @@ hd44780_write_command(
 					b->cursor = 0x00;
 			}
 			break;
-		// Set	CGRAM address
-		case 6:		// 0 1 ADD ADD ADD ADD ADD ADD ADD
+		// Set CGRAM address
+		case 6:		// 0 1 ACG ACG ACG ACG ACG ACG
 			b->cursor = 0x80 + (b->datapins & 0x3f);
 			break;
 		// Function	set
