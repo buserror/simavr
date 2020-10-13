@@ -1,7 +1,0 @@
-test_atmega48_disabled_timer
-test_atmega48_enabled_timer
-test_atmega48_watchdog_test
-test_atmega644_adc_test
-test_atmega88_example
-test_atmega88_timer16
-test_atmega88_uart_echo

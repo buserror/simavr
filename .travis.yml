@@ -3,5 +3,6 @@ before_install:
 - sudo apt-get install -qq libelf-dev gcc-avr avr-libc freeglut3-dev
 
 language: c
-script: make V=1
-
+script:
+- make V=1
+- make -C tests run_tests V=1
