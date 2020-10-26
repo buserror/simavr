@@ -46,38 +46,43 @@ CFLAGS		+= -g
 CORE_CFLAGS	= -DAVR_CORE=1
 
 ifeq (${shell uname}, Darwin)
- # gcc 4.2 from MacOS is really not up to scratch anymore
- CC			= clang
- AVR_ROOT 	:= "/Applications/Arduino.app/Contents/Java/hardware/tools/avr/"
- AVR 		:= ${AVR_ROOT}/bin/avr-
- # Thats for MacPorts libelf
- ifeq (${shell test -d /opt/local && echo Exists}, Exists)
-  ifneq (${shell test -d /opt/local/avr && echo Exists}, Exists)
-   $(error Please install avr-gcc: port install avr-gcc avr-libc)
-  endif
-  ifneq (${shell test -d /opt/local/include/libelf && echo Exists}, Exists)
-   $(error Please install libelf: port install libelf)
-  endif
-  CC		= clang
-  IPATH		+= /opt/local/include /opt/local/include/libelf
-  LFLAGS	= -L/opt/local/lib/
-  AVR 		:= /opt/local/bin/avr-
+ # If AVR Toolchain was installed from Microchip binaries
+ ifneq (, $(shell which avr-gcc))
+  AVR 		:= avr-
  else
-  # That's for Homebrew libelf and avr-gcc support
-  HOMEBREW_PREFIX ?= /usr/local
-  ifeq (${shell test -d $(HOMEBREW_PREFIX)/Cellar && echo Exists}, Exists)
-   ifneq (${shell test -d $(HOMEBREW_PREFIX)/Cellar/avr-gcc/ && echo Exists}, Exists)
-    $(error Please install avr-gcc: brew tap osx-cross/homebrew-avr ; brew install avr-libc)
+  # gcc 4.2 from MacOS is really not up to scratch anymore
+  CC			= clang
+  AVR_ROOT 	:= "/Applications/Arduino.app/Contents/Java/hardware/tools/avr/"
+  AVR 		:= ${AVR_ROOT}/bin/avr-
+  # Thats for MacPorts libelf
+  ifeq (${shell test -d /opt/local && echo Exists}, Exists)
+   ifneq (${shell test -d /opt/local/avr && echo Exists}, Exists)
+    $(error Please install avr-gcc: port install avr-gcc avr-libc)
    endif
-   ifneq (${shell test -d $(HOMEBREW_PREFIX)/Cellar/libelf/ && echo Exists}, Exists)
-    $(error Please install libelf: brew install libelf)
+   ifneq (${shell test -d /opt/local/include/libelf && echo Exists}, Exists)
+    $(error Please install libelf: port install libelf)
    endif
-   CC			= clang
-   IPATH		+= $(HOMEBREW_PREFIX)/include
-   LFLAGS		= -L$(HOMEBREW_PREFIX)/lib/
-   CFLAGS		+= -I/$(HOMEBREW_PREFIX)/include/libelf
-   AVR_ROOT		:= $(firstword $(wildcard $(HOMEBREW_PREFIX)/Cellar/avr-libc/*/))
-   AVR			:= $(HOMEBREW_PREFIX)/bin/avr-
+   CC		= clang
+   IPATH		+= /opt/local/include /opt/local/include/libelf
+   LFLAGS	= -L/opt/local/lib/
+   AVR 		:= /opt/local/bin/avr-
+  else
+   # That's for Homebrew libelf and avr-gcc support
+   HOMEBREW_PREFIX ?= /usr/local
+   ifeq (${shell test -d $(HOMEBREW_PREFIX)/Cellar && echo Exists}, Exists)
+    ifneq (${shell test -d $(HOMEBREW_PREFIX)/Cellar/avr-gcc/ && echo Exists}, Exists)
+     $(error Please install avr-gcc: brew tap osx-cross/homebrew-avr ; brew install avr-libc)
+    endif
+    ifneq (${shell test -d $(HOMEBREW_PREFIX)/Cellar/libelf/ && echo Exists}, Exists)
+     $(error Please install libelf: brew install libelf)
+    endif
+    CC			= clang
+    IPATH		+= $(HOMEBREW_PREFIX)/include
+    LFLAGS		= -L$(HOMEBREW_PREFIX)/lib/
+    CFLAGS		+= -I/$(HOMEBREW_PREFIX)/include/libelf
+    AVR_ROOT		:= $(firstword $(wildcard $(HOMEBREW_PREFIX)/Cellar/avr-libc/*/))
+    AVR			:= $(HOMEBREW_PREFIX)/bin/avr-
+   endif
   endif
  endif
 else
