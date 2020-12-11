@@ -1,3 +1,6 @@
+arch:
+  - amd64
+  - ppc64le
 before_install:
 - sudo apt-get update -qq
 - sudo apt-get install -qq libelf-dev gcc-avr avr-libc freeglut3-dev
