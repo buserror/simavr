@@ -754,9 +754,9 @@ avr_timer_write_pending(
 	// avr_core_watch_write(avr, addr, v); // This raises flags instead of clearing it.
 
 	// clear any interrupts & flags
-	if (avr_regbit_from_value(avr, p->overflow, v))
+	if (avr_regbit_from_value(avr, p->overflow.raised, v))
 		avr_clear_interrupt_if(avr, &p->overflow, ov);
-	if (avr_regbit_from_value(avr, p->icr, v))
+	if (avr_regbit_from_value(avr, p->icr.raised, v))
 		avr_clear_interrupt_if(avr, &p->icr, ic);
 
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++)
