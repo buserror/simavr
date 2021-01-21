@@ -153,8 +153,8 @@ struct output_buffer {
 	int maxlen;
 };
 
-/* static void buf_output_cb(avr_t *avr, avr_io_addr_t addr, uint8_t v, */
-/* 			  void *param) { */
+/* Callback for receiving data via an IRQ. */
+
 static void buf_output_cb(struct avr_irq_t *irq, uint32_t value, void *param) {
 	struct output_buffer *buf = param;
 	if (!buf)
@@ -171,12 +171,41 @@ static void buf_output_cb(struct avr_irq_t *irq, uint32_t value, void *param) {
 	buf->str[buf->currlen] = 0;
 }
 
+/* Callback for receiving data directly from a register,
+ * after calling avr_register_io_write().
+ */
+
+static void reg_output_cb(struct avr_t *avr, avr_io_addr_t addr,
+                          uint8_t v, void *param)
+{
+    buf_output_cb(NULL, v, param);
+}
+
 static void init_output_buffer(struct output_buffer *buf) {
 	buf->str = malloc(128);
 	buf->str[0] = 0;
 	buf->currlen = 0;
 	buf->alloclen = 128;
 	buf->maxlen = 4096;
+}
+
+static void tests_assert_xxxx_receive_avr(avr_t                *avr,
+                                          unsigned long         run_usec,
+                                          struct output_buffer *buf,
+                                          const char           *expected)
+{
+	enum tests_finish_reason reason = tests_run_test(avr, run_usec);
+
+	if (reason == LJR_CYCLE_TIMER) {
+		if (strcmp(buf->str, expected) == 0) {
+			_fail(NULL, 0, "Simulation did not finish within %lu simulated usec. "
+			     "Output is correct and complete.", run_usec);
+		}
+		_fail(NULL, 0, "Simulation did not finish within %lu simulated usec. "
+		     "Output so far: \"%s\"", run_usec, buf->str);
+	}
+	if (strcmp(buf->str, expected) != 0)
+		_fail(NULL, 0, "Outputs differ: expected \"%s\", got \"%s\"", expected, buf->str);
 }
 
 void tests_assert_uart_receive_avr(avr_t *avr,
@@ -186,19 +215,10 @@ void tests_assert_uart_receive_avr(avr_t *avr,
 	struct output_buffer buf;
 	init_output_buffer(&buf);
 
-	avr_irq_register_notify(avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ(uart), UART_IRQ_OUTPUT),
-				buf_output_cb, &buf);
-	enum tests_finish_reason reason = tests_run_test(avr, run_usec);
-	if (reason == LJR_CYCLE_TIMER) {
-		if (strcmp(buf.str, expected) == 0) {
-			_fail(NULL, 0, "Simulation did not finish within %lu simulated usec. "
-			     "UART output is correct and complete.", run_usec);
-		}
-		_fail(NULL, 0, "Simulation did not finish within %lu simulated usec. "
-		     "UART output so far: \"%s\"", run_usec, buf.str);
-	}
-	if (strcmp(buf.str, expected) != 0)
-		_fail(NULL, 0, "UART outputs differ: expected \"%s\", got \"%s\"", expected, buf.str);
+	avr_irq_register_notify(
+                avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ(uart),
+                              UART_IRQ_OUTPUT), buf_output_cb, &buf);
+        tests_assert_xxxx_receive_avr(avr, run_usec, &buf, expected);
 }
 
 void tests_assert_uart_receive(const char *elfname,
@@ -211,6 +231,28 @@ void tests_assert_uart_receive(const char *elfname,
 			       run_usec,
 			       expected,
 			       uart);
+}
+
+void tests_assert_register_receive_avr(avr_t         *avr,
+                                       unsigned long  run_usec,
+                                       const char    *expected,
+                                       avr_io_addr_t  reg_addr)
+{
+	struct output_buffer buf;
+
+	init_output_buffer(&buf);
+        avr_register_io_write(avr, reg_addr, reg_output_cb, &buf);
+	tests_assert_xxxx_receive_avr(avr, run_usec, &buf, expected);
+}
+
+void tests_assert_register_receive(const char    *elfname,
+                                   unsigned long  run_usec,
+                                   const char    *expected,
+                                   avr_io_addr_t  reg_addr)
+{
+	avr_t *avr = tests_init_avr(elfname);
+
+        tests_assert_register_receive_avr(avr, run_usec, expected, reg_addr);
 }
 
 void tests_assert_cycles_at_least(unsigned long n) {
