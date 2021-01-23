@@ -34,11 +34,11 @@ avr_ioport_read(
 	uint8_t ddr = avr->data[p->r_ddr];
 	uint8_t v = (avr->data[p->r_pin] & ~ddr) | (avr->data[p->r_port] & ddr);
 	avr->data[addr] = v;
-	// made to trigger potential watchpoints
-	v = avr_core_watch_read(avr, addr);
 	avr_raise_irq(p->io.irq + IOPORT_IRQ_REG_PIN, v);
 	D(if (avr->data[addr] != v) printf("** PIN%c(%02x) = %02x\r\n", p->name, addr, v);)
 
+	// made to trigger potential watchpoints
+	v = avr_core_watch_read(avr, addr);
 	return v;
 }
 
@@ -252,7 +252,7 @@ static const char * irq_names[IOPORT_IRQ_COUNT] = {
 	[IOPORT_IRQ_PIN5] = "=pin5",
 	[IOPORT_IRQ_PIN6] = "=pin6",
 	[IOPORT_IRQ_PIN7] = "=pin7",
-	[IOPORT_IRQ_PIN_ALL] = "8=all",
+	[IOPORT_IRQ_PIN_ALL] = "8>all",
 	[IOPORT_IRQ_DIRECTION_ALL] = "8>ddr",
 	[IOPORT_IRQ_REG_PORT] = "8>port",
 	[IOPORT_IRQ_REG_PIN] = "8>pin",

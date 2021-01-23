@@ -37,9 +37,14 @@ static avr_cycle_count_t avr_extint_poll_level_trig(
 		void * param)
 {
 	avr_extint_poll_context_t *poll = (avr_extint_poll_context_t *)param;
-	avr_extint_t * p = (avr_extint_t *)poll->extint;
+	avr_extint_t * p = poll->extint;
 
-	char port = p->eint[poll->eint_no].port_ioctl & 0xFF;
+        /* Check for change of interrupt mode. */
+
+        if (avr_regbit_get_array(avr, p->eint[poll->eint_no].isc, 2))
+		goto terminate_poll;
+
+        char port = p->eint[poll->eint_no].port_ioctl & 0xFF;
 	avr_ioport_state_t iostate;
 	if (avr_ioctl(avr, AVR_IOCTL_IOPORT_GETSTATE( port ), &iostate) < 0)
 		goto terminate_poll;
@@ -176,9 +181,9 @@ static void avr_extint_reset(avr_io_t * port)
 	avr_extint_t * p = (avr_extint_t *)port;
 
 	for (int i = 0; i < EXTINT_COUNT; i++) {
-		avr_irq_register_notify(p->io.irq + i, avr_extint_irq_notify, p);
-
 		if (p->eint[i].port_ioctl) {
+                        avr_irq_register_notify(p->io.irq + i, avr_extint_irq_notify, p);
+
 			if (p->eint[i].isc[1].reg) // level triggering available
 				p->eint[i].strict_lvl_trig = 1; // turn on repetitive level triggering by default
 			avr_irq_t * irq = avr_io_getirq(p->io.avr,
@@ -211,10 +216,13 @@ void avr_extint_init(avr_t * avr, avr_extint_t * p)
 	p->io = _io;
 
 	avr_register_io(avr, &p->io);
-	for (int i = 0; i < EXTINT_COUNT; i++)
+	for (int i = 0; i < EXTINT_COUNT; i++) {
+                if (!p->eint[i].port_ioctl)
+                     break;
 		avr_register_vector(avr, &p->eint[i].vector);
-
+        }
 	// allocate this module's IRQ
+
 	avr_io_setirqs(&p->io, AVR_IOCTL_EXTINT_GETIRQ(), EXTINT_COUNT, NULL);
 }
 
