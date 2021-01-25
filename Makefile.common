@@ -215,7 +215,7 @@ endif
 		-Wl,--whole-archive,-soname,${basename ${notdir $@}}.1 \
 		${filter %.o %.a,$^} \
 		 -Wl,--no-whole-archive \
-		${filter-out -l%, $(LDFLAGS)} ${EXTRA_LDFLAGS}
+		${filter-out -lsimavr, $(LDFLAGS)} ${EXTRA_LDFLAGS}
 
 ${OBJ}/%.so: ${OBJ}/%.so.1
 	ln -sf ${notdir $<} $@
