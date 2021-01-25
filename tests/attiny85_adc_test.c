@@ -75,12 +75,15 @@ static uint16_t int_results[NUM_SUBTESTS + 2];
 
 ISR(ADC_vect)
 {
-    /* Write the next ADCMUX/ADSRB settings. */
-
     if (index_i >= NUM_SUBTESTS) {
+        /* Done: disable auto-trigger. */
+
         ADCSRA &= ~(1 << ADATE);
         return;
     }
+
+    /* Write the next ADCMUX/ADSRB settings. */
+
     ADMUX = params[index_i].mux;
     ADCSRB = params[index_i].srb;
     index_i++;
@@ -102,12 +105,13 @@ int main(void)
     for (i = 0; i < NUM_SUBTESTS; ++i) {
         ADMUX = params[i].mux;
         ADCSRB = params[i].srb;
-        ADCSRA = (1 << ADEN) + (1 << ADSC) + 5;
+        ADCSRA = (1 << ADEN) + (1 << ADSC) + (1 << ADIF) + 5;
         while ((ADCSRA & (1 << ADIF)) == 0)
             ;
         printf(" %d", ADC);
     }
     uart_putchar('\n', stdout);
+    ADCSRA = (1 << ADEN) + (1 << ADIF); // Clear interrupt flag.
 
     /* Do it again with interrupts. printf() is too slow to send the
      * results in real time, even with maximum pre-scaler ratio.

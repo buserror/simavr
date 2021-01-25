@@ -251,6 +251,20 @@ avr_adc_write_adcsra(
 	uint8_t aden = avr_regbit_get(avr, p->aden);
 	uint8_t new_aden;
 
+        if (p->adc.raised.reg == addr) {
+                uint8_t mask;
+
+                mask = 1 << p->adc.raised.bit;
+                if (mask & v) {
+                        // Clear interrupt flag on bit set.
+
+                        avr_clear_interrupt(avr, &p->adc);
+                        v &= ~mask;
+                } else {
+                        v |= (mask & avr->data[p->adsc.reg]);
+                }
+        }
+
 	avr->data[p->adsc.reg] = v;
         new_aden = avr_regbit_get(avr, p->aden);
 
@@ -337,12 +351,21 @@ avr_adc_irq_notify(
 			  		uint8_t addr = p->adsc.reg;
 					if (addr) {
 						uint8_t val = avr->data[addr] | (1 << p->adsc.bit);
+                                                if (p->adc.raised.reg == addr) {
+                                                    uint8_t mask;
+
+                                                    mask = 1 << p->adc.raised.bit;
+                                                    val &= ~mask;
+                                                }
+
 						// write ADSC to ADCSRA
+
 						avr_adc_write_adcsra(avr, addr, val, param);
 					}
 				}
 			}
-		}	break;
+		}
+                break;
 	}
 }
 
