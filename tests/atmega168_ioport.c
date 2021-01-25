@@ -93,7 +93,7 @@ int main()
          * by a pin-value change or by writing to either of EICRA and EIMSK.
          */
 
-        /* TODO: Set-up pin change interrupt on pin 7 (PCINT23) */
+        /* Try pin change interrupt. */
 
         PCICR = (1 << PCIE2); /* Interrupt enable. */
         PCMSK2 = 0x0a;        /* Pins 1 and 3. */
