@@ -74,10 +74,13 @@ static avr_cycle_count_t
 avr_timer_comp(
 		avr_timer_t *p,
 		avr_cycle_count_t when,
-		uint8_t comp)
+		uint8_t comp,
+		uint8_t raise_interrupt)
 {
 	avr_t * avr = p->io.avr;
-	avr_raise_interrupt(avr, &p->comp[comp].interrupt);
+	if (raise_interrupt) {
+	   avr_raise_interrupt(avr, &p->comp[comp].interrupt);
+	}
 
 	// check output compare mode and set/clear pins
 	uint8_t mode = avr_regbit_get(avr, p->comp[comp].com);
@@ -149,7 +152,7 @@ avr_timer_compa(
 		avr_cycle_count_t when,
 		void * param)
 {
-	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPA);
+	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPA, 1);
 }
 
 static avr_cycle_count_t
@@ -158,7 +161,7 @@ avr_timer_compb(
 		avr_cycle_count_t when,
 		void * param)
 {
-	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPB);
+	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPB, 1);
 }
 
 static avr_cycle_count_t
@@ -167,7 +170,7 @@ avr_timer_compc(
 		avr_cycle_count_t when,
 		void * param)
 {
-	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPC);
+	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPC, 1);
 }
 
 static void
@@ -725,7 +728,7 @@ static void avr_timer_write_foc(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
                 if ((addr == p->comp[compi].foc.reg) &&
                     (v & (1 << p->comp[compi].foc.bit))) {
-                        avr_timer_comp(p, avr->cycle, compi);
+                        avr_timer_comp(p, avr->cycle, compi, 0);
                 }
         }
 }
