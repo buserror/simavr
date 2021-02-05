@@ -71,7 +71,7 @@ struct mcu_t {
 #ifndef PD3
 #define PD3 PORTD3
 #define PD2 PORTD2
-#define PB3 PORTB3
+#define PB2 PORTB2
 #endif
 
 const struct mcu_t SIM_CORENAME = {
