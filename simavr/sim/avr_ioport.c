@@ -282,7 +282,7 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 	// allocate this module's IRQ
 	avr_io_setirqs(&p->io, AVR_IOCTL_IOPORT_GETIRQ(p->name), IOPORT_IRQ_COUNT, NULL);
 
-	for (int i = 0; i < IOPORT_IRQ_COUNT; i++)
+	for (int i = 0; i < IOPORT_IRQ_REG_PIN; i++)
 		p->io.irq[i].flags |= IRQ_FLAG_FILTERED;
 
 	avr_register_io_write(avr, p->r_port, avr_ioport_write, p);
