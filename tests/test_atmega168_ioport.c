@@ -98,7 +98,7 @@ static const char *expected = "P<2A P<70 F<01 I<E0 P<E0 J<03 J<00 P<E8 ";
 static const char *log_expected =
     "d-0F P-00 o-0A P-0A I-0A 5-01 o-09 P-29 d-3C 5-00 P-09 o-F0 5-01 P-F0 "
     "I-70 "                                     // Interrupts off testing.
-    "o-E0 P-E0 I-E0 "                           // External interrupt test.
+    "o-E0 P-E0 I-E0 I-E0 "                      // External interrupt test.
     "d-03 o-01 P-E1 o-03 P-E3 o-00 P-E8 I-E8 "; // Pin change interrupt test.
 
 
