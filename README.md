@@ -17,7 +17,7 @@ On OSX, we recommend using [homebrew](https://brew.sh):
     brew tap osx-cross/avr
     brew install --HEAD simavr
 
-On Kali Linux & Parrot OS, SimAVR is available in the Bionic package source:
+On Ubuntu, SimAVR is available in the Bionic package source:
 
     apt-get install simavr
 
