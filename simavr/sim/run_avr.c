@@ -87,7 +87,7 @@ main(
 		int argc,
 		char *argv[])
 {
-	elf_firmware_t f = {{0}};
+	elf_firmware_t f;
 	uint32_t f_cpu = 0;
 	int trace = 0;
 	int gdb = 0;
@@ -98,6 +98,7 @@ main(
 	int trace_vectors[8] = {0};
 	int trace_vectors_count = 0;
 	const char *vcd_input = NULL;
+	const char *vcd_output = NULL;
 
 	if (argc == 1)
 		display_usage(basename(argv[0]));
@@ -129,7 +130,7 @@ main(
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
 				exit(1);
 			}
-			snprintf(f.tracename, sizeof(f.tracename), "%s", argv[++pi]);
+			vcd_output = argv[++pi];
 		} else if (!strcmp(argv[pi], "-at") || !strcmp(argv[pi], "--add-trace")) {
 			if (pi + 1 >= argc) {
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
@@ -253,6 +254,8 @@ main(
 	avr_init(avr);
 	avr->log = (log > LOG_TRACE ? LOG_TRACE : log);
 	avr->trace = trace;
+	if (vcd_output)
+		snprintf(f.tracename, sizeof(f.tracename), "%s", vcd_output);
 	avr_load_firmware(avr, &f);
 	if (f.flashbase) {
 		printf("Attempted to load a bootloader at %04x\n", f.flashbase);
