@@ -116,7 +116,8 @@ const struct mcu_t SIM_CORENAME = {
     .adc = {
         .r_admux = ADMUX,
         .mux = { AVR_IO_REGBIT(ADMUX, MUX0), AVR_IO_REGBIT(ADMUX, MUX1),
-                    AVR_IO_REGBIT(ADMUX, MUX2), AVR_IO_REGBIT(ADMUX, MUX3),},
+                    AVR_IO_REGBIT(ADMUX, MUX2), AVR_IO_REGBIT(ADMUX, MUX3),
+                    AVR_IO_REGBIT(ADMUX, MUX4), AVR_IO_REGBIT(ADMUX, MUX5),},
         .ref = { AVR_IO_REGBIT(ADMUX, REFS0), AVR_IO_REGBIT(ADMUX, REFS1), },
         .ref_values = {
                 [0] = ADC_VREF_VCC, [1] = ADC_VREF_AREF,
@@ -147,17 +148,43 @@ const struct mcu_t SIM_CORENAME = {
         },
         .bin = AVR_IO_REGBIT(ADCSRB, BIN),
 
-        .muxmode = {
+        .muxmode = { /* 64 entries, including offset calibration */
             [0] = AVR_ADC_SINGLE(0), [1] = AVR_ADC_SINGLE(1),
             [2] = AVR_ADC_SINGLE(2), [3] = AVR_ADC_SINGLE(3),
+            [4] = AVR_ADC_SINGLE(4), [5] = AVR_ADC_SINGLE(5),
+            [6] = AVR_ADC_SINGLE(6), [7] = AVR_ADC_SINGLE(7),
 
-            [ 4] = AVR_ADC_DIFF(2, 2,   1), [ 5] = AVR_ADC_DIFF(2, 2,  20),
-            [ 6] = AVR_ADC_DIFF(2, 3,   1), [ 7] = AVR_ADC_DIFF(2, 3,  20),
-            [ 8] = AVR_ADC_DIFF(0, 0,   1), [ 9] = AVR_ADC_DIFF(0, 0,  20),
-            [10] = AVR_ADC_DIFF(0, 1,   1), [11] = AVR_ADC_DIFF(0, 1,  20),
-            [12] = AVR_ADC_REF(1100),    // Vbg
-            [13] = AVR_ADC_REF(0),        // GND
-            [15] = AVR_ADC_TEMP(),
+            /* no ofs.calibration PA0-PA0, x1 */ [0b100011] = AVR_ADC_DIFF (0, 0, 20), /* ofs. calibration */
+            [0b001000] = AVR_ADC_DIFF (0, 1, 1), [0b001001] = AVR_ADC_DIFF (0, 1, 20),
+            [0b001010] = AVR_ADC_DIFF (0, 3, 1), [0b001011] = AVR_ADC_DIFF (0, 3, 20),
+            [0b101000] = AVR_ADC_DIFF (1, 0, 1), [0b101001] = AVR_ADC_DIFF (1, 0, 20),
+            [0b001100] = AVR_ADC_DIFF (1, 2, 1), [0b001101] = AVR_ADC_DIFF (1, 2, 20),
+            [0b001110] = AVR_ADC_DIFF (1, 3, 1), [0b001111] = AVR_ADC_DIFF (1, 3, 20),
+            [0b101100] = AVR_ADC_DIFF (2, 1, 1), [0b101101] = AVR_ADC_DIFF (2, 1, 20),
+            [0b010000] = AVR_ADC_DIFF (2, 3, 1), [0b010001] = AVR_ADC_DIFF (2, 3, 20),
+            [0b101010] = AVR_ADC_DIFF (3, 0, 1), [0b101011] = AVR_ADC_DIFF (3, 0, 20),
+            [0b101110] = AVR_ADC_DIFF (3, 1, 1), [0b101111] = AVR_ADC_DIFF (3, 1, 20),
+            [0b110000] = AVR_ADC_DIFF (3, 2, 1), [0b110001] = AVR_ADC_DIFF (3, 2, 20),
+            [0b100100] = AVR_ADC_DIFF (3, 3, 1), [0b100101] = AVR_ADC_DIFF (3, 3, 20), /* ofs. calibration */
+            [0b010010] = AVR_ADC_DIFF (3, 4, 1), [0b010011] = AVR_ADC_DIFF (3, 4, 20),
+            [0b010100] = AVR_ADC_DIFF (3, 5, 1), [0b010101] = AVR_ADC_DIFF (3, 5, 20),
+            [0b010110] = AVR_ADC_DIFF (3, 6, 1), [0b010111] = AVR_ADC_DIFF (3, 6, 20),
+            [0b011000] = AVR_ADC_DIFF (3, 7, 1), [0b011001] = AVR_ADC_DIFF (3, 7, 20),
+            [0b110010] = AVR_ADC_DIFF (4, 3, 1), [0b110011] = AVR_ADC_DIFF (4, 3, 20),
+            [0b011010] = AVR_ADC_DIFF (4, 5, 1), [0b011011] = AVR_ADC_DIFF (4, 5, 20),
+            [0b110100] = AVR_ADC_DIFF (5, 3, 1), [0b110101] = AVR_ADC_DIFF (5, 3, 20),
+            [0b111010] = AVR_ADC_DIFF (5, 4, 1), [0b111011] = AVR_ADC_DIFF (5, 4, 20),
+            [0b011100] = AVR_ADC_DIFF (5, 6, 1), [0b011101] = AVR_ADC_DIFF (5, 6, 20),
+            [0b110110] = AVR_ADC_DIFF (6, 3, 1), [0b110111] = AVR_ADC_DIFF (6, 3, 20),
+            [0b111100] = AVR_ADC_DIFF (6, 5, 1), [0b111101] = AVR_ADC_DIFF (6, 5, 20),
+            [0b011110] = AVR_ADC_DIFF (6, 7, 1), [0b011111] = AVR_ADC_DIFF (6, 7, 20),
+            [0b111000] = AVR_ADC_DIFF (7, 3, 1), [0b111001] = AVR_ADC_DIFF (7, 3, 20),
+            [0b111110] = AVR_ADC_DIFF (7, 6, 1), [0b111111] = AVR_ADC_DIFF (7, 6, 20),
+            [0b100110] = AVR_ADC_DIFF (7, 7, 1), [0b100111] = AVR_ADC_DIFF (7, 7, 20), /* ofs. calibration */
+
+            [32] = AVR_ADC_REF(0),       // 0V AGND
+            [33] = AVR_ADC_REF(1100),    // 1.1V internal Vref
+            [34] = AVR_ADC_TEMP(),
         },
 
         .adc = {
@@ -190,7 +217,7 @@ const struct mcu_t SIM_CORENAME = {
             [AVR_TIMER_COMPA] = {
                 .r_ocr = OCR0A,
                 .com = AVR_IO_REGBITS(TCCR0A, COM0A0, 0x3),
-                .com_pin = AVR_IO_REGBIT(PORTB, 0),
+                .com_pin = AVR_IO_REGBIT(PORTB, 2), /* p.64 */
                 .interrupt = {
                     .enable = AVR_IO_REGBIT(TIMSK0, OCIE0A),
                     .raised = AVR_IO_REGBIT(TIFR0, OCF0A),
@@ -200,7 +227,7 @@ const struct mcu_t SIM_CORENAME = {
             [AVR_TIMER_COMPB] = {
                 .r_ocr = OCR0B,
                 .com = AVR_IO_REGBITS(TCCR0A, COM0B0, 0x3),
-                .com_pin = AVR_IO_REGBIT(PORTB, 1),
+                .com_pin = AVR_IO_REGBIT(PORTA, 7), /* p.60 */
                 .interrupt = {
                     .enable = AVR_IO_REGBIT(TIMSK0, OCIE0B),
                     .raised = AVR_IO_REGBIT(TIFR0, OCF0B),
@@ -234,7 +261,7 @@ const struct mcu_t SIM_CORENAME = {
         .r_icrh = ICR1H,
 
         .ices = AVR_IO_REGBIT(TCCR1B, ICES1),
-        .icp = AVR_IO_REGBIT(PORTB, 0),
+        .icp = AVR_IO_REGBIT(PORTA, 7), /* p.62 */
 
         .overflow = {
             .enable = AVR_IO_REGBIT(TIMSK1, TOIE1),
@@ -251,7 +278,7 @@ const struct mcu_t SIM_CORENAME = {
                 .r_ocr = OCR1AL,
                 .r_ocrh = OCR1AH,    // 16 bits timers have two bytes of it
                 .com = AVR_IO_REGBITS(TCCR1A, COM1A0, 0x3),
-                .com_pin = AVR_IO_REGBIT(PORTB, 1),
+                .com_pin = AVR_IO_REGBIT(PORTA, 6), /* p.62 */
                 .interrupt = {
                     .enable = AVR_IO_REGBIT(TIMSK1, OCIE1A),
                     .raised = AVR_IO_REGBIT(TIFR1, OCF1A),
@@ -262,7 +289,7 @@ const struct mcu_t SIM_CORENAME = {
                 .r_ocr = OCR1BL,
                 .r_ocrh = OCR1BH,
                 .com = AVR_IO_REGBITS(TCCR1A, COM1B0, 0x3),
-                .com_pin = AVR_IO_REGBIT(PORTB, 2),
+                .com_pin = AVR_IO_REGBIT(PORTA, 5), /* p.61 */
                 .interrupt = {
                     .enable = AVR_IO_REGBIT(TIMSK1, OCIE1B),
                     .raised = AVR_IO_REGBIT(TIFR1, OCF1B),
