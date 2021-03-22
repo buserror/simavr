@@ -716,23 +716,25 @@ avr_timer_write_pending(
 		void * param)
 {
 	avr_timer_t * p = (avr_timer_t *)param;
-	// save old bits values
-	uint8_t ov = avr_regbit_get(avr, p->overflow.raised);
-	uint8_t ic = avr_regbit_get(avr, p->icr.raised);
-	uint8_t cp[AVR_TIMER_COMP_COUNT];
 
-	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++)
-		cp[compi] = avr_regbit_get(avr, p->comp[compi].interrupt.raised);
+	// All bits in this register are assumed to be write-1-to-clear.
 
-	// write the value
-	// avr_core_watch_write(avr, addr, v); // This raises flags instead of clearing it.
+	if (addr == p->overflow.raised.reg &&
+	    avr_regbit_from_value(avr, p->overflow.raised, v)) {
+		avr_clear_interrupt(avr, &p->overflow);
+	}
+	if (addr == p->icr.raised.reg &&
+	    avr_regbit_from_value(avr, p->icr.raised, v)) {
+		avr_clear_interrupt(avr, &p->icr);
+	}
 
-	// clear any interrupts & flags
-	avr_clear_interrupt_if(avr, &p->overflow, ov);
-	avr_clear_interrupt_if(avr, &p->icr, ic);
-
-	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++)
-		avr_clear_interrupt_if(avr, &p->comp[compi].interrupt, cp[compi]);
+	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
+		if (addr == p->comp[compi].interrupt.raised.reg &&
+		    avr_regbit_from_value(avr, p->comp[compi].interrupt.raised,
+					  v)) {
+			avr_clear_interrupt(avr, &p->comp[compi].interrupt);
+		}
+	}
 }
 
 static void
