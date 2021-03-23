@@ -29,8 +29,8 @@ static avr_t * make()
 }
 
 avr_kind_t mega2560 = {
-		 .names = { "atmega2560" },
-		 .make = make
+		.names = { "atmega2560", "atmega2561" },
+		.make = make
 };
 
 void m2560_init(struct avr_t * avr)
@@ -57,6 +57,7 @@ void m2560_init(struct avr_t * avr)
 	avr_uart_init(avr, &mcu->uart1);
 	avr_uart_init(avr, &mcu->uart2);
 	avr_uart_init(avr, &mcu->uart3);
+        avr_acomp_init(avr, &mcu->acomp);
 	avr_adc_init(avr, &mcu->adc);
 	avr_timer_init(avr, &mcu->timer0);
 	avr_timer_init(avr, &mcu->timer1);

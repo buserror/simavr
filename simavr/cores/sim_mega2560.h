@@ -94,11 +94,25 @@ const struct mcu_t {
 			 .raised = AVR_IO_REGBIT(PCIFR, PCIF0),
 			 .vector = PCINT0_vect,
 		},
-		.r_pcint = PCMSK0,
+		.r_pcint = PCMSK0,           // PB0-7 have PCINT0-7
 	},
 	AVR_IOPORT_DECLARE(c, 'C', C),
 	AVR_IOPORT_DECLARE(d, 'D', D),
-	AVR_IOPORT_DECLARE(e, 'E', E),
+#ifdef SPLIT_INTERRUPTS
+	.porte = {
+		.name = 'E', .r_port = PORTE, .r_ddr = DDRE, .r_pin = PINE,
+		.pcint = {
+			 .enable = AVR_IO_REGBIT(PCICR, PCIE1),
+			 .raised = AVR_IO_REGBIT(PCIFR, PCIF1),
+			 .vector = PCINT1_vect,
+			 .mask = 1,          // PE0 has PCINT8
+			 .shift = 0
+		},
+		.r_pcint = PCMSK1,
+	},
+#else
+	AVR_IOPORT_DECLARE(e, 'E', E),       // PE0 has PCINT8
+#endif
 	AVR_IOPORT_DECLARE(f, 'F', F),
 	AVR_IOPORT_DECLARE(g, 'G', G),
 	AVR_IOPORT_DECLARE(h, 'H', H),
@@ -108,12 +122,20 @@ const struct mcu_t {
 			 .enable = AVR_IO_REGBIT(PCICR, PCIE1),
 			 .raised = AVR_IO_REGBIT(PCIFR, PCIF1),
 			 .vector = PCINT1_vect,
-			 .mask = 0b11111110,
+			 .mask = 0b11111110, // PJ0-6 have PCINT9-15
 			 .shift = -1
 		},
 		.r_pcint = PCMSK1,
 	},
-	AVR_IOPORT_DECLARE(k, 'K', K),
+	.portk = {
+		.name = 'K', .r_port = PORTK, .r_ddr = DDRK, .r_pin = PINK,
+		.pcint = {
+			 .enable = AVR_IO_REGBIT(PCICR, PCIE2),
+			 .raised = AVR_IO_REGBIT(PCIFR, PCIF2),
+			 .vector = PCINT2_vect,
+		},
+		.r_pcint = PCMSK2,           // PK0-7 have PCINT16-23
+	},
 	AVR_IOPORT_DECLARE(l, 'L', L),
 
 	AVR_UARTX_DECLARE(0, PRR0, PRUSART0),
