@@ -143,19 +143,47 @@ avr_ioport_irq_notify(
 	int output = value & AVR_IOPORT_OUTPUT;
 	value &= 0xff;
 	uint8_t mask = 1 << irq->irq;
-		// set the real PIN bit. ddr doesn't matter here as it's masked when read.
-	avr->data[p->r_pin] &= ~mask;
-	if (value)
-		avr->data[p->r_pin] |= mask;
+	uint8_t ddr = avr->data[p->r_ddr];
 
-	if (output)	// if the IRQ was marked as Output, also do the IO write
-		avr_ioport_write(avr, p->r_port, (avr->data[p->r_port] & ~mask) | (value ? mask : 0), p);
+	if (output) {
+		if ((mask & ddr) == 0)
+			return;	   // TODO: stop further processing of IRQ.
+
+		// If the IRQ was marked as Output, also do the IO write.
+
+		avr_ioport_write(avr,
+				 p->r_port,
+				 (avr->data[p->r_port] & ~mask) |
+				     (value ? mask : 0),
+				 p);
+	} else {
+		// Set the real PIN bit. Ignore DDR as it's masked when read.
+
+		avr->data[p->r_pin] &= ~mask;
+		if (value)
+			avr->data[p->r_pin] |= mask;
+
+		/* BUG: If DDR bit is set here, there should be no
+		 * interrupt.  But a spurious IRQ call by the user
+		 * is indestinguishable from an internal one
+		 * caused by writing the output port register and
+		 * that should cause an interrupt. Doh!
+		 */
+	}
 
 	if (p->r_pcint) {
+		// Ignore lingering copy of AVR_IOPORT_OUTPUT, or
+		// differing non-zero values.
+
+		if (!value == !(irq->value & 0xff))
+			return;
+
 		// if the pcint bit is on, try to raise it
+
 		int raisedata = avr->data[p->r_pcint];
-		uint8_t uiRegMask = p->pcint.mask;
-		int8_t iShift = p->pcint.shift;
+		uint8_t uiRegMask = p->mask;
+		int8_t iShift = p->shift;
+
 		if (uiRegMask) // If mask is 0, do nothing (backwards compat)
 			raisedata &= uiRegMask; // Mask off
 
@@ -282,9 +310,11 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 	// allocate this module's IRQ
 	avr_io_setirqs(&p->io, AVR_IOCTL_IOPORT_GETIRQ(p->name), IOPORT_IRQ_COUNT, NULL);
 
-	for (int i = 0; i < IOPORT_IRQ_REG_PIN; i++)
+	for (int i = 0; i < IOPORT_IRQ_REG_PIN; i++) {
 		p->io.irq[i].flags |= IRQ_FLAG_FILTERED;
-
+                if (i < IOPORT_IRQ_PIN_ALL)
+                    p->io.irq[i].flags &= ~IRQ_FLAG_INIT;
+	}
 	avr_register_io_write(avr, p->r_port, avr_ioport_write, p);
 	avr_register_io_read(avr, p->r_pin, avr_ioport_read, p);
 	avr_register_io_write(avr, p->r_pin, avr_ioport_pin_write, p);

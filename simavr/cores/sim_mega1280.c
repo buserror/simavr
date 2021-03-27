@@ -85,23 +85,35 @@ const struct mcu_t {
 		AVR_EXTINT_MEGA_DECLARE(7, 'E', PE7, B),
 	},
 	AVR_IOPORT_DECLARE(a, 'A', A),
-	.portb = {
-		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
-		.pcint = {
-			.enable = AVR_IO_REGBIT(PCICR, PCIE0),
-			.raised = AVR_IO_REGBIT(PCIFR, PCIF0),
-			.vector = PCINT0_vect,
-		},
-		.r_pcint = PCMSK0,
-	},
+	AVR_IOPORT_DECLARE_PC(b, 'B', B, 0),      // PB0-7 have PCINT0-7
 	AVR_IOPORT_DECLARE(c, 'C', C),
 	AVR_IOPORT_DECLARE(d, 'D', D),
-	AVR_IOPORT_DECLARE(e, 'E', E),
+	.porte = {
+		.name = 'E', .r_port = PORTE, .r_ddr = DDRE, .r_pin = PINE,
+		.pcint = {
+			 .enable = AVR_IO_REGBIT(PCICR, PCIE1),
+			 .raised = AVR_IO_REGBIT(PCIFR, PCIF1),
+			 .vector = PCINT1_vect,
+		},
+		.r_pcint = PCMSK1,
+                .mask = 1,                        // PE0 has PCINT8
+                .shift = 0
+	},
 	AVR_IOPORT_DECLARE(f, 'F', F),
 	AVR_IOPORT_DECLARE(g, 'G', G),
 	AVR_IOPORT_DECLARE(h, 'H', H),
-	AVR_IOPORT_DECLARE(j, 'J', J),
-	AVR_IOPORT_DECLARE(k, 'K', K),
+	.portj = {
+		.name = 'J', .r_port = PORTJ, .r_ddr = DDRJ, .r_pin = PINJ,
+		.pcint = {
+			 .enable = AVR_IO_REGBIT(PCICR, PCIE1),
+			 .raised = AVR_IO_REGBIT(PCIFR, PCIF1),
+			 .vector = PCINT1_vect,
+		},
+		.r_pcint = PCMSK1,
+                .mask = 0b11111110,               // PJ0-6 have PCINT9-15
+                .shift = -1
+	},
+	AVR_IOPORT_DECLARE_PC(k, 'K', K, 2),      // PK0-7 have PCINT16-23
 	AVR_IOPORT_DECLARE(l, 'L', L),
 
 	AVR_UARTX_DECLARE(0, PRR0, PRUSART0),
