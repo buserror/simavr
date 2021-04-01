@@ -32,6 +32,14 @@ void tests_assert_uart_receive_avr(avr_t *avr,
 			       unsigned long run_usec,
 			       const char *expected,
 			       char uart);				   
+void tests_assert_register_receive(const char    *elfname,
+                                   unsigned long  run_usec,
+                                   const char    *expected,
+                                   avr_io_addr_t  reg_addr);
+void tests_assert_register_receive_avr(avr_t         *avr,
+                                       unsigned long  run_usec,
+                                       const char    *expected,
+                                       avr_io_addr_t  reg_addr);
 
 void tests_assert_cycles_at_least(unsigned long n);
 void tests_assert_cycles_at_most(unsigned long n);
