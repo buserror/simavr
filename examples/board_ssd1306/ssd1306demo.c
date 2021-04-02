@@ -134,7 +134,7 @@ initGL (int w, int h, float pix_size)
 int
 main (int argc, char *argv[])
 {
-	elf_firmware_t f;
+	elf_firmware_t f = {{0}};
 	const char * fname = "atmega32_ssd1306.axf";
 	char path[256];
 	sprintf (path, "%s/%s", dirname (argv[0]), fname);
