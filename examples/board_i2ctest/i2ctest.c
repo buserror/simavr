@@ -38,7 +38,7 @@ i2c_eeprom_t ee;
 
 int main(int argc, char *argv[])
 {
-	elf_firmware_t f;
+	elf_firmware_t f = {{0}};
 	const char * fname =  "atmega1280_i2ctest.axf";
 
 	printf("Firmware pathname is %s\n", fname);

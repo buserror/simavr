@@ -78,9 +78,13 @@ typedef struct elf_firmware_t {
 
 #if ELF_SYMBOLS
 	avr_symbol_t **  symbol;
-	uint32_t		symbolcount;
+	uint32_t	symbolcount;
 #endif
 } elf_firmware_t ;
+
+/* The structure *firmware must be pre-initialised to zero, then optionally
+ * with tracing and VCD information.
+ */
 
 int
 elf_read_firmware(

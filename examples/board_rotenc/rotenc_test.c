@@ -155,7 +155,7 @@ avr_run_thread(void * ignore)
 int
 main(int argc, char *argv[])
 {
-	elf_firmware_t f;
+	elf_firmware_t f = {{0}};
 	const char * fname = "atmega32_rotenc_test.axf";
 
 	printf(
