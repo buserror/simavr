@@ -77,7 +77,7 @@ struct mcu_t {
 const struct mcu_t SIM_CORENAME = {
 	.core = {
 		.mmcu = SIM_MMCU,
-		DEFAULT_CORE(4),
+		DEFAULT_CORE(2),
 
 		.init = mx4_init,
 		.reset = mx4_reset,
