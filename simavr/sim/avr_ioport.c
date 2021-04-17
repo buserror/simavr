@@ -24,6 +24,21 @@
 
 #define D(_w)
 
+static void
+avr_ioport_flag_write(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
+{
+	avr_ioport_t * p = (avr_ioport_t *)param;
+
+	// Clear interrupt if 1 is written to flag.
+
+	if (avr_regbit_from_value(avr, p->pcint.raised, v))
+		avr_clear_interrupt(avr, &p->pcint);
+}
+
 static uint8_t
 avr_ioport_read(
 		struct avr_t * avr,
@@ -122,7 +137,6 @@ avr_ioport_ddr_write(
 	D(if (avr->data[addr] != v) printf("** DDR%c(%02x) = %02x\r\n", p->name, addr, v);)
 	avr_raise_irq(p->io.irq + IOPORT_IRQ_DIRECTION_ALL, v);
 	avr_core_watch_write(avr, addr, v);
-
 	avr_ioport_update_irqs(p);
 }
 
@@ -165,7 +179,7 @@ avr_ioport_irq_notify(
 
 		/* BUG: If DDR bit is set here, there should be no
 		 * interrupt.  But a spurious IRQ call by the user
-		 * is indestinguishable from an internal one
+		 * is indistinguishable from an internal one
 		 * caused by writing the output port register and
 		 * that should cause an interrupt. Doh!
 		 */
@@ -319,4 +333,8 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 	avr_register_io_read(avr, p->r_pin, avr_ioport_read, p);
 	avr_register_io_write(avr, p->r_pin, avr_ioport_pin_write, p);
 	avr_register_io_write(avr, p->r_ddr, avr_ioport_ddr_write, p);
+	if (p->pcint.raised.reg) {
+		avr_register_io_write(avr, p->pcint.raised.reg,
+				      avr_ioport_flag_write, p);
+	}
 }
