@@ -358,6 +358,7 @@ typedef struct avr_kind_t {
 // a symbol loaded from the .elf file
 typedef struct avr_symbol_t {
 	uint32_t	addr;
+	uint32_t	size;
 	const char  symbol[0];
 } avr_symbol_t;
 
