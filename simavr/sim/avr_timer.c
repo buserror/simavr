@@ -127,10 +127,10 @@ avr_timer_comp_on_tov(
 	uint8_t mode = avr_regbit_get(avr, p->comp[comp].com);
 	avr_irq_t * irq = &p->io.irq[TIMER_IRQ_OUT_COMP + comp];
 
-		// only PWM modes have special behaviour on overflow
-		if((p->wgm_op_mode_kind != avr_timer_wgm_pwm) &&
-		   (p->wgm_op_mode_kind != avr_timer_wgm_fast_pwm))
-				return;
+	// only PWM modes have special behaviour on overflow
+	if((p->wgm_op_mode_kind != avr_timer_wgm_pwm) &&
+	   (p->wgm_op_mode_kind != avr_timer_wgm_fast_pwm))
+		return;
 
 	switch (mode) {
 		case avr_timer_com_normal: // Normal mode
@@ -726,11 +726,11 @@ static void avr_timer_write_foc(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
         /* These are strobe writes, so just decode them, don't store them */
 
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
-                if ((addr == p->comp[compi].foc.reg) &&
-                    (v & (1 << p->comp[compi].foc.bit))) {
-                        avr_timer_comp(p, avr->cycle, compi, 0);
-                }
-        }
+		if ((addr == p->comp[compi].foc.reg) &&
+				(v & (1 << p->comp[compi].foc.bit))) {
+			avr_timer_comp(p, avr->cycle, compi, 0);
+		}
+	}
 }
 
 /*
@@ -970,8 +970,8 @@ avr_timer_init(
 
 		if (p->comp[compi].r_ocr) // not all timers have all comparators
 			avr_register_io_write(avr, p->comp[compi].r_ocr, avr_timer_write_ocr, &p->comp[compi]);
-				if (p->comp[compi].foc.reg)
-						avr_register_io_write(avr, p->comp[compi].foc.reg, avr_timer_write_foc, p);
+		if (p->comp[compi].foc.reg)
+			avr_register_io_write(avr, p->comp[compi].foc.reg, avr_timer_write_foc, p);
 	}
 	avr_register_io_write(avr, p->r_tcnt, avr_timer_tcnt_write, p);
 	avr_register_io_read(avr, p->r_tcnt, avr_timer_tcnt_read, p);
