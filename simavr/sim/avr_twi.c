@@ -411,6 +411,21 @@ avr_twi_irq_input(
 
 	AVR_TRACE(avr, "%s %08x\n", __func__, value);
 
+	if (p->state & TWI_COND_SLAVE) {
+		if (msg.u.twi.msg & TWI_COND_WRITE) {
+			avr->data[p->r_twdr] = msg.u.twi.data;
+			_avr_twi_delay_state(p, 9, TWI_SRX_ADR_DATA_ACK );
+		}
+	} else {
+		// receive a data byte from a slave
+		if (msg.u.twi.msg & TWI_COND_READ) {
+#if AVR_TWI_DEBUG
+			AVR_TRACE(avr, "I2C received %02x\n", msg.u.twi.data);
+#endif
+			avr->data[p->r_twdr] = msg.u.twi.data;
+		}
+	}
+
 	// receiving an attempt at waking a slave
 	if (msg.u.twi.msg & TWI_COND_START) {
 		p->state = 0;
@@ -452,20 +467,6 @@ avr_twi_irq_input(
 			p->state |= TWI_COND_ACK;
 		else
 			p->state &= ~TWI_COND_ACK;
-	}
-	if (p->state & TWI_COND_SLAVE) {
-		if (msg.u.twi.msg & TWI_COND_WRITE) {
-			avr->data[p->r_twdr] = msg.u.twi.data;
-			_avr_twi_delay_state(p, 9, TWI_SRX_ADR_DATA_ACK );
-		}
-	} else {
-		// receive a data byte from a slave
-		if (msg.u.twi.msg & TWI_COND_READ) {
-#if AVR_TWI_DEBUG
-			AVR_TRACE(avr, "I2C received %02x\n", msg.u.twi.data);
-#endif
-			avr->data[p->r_twdr] = msg.u.twi.data;
-		}
 	}
 }
 
