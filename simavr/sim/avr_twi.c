@@ -186,6 +186,14 @@ avr_twi_write(
 
 	/*int cleared = */
 	avr_clear_interrupt_if(avr, &p->twi, twint);
+	/**
+	 * ATMega328p Capt. 21.9.2 TWCR Control-Register
+	 * "The TWINT flag must be cleared by software by writing a logic one to it."
+	 */
+	if ((addr == p->twi.raised.reg) && (v & ( p->twi.raised.mask << p->twi.raised.bit )) && twint) {
+		twint = !twint;
+		avr_regbit_clear( avr, p->twi.raised );
+	}
 //	AVR_TRACE(avr, "cleared %d\n", cleared);
 
 	if (!twsto && avr_regbit_get(avr, p->twsto)) {
@@ -456,7 +464,7 @@ avr_twi_irq_input(
 	if (msg.u.twi.msg & TWI_COND_STOP) {
 		_avr_twi_delay_state(p, 9,
 			msg.u.twi.msg & TWI_COND_WRITE ?
-				TWI_SRX_ADR_ACK : TWI_STX_ADR_ACK );
+				TWI_SRX_ADR_ACK : TWI_SRX_STOP_RESTART );
 	}
 	// receiving an acknowledge bit
 	if (msg.u.twi.msg & TWI_COND_ACK) {

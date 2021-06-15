@@ -46,30 +46,38 @@ int twi_getState(void) {
 static inline void twi_ack(void) { TWCR |= (1 << TWINT) | (1 << TWEA); }
 static inline void twi_nack(void) { TWCR |= (1 << TWINT); }
 
+static const __flash char msg[] = "Hello AVR!\n";
+static char buffer[ sizeof( msg ) ];
+static int index;
+
 int main() {
   if (twi_getState() != TW_SR_SLA_ACK) {
     abort();
   }
 
+  index = 0;
   twi_ack();
-  if (twi_getState() != TW_SR_DATA_ACK) {
+
+  uint8_t state;
+  while( ( state = twi_getState() ) == TW_SR_DATA_ACK ) {
+    buffer[index++] = TWDR;
+    if( index < sizeof( msg ) ) {
+      twi_ack();
+    }
+    else {
+      twi_nack();
+    }
+  }
+
+  if( state != TW_SR_STOP ) {
     abort();
   }
 
-  if (TWDR != 'A') {
-    abort();
+  for( int i = 0; i < sizeof( msg ); i++ ) {
+    if( buffer[i] != msg[i] ) {
+      abort();
+    }
   }
-
-  twi_ack();
-  if (twi_getState() != TW_SR_DATA_ACK) {
-    abort();
-  }
-
-  if (TWDR != 'B') {
-    abort();
-  }
-
-  twi_nack();
 
   cli();
   sleep_mode();

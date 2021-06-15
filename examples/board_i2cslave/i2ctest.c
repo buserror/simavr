@@ -36,6 +36,9 @@ typedef struct {
   uint8_t selected;
 } i2c_master;
 
+static const char msg[] = "Hello AVR!\n";
+static int msg_index = 0;
+
 static void i2c_master_in_hook(struct avr_irq_t *irq, uint32_t value,
                                void *param) {
   ((void)irq);
@@ -45,13 +48,19 @@ static void i2c_master_in_hook(struct avr_irq_t *irq, uint32_t value,
   v.u.v = value;
 
   switch (v.u.twi.msg) {
+  // case TWI_COND_ACK:
+  //   avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
+  //                 avr_twi_irq_msg(TWI_COND_WRITE, p->selected, 'B'));
+  //   break;
   case (TWI_COND_ACK | TWI_COND_ADDR):
-    avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
-                  avr_twi_irq_msg(TWI_COND_WRITE, p->selected, 'A'));
-    break;
-  case TWI_COND_ACK:
-    avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
-                  avr_twi_irq_msg(TWI_COND_WRITE, p->selected, 'B'));
+    if( ( msg_index + 1 ) < sizeof( msg ) ) {
+      avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
+                    avr_twi_irq_msg(TWI_COND_WRITE, p->selected, msg[msg_index++]));
+    }
+    else {
+      avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
+                    avr_twi_irq_msg(TWI_COND_STOP, p->selected, 0));
+    }
     break;
   default:
     avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
@@ -131,6 +140,7 @@ int main(int argc, char *argv[]) {
     state = avr_run(avr);
     if (!send && avr->pc == main_addr) {
       ma.selected = 0x42;
+      msg_index = 0;
       avr_raise_irq(
           avr_io_getirq(avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
           avr_twi_irq_msg(TWI_COND_START | TWI_COND_ADDR | TWI_COND_WRITE,
