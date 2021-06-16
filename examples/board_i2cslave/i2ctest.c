@@ -63,11 +63,16 @@ static void i2c_master_in_hook(struct avr_irq_t *irq, uint32_t value,
       printf( "Send stop!\n" );
       avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
                     avr_twi_irq_msg(TWI_COND_STOP, p->selected, 0));
+      avr_irq_register_notify(p->irq + TWI_IRQ_OUTPUT, i2c_master_in_hook, p);
     }
     break;
+  case TWI_COND_ACK: // This ack comes from the AVR
+    break;
   default:
+    printf( "Undefined state: 0x%02X\n", v.u.twi.msg );
     avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
                   avr_twi_irq_msg(TWI_COND_STOP, p->selected, 0));
+    avr_irq_register_notify(p->irq + TWI_IRQ_OUTPUT, i2c_master_in_hook, p);
     p->selected = 0;
     break;
   }
@@ -82,7 +87,6 @@ void i2c_master_init(avr_t *avr, i2c_master *p) {
   p->avr = avr;
   p->irq = avr_alloc_irq(&avr->irq_pool, 0, 2, _master_irq_names);
   p->selected = 0;
-  avr_irq_register_notify(p->irq + TWI_IRQ_OUTPUT, i2c_master_in_hook, p);
 }
 
 void i2c_master_attach(avr_t *avr, i2c_master *p, uint32_t i2c_irq_base) {
@@ -94,6 +98,19 @@ void i2c_master_attach(avr_t *avr, i2c_master *p, uint32_t i2c_irq_base) {
 //---------------------------------------
 
 avr_t *avr = NULL;
+
+avr_cycle_count_t twi_startSend(struct avr_t * avr,	avr_cycle_count_t when,	void * param) {
+  i2c_master *ma = (i2c_master *) param;
+  ma->selected = 0x42;
+  avr_irq_register_notify(ma->irq + TWI_IRQ_OUTPUT, i2c_master_in_hook, ma);
+  msg_index = 0;
+  printf( "Send start to 0x%02X\n", ma->selected );
+  avr_raise_irq(
+      avr_io_getirq(avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
+      avr_twi_irq_msg(TWI_COND_START | TWI_COND_ADDR | TWI_COND_WRITE,
+                      ma->selected, 1));
+  return 0;
+}
 
 int main(int argc, char *argv[]) {
   elf_firmware_t f;
@@ -119,37 +136,17 @@ int main(int argc, char *argv[]) {
     avr_gdb_init(avr);
   }
 
-  avr_flashaddr_t main_addr = 0;
-  for (int i = 0; i < f.symbolcount; i++) {
-    // if (strncmp(f.symbol[i]->symbol, "_avr_twi_simple_slave", 128) == 0) {
-    if (strncmp(f.symbol[i]->symbol, "main", 128) == 0) {
-      main_addr = f.symbol[i]->addr;
-      break;
-    }
-  }
-
   i2c_master ma;
   i2c_master_init(avr, &ma);
   i2c_master_attach(avr, &ma, AVR_IOCTL_TWI_GETIRQ(0));
 
-  avr->log = 4;
-
-  int send = 0;
+  avr->log = 0;
+  avr_cycle_timer_register_usec( avr, 500, twi_startSend, &ma );
 
   printf("\nDemo launching:\n");
 
   int state = cpu_Running;
   while ((state != cpu_Done) && (state != cpu_Crashed)) {
     state = avr_run(avr);
-    if (!send && avr->pc == main_addr) {
-      ma.selected = 0x42;
-      msg_index = 0;
-      printf( "Send start to 0x%02X\n", ma.selected );
-      avr_raise_irq(
-          avr_io_getirq(avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
-          avr_twi_irq_msg(TWI_COND_START | TWI_COND_ADDR | TWI_COND_WRITE,
-                          ma.selected, 1));
-      send = 1;
-    }
   }
 }

@@ -51,10 +51,7 @@ static const __flash char msg[] = "Hello AVR!";
 static char buffer[ 128 ];
 static int index;
 
-int main() {
-
-  memset(&buffer[0], 0xFF, sizeof(buffer));
-
+int twi_receive( char *buffer, size_t size ) {
   if (twi_getState() != TW_SR_SLA_ACK) {
     abort();
   }
@@ -72,7 +69,7 @@ int main() {
   uint8_t state;
   while( ( state = twi_getState() ) == TW_SR_DATA_ACK ) {
     buffer[index++] = TWDR;
-    if( ( index + 1 ) < sizeof( buffer ) ) {
+    if( ( index + 1 ) < size ) {
       twi_ack();
     }
     else {
@@ -83,6 +80,14 @@ int main() {
   if( state != TW_SR_STOP ) {
     abort();
   }
+  return start;
+}
+
+int main() {
+
+  memset(&buffer[0], 0xFF, sizeof(buffer));
+
+  int start = twi_receive( &buffer[0], sizeof(buffer) );
 
   for( int i = 0; i < sizeof( msg )-1; i++ ) {
     if( buffer[start+i] != msg[i] ) {
