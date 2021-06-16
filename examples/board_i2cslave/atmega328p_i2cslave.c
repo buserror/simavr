@@ -19,6 +19,7 @@
         along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stdlib.h>
+#include <string.h>
 
 #include <avr/interrupt.h>
 #include <avr/io.h>
@@ -43,14 +44,17 @@ int twi_getState(void) {
   return TWSR & 0xF8;
 }
 
-static inline void twi_ack(void) { TWCR |= (1 << TWINT) | (1 << TWEA); }
-static inline void twi_nack(void) { TWCR |= (1 << TWINT); }
+static inline void twi_ack(void) { TWCR = (1 << TWEN) | (1 << TWINT) | (1 << TWEA); }
+static inline void twi_nack(void) { TWCR = (1 << TWEN) |  (1 << TWINT); }
 
-static const __flash char msg[] = "Hello AVR!\n";
-static char buffer[ sizeof( msg ) ];
+static const __flash char msg[] = "Hello AVR!";
+static char buffer[ 128 ];
 static int index;
 
 int main() {
+
+  memset(&buffer[0], 0xFF, sizeof(buffer));
+
   if (twi_getState() != TW_SR_SLA_ACK) {
     abort();
   }
@@ -58,10 +62,17 @@ int main() {
   index = 0;
   twi_ack();
 
+  if(twi_getState() != TW_SR_DATA_ACK) {
+    abort();
+  }
+  index = TWDR;
+  int start = index;
+  twi_ack();
+
   uint8_t state;
   while( ( state = twi_getState() ) == TW_SR_DATA_ACK ) {
     buffer[index++] = TWDR;
-    if( index < sizeof( msg ) ) {
+    if( ( index + 1 ) < sizeof( buffer ) ) {
       twi_ack();
     }
     else {
@@ -73,8 +84,8 @@ int main() {
     abort();
   }
 
-  for( int i = 0; i < sizeof( msg ); i++ ) {
-    if( buffer[i] != msg[i] ) {
+  for( int i = 0; i < sizeof( msg )-1; i++ ) {
+    if( buffer[start+i] != msg[i] ) {
       abort();
     }
   }

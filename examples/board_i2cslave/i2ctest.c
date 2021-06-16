@@ -36,7 +36,7 @@ typedef struct {
   uint8_t selected;
 } i2c_master;
 
-static const char msg[] = "Hello AVR!\n";
+static const char msg[] = { 0x10, 'H', 'e', 'l', 'l', 'o', ' ', 'A', 'V', 'R', '!' };
 static int msg_index = 0;
 
 static void i2c_master_in_hook(struct avr_irq_t *irq, uint32_t value,
@@ -53,11 +53,14 @@ static void i2c_master_in_hook(struct avr_irq_t *irq, uint32_t value,
   //                 avr_twi_irq_msg(TWI_COND_WRITE, p->selected, 'B'));
   //   break;
   case (TWI_COND_ACK | TWI_COND_ADDR):
-    if( ( msg_index + 1 ) < sizeof( msg ) ) {
+    if( msg_index < sizeof( msg ) ) {
+      char c = msg[msg_index++];
+      printf( "Send Databyte: '%c' (0x%02X)\n", c, c );
       avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
-                    avr_twi_irq_msg(TWI_COND_WRITE, p->selected, msg[msg_index++]));
+                    avr_twi_irq_msg(TWI_COND_WRITE, p->selected, c ));
     }
     else {
+      printf( "Send stop!\n" );
       avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
                     avr_twi_irq_msg(TWI_COND_STOP, p->selected, 0));
     }
@@ -141,6 +144,7 @@ int main(int argc, char *argv[]) {
     if (!send && avr->pc == main_addr) {
       ma.selected = 0x42;
       msg_index = 0;
+      printf( "Send start to 0x%02X\n", ma.selected );
       avr_raise_irq(
           avr_io_getirq(avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
           avr_twi_irq_msg(TWI_COND_START | TWI_COND_ADDR | TWI_COND_WRITE,
