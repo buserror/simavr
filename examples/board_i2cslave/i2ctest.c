@@ -118,9 +118,15 @@ static void i2c_master_send_hook(struct avr_irq_t *irq, uint32_t value,
       }
     }
     else {
-      printf( "Send stop!\n" );
-      avr_raise_irq(p->irq + TWI_IRQ_INPUT, avr_twi_irq_msg( TWI_COND_STOP, p->selected, 0));
-      // avr_irq_unregister_notify(p->irq + TWI_IRQ_OUTPUT, i2c_master_send_hook, p);
+      if( msg_current(p)->mode == TWI_WRITE ) {
+        printf( "Send stop!\n" );
+        avr_raise_irq(p->irq + TWI_IRQ_INPUT, avr_twi_irq_msg( TWI_COND_STOP, p->selected, 0));
+      }
+      else {
+        printf( "Send NACK!\n" );
+        avr_raise_irq(p->irq + TWI_IRQ_INPUT,
+          avr_twi_irq_msg( TWI_COND_READ, p->selected, 0 ));
+      }
 
       p->selected = 0;
       msg_free(p);

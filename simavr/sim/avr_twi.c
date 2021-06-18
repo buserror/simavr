@@ -427,7 +427,7 @@ avr_twi_irq_input(
 	 	if (msg.u.twi.msg & TWI_COND_READ) {
 			avr->data[p->r_twdr] = 0;
 			_avr_twi_delay_state(p, 9, msg.u.twi.msg & TWI_COND_ACK ?
-						TWI_STX_DATA_ACK : TWI_STX_DATA_ACK_LAST_BYTE );
+						TWI_STX_DATA_ACK : TWI_STX_DATA_NACK );
 		}
 	} else {
 		// receive a data byte from a slave

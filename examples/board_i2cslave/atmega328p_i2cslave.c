@@ -86,7 +86,7 @@ int twi_receive( char *buffer, size_t size ) {
   return start;
 }
 
-void twi_send( char *buffer, size_t size ) {
+int twi_send( char *buffer, size_t size ) {
   if (twi_getState() != TW_SR_SLA_ACK) {
     abort();
   }
@@ -98,6 +98,7 @@ void twi_send( char *buffer, size_t size ) {
     abort();
   }
   index = TWDR;
+  int start = index;
   twi_ack();
 
   uint8_t state;
@@ -122,9 +123,12 @@ void twi_send( char *buffer, size_t size ) {
     }
   }
 
-  if( state != TW_ST_LAST_DATA ) {
+  if( state != TW_ST_DATA_NACK ) {
     abort();
   }
+
+  TWCR = (1 << TWEN) | (1 << TWINT) | (1 << TWEA) | (1 << TWSTO);
+  return start;
 }
 
 int main() {
@@ -139,7 +143,7 @@ int main() {
     }
   }
 
-  twi_send( &buffer[0], sizeof(buffer) );
+  start = twi_send( &buffer[0], sizeof(buffer) );
 
   cli();
   sleep_mode();
