@@ -424,6 +424,11 @@ avr_twi_irq_input(
 			avr->data[p->r_twdr] = msg.u.twi.data;
 			_avr_twi_delay_state(p, 9, TWI_SRX_ADR_DATA_ACK );
 		}
+	 	if (msg.u.twi.msg & TWI_COND_READ) {
+			avr->data[p->r_twdr] = 0;
+			_avr_twi_delay_state(p, 9, msg.u.twi.msg & TWI_COND_ACK ?
+						TWI_STX_DATA_ACK : TWI_STX_DATA_ACK_LAST_BYTE );
+		}
 	} else {
 		// receive a data byte from a slave
 		if (msg.u.twi.msg & TWI_COND_READ) {
@@ -431,6 +436,16 @@ avr_twi_irq_input(
 			AVR_TRACE(avr, "I2C received %02x\n", msg.u.twi.data);
 #endif
 			avr->data[p->r_twdr] = msg.u.twi.data;
+		}
+	// receiving an acknowledge bit
+		if (msg.u.twi.msg & TWI_COND_ACK) {
+#if AVR_TWI_DEBUG
+			AVR_TRACE(avr, "I2C received ACK:%d\n", msg.u.twi.data & 1);
+#endif
+			if (msg.u.twi.data & 1)
+				p->state |= TWI_COND_ACK;
+			else
+				p->state &= ~TWI_COND_ACK;
 		}
 	}
 
@@ -465,16 +480,6 @@ avr_twi_irq_input(
 		_avr_twi_delay_state(p, 9,
 			msg.u.twi.msg & TWI_COND_WRITE ?
 				TWI_SRX_ADR_ACK : TWI_SRX_STOP_RESTART );
-	}
-	// receiving an acknowledge bit
-	if (msg.u.twi.msg & TWI_COND_ACK) {
-#if AVR_TWI_DEBUG
-		AVR_TRACE(avr, "I2C received ACK:%d\n", msg.u.twi.data & 1);
-#endif
-		if (msg.u.twi.data & 1)
-			p->state |= TWI_COND_ACK;
-		else
-			p->state &= ~TWI_COND_ACK;
 	}
 }
 

@@ -30,16 +30,50 @@
 #include "sim_gdb.h"
 
 //---------------------------------------
+struct msg {
+  enum { TWI_WRITE, TWI_READ } mode;
+  uint8_t address;
+  char *buffer;
+  size_t size;
+};
+struct nmsg {
+  struct msg *msg;
+  int nmsg;
+};
+
 typedef struct {
   avr_t *avr;
   avr_irq_t *irq;
   uint8_t selected;
+  struct nmsg *msgs;
+  int current_msg;
+  int index;
 } i2c_master;
 
-static const char msg[] = { 0x10, 'H', 'e', 'l', 'l', 'o', ' ', 'A', 'V', 'R', '!' };
-static int msg_index = 0;
+static inline struct msg *msg_current( i2c_master *m ) {
+  return &m->msgs->msg[ m->current_msg ];
+}
 
-static void i2c_master_in_hook(struct avr_irq_t *irq, uint32_t value,
+static inline struct msg *msg_preview( i2c_master *m ) {
+  return &m->msgs->msg[ m->current_msg + 1 ];
+}
+
+static inline int msg_hasNext( i2c_master *m ) {
+  return ( m->current_msg + 1 ) < m->msgs->nmsg;
+}
+
+static inline void msg_moveNext( i2c_master *m ) {
+  m->current_msg++;
+}
+
+static inline void msg_free( i2c_master *m ) {
+      free( m->msgs->msg );
+      m->msgs->msg = NULL;
+      free( m->msgs );
+      m->msgs = NULL;
+}
+
+static void i2c_master_send_hook(struct avr_irq_t *irq, uint32_t value,
                                void *param) {
   ((void)irq);
 
@@ -48,32 +82,69 @@ static void i2c_master_in_hook(struct avr_irq_t *irq, uint32_t value,
   v.u.v = value;
 
   switch (v.u.twi.msg) {
-  // case TWI_COND_ACK:
-  //   avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
-  //                 avr_twi_irq_msg(TWI_COND_WRITE, p->selected, 'B'));
-  //   break;
   case (TWI_COND_ACK | TWI_COND_ADDR):
-    if( msg_index < sizeof( msg ) ) {
-      char c = msg[msg_index++];
-      printf( "Send Databyte: '%c' (0x%02X)\n", c, c );
-      avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
-                    avr_twi_irq_msg(TWI_COND_WRITE, p->selected, c ));
+
+    if( p->index >= msg_current( p )->size ) {
+      // if there is a next message
+      // and the address and mode is the same
+      // goto the next and send further
+      // if( msg_hasNext( p ) && msg_preview(p)->mode == TWI_WRITE && msg_preview(p)->address == p->selected ) {
+      //   p->index = 0;
+      //   msg_moveNext(p);
+      // }
+      if( msg_hasNext(p) && msg_current(p)->mode == msg_preview(p)->mode ) {
+        p->index = 0;
+        msg_moveNext(p);
+      }
+      else if( msg_hasNext(p) && msg_current(p)->mode != msg_preview(p)->mode ) {
+        p->index = 0;
+        msg_moveNext(p);
+        printf( "Send start to 0x%02X\n", p->selected );
+        avr_raise_irq(
+            p->irq + TWI_IRQ_INPUT,
+            avr_twi_irq_msg(TWI_COND_START | TWI_COND_ADDR | ( msg_current(p)->mode == TWI_WRITE ? TWI_COND_WRITE : TWI_COND_READ ),
+                            p->selected, 1));
+        break;
+      }
+    }
+
+    if( p->index < msg_current( p )->size ) {
+      if( msg_current(p)->mode == TWI_WRITE ) {
+        char c = msg_current(p)->buffer[ p->index++ ];
+        printf( "Send Databyte: '%c' (0x%02X)\n", c, c );
+        avr_raise_irq(p->irq + TWI_IRQ_INPUT,
+          avr_twi_irq_msg(msg_current(p)->mode == TWI_WRITE ? TWI_COND_WRITE : TWI_COND_READ,
+          p->selected, c ));
+      }
     }
     else {
       printf( "Send stop!\n" );
-      avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
-                    avr_twi_irq_msg(TWI_COND_STOP, p->selected, 0));
-      avr_irq_register_notify(p->irq + TWI_IRQ_OUTPUT, i2c_master_in_hook, p);
+      avr_raise_irq(p->irq + TWI_IRQ_INPUT, avr_twi_irq_msg( TWI_COND_STOP, p->selected, 0));
+      // avr_irq_unregister_notify(p->irq + TWI_IRQ_OUTPUT, i2c_master_send_hook, p);
+
+      p->selected = 0;
+      msg_free(p);
     }
     break;
-  case TWI_COND_ACK: // This ack comes from the AVR
+  case ( TWI_COND_ACK | TWI_COND_READ ):
+  case ( TWI_COND_ACK | TWI_COND_ADDR | TWI_COND_READ ):
+  //----------------
+    msg_current(p)->buffer[ p->index++ ] = v.u.twi.data;
+    printf( "Receive Databyte: '%c' (0x%02X)\n", v.u.twi.data, v.u.twi.data );
+    avr_raise_irq(p->irq + TWI_IRQ_INPUT,
+      avr_twi_irq_msg( TWI_COND_READ | ( p->index < msg_current(p)->size ? TWI_COND_ACK : 0 ),
+        p->selected, 1 ));
+  //----------------
+    break;
+  case TWI_COND_ACK:
     break;
   default:
-    printf( "Undefined state: 0x%02X\n", v.u.twi.msg );
-    avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
-                  avr_twi_irq_msg(TWI_COND_STOP, p->selected, 0));
-    avr_irq_register_notify(p->irq + TWI_IRQ_OUTPUT, i2c_master_in_hook, p);
+    printf( "Undefined state: 0x%02X (0x%08X)\n", v.u.twi.msg, value );
+    avr_raise_irq(p->irq + TWI_IRQ_INPUT,avr_twi_irq_msg(TWI_COND_STOP, p->selected, 0));
+    // avr_irq_unregister_notify(p->irq + TWI_IRQ_OUTPUT, i2c_master_send_hook, p);
+
     p->selected = 0;
+    msg_free(p);
     break;
   }
 }
@@ -99,16 +170,76 @@ void i2c_master_attach(avr_t *avr, i2c_master *p, uint32_t i2c_irq_base) {
 
 avr_t *avr = NULL;
 
-avr_cycle_count_t twi_startSend(struct avr_t * avr,	avr_cycle_count_t when,	void * param) {
-  i2c_master *ma = (i2c_master *) param;
-  ma->selected = 0x42;
-  avr_irq_register_notify(ma->irq + TWI_IRQ_OUTPUT, i2c_master_in_hook, ma);
-  msg_index = 0;
-  printf( "Send start to 0x%02X\n", ma->selected );
+static void twi_startTransmission( avr_t *avr, i2c_master *m, struct nmsg *msgs ) {
+  m->current_msg = 0;
+  m->index = 0;
+  m->msgs = msgs;
+
+  if( !msg_hasNext( m ) ) {
+    return;
+  }
+
+  m->selected = msg_current(m)->address;
+  if( msg_current(m)->mode == TWI_WRITE ) {
+    // avr_irq_register_notify( m->irq + TWI_IRQ_OUTPUT, i2c_master_send_hook, m );
+  }
+
+  printf( "Send start to 0x%02X\n", m->selected );
   avr_raise_irq(
-      avr_io_getirq(avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT),
+      m->irq + TWI_IRQ_INPUT,
       avr_twi_irq_msg(TWI_COND_START | TWI_COND_ADDR | TWI_COND_WRITE,
-                      ma->selected, 1));
+                      m->selected, 1));
+}
+
+avr_cycle_count_t twi_sendSomething(struct avr_t * avr,	avr_cycle_count_t when,	void * param) {
+  static uint8_t adr_buf = 0x10;
+  static char str_buf[] = "Hello AVR!";
+  struct msg *msg = malloc( sizeof( struct msg ) * 2 );
+  struct nmsg *nmsg = malloc( sizeof( struct nmsg ) );
+  if(!msg || !nmsg)
+    exit(1);
+
+  msg[0].address = 0x42;
+  msg[0].mode = TWI_WRITE;
+  msg[0].buffer = ( char * ) &adr_buf;
+  msg[0].size = sizeof( uint8_t );
+
+  msg[1].address = 0x42;
+  msg[1].mode = TWI_WRITE;
+  msg[1].buffer = &str_buf[0];
+  msg[1].size = sizeof( str_buf );
+
+  nmsg->msg = msg;
+  nmsg->nmsg = 2;
+
+  twi_startTransmission( avr, param, nmsg );
+
+  return 0;
+}
+
+avr_cycle_count_t twi_receiveSomething(struct avr_t * avr,	avr_cycle_count_t when,	void * param) {
+  static uint8_t adr_buf = 0x16;
+  static char str_buf[3];
+  struct msg *msg = malloc( sizeof( struct msg ) * 2 );
+  struct nmsg *nmsg = malloc( sizeof( struct nmsg ) );
+  if(!msg || !nmsg)
+    exit(1);
+
+  msg[0].address = 0x42;
+  msg[0].mode = TWI_WRITE;
+  msg[0].buffer = ( char * ) &adr_buf;
+  msg[0].size = sizeof( uint8_t );
+
+  msg[1].address = 0x42;
+  msg[1].mode = TWI_READ;
+  msg[1].buffer = &str_buf[0];
+  msg[1].size = sizeof( str_buf );
+
+  nmsg->msg = msg;
+  nmsg->nmsg = 2;
+
+  twi_startTransmission( avr, param, nmsg );
+
   return 0;
 }
 
@@ -131,6 +262,7 @@ int main(int argc, char *argv[]) {
 
   // even if not setup at startup, activate gdb if crashing
   avr->gdb_port = 1234;
+  // avr->log = 4;
   if (0) {
     avr->state = cpu_Stopped;
     avr_gdb_init(avr);
@@ -140,8 +272,10 @@ int main(int argc, char *argv[]) {
   i2c_master_init(avr, &ma);
   i2c_master_attach(avr, &ma, AVR_IOCTL_TWI_GETIRQ(0));
 
-  avr->log = 0;
-  avr_cycle_timer_register_usec( avr, 500, twi_startSend, &ma );
+  avr_irq_register_notify( ma.irq + TWI_IRQ_OUTPUT, i2c_master_send_hook, &ma );
+
+  avr_cycle_timer_register_usec( avr, 500, twi_sendSomething, &ma );
+  avr_cycle_timer_register_usec( avr, 2500, twi_receiveSomething, &ma );
 
   printf("\nDemo launching:\n");
 
