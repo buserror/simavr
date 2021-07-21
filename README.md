@@ -21,7 +21,7 @@ pacman -S mingw-w64-x86_64-avr-toolchain
 pacman -S mingw-w64-x86_64-freeglut
 ```
 
-Replace `x64_64` with `i686` to get the 32-bit version instead. E.g, 
+Replace `x86_64` with `i686` to get the 32-bit version instead. E.g, 
 
 ```
 pacman -S mingw-w64-i686-toolchain
