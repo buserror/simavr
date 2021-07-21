@@ -21,13 +21,16 @@ pacman -S mingw-w64-x86_64-avr-toolchain
 pacman -S mingw-w64-x86_64-freeglut
 ```
 
-Replace `x86_64` with `i686` to get the 32-bit version instead. E.g, 
+Replace `x86_64` with `i686` to get the 32-bit version instead.
 
 ```
 pacman -S mingw-w64-i686-toolchain
+pacman -S mingw-w64-i686-libelf
+pacman -S mingw-w64-i686-avr-toolchain
+pacman -S mingw-w64-i686-freeglut
 ```
 
-etc. 
+etc. **There currently is an issuw with the AVR toolchain:** https://github.com/msys2/MINGW-packages/issues/9183
 
 Note: If you are using the 32-bit version, you **may** have to adapt `Makefile.common` regarding `AVR_ROOT := /mingw64/avr` to `AVR_ROOT := /mingw32/avr`. I have not tested this and the paths may be the same, but if you run into errors regarding AVR, check there.
 
