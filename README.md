@@ -38,30 +38,28 @@ git clone https://github.com/maxgerhardt/simavr.git
 cd simavr
 ```
 
-Start building with adapted compile options (otherwise libelf etc will not be found and linked)
+Start building with
 
 ```
-CFLAGS="-I/usr/include -L/usr/lib/" make build-simavr V=1
+make build-simavr V=1
 ```
 
 That should be successfull. 
 
-Now create a install directory and install it. Note that `/home/Max/` needs to be exchanged for your actual path name.
+Now create a install directory and install it. Note that `/home/Max/` is in this case my home directory.
 
 Additionally it copies needed runtime DLLs to the output directory. Ignore the compile terror in the examples, it only counts that simavr is copied to the install directory.
 
 ```
 mkdir simavr_installed
-CFLAGS="-I/usr/include -L/usr/lib/" make install DESTDIR=/home/Max/simavr/simavr_installed/
+make install DESTDIR=/home/$USER/simavr/simavr_installed/
 mv simavr_installed/bin/simavr simavr_installed/bin/simavr.exe
-cp /usr/bin/msys-elf-0.dll /home/Max/simavr/simavr_installed/bin/
-cp /usr/bin/msys-2.0.dll /home/Max/simavr/simavr_installed/bin/
 ```
 
 Copy the compiled output back to the normal Windows environment, e.g.
 
 ```
-cp -r /home/Max/simavr/simavr_installed/ /c/Users/Max/Desktop
+cp -r /home/$USER/simavr/simavr_installed/ /c/Users/$USER/Desktop
 ```
 
 You should now have the simavr executable. 
