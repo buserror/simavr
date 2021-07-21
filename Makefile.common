@@ -88,10 +88,8 @@ endif
 WIN := ${shell uname -o}
 
 ifeq (${WIN}, Msys)
-$(info     We are Msys!!!)
-#AVR_ROOT    := ${shell echo "${AVR32_HOME}" | tr '\\' '/'}
-#AVR         := ${AVR_ROOT}/bin/avr-
 AVR_ROOT     := /mingw64/avr
+# compiler is globally available, no need to direct to a full path
 AVR          := avr-
 IPATH       += ${PREFIX}/include
 CFLAGS      += -I${PREFIX}/include
@@ -115,7 +113,7 @@ SHELL	 	:= ${shell which bash}
 
 OBJ 		:= obj-${shell $(CC) -dumpmachine}
 LIBDIR		:= ${shell pwd}/${SIMAVR}/${OBJ}
-LDFLAGS 	+= -L${LIBDIR} -Wl,--subsystem,console -lsimavr -lm
+LDFLAGS 	+= -L${LIBDIR} -lsimavr -lm
 
 LDFLAGS 	+= -lelf
 
