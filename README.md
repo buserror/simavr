@@ -16,7 +16,7 @@ Install toolchains and dependencies. For 64-bit
 
 ```
 pacman -S mingw-w64-x86_64-toolchain
-pacman -S msys/libelf-devel
+pacman -S mingw-w64-x86_64-libelf
 pacman -S mingw-w64-x86_64-avr-toolchain
 pacman -S mingw-w64-x86_64-freeglut
 ```
@@ -27,7 +27,9 @@ Replace `x86_64` with `i686` to get the 32-bit version instead. E.g,
 pacman -S mingw-w64-i686-toolchain
 ```
 
-etc. If you are using the 32-bit version, also adapt `Makefile.common` regarding `AVR_ROOT := /mingw64/avr` to (probably) `AVR_ROOT := /mingw32/avr`. 
+etc. 
+
+Note: If you are using the 32-bit version, you **may** have to adapt `Makefile.common` regarding `AVR_ROOT := /mingw64/avr` to `AVR_ROOT := /mingw32/avr`. I have not tested this and the paths may be the same, but if you run into errors regarding AVR, check there.
 
 In the normal user directory (`cd ~`), clone this repo 
 
