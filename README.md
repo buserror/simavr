@@ -48,7 +48,7 @@ That should be successfull.
 
 Now create a install directory and install it. Note that `/home/Max/` is in this case my home directory.
 
-Additionally it copies needed runtime DLLs to the output directory. Ignore the compile terror in the examples, it only counts that simavr is copied to the install directory.
+Additionally this renames `simavr` to `simavr.exe` to make it properly executable. Ignore the compile error in the examples, it only counts that simavr is copied to the install directory.
 
 ```
 mkdir simavr_installed
@@ -62,7 +62,7 @@ Copy the compiled output back to the normal Windows environment, e.g.
 cp -r /home/$USER/simavr/simavr_installed/ /c/Users/$USER/Desktop
 ```
 
-You should now have the simavr executable. 
+You should now have a working simavr executable. 
 
 ```
 C:\Users\Max\Desktop\simavr_installed\bin>simavr --help
