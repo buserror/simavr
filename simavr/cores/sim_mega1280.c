@@ -96,8 +96,8 @@ const struct mcu_t {
 			 .vector = PCINT1_vect,
 		},
 		.r_pcint = PCMSK1,
-                .mask = 1,                        // PE0 has PCINT8
-                .shift = 0
+		.mask = 1,                        // PE0 has PCINT8
+		.shift = 0
 	},
 	AVR_IOPORT_DECLARE(f, 'F', F),
 	AVR_IOPORT_DECLARE(g, 'G', G),
@@ -110,8 +110,8 @@ const struct mcu_t {
 			 .vector = PCINT1_vect,
 		},
 		.r_pcint = PCMSK1,
-                .mask = 0b11111110,               // PJ0-6 have PCINT9-15
-                .shift = -1
+		.mask = 0b11111110,               // PJ0-6 have PCINT9-15
+		.shift = -1
 	},
 	AVR_IOPORT_DECLARE_PC(k, 'K', K, 2),      // PK0-7 have PCINT16-23
 	AVR_IOPORT_DECLARE(l, 'L', L),
@@ -380,7 +380,7 @@ const struct mcu_t {
 					.vector = TIMER2_COMPA_vect,
 				},
 			},
-            // TIMER2_COMPB is only appeared in 1280
+		// TIMER2_COMPB is only appeared in 1280
 			//[AVR_TIMER_COMPB] = {
 			//	.r_ocr = OCR2B,
 			//	.com = AVR_IO_REGBITS(TCCR2A, COM2B0, 0x3),
@@ -663,8 +663,8 @@ static avr_t * make()
 }
 
 avr_kind_t mega1280 = {
-        .names = { "atmega1280" },
-        .make = make
+	.names = { "atmega1280" },
+	.make = make
 };
 
 void m1280_init(struct avr_t * avr)
