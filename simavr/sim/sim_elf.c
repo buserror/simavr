@@ -385,6 +385,7 @@ elf_read_firmware(
 					avr_symbol_t * s = malloc(sizeof(avr_symbol_t) + strlen(name) + 1);
 					strcpy((char*)s->symbol, name);
 					s->addr = sym.st_value;
+					s->size = sym.st_size;
 					if (!(firmware->symbolcount % 8))
 						firmware->symbol = realloc(
 							firmware->symbol,

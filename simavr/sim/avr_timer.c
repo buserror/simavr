@@ -74,32 +74,39 @@ static avr_cycle_count_t
 avr_timer_comp(
 		avr_timer_t *p,
 		avr_cycle_count_t when,
-		uint8_t comp)
+		uint8_t comp,
+		uint8_t raise_interrupt)
 {
 	avr_t * avr = p->io.avr;
-	avr_raise_interrupt(avr, &p->comp[comp].interrupt);
+	if (raise_interrupt) {
+	   avr_raise_interrupt(avr, &p->comp[comp].interrupt);
+	}
 
 	// check output compare mode and set/clear pins
 	uint8_t mode = avr_regbit_get(avr, p->comp[comp].com);
 	avr_irq_t * irq = &p->io.irq[TIMER_IRQ_OUT_COMP + comp];
 
+		uint32_t flags = 0;
+		if (p->comp[comp].com_pin.reg)	// we got a physical pin
+				flags |= AVR_IOPORT_OUTPUT;
+		AVR_LOG(avr, LOG_TRACE, "Timer comp: irq %p, mode %d @%d\n", irq, mode, when);
 	switch (mode) {
 		case avr_timer_com_normal: // Normal mode OCnA disconnected
 			break;
 		case avr_timer_com_toggle: // Toggle OCnA on compare match
 			if (p->comp[comp].com_pin.reg)	// we got a physical pin
 				avr_raise_irq(irq,
-						AVR_IOPORT_OUTPUT |
+						flags |
 						(avr_regbit_get(avr, p->comp[comp].com_pin) ? 0 : 1));
 			else // no pin, toggle the IRQ anyway
 				avr_raise_irq(irq,
 						p->io.irq[TIMER_IRQ_OUT_COMP + comp].value ? 0 : 1);
 			break;
 		case avr_timer_com_clear:
-			avr_raise_irq(irq, 0);
+			avr_raise_irq(irq, flags | 0);
 			break;
 		case avr_timer_com_set:
-			avr_raise_irq(irq, 1);
+			avr_raise_irq(irq, flags | 1);
 			break;
 	}
 
@@ -119,6 +126,11 @@ avr_timer_comp_on_tov(
 	// check output compare mode and set/clear pins
 	uint8_t mode = avr_regbit_get(avr, p->comp[comp].com);
 	avr_irq_t * irq = &p->io.irq[TIMER_IRQ_OUT_COMP + comp];
+
+	// only PWM modes have special behaviour on overflow
+	if((p->wgm_op_mode_kind != avr_timer_wgm_pwm) &&
+	   (p->wgm_op_mode_kind != avr_timer_wgm_fast_pwm))
+		return;
 
 	switch (mode) {
 		case avr_timer_com_normal: // Normal mode
@@ -140,7 +152,7 @@ avr_timer_compa(
 		avr_cycle_count_t when,
 		void * param)
 {
-	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPA);
+	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPA, 1);
 }
 
 static avr_cycle_count_t
@@ -149,7 +161,7 @@ avr_timer_compb(
 		avr_cycle_count_t when,
 		void * param)
 {
-	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPB);
+	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPB, 1);
 }
 
 static avr_cycle_count_t
@@ -158,7 +170,7 @@ avr_timer_compc(
 		avr_cycle_count_t when,
 		void * param)
 {
-	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPC);
+	return avr_timer_comp((avr_timer_t*)param, when, AVR_TIMER_COMPC, 1);
 }
 
 static void
@@ -705,6 +717,23 @@ avr_timer_write(
 }
 
 /*
+ * write to the "force output compare" bits
+ */
+static void avr_timer_write_foc(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+{
+	avr_timer_t * p = (avr_timer_t *)param;
+
+        /* These are strobe writes, so just decode them, don't store them */
+
+	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++) {
+		if ((addr == p->comp[compi].foc.reg) &&
+				(v & (1 << p->comp[compi].foc.bit))) {
+			avr_timer_comp(p, avr->cycle, compi, 0);
+		}
+	}
+}
+
+/*
  * write to the TIFR register. Watch for code that writes "1" to clear
  * pending interrupts.
  */
@@ -728,11 +757,14 @@ avr_timer_write_pending(
 	// avr_core_watch_write(avr, addr, v); // This raises flags instead of clearing it.
 
 	// clear any interrupts & flags
-	avr_clear_interrupt_if(avr, &p->overflow, ov);
-	avr_clear_interrupt_if(avr, &p->icr, ic);
+	if (avr_regbit_from_value(avr, p->overflow.raised, v))
+		avr_clear_interrupt_if(avr, &p->overflow, ov);
+	if (avr_regbit_from_value(avr, p->icr.raised, v))
+		avr_clear_interrupt_if(avr, &p->icr, ic);
 
 	for (int compi = 0; compi < AVR_TIMER_COMP_COUNT; compi++)
-		avr_clear_interrupt_if(avr, &p->comp[compi].interrupt, cp[compi]);
+		if (avr_regbit_from_value(avr, p->comp[compi].interrupt.raised, v))
+			avr_clear_interrupt_if(avr, &p->comp[compi].interrupt, cp[compi]);
 }
 
 static void
@@ -938,6 +970,8 @@ avr_timer_init(
 
 		if (p->comp[compi].r_ocr) // not all timers have all comparators
 			avr_register_io_write(avr, p->comp[compi].r_ocr, avr_timer_write_ocr, &p->comp[compi]);
+		if (p->comp[compi].foc.reg)
+			avr_register_io_write(avr, p->comp[compi].foc.reg, avr_timer_write_foc, p);
 	}
 	avr_register_io_write(avr, p->r_tcnt, avr_timer_tcnt_write, p);
 	avr_register_io_read(avr, p->r_tcnt, avr_timer_tcnt_read, p);
