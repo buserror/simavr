@@ -37,16 +37,34 @@ static void
 ssd1306_write_data (ssd1306_t *part)
 {
 	part->vram[part->cursor.page][part->cursor.column] = part->spi_data;
-
-	// Scroll the cursor
-	if (++(part->cursor.column) >= SSD1306_VIRT_COLUMNS)
+	switch (part->addr_mode)
 	{
-		part->cursor.column = 0;
-		if ( part->addr_mode == SSD1306_ADDR_MODE_HORZ &&
-			(++(part->cursor.page) >= SSD1306_VIRT_PAGES))
-		{
-			part->cursor.page = 0;
-		}
+		case SSD1306_ADDR_MODE_VERT:
+			if (++(part->cursor.page) > part->write_cursor_end.page)
+			{
+				part->cursor.page = part->write_cursor_start.column;
+				if (++(part->cursor.column) > part->write_cursor_end.column)
+				{
+					part->cursor.column = part->write_cursor_start.page;
+				}
+			}
+			break;
+		case SSD1306_ADDR_MODE_HORZ:
+			if (++(part->cursor.column) > part->write_cursor_end.column)
+			{
+				part->cursor.column = part->write_cursor_start.column;
+				if (++(part->cursor.page) > part->write_cursor_end.page)
+				{
+					part->cursor.page = part->write_cursor_start.page;
+				}
+			}
+			break;
+		case SSD1306_ADDR_MODE_PAGE:
+			if (++(part->cursor.column) >= SSD1306_VIRT_COLUMNS)
+			{
+				part->cursor.column = 0;
+			}
+			break;
 	}
 
 	ssd1306_set_flag (part, SSD1306_FLAG_DIRTY, 1);
@@ -201,9 +219,10 @@ ssd1306_update_setting (ssd1306_t *part)
 			switch (--part->reg_write_sz) {
 				case 1:
 					part->cursor.page = part->spi_data;
+					part->write_cursor_start.page = part->spi_data;
 					break;
 				case 0:
-					//TODO handle virtual page end
+					part->write_cursor_end.page = part->spi_data;
 					SSD1306_CLEAR_COMMAND_REG(part);
 			}
 			return;
@@ -212,9 +231,10 @@ ssd1306_update_setting (ssd1306_t *part)
 			switch (--part->reg_write_sz) {
 				case 1:
 					part->cursor.column = part->spi_data;
+					part->write_cursor_start.column = part->spi_data;
 					break;
 				case 0:
-					//TODO handle virtual col end
+					part->write_cursor_end.column = part->spi_data;
 					SSD1306_CLEAR_COMMAND_REG(part);
 			}
 			return;
@@ -478,6 +498,8 @@ ssd1306_init (struct avr_t *avr, struct ssd1306_t * part, int width, int height)
 	part->columns = width;
 	part->rows = height;
 	part->pages = height / 8; 	// 8 pixels per page
+	part->write_cursor_end.page = SSD1306_VIRT_PAGES-1;
+	part->write_cursor_end.column = SSD1306_VIRT_COLUMNS-1;
 
 	/*
 	 * Register callbacks on all our IRQs
