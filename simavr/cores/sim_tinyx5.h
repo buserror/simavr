@@ -135,7 +135,7 @@ const struct mcu_t SIM_CORENAME = {
 		},
 		
 		.bin = AVR_IO_REGBIT(ADCSRB, BIN),
-		.ipr = AVR_IO_REGBIT(ADCSRA, IPR),
+		.ipr = AVR_IO_REGBIT(ADCSRB, IPR),
 
 		.muxmode = {
 			[0] = AVR_ADC_SINGLE(0), [1] = AVR_ADC_SINGLE(1),

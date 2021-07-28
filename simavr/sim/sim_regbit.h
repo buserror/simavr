@@ -50,9 +50,9 @@ avr_regbit_set(
 
 	if (!a)
 		return 0;
-	m = rb.mask << rb.bit;
-	avr_core_watch_write(avr, a, avr->data[a] | m);
-	return (avr->data[a] >> rb.bit) & rb.mask;
+	m = (uint8_t)(rb.mask << rb.bit);
+	avr_core_watch_write(avr, a, (uint8_t)(avr->data[a] | m));
+	return (uint8_t)((avr->data[a] >> rb.bit) & rb.mask);
 }
 
 static inline uint8_t
@@ -66,9 +66,11 @@ avr_regbit_setto(
 
 	if (!a)
 		return 0;
-	m = rb.mask << rb.bit;
-	avr_core_watch_write(avr, a, (avr->data[a] & ~(m)) | ((v << rb.bit) & m));
-	return (avr->data[a] >> rb.bit) & rb.mask;
+	m = (uint8_t)(rb.mask << rb.bit);
+	avr_core_watch_write(avr, a,
+                             (uint8_t)((avr->data[a] & ~(m)) |
+                                       ((v << rb.bit) & m)));
+	return (uint8_t)((avr->data[a] >> rb.bit) & rb.mask);
 }
 
 /*
@@ -85,9 +87,10 @@ avr_regbit_setto_raw(
 
 	if (!a)
 		return 0;
-	m = rb.mask << rb.bit;
-	avr_core_watch_write(avr, a, (avr->data[a] & ~(m)) | ((v) & m));
-	return (avr->data[a]) & (rb.mask << rb.bit);
+	m = (uint8_t)(rb.mask << rb.bit);
+	avr_core_watch_write(avr, a,
+                             (uint8_t)((avr->data[a] & ~(m)) | ((v) & m)));
+	return (uint8_t)((avr->data[a]) & (rb.mask << rb.bit));
 }
 
 static inline uint8_t
@@ -99,7 +102,7 @@ avr_regbit_get(
 	if (!a)
 		return 0;
 	//uint8_t m = rb.mask << rb.bit;
-	return (avr->data[a] >> rb.bit) & rb.mask;
+	return (uint8_t)((avr->data[a] >> rb.bit) & rb.mask);
 }
 
 /*
@@ -116,7 +119,7 @@ avr_regbit_from_value(
 	uint16_t a = rb.reg;
 	if (!a)
 		return 0;
-	return (value >> rb.bit) & rb.mask;
+	return (uint8_t)((value >> rb.bit) & rb.mask);
 }
 
 /*
@@ -131,7 +134,7 @@ avr_regbit_get_raw(
 	if (!a)
 		return 0;
 	//uint8_t m = rb.mask << rb.bit;
-	return (avr->data[a]) & (rb.mask << rb.bit);
+	return (uint8_t)((avr->data[a]) & (rb.mask << rb.bit));
 }
 
 static inline uint8_t
@@ -142,8 +145,8 @@ avr_regbit_clear(
 	uint16_t a = rb.reg;
 	if (!a)
 		return 0;
-	uint8_t m = rb.mask << rb.bit;
-	avr_core_watch_write(avr, a, avr->data[a] & ~m);
+	uint8_t m = (uint8_t)(rb.mask << rb.bit);
+	avr_core_watch_write(avr, a, (uint8_t)(avr->data[a] & ~m));
 	return avr->data[a];
 }
 
@@ -164,7 +167,7 @@ avr_regbit_get_array(
 
 	for (i = 0; i < count; i++, rb++) if (rb->reg) {
 		uint16_t a = rb->reg;
-		res |= ((avr->data[a] >> rb->bit) & rb->mask) << i;
+		res |= (uint8_t)(((avr->data[a] >> rb->bit) & rb->mask) << i);
 	}
 	return res;
 }

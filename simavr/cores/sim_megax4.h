@@ -71,7 +71,7 @@ struct mcu_t {
 #ifndef PD3
 #define PD3 PORTD3
 #define PD2 PORTD2
-#define PB3 PORTB3
+#define PB2 PORTB2
 #endif
 
 const struct mcu_t SIM_CORENAME = {
@@ -91,7 +91,7 @@ const struct mcu_t SIM_CORENAME = {
 	.extint = {
 		AVR_EXTINT_DECLARE(0, 'D', PD2),
 		AVR_EXTINT_DECLARE(1, 'D', PD3),
-		AVR_EXTINT_DECLARE(2, 'B', PB3),
+		AVR_EXTINT_DECLARE(2, 'B', PB2),
 	},
 	.porta = {
 		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,

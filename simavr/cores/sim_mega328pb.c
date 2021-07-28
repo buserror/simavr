@@ -1,7 +1,8 @@
 /*
-	sim_megax8.h
+	sim_mega328pb.c
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
+	Copyright 2019 Bernhard Heinloth <bernhard@heinloth.net>
 
  	This file is part of simavr.
 
@@ -19,10 +20,7 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#ifndef __SIM_MEGAX8_H__
-#define __SIM_MEGAX8_H__
-
+#include "sim_avr.h"
 #include "sim_core_declare.h"
 #include "avr_eeprom.h"
 #include "avr_flash.h"
@@ -36,56 +34,40 @@
 #include "avr_twi.h"
 #include "avr_acomp.h"
 
-void mx8_init(struct avr_t * avr);
-void mx8_reset(struct avr_t * avr);
+void m328pb_init(struct avr_t * avr);
+void m328pb_reset(struct avr_t * avr);
 
-/*
- * This is a template for all of the x8 devices, hopefully
- */
-struct mcu_t {
-	avr_t core;
-	avr_eeprom_t 	eeprom;
+#define _AVR_IO_H_
+#define __ASSEMBLER__
+#ifndef __AVR_ATmega328pb__
+#define __AVR_ATmega328pb__
+#endif
+#include "avr/iom328pb.h"
+
+
+const struct mcu_t {
+	avr_t			core;
+	avr_eeprom_t	eeprom;
+	avr_flash_t		selfprog;
 	avr_watchdog_t	watchdog;
-	avr_flash_t 	selfprog;
 	avr_extint_t	extint;
-	avr_ioport_t	portb,portc,portd;
-	avr_uart_t		uart;
+	avr_ioport_t	portb, portc, portd, porte;
+	avr_uart_t		uart0,uart1;
 	avr_acomp_t		acomp;
 	avr_adc_t		adc;
-	avr_timer_t		timer0,timer1,timer2;
-	avr_spi_t		spi;
-	avr_twi_t		twi;
-};
-
-#ifdef SIM_CORENAME
-
-#ifndef SIM_VECTOR_SIZE
-#error SIM_VECTOR_SIZE is not declared
-#endif
-#ifndef SIM_MMCU
-#error SIM_MMCU is not declared
-#endif
-
-/* Termporary hack for mega 324 due to mangled headers */
-#ifdef _AVR_IOM328P_H_
-#undef EFUSE_DEFAULT
-#define EFUSE_DEFAULT 0
-#endif
-
-const struct mcu_t SIM_CORENAME = {
+	avr_timer_t		timer0,timer1,timer2,timer3,timer4;
+	avr_spi_t		spi0,spi1;
+	avr_twi_t		twi0,twi1;
+ } mcu_mega328pb = {
 	.core = {
-		.mmcu = SIM_MMCU,
-		DEFAULT_CORE(SIM_VECTOR_SIZE),
+		.mmcu = "atmega328pb",
+		DEFAULT_CORE(4),
 
-		.init = mx8_init,
-		.reset = mx8_reset,
+		.init = m328pb_init,
+		.reset = m328pb_reset,
 	},
 	AVR_EEPROM_DECLARE(EE_READY_vect),
-#ifdef RWWSRE
-	AVR_SELFPROG_DECLARE(SPMCSR, SELFPRGEN, SPM_READY_vect),
-#else
-	AVR_SELFPROG_DECLARE_NORWW(SPMCSR, SELFPRGEN, SPM_READY_vect),
-#endif
+	AVR_SELFPROG_DECLARE(SPMCSR, 0, SPM_Ready_vect),
 	AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
 	.extint = {
 		AVR_EXTINT_DECLARE(0, 'D', 2),
@@ -118,15 +100,25 @@ const struct mcu_t SIM_CORENAME = {
 		},
 		.r_pcint = PCMSK2,
 	},
+	.porte = {
+		.name = 'E', .r_port = PORTE, .r_ddr = DDRE, .r_pin = PINE,
+		.pcint = {
+			.enable = AVR_IO_REGBIT(PCICR, PCIE3),
+			.raised = AVR_IO_REGBIT(PCIFR, PCIF3),
+			.vector = PCINT3_vect,
+		},
+		.r_pcint = PCMSK3,
+	},
 
 	//PRR/PRUSART0, upe=UPE, reg/bit name index=0, no 'C' in RX/TX vector names
-	AVR_UART_DECLARE(PRR, PRUSART0, UPE, 0, ),
+	AVR_UARTX_DECLARE(0, PRR0, PRUSART0),
+	AVR_UARTX_DECLARE(1, PRR0, PRUSART1),
 
 	.acomp = {
 		.mux_inputs = 8,
 		.mux = { AVR_IO_REGBIT(ADMUX, MUX0), AVR_IO_REGBIT(ADMUX, MUX1),
 				AVR_IO_REGBIT(ADMUX, MUX2) },
-		.pradc = AVR_IO_REGBIT(PRR, PRADC),
+		.pradc = AVR_IO_REGBIT(PRR0, PRADC),
 		.aden = AVR_IO_REGBIT(ADCSRA, ADEN),
 		.acme = AVR_IO_REGBIT(ADCSRB, ACME),
 
@@ -192,7 +184,7 @@ const struct mcu_t SIM_CORENAME = {
 	},
 	.timer0 = {
 		.name = '0',
-		.disabled = AVR_IO_REGBIT(PRR,PRTIM0),
+		.disabled = AVR_IO_REGBIT(PRR0,PRTIM0),
 		.wgm = { AVR_IO_REGBIT(TCCR0A, WGM00), AVR_IO_REGBIT(TCCR0A, WGM01), AVR_IO_REGBIT(TCCR0B, WGM02) },
 		.wgm_op = {
 			[0] = AVR_TIMER_WGM_NORMAL8(),
@@ -236,7 +228,7 @@ const struct mcu_t SIM_CORENAME = {
 	},
 	.timer1 = {
 		.name = '1',
-		.disabled = AVR_IO_REGBIT(PRR,PRTIM1),
+		.disabled = AVR_IO_REGBIT(PRR0,PRTIM1),
 		.wgm = { AVR_IO_REGBIT(TCCR1A, WGM10), AVR_IO_REGBIT(TCCR1A, WGM11),
 					AVR_IO_REGBIT(TCCR1B, WGM12), AVR_IO_REGBIT(TCCR1B, WGM13) },
 		.wgm_op = {
@@ -279,7 +271,6 @@ const struct mcu_t SIM_CORENAME = {
 				.r_ocrh = OCR1AH,	// 16 bits timers have two bytes of it
 				.com = AVR_IO_REGBITS(TCCR1A, COM1A0, 0x3),
 				.com_pin = AVR_IO_REGBIT(PORTB, 1),
-				.foc = AVR_IO_REGBIT(TCCR1C, FOC1A),
 				.interrupt = {
 					.enable = AVR_IO_REGBIT(TIMSK1, OCIE1A),
 					.raised = AVR_IO_REGBIT(TIFR1, OCF1A),
@@ -291,7 +282,6 @@ const struct mcu_t SIM_CORENAME = {
 				.r_ocrh = OCR1BH,
 				.com = AVR_IO_REGBITS(TCCR1A, COM1B0, 0x3),
 				.com_pin = AVR_IO_REGBIT(PORTB, 2),
-				.foc = AVR_IO_REGBIT(TCCR1C, FOC1B),
 				.interrupt = {
 					.enable = AVR_IO_REGBIT(TIMSK1, OCIE1B),
 					.raised = AVR_IO_REGBIT(TIFR1, OCF1B),
@@ -302,7 +292,7 @@ const struct mcu_t SIM_CORENAME = {
 	},
 	.timer2 = {
 		.name = '2',
-		.disabled = AVR_IO_REGBIT(PRR,PRTIM2),
+		.disabled = AVR_IO_REGBIT(PRR0,PRTIM2),
 		.wgm = { AVR_IO_REGBIT(TCCR2A, WGM20), AVR_IO_REGBIT(TCCR2A, WGM21), AVR_IO_REGBIT(TCCR2B, WGM22) },
 		.wgm_op = {
 			[0] = AVR_TIMER_WGM_NORMAL8(),
@@ -347,35 +337,262 @@ const struct mcu_t SIM_CORENAME = {
 			}
 		}
 	},
-	AVR_SPI_DECLARE(PRR, PRSPI),
-	.twi = {
-		.disabled = AVR_IO_REGBIT(PRR,PRTWI),
+	.timer3 = {
+		.name = '3',
+		.disabled = AVR_IO_REGBIT(PRR1,PRTIM3),
+		.wgm = { AVR_IO_REGBIT(TCCR3A, WGM30), AVR_IO_REGBIT(TCCR3A, WGM31),
+					AVR_IO_REGBIT(TCCR3B, WGM32), AVR_IO_REGBIT(TCCR3B, WGM33) },
+		.wgm_op = {
+			[0] = AVR_TIMER_WGM_NORMAL16(),
+			[4] = AVR_TIMER_WGM_CTC(),
+			[5] = AVR_TIMER_WGM_FASTPWM8(),
+			[6] = AVR_TIMER_WGM_FASTPWM9(),
+			[7] = AVR_TIMER_WGM_FASTPWM10(),
+			[8] = AVR_TIMER_WGM_ICPWM(),
+			[9] = AVR_TIMER_WGM_OCPWM(),
+			[12] = AVR_TIMER_WGM_ICCTC(),
+			[14] = AVR_TIMER_WGM_ICPWM(),
+			[15] = AVR_TIMER_WGM_OCPWM(),
+		},
+		.cs = { AVR_IO_REGBIT(TCCR3B, CS30), AVR_IO_REGBIT(TCCR3B, CS31), AVR_IO_REGBIT(TCCR3B, CS32) },
+		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTD, 5), /* External clock pin */
 
-		.r_twcr = TWCR,
-		.r_twsr = TWSR,
-		.r_twbr = TWBR,
-		.r_twdr = TWDR,
-		.r_twar = TWAR,
-		.r_twamr = TWAMR,
+		.r_tcnt = TCNT3L,
+		.r_tcnth = TCNT3H,
+		.r_icr = ICR3L,
+		.r_icrh = ICR3H,
 
-		.twen = AVR_IO_REGBIT(TWCR, TWEN),
-		.twea = AVR_IO_REGBIT(TWCR, TWEA),
-		.twsta = AVR_IO_REGBIT(TWCR, TWSTA),
-		.twsto = AVR_IO_REGBIT(TWCR, TWSTO),
-		.twwc = AVR_IO_REGBIT(TWCR, TWWC),
+		.ices = AVR_IO_REGBIT(TCCR3B, ICES3),
+		.icp = AVR_IO_REGBIT(PORTE, 3),
 
-		.twsr = AVR_IO_REGBITS(TWSR, TWS3, 0x1f),	// 5 bits
-		.twps = AVR_IO_REGBITS(TWSR, TWPS0, 0x3),	// 2 bits
-
-		.twi = {
-			.enable = AVR_IO_REGBIT(TWCR, TWIE),
-			.raised = AVR_IO_REGBIT(TWCR, TWINT),
-			.raise_sticky = 1,
-			.vector = TWI_vect,
+		.overflow = {
+			.enable = AVR_IO_REGBIT(TIMSK3, TOIE3),
+			.raised = AVR_IO_REGBIT(TIFR3, TOV3),
+			.vector = TIMER3_OVF_vect,
+		},
+		.icr = {
+			.enable = AVR_IO_REGBIT(TIMSK3, ICIE3),
+			.raised = AVR_IO_REGBIT(TIFR3, ICF3),
+			.vector = TIMER3_CAPT_vect,
+		},
+		.comp = {
+			[AVR_TIMER_COMPA] = {
+				.r_ocr = OCR3AL,
+				.r_ocrh = OCR3AH,	// 16 bits timers have two bytes of it
+				.com = AVR_IO_REGBITS(TCCR3A, COM3A0, 0x3),
+				.com_pin = AVR_IO_REGBIT(PORTD, 0),
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK3, OCIE3A),
+					.raised = AVR_IO_REGBIT(TIFR3, OCF3A),
+					.vector = TIMER3_COMPA_vect,
+				},
+			},
+			[AVR_TIMER_COMPB] = {
+				.r_ocr = OCR3BL,
+				.r_ocrh = OCR3BH,
+				.com = AVR_IO_REGBITS(TCCR3A, COM3B0, 0x3),
+				.com_pin = AVR_IO_REGBIT(PORTD, 2),
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK3, OCIE3B),
+					.raised = AVR_IO_REGBIT(TIFR3, OCF3B),
+					.vector = TIMER3_COMPB_vect,
+				},
+			},
 		},
 	},
-	
-};
-#endif /* SIM_CORENAME */
+	.timer4 = {
+		.name = '4',
+		.disabled = AVR_IO_REGBIT(PRR1,PRTIM4),
+		.wgm = { AVR_IO_REGBIT(TCCR4A, WGM40), AVR_IO_REGBIT(TCCR4A, WGM41),
+					AVR_IO_REGBIT(TCCR4B, WGM12), AVR_IO_REGBIT(TCCR4B, WGM43) },
+		.wgm_op = {
+			[0] = AVR_TIMER_WGM_NORMAL16(),
+			[4] = AVR_TIMER_WGM_CTC(),
+			[5] = AVR_TIMER_WGM_FASTPWM8(),
+			[6] = AVR_TIMER_WGM_FASTPWM9(),
+			[7] = AVR_TIMER_WGM_FASTPWM10(),
+			[8] = AVR_TIMER_WGM_ICPWM(),
+			[9] = AVR_TIMER_WGM_OCPWM(),
+			[12] = AVR_TIMER_WGM_ICCTC(),
+			[14] = AVR_TIMER_WGM_ICPWM(),
+			[15] = AVR_TIMER_WGM_OCPWM(),
+		},
+		.cs = { AVR_IO_REGBIT(TCCR4B, CS40), AVR_IO_REGBIT(TCCR4B, CS41), AVR_IO_REGBIT(TCCR4B, CS42) },
+		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTD, 5), /* External clock pin */
 
-#endif /* __SIM_MEGAX8_H__ */
+		.r_tcnt = TCNT4L,
+		.r_tcnth = TCNT4H,
+		.r_icr = ICR4L,
+		.r_icrh = ICR4H,
+
+		.ices = AVR_IO_REGBIT(TCCR4B, ICES4),
+		.icp = AVR_IO_REGBIT(PORTB, 0),
+
+		.overflow = {
+			.enable = AVR_IO_REGBIT(TIMSK4, TOIE4),
+			.raised = AVR_IO_REGBIT(TIFR4, TOV4),
+			.vector = TIMER4_OVF_vect,
+		},
+		.icr = {
+			.enable = AVR_IO_REGBIT(TIMSK4, ICIE4),
+			.raised = AVR_IO_REGBIT(TIFR4, ICF4),
+			.vector = TIMER4_CAPT_vect,
+		},
+		.comp = {
+			[AVR_TIMER_COMPA] = {
+				.r_ocr = OCR4AL,
+				.r_ocrh = OCR4AH,	// 16 bits timers have two bytes of it
+				.com = AVR_IO_REGBITS(TCCR4A, COM4A0, 0x3),
+				.com_pin = AVR_IO_REGBIT(PORTD, 1),
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK4, OCIE4A),
+					.raised = AVR_IO_REGBIT(TIFR4, OCF4A),
+					.vector = TIMER4_COMPA_vect,
+				},
+			},
+			[AVR_TIMER_COMPB] = {
+				.r_ocr = OCR4BL,
+				.r_ocrh = OCR4BH,
+				.com = AVR_IO_REGBITS(TCCR4A, COM4B0, 0x3),
+				.com_pin = AVR_IO_REGBIT(PORTD, 2),
+				.interrupt = {
+					.enable = AVR_IO_REGBIT(TIMSK4, OCIE4B),
+					.raised = AVR_IO_REGBIT(TIFR4, OCF4B),
+					.vector = TIMER4_COMPB_vect,
+				},
+			},
+		},
+	},
+	.spi0 = {
+		.name = '0',
+		.disabled = AVR_IO_REGBIT(PRR0, PRSPI0),
+		.r_spdr = SPDR0,
+		.r_spcr = SPCR0,
+		.r_spsr = SPSR0,
+
+		.spe = AVR_IO_REGBIT(SPCR0, SPE),
+		.mstr = AVR_IO_REGBIT(SPCR0, MSTR),
+
+		.spr = { AVR_IO_REGBIT(SPCR0, SPR0), AVR_IO_REGBIT(SPCR0, SPR1), AVR_IO_REGBIT(SPSR0, SPI2X) },
+		.spi = {
+			.enable = AVR_IO_REGBIT(SPCR0, SPIE),
+			.raised = AVR_IO_REGBIT(SPSR0, SPIF),
+			.vector = SPI0_STC_vect,
+		},
+	},
+	.spi1 = {
+		.name = '1',
+		.disabled = AVR_IO_REGBIT(PRR1, PRSPI1),
+		.r_spdr = SPDR1,
+		.r_spcr = SPCR1,
+		.r_spsr = SPSR1,
+
+		.spe = AVR_IO_REGBIT(SPCR1, SPE1),
+		.mstr = AVR_IO_REGBIT(SPCR1, MSTR1),
+
+		.spr = { AVR_IO_REGBIT(SPCR1, SPR10), AVR_IO_REGBIT(SPCR1, SPR11), AVR_IO_REGBIT(SPSR1, SPI2X1) },
+		.spi = {
+			.enable = AVR_IO_REGBIT(SPCR1, SPIE1),
+			.raised = AVR_IO_REGBIT(SPSR1, SPIF1),
+			.vector = SPI1_STC_vect,
+		},
+	},
+	.twi0 = {
+		.name = '0',
+		.disabled = AVR_IO_REGBIT(PRR0,PRTWI0),
+
+		.r_twcr = TWCR0,
+		.r_twsr = TWSR0,
+		.r_twbr = TWBR0,
+		.r_twdr = TWDR0,
+		.r_twar = TWAR0,
+		.r_twamr = TWAMR0,
+
+		.twen = AVR_IO_REGBIT(TWCR0, TWEN),
+		.twea = AVR_IO_REGBIT(TWCR0, TWEA),
+		.twsta = AVR_IO_REGBIT(TWCR0, TWSTA),
+		.twsto = AVR_IO_REGBIT(TWCR0, TWSTO),
+		.twwc = AVR_IO_REGBIT(TWCR0, TWWC),
+
+		.twsr = AVR_IO_REGBITS(TWSR0, TWS3, 0x1f),	// 5 bits
+		.twps = AVR_IO_REGBITS(TWSR0, TWPS0, 0x3),	// 2 bits
+
+		.twi = {
+			.enable = AVR_IO_REGBIT(TWCR0, TWIE),
+			.raised = AVR_IO_REGBIT(TWCR0, TWINT),
+			.raise_sticky = 1,
+			.vector = TWI0_vect,
+		},
+	},
+	.twi1 = {
+		.name = '1',
+		.disabled = AVR_IO_REGBIT(PRR1,PRTWI1),
+
+		.r_twcr = TWCR1,
+		.r_twsr = TWSR1,
+		.r_twbr = TWBR1,
+		.r_twdr = TWDR1,
+		.r_twar = TWAR1,
+		.r_twamr = TWAMR1,
+
+		.twen = AVR_IO_REGBIT(TWCR1, TWEN1),
+		.twea = AVR_IO_REGBIT(TWCR1, TWEA1),
+		.twsta = AVR_IO_REGBIT(TWCR1, TWSTA1),
+		.twsto = AVR_IO_REGBIT(TWCR1, TWSTO1),
+		.twwc = AVR_IO_REGBIT(TWCR1, TWWC1),
+
+		.twsr = AVR_IO_REGBITS(TWSR1, TWS13, 0x1f),	// 5 bits
+		.twps = AVR_IO_REGBITS(TWSR1, TWPS10, 0x3),	// 2 bits
+
+		.twi = {
+			.enable = AVR_IO_REGBIT(TWCR1, TWIE1),
+			.raised = AVR_IO_REGBIT(TWCR1, TWINT1),
+			.raise_sticky = 1,
+			.vector = TWI1_vect,
+		},
+	},
+};
+
+static avr_t * make()
+{
+	return avr_core_allocate(&mcu_mega328pb.core, sizeof(struct mcu_t));
+}
+
+avr_kind_t mega328pb = {
+	.names = { "atmega328pb" },
+	.make = make
+};
+
+void m328pb_init(struct avr_t * avr)
+{
+	struct mcu_t * mcu = (struct mcu_t*)avr;
+
+	avr_eeprom_init(avr, &mcu->eeprom);
+	avr_flash_init(avr, &mcu->selfprog);
+	avr_watchdog_init(avr, &mcu->watchdog);
+	avr_extint_init(avr, &mcu->extint);
+	avr_ioport_init(avr, &mcu->portb);
+	avr_ioport_init(avr, &mcu->portc);
+	avr_ioport_init(avr, &mcu->portd);
+	avr_ioport_init(avr, &mcu->porte);
+	avr_uart_init(avr, &mcu->uart0);
+	avr_uart_init(avr, &mcu->uart1);
+	avr_acomp_init(avr, &mcu->acomp);
+	avr_adc_init(avr, &mcu->adc);
+	avr_timer_init(avr, &mcu->timer0);
+	avr_timer_init(avr, &mcu->timer1);
+	avr_timer_init(avr, &mcu->timer2);
+	avr_timer_init(avr, &mcu->timer3);
+	avr_timer_init(avr, &mcu->timer4);
+	avr_spi_init(avr, &mcu->spi0);
+	avr_spi_init(avr, &mcu->spi1);
+	avr_twi_init(avr, &mcu->twi0);
+	avr_twi_init(avr, &mcu->twi1);
+}
+
+void m328pb_reset(struct avr_t * avr)
+{
+//	struct mcu_t * mcu = (struct mcu_t*)avr;
+}

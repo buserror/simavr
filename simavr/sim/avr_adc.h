@@ -131,14 +131,31 @@ typedef struct avr_adc_t {
 	// use ADIF and ADIE bits
 	avr_int_vector_t adc;
 
-	/*
+	avr_adc_mux_t	muxmode[64];    // maximum 6 bits of mux modes
+
+        /*
 	 * runtime bits
 	 */
-	avr_adc_mux_t	muxmode[64];// maximum 6 bits of mux modes
+
 	uint16_t		adc_values[16];	// current values on the ADCs
 	uint16_t		temp;		// temp sensor reading
 	uint8_t			first;
 	uint8_t			read_status;	// marked one when adcl is read
+
+        /* Conversion parameters saved at start (ADSC is set). */
+
+        uint8_t                 current_muxi;
+        uint8_t                 current_refi;
+        uint8_t                 current_prescale;
+        struct {
+                unsigned int bipolar : 1;      // BIN bit.
+                unsigned int negate : 1;       // IPR bit.
+                unsigned int adjust : 1;       // ADLAR bit.
+        }                       current_extras;
+
+        /* Buffered conversion result. */
+
+        uint16_t                result;
 } avr_adc_t;
 
 void avr_adc_init(avr_t * avr, avr_adc_t * port);

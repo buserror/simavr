@@ -159,7 +159,7 @@ ds1338_virt_tick_time(ds1338_virt_t *p) {
 		if (cascade) {
 			if (pm) {
 				// Switch to AM
-				p->nvram[DS1338_VIRT_HOURS] &= !(1 << DS1338_VIRT_AM_PM);
+				p->nvram[DS1338_VIRT_HOURS] &= ~(1 << DS1338_VIRT_AM_PM);
 			} else {
 				// Switch to PM and catch the cascade
 				p->nvram[DS1338_VIRT_HOURS] |= (1 << DS1338_VIRT_AM_PM);
@@ -417,7 +417,7 @@ ds1338_virt_in_hook(struct avr_irq_t * irq,
 			// Write to the selected register (see p13. DS1388 datasheet for details)
 			if (p->reg_selected) {
 				if (p->verbose)
-					printf("DS1338 set register 0x%02x to 0x%02x\n", 
+					printf("DS1338 set register 0x%02x to 0x%02x\n",
 						p->reg_addr, v.u.twi.data);
 				p->nvram[p->reg_addr] = v.u.twi.data;
 				ds1338_virt_update(p);

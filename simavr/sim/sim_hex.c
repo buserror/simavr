@@ -132,7 +132,8 @@ read_ihex_chunks(
 			case 0: // normal data
 				addr = segment | (bline[1] << 8) | bline[2];
 				break;
-			case 1: // end of file
+			case 1: // end of file - reset segment
+				segment = 0;
 				continue;
 			case 2: // extended address 2 bytes
 				segment = ((bline[4] << 8) | bline[5]) << 4;
