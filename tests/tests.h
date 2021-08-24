@@ -2,6 +2,7 @@
 #define __TESTS_H__
 
 #include "sim_avr.h"
+#include "sim_elf.h"
 
 enum tests_finish_reason {
 	LJR_CYCLE_TIMER = 1,
@@ -40,6 +41,11 @@ void tests_assert_register_receive_avr(avr_t         *avr,
                                        unsigned long  run_usec,
                                        const char    *expected,
                                        avr_io_addr_t  reg_addr);
+void tests_assert_uart_receive_fw(elf_firmware_t *fw,
+								  const char *firmware,
+								  unsigned long run_usec,
+								  const char *expected,
+								  char uart);
 
 void tests_assert_cycles_at_least(unsigned long n);
 void tests_assert_cycles_at_most(unsigned long n);

@@ -118,15 +118,19 @@ main(
 		} else if (!strcmp(argv[pi], "-h") || !strcmp(argv[pi], "--help")) {
 			display_usage(basename(argv[0]));
 		} else if (!strcmp(argv[pi], "-m") || !strcmp(argv[pi], "--mcu")) {
-			if (pi < argc-1)
+			if (pi < argc-1) {
 				snprintf(name, sizeof(name), "%s", argv[++pi]);
-			else
+				strcpy(f.mmcu, name);
+			} else {
 				display_usage(basename(argv[0]));
+			}
 		} else if (!strcmp(argv[pi], "-f") || !strcmp(argv[pi], "--freq")) {
-			if (pi < argc-1)
+			if (pi < argc-1) {
 				f_cpu = atoi(argv[++pi]);
-			else
+				f.frequency = f_cpu;
+			} else {
 				display_usage(basename(argv[0]));
+			}
 		} else if (!strcmp(argv[pi], "-i") || !strcmp(argv[pi], "--input")) {
 			if (pi < argc-1)
 				vcd_input = argv[++pi];
@@ -222,44 +226,13 @@ main(
 		} else if (!strcmp(argv[pi], "-ff")) {
 			loadBase = AVR_SEGMENT_OFFSET_FLASH;
 		} else if (argv[pi][0] != '-') {
-			char * filename = argv[pi];
-			char * suffix = strrchr(filename, '.');
-			if (suffix && !strcasecmp(suffix, ".hex")) {
-				if (!name[0] || !f_cpu) {
-					fprintf(stderr, "%s: --mcu and --freq are mandatory to load .hex files\n", argv[0]);
-					exit(1);
-				}
-				ihex_chunk_p chunk = NULL;
-				int cnt = read_ihex_chunks(filename, &chunk);
-				if (cnt <= 0) {
-					fprintf(stderr, "%s: Unable to load IHEX file %s\n",
-						argv[0], argv[pi]);
-					exit(1);
-				}
-				printf("Loaded %d section of ihex\n", cnt);
-				for (int ci = 0; ci < cnt; ci++) {
-					if (chunk[ci].baseaddr < (1*1024*1024)) {
-						f.flash = chunk[ci].data;
-						f.flashsize = chunk[ci].size;
-						f.flashbase = chunk[ci].baseaddr;
-						printf("Load HEX flash %08x, %d\n", f.flashbase, f.flashsize);
-					} else if (chunk[ci].baseaddr >= AVR_SEGMENT_OFFSET_EEPROM ||
-							chunk[ci].baseaddr + loadBase >= AVR_SEGMENT_OFFSET_EEPROM) {
-						// eeprom!
-						f.eeprom = chunk[ci].data;
-						f.eesize = chunk[ci].size;
-						printf("Load HEX eeprom %08x, %d\n", chunk[ci].baseaddr, f.eesize);
-					}
-				}
-			} else {
-				if (elf_read_firmware(filename, &f) == -1) {
-					fprintf(stderr, "%s: Unable to load firmware from file %s\n",
-							argv[0], filename);
-					exit(1);
-				}
-			}
+			sim_setup_firmware(argv[pi], loadBase, &f, argv[0]);
 		}
 	}
+
+	// Frequency and MCU type were set early so they can be checked when
+	// loading a hex file. Set them again because they can also be set
+ 	// in an ELF firmware file.
 
 	if (strlen(name))
 		strcpy(f.mmcu, name);
