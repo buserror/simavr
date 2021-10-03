@@ -262,10 +262,16 @@ avr_service_interrupts(
 	}
 	avr_int_vector_t * vector = avr_int_pending_read_at(&table->pending, mini);
 
-	// now move the one at the front of the fifo in the slot of
-	// the one we service
-	table->pending.buffer[(table->pending.read + mini) % avr_int_pending_fifo_size] =
-			avr_int_pending_read(&table->pending);
+	// it's possible that the vector being serviced is not at the front of the fifo, because we process interrupts based
+	// on vector priority rather than position in the fifo. if this is the case, we need to manually swap the vector
+	// being serviced with the vector at the front of the fifo so that the vector at the front of the fifo can be
+	// serviced in a following iteration.
+	avr_int_vector_p fifo_front = avr_int_pending_read(&table->pending);
+	if (fifo_front->vector != vector->vector) {
+		// the read into fifo_front above has incremented pending.read, so now mini points 1 beyond the desired
+		// destination for the swap.
+		table->pending.buffer[(table->pending.read + mini - 1) % avr_int_pending_fifo_size] = fifo_front;
+	}
 	avr_raise_irq(avr->interrupts.irq + AVR_INT_IRQ_PENDING,
 			avr_has_pending_interrupts(avr));
 
