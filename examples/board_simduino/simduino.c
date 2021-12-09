@@ -115,12 +115,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	avr = avr_make_mcu_by_name(mmcu);
-	if (!avr) {
-		fprintf(stderr, "%s: Error creating the AVR core\n", argv[0]);
-		exit(1);
-	}
-
 	uint8_t * boot = read_ihex_file(boot_path, &boot_size, &boot_base);
 	if (!boot) {
 		fprintf(stderr, "%s: Unable to load %s\n", argv[0], boot_path);
@@ -131,6 +125,12 @@ int main(int argc, char *argv[])
 		freq = 20000000;
 	}
 	printf("%s booloader 0x%05x: %d bytes\n", mmcu, boot_base, boot_size);
+
+	avr = avr_make_mcu_by_name(mmcu);
+	if (!avr) {
+		fprintf(stderr, "%s: Error creating the AVR core\n", argv[0]);
+		exit(1);
+	}
 
 	snprintf(flash_data.avr_flash_path, sizeof(flash_data.avr_flash_path),
 			"simduino_%s_flash.bin", mmcu);
