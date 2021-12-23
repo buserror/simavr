@@ -104,9 +104,15 @@ typedef struct avr_ioport_t {
 	avr_io_addr_t r_pin;
 
 	avr_int_vector_t pcint;	// PCINT vector
-	avr_io_addr_t r_pcint;		// pcint 8 pins mask
+	avr_io_addr_t r_pcint;	// pcint 8 pins mask
 
-	// this represent the default IRQ value when
+	// Mask and shift for PCINTs.  This is needed for chips like the 2560
+	// where PCINT do not align with IRQs.
+
+	uint8_t 	mask;
+	int8_t 		shift;
+
+	// This represent the default IRQ value when
 	// the port is set as input.
 	// If the mask is not set, no output value is sent
 	// on the output IRQ. If the mask is set, the specified
@@ -121,6 +127,18 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * port);
 #define AVR_IOPORT_DECLARE(_lname, _cname, _uname) \
 	.port ## _lname = { \
 		.name = _cname, .r_port = PORT ## _uname, .r_ddr = DDR ## _uname, .r_pin = PIN ## _uname, \
+	}
+
+#define AVR_IOPORT_DECLARE_PC(_lname, _cname, _uname, _pcnum)	\
+	.port ## _lname = { \
+		.name = _cname, .r_port = PORT ## _uname, \
+		.r_ddr = DDR ## _uname, .r_pin = PIN ## _uname, \
+		.pcint = { \
+			 .enable = AVR_IO_REGBIT(PCICR, PCIE ## _pcnum), \
+			 .raised = AVR_IO_REGBIT(PCIFR, PCIF ## _pcnum), \
+			 .vector = PCINT ## _pcnum ## _vect, \
+		}, \
+		.r_pcint = PCMSK ## _pcnum, \
 	}
 
 #ifdef __cplusplus
