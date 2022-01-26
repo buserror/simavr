@@ -448,6 +448,8 @@ avr_vcd_flush_log(
 							&vcd->signal[l.sigindex],
 							out, l.value));
 	}
+
+   fflush(vcd->output);
 }
 
 static avr_cycle_count_t
