@@ -3,6 +3,8 @@
 #include "tests.h"
 #include "avr_ioport.h"
 
+#define DDRB_ADDR (0x4 + 32) // From ATM168 header file.
+
 /* Start of the IOPORT's IRQ list. */
 
 static avr_irq_t *base_irq;
@@ -20,6 +22,16 @@ static char *fill = log;
 static void monitor_5(struct avr_irq_t *irq, uint32_t value, void *param)
 {
     LOG("5-%02X ", value);
+}
+
+/* IRQ call-back for changes to the simulated DDRB register.
+ * This is to test an IRQ returned by avr_iomem_getirq() and not really
+ * specifically for GPIO.
+ */
+
+static void monitor_ddrb(struct avr_irq_t *irq, uint32_t value, void *param)
+{
+    LOG("BD-%02X ", value);
 }
 
 /* This monitors the simulator's idea of the I/O pin states.
@@ -97,10 +109,11 @@ static const char *expected =
 /* This string is expected in variable log. */
 
 static const char *log_expected =
-    "d-0F P-00 o-0A P-0A I-0A 5-01 o-09 P-29 d-3C 5-00 P-09 o-F0 5-01 P-F0 "
-    "I-70 "                                     // Interrupts off testing.
+    "BD-01 d-0F P-00 o-0A P-0A I-0A 5-01 o-09 P-29 d-3C 5-00 P-09 o-F0 5-01 "
+    "P-F0 I-70 "                                // Interrupts off testing.
     "o-E0 P-E0 I-E0 I-E0 "                      // External interrupt test.
-    "d-03 o-01 P-E1 o-03 P-E3 o-00 P-E8 I-E8 "; // Pin change interrupt test.
+    "d-03 o-01 P-E1 o-03 P-E3 o-00 P-E8 I-E8 "  // Pin change interrupt test.
+    "BD-FF ";                                   // iomem IRQ test.
 
 
 int main(int argc, char **argv) {
@@ -114,12 +127,20 @@ int main(int argc, char **argv) {
                                 monitor_5, NULL);
         avr_irq_register_notify(base_irq + IOPORT_IRQ_PIN_ALL,
                                 monitor, NULL);
+        avr_irq_register_notify(avr_iomem_getirq(avr, DDRB_ADDR, NULL, 8),
+                                monitor_ddrb, NULL);
         avr_irq_register_notify(base_irq + IOPORT_IRQ_DIRECTION_ALL,
                                 reg_write, NULL);
         avr_irq_register_notify(base_irq + IOPORT_IRQ_REG_PORT,
                                 reg_write, NULL);
         avr_irq_register_notify(base_irq + IOPORT_IRQ_REG_PIN,
                                 reg_read, NULL);
+
+        /* Tweak DDRB to confirm IO-memory based IRQs are working. */
+
+        avr_core_watch_write(avr, DDRB_ADDR, 1);
+
+        /* Run ... */
 
         tests_assert_uart_receive_avr(avr, 100000, expected, '0');
 
