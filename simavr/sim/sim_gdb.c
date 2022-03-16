@@ -33,6 +33,7 @@
 #include "avr_eeprom.h"
 #include "sim_gdb.h"
 
+// For debug printfs: "#define DBG(w) w"
 #define DBG(w)
 
 #define WATCH_LIMIT (32)
@@ -404,9 +405,83 @@ handle_io_registers(avr_t * avr, avr_gdb_t * g, char * cmd)
 }
 
 static void
+handle_v(avr_t * avr, avr_gdb_t * g, char * cmd, int length)
+{
+	uint32_t  addr;
+	uint8_t  *src = NULL;
+	int       len, err = -1;
+
+	if (strncmp(cmd, "FlashErase", 10) == 0) {
+
+		sscanf(cmd, "%*[^:]:%x,%x", &addr, &len);
+		if (addr < avr->flashend) {
+			src = avr->flash + addr;
+			if (addr + len > avr->flashend)
+				len = avr->flashend - addr;
+			memset(src, 0xff, len);
+			DBG(printf("FlashErase: %x,%x\n", addr, len);) //Remove
+		} else {
+			err = 1;
+		}
+	} else if (strncmp(cmd, "FlashWrite", 10) == 0) {
+		if (sscanf(cmd, "%*[^:]:%x:%n", &addr, &len) != 1) {
+			err = 2;
+		} else {
+			DBG(printf("FlashWrite %x\n", addr);) //Remove
+			if  (len >= length) {
+				err = 99;
+			} else if (addr < avr->flashend) {
+				char    *end;
+				uint8_t *limit;
+
+				end = cmd + length;
+				cmd += len;
+				src = avr->flash + addr;
+				limit = avr->flash + avr->flashend;
+				for (; cmd < end && src < limit; ++cmd) {
+					int escaped = 0;
+
+					if (escaped) {
+						*src++ = *cmd ^ 0x20;
+						escaped = 0;
+					} else if (*cmd == '}') {
+						escaped = 1;
+					} else {
+						*src++ = *cmd;
+					}
+				}
+				addr = src - avr->flash; // Address of end.
+				if (addr > avr->codeend)
+					avr->codeend = addr;
+				if (cmd != end) {
+					DBG(printf("FlashWrite %ld bytes left!\n", end - cmd));
+				}
+			} else {
+				err = 1;
+			}
+		}
+	} else if (strncmp(cmd, "FlashDone", 9) == 0) {
+		DBG(printf("FlashDone\n");) //Remove
+	} else {
+		gdb_send_reply(g, "");
+		return;
+	}
+
+	if (err < 0) {
+		gdb_send_reply(g, "OK");
+	} else {
+		char b[32];
+
+		sprintf(b, "E %.2d", err);
+		gdb_send_reply(g, b);
+	}
+}
+
+static void
 gdb_handle_command(
 		avr_gdb_t * g,
-		char * cmd )
+		char      * cmd,
+		int         length)
 {
 	avr_t * avr = g->avr;
 	char rep[1024];
@@ -636,6 +711,9 @@ gdb_handle_command(
 			avr->state = cpu_Done;
 			gdb_send_reply(g, "OK");
 		}	break;
+		case 'v':
+			handle_v(avr, g, cmd, length);
+			break;
 		default:
 			gdb_send_reply(g, "");
 			break;
@@ -675,7 +753,7 @@ gdb_network_handler(
 		int i = 1;
 		setsockopt (g->s, IPPROTO_TCP, TCP_NODELAY, &i, sizeof (i));
 		g->avr->state = cpu_Stopped;
-		printf("%s connection opened\n", __FUNCTION__);
+		DBG(printf("%s connection opened\n", __FUNCTION__);)
 	}
 
 	if (g->s != -1 && FD_ISSET(g->s, &read_set)) {
@@ -684,7 +762,7 @@ gdb_network_handler(
 		ssize_t r = recv(g->s, buffer, sizeof(buffer)-1, 0);
 
 		if (r == 0) {
-			printf("%s connection closed\n", __FUNCTION__);
+			DBG(printf("%s connection closed\n", __FUNCTION__);)
 			close(g->s);
 			gdb_watch_clear(&g->breakpoints);
 			gdb_watch_clear(&g->watchpoints);
@@ -698,7 +776,14 @@ gdb_network_handler(
 			return 1;
 		}
 		buffer[r] = 0;
-	//	printf("%s: received %d bytes\n'%s'\n", __FUNCTION__, r, buffer);
+		DBG(
+			if (!strncmp("+$vFlashWrite", (char *)buffer, 13)) {
+				printf("%s: received Flashwrite command %ld bytes\n",
+					   __FUNCTION__, r);
+			} else {
+				printf("%s: received command %ld bytes\n'%s'\n",
+					   __FUNCTION__, r, buffer);
+			})
 	//	hdump("gdb", buffer, r);
 
 		uint8_t * src = buffer;
@@ -717,11 +802,12 @@ gdb_network_handler(
 				*end-- = 0;
 			*end = 0;
 			src++;
-			DBG(printf("GDB command = '%s'\n", src);)
-
+			DBG(
+				if (strncmp("vFlashWrite", (char *)src, 11))
+					printf("GDB command = '%s'\n", src);)
 			send(g->s, "+", 1, 0);
-
-			gdb_handle_command(g, (char*)src);
+			if (end > src)
+				gdb_handle_command(g, (char*)src, end - src);
 		}
 	}
 	return 1;
