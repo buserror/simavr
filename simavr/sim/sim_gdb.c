@@ -355,8 +355,8 @@ gdb_handle_command(
 					while (args != 0x00) {
 						printf("%s",args);
 						if (strncmp(args, "7265736574", 10) == 0) { // reset matched
-							avr->state = cpu_StepDone;
 							avr_reset(avr);
+							avr->state = cpu_StepDone;
 							args += 10;
 						} else if (strncmp(args, "68616c74", 8) == 0) { // halt matched
 							avr->state = cpu_Stopped;
@@ -478,8 +478,8 @@ gdb_handle_command(
 			avr->state = cpu_Step;
 		}	break;
 		case 'r': {	// deprecated, suggested for AVRStudio compatibility
-			avr->state = cpu_StepDone;
 			avr_reset(avr);
+			avr->state = cpu_StepDone;
 		}	break;
 		case 'Z': 	// set clear break/watchpoint
 		case 'z': {
