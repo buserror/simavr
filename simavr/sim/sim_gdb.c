@@ -48,11 +48,16 @@ typedef struct {
 
 typedef struct avr_gdb_t {
 	avr_t * avr;
-	int		listen;	// listen socket
-	int		s;		// current gdb connection
+	int	listen;	// listen socket
+	int	s;	// current gdb connection
 
 	avr_gdb_watchpoints_t breakpoints;
 	avr_gdb_watchpoints_t watchpoints;
+
+	// These are used by gdb's "info io_registers" command.
+
+	uint16_t ior_base;
+	uint8_t  ior_count, mad;
 } avr_gdb_t;
 
 
@@ -218,7 +223,7 @@ gdb_change_breakpoint(
 		uint32_t addr,
 		uint32_t size )
 {
-	DBG(printf("set %d kind %d addr %08x len %d\n", set, kind, addr, len);)
+	DBG(printf("set %d kind %d addr %08x len %d\n", set, kind, addr, size);)
 
 	if (set) {
 		return gdb_watch_add_or_update(w, kind, addr, size);
@@ -279,6 +284,123 @@ gdb_read_register(
 			break;
 	}
 	return strlen(rep);
+}
+
+
+static uint8_t
+handle_monitor(avr_t * avr, avr_gdb_t * g, char * cmd)
+{
+	char         *ip, *op;
+	unsigned int  c1, c2;
+	char          dehex[64];
+
+	if (*cmd++ != ',')
+		return 1;		// Bad format
+	for (op = dehex; op < dehex + (sizeof dehex - 1); ++op) {
+		if (!*cmd)
+			break;
+		if (sscanf(cmd, "%1x%1x", &c1, &c2) != 2)
+			return 2;	// Bad format
+		*op = (c1 << 4) + c2;
+		cmd += 2;
+	}
+	*op = '\0';
+	if (*cmd)
+		return 3;		// Too long
+	ip = dehex;
+	while (*ip) {
+		while (*ip == ' ' || *ip == '\t')
+			++ip;
+
+		if (strncmp(ip, "reset", 5) == 0) {
+			avr->state = cpu_StepDone;
+			avr_reset(avr);
+			ip += 5;
+		} else if (strncmp(ip, "halt", 4) == 0) {
+			avr->state = cpu_Stopped;
+			ip += 4;
+		} else if (strncmp(ip, "ior", 3) == 0) {
+			unsigned int base;
+			int          n, m, count;
+
+			// Format is "ior <base> <count>
+			// or just "ior" to reset.
+
+			ip += 3;
+			m = sscanf(ip, "%x %i%n", &base, &count, &n);
+			if (m <= 0) {
+				// Reset values.
+
+				g->ior_base = g->ior_count = 0;
+				n = 0;
+			} else if (m != 2) {
+				return 1;
+			} else {
+				if (count <= 0 || base + count + 32 > REG_NAME_COUNT ||
+					base + count + 32 > avr->ioend) {
+					return 4;	// bad value
+				}
+				g->ior_base = base;
+				g->ior_count = count;
+			}
+			ip += n;
+		} else {
+			return 5;
+		}
+	}
+	return 0;
+}
+
+static void
+handle_io_registers(avr_t * avr, avr_gdb_t * g, char * cmd)
+{
+	extern const char *avr_regname(unsigned int); // sim_core.c
+	char *       params;
+	char *       reply;
+	unsigned int addr, count;
+	char         buff[1024];
+
+	if (g->mad) {
+		/* For this command, gdb employs a streaming protocol,
+		 * with the command being repeated until the stub sends
+		 * an empy packet as terminator.  That makes no sense,
+		 * as the requests are sized to ensure the reply will
+		 * fit in a single packet.
+		 */
+
+		reply = "";
+		g->mad = 0;
+	} else {
+		params = cmd + 11;
+		if (sscanf(params, ":%x,%x", &addr, &count) == 2) {
+			int i;
+
+			// Send names and values.
+			addr += 32;
+			if (addr + count > avr->ioend)
+				count = avr->ioend + 1 - addr;
+			reply = buff;
+			for (i = 0; i < count; ++i) {
+				const char *name;
+
+				name = avr_regname(addr + i);
+				reply += sprintf(reply, "%s,%x;",
+						 name, avr->data[addr + i]);
+				if (reply > buff + sizeof buff - 20)
+					break;
+			}
+		} else {
+			// Send register count.
+
+			count = g->ior_count ? g->ior_count :
+						avr->ioend > REG_NAME_COUNT ?
+							REG_NAME_COUNT - 32 : avr->ioend - 32;
+			sprintf(buff, "%x", count);
+		}
+		reply = buff;
+		g->mad = 1;
+	}
+	gdb_send_reply(g, reply);
 }
 
 static void
@@ -349,25 +471,18 @@ gdb_handle_command(
 					// all available registers.
 				}
 			} else if (strncmp(cmd, "Rcmd", 4) == 0) { // monitor command
-				char * args = strchr(cmd, ',');
-				if (args != NULL) {
-					args++;
-					while (args != 0x00) {
-						printf("%s",args);
-						if (strncmp(args, "7265736574", 10) == 0) { // reset matched
-							avr->state = cpu_StepDone;
-							avr_reset(avr);
-							args += 10;
-						} else if (strncmp(args, "68616c74", 8) == 0) { // halt matched
-							avr->state = cpu_Stopped;
-							args += 8;
-						} else if (strncmp(args, "20", 2) == 0) { // space matched
-							args += 2;
-						} else // no match - end
-							break;
-					}
+				uint8_t err = handle_monitor(avr, g, cmd + 4);
+				if (err) {
+					snprintf(rep, sizeof rep,
+						 "E%02x", err);
+					gdb_send_reply(g, rep);
+				} else {
+					gdb_send_reply(g, "OK");
 				}
-				gdb_send_reply(g, "OK");
+				break;
+			} else if (strncmp(cmd, "Ravr.io_reg", 11) == 0) {
+				handle_io_registers(avr, g, cmd);
+				break;
 			}
 			gdb_send_reply(g, "");
 			break;

@@ -321,7 +321,7 @@ avr_flashaddr_t _avr_pop_addr(avr_t * avr)
 /*
  * "Pretty" register names
  */
-const char * reg_names[255] = {
+const char * reg_names[REG_NAME_COUNT] = {
 		[R_XH] = "XH", [R_XL] = "XL",
 		[R_YH] = "YH", [R_YL] = "YL",
 		[R_ZH] = "ZH", [R_ZL] = "ZL",
@@ -330,7 +330,7 @@ const char * reg_names[255] = {
 };
 
 
-const char * avr_regname(uint8_t reg)
+const char * avr_regname(unsigned int reg)
 {
 	if (!reg_names[reg]) {
 		char tt[16];
