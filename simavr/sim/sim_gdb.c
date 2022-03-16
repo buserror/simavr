@@ -77,7 +77,6 @@ gdb_watch_find(
 			return i;
 		}
 	}
-
 	return -1;
 }
 
@@ -93,11 +92,11 @@ gdb_watch_find_range(
 	for (int i = 0; i < w->len; i++) {
 		if (w->points[i].addr > addr) {
 			return -1;
-		} else if (w->points[i].addr <= addr && addr < w->points[i].addr + w->points[i].size) {
+		} else if (w->points[i].addr <= addr &&
+				   addr < w->points[i].addr + w->points[i].size) {
 			return i;
 		}
 	}
-
 	return -1;
 }
 
@@ -111,6 +110,9 @@ gdb_watch_add_or_update(
 		uint32_t addr,
 		uint32_t size )
 {
+	if (kind == AVR_GDB_WATCH_ACCESS)
+		kind |= AVR_GDB_WATCH_WRITE | AVR_GDB_WATCH_READ;
+
 	/* If the watchpoint exists, update it. */
 	int i = gdb_watch_find(w, addr);
 	if (i != -1) {
@@ -346,6 +348,12 @@ handle_monitor(avr_t * avr, avr_gdb_t * g, char * cmd)
 				g->ior_count = count;
 			}
 			ip += n;
+	DBG(
+		} else if (strncmp(ip, "say ", 4) == 0) {
+			// Put a message in the debug output.
+			printf("Say: %s\n", ip + 4);
+			ip += strlen(ip);
+		)
 		} else {
 			return 5;
 		}
@@ -707,11 +715,16 @@ gdb_handle_command(
 					break;
 			}
 		}	break;
-		case 'K': 	// kill
-		case 'D': {	// detach
+		case 'k': 	// kill
 			avr->state = cpu_Done;
 			gdb_send_reply(g, "OK");
-		}	break;
+			break;
+		case 'D': 	// detach
+			avr->state = cpu_Running;
+			gdb_send_reply(g, "OK");
+			close(g->s);
+			g->s = -1;
+			break;
 		case 'v':
 			handle_v(avr, g, cmd, length);
 			break;
@@ -833,6 +846,8 @@ avr_gdb_handle_watchpoints(
 	}
 
 	int kind = g->watchpoints.points[i].kind;
+	DBG(printf("Addr %04x found watchpoint %d size %d type %x wanted %x\n",
+			   addr, i, g->watchpoints.points[i].size, kind, type);)
 	if (kind & type) {
 		/* Send gdb reply (see GDB user manual appendix E.3). */
 		char cmd[78];

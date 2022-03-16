@@ -34,7 +34,7 @@ enum avr_gdb_watch_type {
 
 	AVR_GDB_WATCH_WRITE  = 1 << 2,
 	AVR_GDB_WATCH_READ   = 1 << 3,
-	AVR_GDB_WATCH_ACCESS = AVR_GDB_WATCH_WRITE | AVR_GDB_WATCH_READ,
+	AVR_GDB_WATCH_ACCESS = 1 << 4
 };
 
 int avr_gdb_init(avr_t * avr);
