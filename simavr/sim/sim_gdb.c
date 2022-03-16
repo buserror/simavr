@@ -210,9 +210,10 @@ gdb_send_quick_status(
 	READ_SREG_INTO(g->avr, sreg);
 
 	sprintf(cmd, "T%02x20:%02x;21:%02x%02x;22:%02x%02x%02x00;",
-		signal ? signal : 5, sreg,
+		signal, sreg,
 		g->avr->data[R_SPL], g->avr->data[R_SPH],
-		g->avr->pc & 0xff, (g->avr->pc>>8)&0xff, (g->avr->pc>>16)&0xff);
+		g->avr->pc & 0xff, (g->avr->pc >> 8) & 0xff,
+		(g->avr->pc >> 16) & 0xff);
 	gdb_send_reply(g, cmd);
 }
 
@@ -314,8 +315,8 @@ handle_monitor(avr_t * avr, avr_gdb_t * g, char * cmd)
 			++ip;
 
 		if (strncmp(ip, "reset", 5) == 0) {
-			avr->state = cpu_StepDone;
 			avr_reset(avr);
+			avr->state = cpu_Stopped;
 			ip += 5;
 		} else if (strncmp(ip, "halt", 4) == 0) {
 			avr->state = cpu_Stopped;
@@ -668,8 +669,8 @@ gdb_handle_command(
 			avr->state = cpu_Step;
 		}	break;
 		case 'r': {	// deprecated, suggested for AVRStudio compatibility
-			avr->state = cpu_StepDone;
 			avr_reset(avr);
+			avr->state = cpu_Stopped;
 		}	break;
 		case 'Z': 	// set clear break/watchpoint
 		case 'z': {
@@ -792,7 +793,8 @@ gdb_network_handler(
 		// control C -- lets send the guy a nice status packet
 		if (*src == 3) {
 			src++;
-			g->avr->state = cpu_StepDone;
+			gdb_send_quick_status(g, 2); // SIGINT
+			g->avr->state = cpu_Stopped;
 			printf("GDB hit control-c\n");
 		}
 		if (*src  == '$') {
@@ -862,7 +864,7 @@ avr_gdb_processor(
 	if (avr->state == cpu_Running &&
 			gdb_watch_find(&g->breakpoints, avr->pc) != -1) {
 		DBG(printf("avr_gdb_processor hit breakpoint at %08x\n", avr->pc);)
-		gdb_send_quick_status(g, 0);
+		gdb_send_quick_status(g, 5);
 		avr->state = cpu_Stopped;
 	} else if (avr->state == cpu_StepDone) {
 		gdb_send_quick_status(g, 0);

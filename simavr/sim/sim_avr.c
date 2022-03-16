@@ -286,7 +286,7 @@ void
 avr_callback_run_gdb(
 		avr_t * avr)
 {
-	avr_gdb_processor(avr, avr->state == cpu_Stopped);
+	avr_gdb_processor(avr, avr->state == cpu_Stopped ? 50000 : 0);
 
 	if (avr->state == cpu_Stopped)
 		return ;
@@ -331,7 +331,6 @@ avr_callback_run_gdb(
 	// if we were stepping, use this state to inform remote gdb
 	if (step)
 		avr->state = cpu_StepDone;
-
 }
 
 /*
