@@ -309,13 +309,34 @@ gdb_read_register(
 	return strlen(rep);
 }
 
+static int tohex(const char *in, char *out, unsigned int len)
+{
+	int n = 0;
 
-static uint8_t
+	while (*in && n + 2 < len)
+		n += sprintf(out + n, "%02x", (uint8_t)*in++);
+	return n;
+}
+
+/* Send a message to the user. Gdb must be expecting a reply, otherwise this
+ * is ignored.
+ */
+
+static void message(avr_gdb_t * g, const char *m)
+{
+	char buff[256];
+
+	buff[0] = 'O';
+	tohex(m, buff + 1, sizeof buff - 1);
+	gdb_send_reply(g, buff);
+}
+
+static int
 handle_monitor(avr_t * avr, avr_gdb_t * g, char * cmd)
 {
 	char         *ip, *op;
 	unsigned int  c1, c2;
-	char          dehex[64];
+	char          dehex[128];
 
 	if (*cmd++ != ',')
 		return 1;		// Bad format
@@ -374,7 +395,10 @@ handle_monitor(avr_t * avr, avr_gdb_t * g, char * cmd)
 			ip += strlen(ip);
 		)
 		} else {
-			return 5;
+			tohex("Monitor subcommands are: ior halt reset" DBG(" say") "\n",
+				  dehex, sizeof dehex);
+			gdb_send_reply(g, dehex);
+			return -1;
 		}
 	}
 	return 0;
@@ -574,12 +598,12 @@ gdb_handle_command(
 					// all available registers.
 				}
 			} else if (strncmp(cmd, "Rcmd", 4) == 0) { // monitor command
-				uint8_t err = handle_monitor(avr, g, cmd + 4);
-				if (err) {
+				int err = handle_monitor(avr, g, cmd + 4);
+				if (err > 0) {
 					snprintf(rep, sizeof rep,
 						 "E%02x", err);
 					gdb_send_reply(g, rep);
-				} else {
+				} else if (err == 0) {
 					gdb_send_reply(g, "OK");
 				}
 				break;
@@ -854,7 +878,9 @@ void avr_gdb_handle_break(avr_t *avr)
 {
 	avr_gdb_t *g = avr->gdb;
 
-	gdb_send_stop_status(g, 5, "hwbreak", NULL);
+	message(g, "Simavr executed 'break' instruction.\n");
+	//gdb_send_stop_status(g, 5, "swbreak", NULL);  Correct but ignored!
+	gdb_send_quick_status(g, 5);
 }
 
 /**
