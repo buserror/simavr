@@ -202,21 +202,40 @@ gdb_send_reply(
 }
 
 static void
+gdb_send_stop_status(
+		avr_gdb_t  * g,
+		uint8_t     signal,
+		const char * reason,
+		uint32_t   * pp )
+{
+	avr_t   * avr;
+	uint8_t   sreg;
+	int       n;
+	char      cmd[64];
+
+	avr = g->avr;
+	READ_SREG_INTO(avr, sreg);
+
+	n = sprintf(cmd, "T%02x20:%02x;21:%02x%02x;22:%02x%02x%02x00;",
+				signal, sreg,
+				avr->data[R_SPL], avr->data[R_SPH],
+				avr->pc & 0xff, (avr->pc >> 8) & 0xff,
+				(avr->pc >> 16) & 0xff);
+	if (reason) {
+		if (pp)
+			sprintf(cmd + n, "%s:%x;", reason, *pp);
+		else
+			sprintf(cmd + n, "%s:;", reason);
+	}
+	gdb_send_reply(g, cmd);
+}
+
+static void
 gdb_send_quick_status(
 		avr_gdb_t * g,
 		uint8_t signal )
 {
-	char cmd[64];
-	uint8_t sreg;
-
-	READ_SREG_INTO(g->avr, sreg);
-
-	sprintf(cmd, "T%02x20:%02x;21:%02x%02x;22:%02x%02x%02x00;",
-		signal, sreg,
-		g->avr->data[R_SPL], g->avr->data[R_SPH],
-		g->avr->pc & 0xff, (g->avr->pc >> 8) & 0xff,
-		(g->avr->pc >> 16) & 0xff);
-	gdb_send_reply(g, cmd);
+	gdb_send_stop_status(g, signal, NULL, NULL);
 }
 
 static int
@@ -227,14 +246,14 @@ gdb_change_breakpoint(
 		uint32_t addr,
 		uint32_t size )
 {
-	DBG(printf("set %d kind %d addr %08x len %d\n", set, kind, addr, size);)
+	DBG(printf("%s kind %d addr %08x len %d\n", set ? "Set" : "Clear",
+			   kind, addr, size);)
 
 	if (set) {
 		return gdb_watch_add_or_update(w, kind, addr, size);
 	} else {
 		return gdb_watch_rm(w, kind, addr);
 	}
-
 	return -1;
 }
 
@@ -500,9 +519,9 @@ gdb_handle_command(
 			if (strncmp(cmd, "Supported", 9) == 0) {
 				/* If GDB asked what features we support, report back
 				 * the features we support, which is just memory layout
-				 * information for now.
+				 * information and stop reasons for now.
 				 */
-				gdb_send_reply(g, "qXfer:memory-map:read+");
+				gdb_send_reply(g, "qXfer:memory-map:read+;swbreak+;hwbreak+");
 				break;
 			} else if (strncmp(cmd, "Attached", 8) == 0) {
 				/* Respond that we are attached to an existing process..
@@ -715,15 +734,18 @@ gdb_handle_command(
 					break;
 			}
 		}	break;
-		case 'k': 	// kill
-			avr->state = cpu_Done;
-			gdb_send_reply(g, "OK");
-			break;
 		case 'D': 	// detach
-			avr->state = cpu_Running;
+#ifdef DETACHABLE
+			if (avr->state = cpu_Stopped)
+				avr->state = cpu_Running;
 			gdb_send_reply(g, "OK");
 			close(g->s);
 			g->s = -1;
+			break;
+#endif
+		case 'k': 	// kill
+			avr->state = cpu_Done;
+			gdb_send_reply(g, "OK");
 			break;
 		case 'v':
 			handle_v(avr, g, cmd, length);
@@ -828,6 +850,14 @@ gdb_network_handler(
 	return 1;
 }
 
+/* Called on a hardware break instruction. */
+void avr_gdb_handle_break(avr_t *avr)
+{
+	avr_gdb_t *g = avr->gdb;
+
+	gdb_send_stop_status(g, 5, "hwbreak", NULL);
+}
+
 /**
  * If an applicable watchpoint exists for addr, stop the cpu and send a status report.
  * type is one of AVR_GDB_WATCH_READ, AVR_GDB_WATCH_WRITE depending on the type of access.
@@ -839,6 +869,7 @@ avr_gdb_handle_watchpoints(
 		enum avr_gdb_watch_type type )
 {
 	avr_gdb_t *g = avr->gdb;
+    uint32_t   false_addr;
 
 	int i = gdb_watch_find_range(&g->watchpoints, addr);
 	if (i == -1) {
@@ -850,19 +881,13 @@ avr_gdb_handle_watchpoints(
 			   addr, i, g->watchpoints.points[i].size, kind, type);)
 	if (kind & type) {
 		/* Send gdb reply (see GDB user manual appendix E.3). */
-		char cmd[78];
-		uint8_t sreg;
 
-		READ_SREG_INTO(g->avr, sreg);
-		sprintf(cmd, "T%02x20:%02x;21:%02x%02x;22:%02x%02x%02x00;%s:%06x;",
-				5, sreg,
-				g->avr->data[R_SPL], g->avr->data[R_SPH],
-				g->avr->pc & 0xff, (g->avr->pc>>8)&0xff, (g->avr->pc>>16)&0xff,
-				kind & AVR_GDB_WATCH_ACCESS ? "awatch" :
-					kind & AVR_GDB_WATCH_WRITE ? "watch" : "rwatch",
-				addr | 0x800000);
-		gdb_send_reply(g, cmd);
+		const char * what;
 
+		what = (kind & AVR_GDB_WATCH_ACCESS) ? "awatch" :
+			(kind & AVR_GDB_WATCH_WRITE) ? "watch" : "rwatch";
+		false_addr = addr + 0x800000;
+		gdb_send_stop_status(g, 5, what, &false_addr);
 		avr->state = cpu_Stopped;
 	}
 }
@@ -879,7 +904,7 @@ avr_gdb_processor(
 	if (avr->state == cpu_Running &&
 			gdb_watch_find(&g->breakpoints, avr->pc) != -1) {
 		DBG(printf("avr_gdb_processor hit breakpoint at %08x\n", avr->pc);)
-		gdb_send_quick_status(g, 5);
+		gdb_send_stop_status(g, 5, "hwbreak", NULL);
 		avr->state = cpu_Stopped;
 	} else if (avr->state == cpu_StepDone) {
 		gdb_send_quick_status(g, 0);

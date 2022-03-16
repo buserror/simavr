@@ -164,7 +164,8 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 				"CORE: *** Wrapping read address "
 				"PC=%04x SP=%04x O=%04x Address %04x %% %04x --> %04x\n"
 				FONT_DEFAULT,
-				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), addr, (avr->ramend + 1), addr % (avr->ramend + 1));
+				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc),
+				addr, (avr->ramend + 1), addr % (avr->ramend + 1));
 		addr = addr % (avr->ramend + 1);
 	}
 
@@ -938,12 +939,9 @@ run_one_again:
 				case 0x9598: { // BREAK -- 1001 0101 1001 1000
 					STATE("break\n");
 					if (avr->gdb) {
-						// if gdb is on, we break here as in here
-						// and we do so until gdb restores the instruction
-						// that was here before
-						avr->state = cpu_StepDone;
-						new_pc = avr->pc;
-						cycle = 0;
+						// if gdb is on, break here.
+						avr->state = cpu_Stopped;
+						avr_gdb_handle_break(avr);
 					}
 				}	break;
 				case 0x95a8: { // WDR -- Watchdog Reset -- 1001 0101 1010 1000
