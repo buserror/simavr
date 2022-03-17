@@ -455,20 +455,18 @@ handle_v(avr_t * avr, avr_gdb_t * g, char * cmd, int length)
 		if (sscanf(cmd, "%*[^:]:%x:%n", &addr, &len) != 1) {
 			err = 2;
 		} else {
-			DBG(printf("FlashWrite %x\n", addr);) //Remove
 			if  (len >= length) {
 				err = 99;
 			} else if (addr < avr->flashend) {
+				int      escaped;
 				char    *end;
 				uint8_t *limit;
 
-				end = cmd + length;
+				end = cmd + length - 1; // Ignore final '#'.
 				cmd += len;
 				src = avr->flash + addr;
 				limit = avr->flash + avr->flashend;
-				for (; cmd < end && src < limit; ++cmd) {
-					int escaped = 0;
-
+				for (escaped = 0; cmd < end && src < limit; ++cmd) {
 					if (escaped) {
 						*src++ = *cmd ^ 0x20;
 						escaped = 0;
@@ -478,8 +476,10 @@ handle_v(avr_t * avr, avr_gdb_t * g, char * cmd, int length)
 						*src++ = *cmd;
 					}
 				}
+				DBG(printf("FlashWrite %x, %ld bytes\n", addr,
+						   (src - avr->flash) - addr);)
 				addr = src - avr->flash; // Address of end.
-				if (addr > avr->codeend)
+				if (addr > avr->codeend) // Checked by sim_core.c
 					avr->codeend = addr;
 				if (cmd != end) {
 					DBG(printf("FlashWrite %ld bytes left!\n", end - cmd));
@@ -812,27 +812,26 @@ gdb_network_handler(
 			return 1;
 		}
 		buffer[r] = 0;
+
+		uint8_t * src = buffer;
+		while (*src == '+' || *src == '-')
+			src++;
 		DBG(
-			if (!strncmp("+$vFlashWrite", (char *)buffer, 13)) {
+			if (!strncmp("$vFlashWrite", (char *)src, 12)) {
 				printf("%s: received Flashwrite command %ld bytes\n",
 					   __FUNCTION__, r);
 			} else {
 				printf("%s: received command %ld bytes\n'%s'\n",
 					   __FUNCTION__, r, buffer);
 			})
-	//	hdump("gdb", buffer, r);
-
-		uint8_t * src = buffer;
-		while (*src == '+' || *src == '-')
-			src++;
+		// hdump("gdb", buffer, r);
 		// control C -- lets send the guy a nice status packet
 		if (*src == 3) {
 			src++;
 			gdb_send_quick_status(g, 2); // SIGINT
 			g->avr->state = cpu_Stopped;
 			printf("GDB hit control-c\n");
-		}
-		if (*src  == '$') {
+		} else if (*src == '$') {
 			// strip checksum
 			uint8_t * end = buffer + r - 1;
 			while (end > src && *end != '#')

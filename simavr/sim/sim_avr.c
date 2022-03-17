@@ -179,6 +179,7 @@ avr_reset(
 			port->reset(port);
 		port = port->next;
 	}
+	avr->cycle = 0; // Prevent crash
 }
 
 void
