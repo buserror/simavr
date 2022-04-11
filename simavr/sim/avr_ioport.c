@@ -173,9 +173,9 @@ avr_ioport_irq_notify(
 	} else {
 		// Set the real PIN bit. Ignore DDR as it's masked when read.
 
-		avr->data[p->r_pin] &= ~mask;
-		if (value)
-			avr->data[p->r_pin] |= mask;
+		avr_core_watch_write(avr, p->r_pin,
+							 (avr->data[p->r_pin] & ~mask) |
+								(value ? mask : 0));
 
 		/* BUG: If DDR bit is set here, there should be no
 		 * interrupt.  But a spurious IRQ call by the user

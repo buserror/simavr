@@ -27,10 +27,12 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <ctype.h>
+#include <time.h>
 #include "sim_vcd_file.h"
 #include "sim_avr.h"
 #include "sim_time.h"
 #include "sim_utils.h"
+#include "sim_core_config.h"
 
 DEFINE_FIFO(avr_vcd_log_t, avr_vcd_fifo);
 
@@ -53,14 +55,14 @@ avr_vcd_init(
 	vcd->avr = avr;
 	vcd->filename = strdup(filename);
 	vcd->period = avr_usec_to_cycles(vcd->avr, period);
-
 	return 0;
 }
 
 /*
  * Parse a VCD 'timing' line. The lines are assumed to be:
- * #<absolute timestamp>[\n][<value x/0/1><signal alias character>|
- * 		b[x/0/1]?<space><signal alias character]+
+ * #<absolute timestamp>[\n][<value x/z/0/1><signal alias character>|
+ * 		b[x/z/0/1]?<space><signal alias character|
+ *		r<real value><space><signal alias character]+
  * For example:
  * #1234 1' 0$
  * Or:
@@ -78,14 +80,14 @@ avr_vcd_input_parse_line(
 		avr_vcd_t * vcd,
 		argv_p v )
 {
-	avr_cycle_count_t res = 0;
+	uint64_t res = 0;
 	int vi = 0;
 
 	if (v->argc == 0)
 		return res;
 
 	if (v->argv[0][0] == '#') {
-		res = atoll(v->argv[0] + 1) * vcd->vcd_to_us;
+		res = atoll(v->argv[0] + 1) * vcd->vcd_to_ns;
 		vcd->start = vcd->period;
 		vcd->period = res;
 		vi++;
@@ -95,23 +97,34 @@ avr_vcd_input_parse_line(
 		uint32_t val = 0;
 		int floating = 0;
 		char name = 0;
-		int sigindex = -1;
+		int sigindex;
 
-		if (*a == 'b')
+		if (*a == 'b' || *a == 'B') {	// Binary string
 			a++;
-		while (*a) {
-			if (*a == 'x') {
-				val <<= 1;
-				floating |= (floating << 1) | 1;
-			} else if (*a == '0' || *a == '1') {
-				val = (val << 1) | (*a - '0');
-				floating <<= 1;
-			} else {
-				name = *a;
-				break;
+			while (*a) {
+				if (*a == 'x' || *a == 'z') {
+					val <<= 1;
+					floating |= (floating << 1) | 1;
+				} else if (*a == '0' || *a == '1') {
+					val = (val << 1) | (*a - '0');
+					floating <<= 1;
+				} else {
+					name = *a;
+					break;
+				}
+				a++;
 			}
-			a++;
+		} else if (*a == '0' || *a == '1' || *a == 'x' || *a == 'z') {
+			if (*a == 'x' || *a == 'z')
+				floating = 1;
+			else
+				val = *a++ - '0';
+			if (*a && *a > ' ')
+				name = *a;
+		} else if (*a == 'r' || *a == 'R') {
+			val = (uint32_t)strtod(++a, NULL);
 		}
+
 		if (!name && (i < v->argc - 1)) {
 			const char *n = v->argv[i+1];
 			if (strlen(n) == 1) {
@@ -120,6 +133,7 @@ avr_vcd_input_parse_line(
 				i++;	// skip that one
 			}
 		}
+		sigindex = -1;
 		if (name) {
 			for (int si = 0;
 						si < vcd->signal_count &&
@@ -173,7 +187,7 @@ avr_vcd_input_read(
  * so look in the FIFO to know 'our' stamp time, read as much as we can
  * that is still on that same timestamp.
  * When when the FIFO content has too far in the future, re-schedule the
- * timer for that time and shoot of.
+ * timer for that time and shoot off.
  * Also try to top up the FIFO with new read stuff when it's drained
  */
 static avr_cycle_count_t
@@ -182,8 +196,10 @@ _avr_vcd_input_timer(
 		avr_cycle_count_t when,
 		void * param)
 {
+	avr_cycle_count_t next;
 	avr_vcd_t * vcd = param;
 
+again:
 	// get some more if needed
 	if (avr_vcd_fifo_get_read_size(&vcd->log) < (vcd->signal_count * 16))
 		avr_vcd_input_read(vcd);
@@ -214,16 +230,17 @@ _avr_vcd_input_timer(
 	}
 	log = avr_vcd_fifo_read_at(&vcd->log, 0);
 
-	when += avr_usec_to_cycles(avr, log.when - stamp);
-
-	return when;
+	next = (log.when * avr->frequency) / (1000*1000*1000);
+	if (next <= when)
+		goto again;
+	return next;
 }
 
 int
 avr_vcd_init_input(
 		struct avr_t * avr,
 		const char * filename, 	// filename to read
-		avr_vcd_t * vcd )		// vcd struct to initialize
+		avr_vcd_t * vcd )	// vcd struct to initialize
 {
 	memset(vcd, 0, sizeof(avr_vcd_t));
 	vcd->avr = avr;
@@ -244,10 +261,14 @@ avr_vcd_init_input(
 
 		// we are done reading headers, got our first timestamp
 		if (v->line[0] == '#') {
+			uint64_t when;
+
 			vcd->start = 0;
 			avr_vcd_input_parse_line(vcd, v);
-			avr_cycle_timer_register_usec(vcd->avr,
-						vcd->period, _avr_vcd_input_timer, vcd);
+			when = (vcd->period * vcd->avr->frequency) /
+				(1000*1000*1000);
+			avr_cycle_timer_register(vcd->avr, when,
+						 _avr_vcd_input_timer, vcd);
 			break;
 		}
 		// ignore multiline stuff
@@ -264,11 +285,11 @@ avr_vcd_init_input(
 			continue;
 
 		if (!strcmp(keyword, "$timescale")) {
-			// sim_vcd header allows only integer factors of us: 1us, 2us, 3us, 10us, 15us, ...
+			// sim_vcd header allows only integer factors of ns: 1ns, 2us, 3ms, 10s, ...
 			uint64_t cnt = 0;
 			char *si = v->argv[1];
 
-			vcd->vcd_to_us = 1;
+			vcd->vcd_to_ns = 1;
 			while (si && *si && isdigit(*si))
 				cnt = (cnt * 10) + (*si++ - '0');
 			while (si && *si == ' ')
@@ -276,23 +297,17 @@ avr_vcd_init_input(
 			if (si && !*si)
 				si = v->argv[2];
 			if (!strcmp(si, "ns")) {
-				if (cnt%1000==0) {
-					// save for conversion
-					cnt/=1000;
-					vcd->vcd_to_us = cnt;
-				} else {
-					perror("Cannot convert timescale from ns to us without loss of precision");
-					return -1;
-				}
-			} else if (!strcmp(si, "us")) {
 				// no calculation here
-				vcd->vcd_to_us = cnt;
-			} else if (!strcmp(si, "ms")) {
+				vcd->vcd_to_ns = cnt;
+			} else if (!strcmp(si, "us")) {
 				cnt*=1000;
-				vcd->vcd_to_us = cnt;
+				vcd->vcd_to_ns = cnt;
+			} else if (!strcmp(si, "ms")) {
+				cnt*=1000*1000;
+				vcd->vcd_to_ns = cnt;
 			} else if (!strcmp(si, "s")) {
-				cnt*=1000000;
-				vcd->vcd_to_us = cnt;
+				cnt*=1000*1000*1000;
+				vcd->vcd_to_ns = cnt;
 			}
 			// printf("cnt %dus; unit %s\n", (int)cnt, si);
 		} else if (!strcmp(keyword, "$var")) {
@@ -323,15 +338,16 @@ avr_vcd_init_input(
 				index = atoi(dup);
 			if (strlen(ioctl) == 4) {
 				uint32_t ioc = AVR_IOCTL_DEF(
-									ioctl[0], ioctl[1], ioctl[2], ioctl[3]);
+						ioctl[0], ioctl[1], ioctl[2], ioctl[3]);
 				avr_irq_t * irq = avr_io_getirq(vcd->avr, ioc, index);
 				if (irq) {
 					vcd->signal[i].irq.flags = IRQ_FLAG_INIT;
 					avr_connect_irq(&vcd->signal[i].irq, irq);
-				} else
+				} else {
 					AVR_LOG(vcd->avr, LOG_WARNING,
 							"%s IRQ was not found\n",
 							vcd->signal[i].name);
+                                }
 				continue;
 			}
 			AVR_LOG(vcd->avr, LOG_WARNING,
@@ -400,6 +416,8 @@ _avr_vcd_get_signal_text(
 	return out;
 }
 
+/* Write queued output to the VCD file. */
+
 static void
 avr_vcd_flush_log(
 		avr_vcd_t * vcd)
@@ -450,6 +468,8 @@ avr_vcd_flush_log(
 	}
 }
 
+/* Cycle timer for writing queued output. */
+
 static avr_cycle_count_t
 _avr_vcd_timer(
 		struct avr_t * avr,
@@ -460,6 +480,8 @@ _avr_vcd_timer(
 	avr_vcd_flush_log(vcd);
 	return when + vcd->period;
 }
+
+/* Called for an IRQ that is being recorded. */
 
 static void
 _avr_vcd_notify(
@@ -493,6 +515,8 @@ _avr_vcd_notify(
 	}
 	avr_vcd_fifo_write(&vcd->log, l);
 }
+
+/* Register an IRQ whose value is to be logged. */
 
 int
 avr_vcd_add_signal(
@@ -529,11 +553,14 @@ avr_vcd_add_signal(
 	return 0;
 }
 
+/* Open the VCD output file and write header.  Does nothing for input. */
 
 int
 avr_vcd_start(
 		avr_vcd_t * vcd)
 {
+	time_t now;
+
 	vcd->start = vcd->avr->cycle;
 	avr_vcd_fifo_reset(&vcd->log);
 
@@ -552,6 +579,10 @@ avr_vcd_start(
 		return -1;
 	}
 
+	time(&now);
+	fprintf(vcd->output, "$date %s$end\n", ctime(&now));
+	fprintf(vcd->output,
+		"$version Simavr " CONFIG_SIMAVR_VERSION " $end\n");
 	fprintf(vcd->output, "$timescale 10ns $end\n");	// 10ns base, aka 100MHz
 	fprintf(vcd->output, "$scope module logic $end\n");
 

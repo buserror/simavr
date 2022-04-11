@@ -61,8 +61,9 @@ typedef struct avr_vcd_signal_t {
 } avr_vcd_signal_t, *avr_vcd_signal_p;
 
 typedef struct avr_vcd_log_t {
-	uint64_t 		when;
-	uint64_t			sigindex : 8,			// index in signal table
+	uint64_t 		when;			// Cycles for output,
+							//     nS for input.
+	uint64_t			sigindex : 8,	// index in signal table
 					floating : 1,
 					value : 32;
 } avr_vcd_log_t, *avr_vcd_log_p;
@@ -85,7 +86,7 @@ typedef struct avr_vcd_t {
 
 	uint64_t 		start;
 	uint64_t 		period;		// for output cycles
-	uint64_t 		vcd_to_us;	// for input unit mapping
+	uint64_t 		vcd_to_ns;	// for input unit mapping
 
 	avr_vcd_fifo_t	log;
 } avr_vcd_t;
