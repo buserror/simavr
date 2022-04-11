@@ -145,7 +145,7 @@ main(
 		int argc,
 		char *argv[])
 {
-	elf_firmware_t f;
+	elf_firmware_t f = {{0}};
 	const char * fname = "atmega48_charlcd.axf";
 //	char path[256];
 //	sprintf(path, "%s/%s", dirname(argv[0]), fname);

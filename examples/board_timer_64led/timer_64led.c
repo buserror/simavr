@@ -211,7 +211,7 @@ static void * avr_run_thread(void * ignore)
 
 int main(int argc, char *argv[])
 {
-	elf_firmware_t f;
+	elf_firmware_t f = {{0}};
 	const char * fname =  "atmega168_timer_64led.axf";
 	//char path[256];
 

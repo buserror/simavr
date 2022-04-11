@@ -103,7 +103,7 @@ avr_t *tests_init_avr(const char *elfname) {
 	tests_cycle_count = 0;
 	map_stderr();
 
-	elf_firmware_t fw;
+	elf_firmware_t fw = {{0}};
 	if (elf_read_firmware(elfname, &fw))
 		fail("Failed to read ELF firmware \"%s\"", elfname);
 	avr_t *avr = avr_make_mcu_by_name(fw.mmcu);
