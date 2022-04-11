@@ -38,22 +38,30 @@ display_usage(
 	const char * app)
 {
 	printf("Usage: %s [...] <firmware>\n", app);
-	printf( "       [--freq|-f <freq>]  Sets the frequency for an .hex firmware\n"
-			"       [--mcu|-m <device>] Sets the MCU type for an .hex firmware\n"
-			"       [--list-cores]      List all supported AVR cores and exit\n"
-			"       [--help|-h]         Display this usage message and exit\n"
-			"       [--trace, -t]       Run full scale decoder trace\n"
-			"       [-ti <vector>]      Add traces for IRQ vector <vector>\n"
-			"       [--gdb|-g [<port>]] Listen for gdb connection on <port> (default 1234)\n"
-			"       [-ff <.hex file>]   Load next .hex file as flash\n"
-			"       [-ee <.hex file>]   Load next .hex file as eeprom\n"
-			"       [--input|-i <file>] A vcd file to use as input signals\n"
-			"       [--output|-o <file>] A vcd file to save the traced signals\n"
-			"       [--add-trace|-at <name=kind@addr/mask>] Add signal to be traced\n"
-			"       [-v]                Raise verbosity level\n"
-			"                           (can be passed more than once)\n"
-			"       <firmware>          A .hex or an ELF file. ELF files are\n"
-			"                           prefered, and can include debugging syms\n");
+	printf(
+	 "       [--help|-h|-?]      Display this usage message and exit\n"
+	 "       [--list-cores]      List all supported AVR cores and exit\n"
+	 "       [-v]                Raise verbosity level\n"
+	 "                           (can be passed more than once)\n"
+	 "       [--freq|-f <freq>]  Sets the frequency for an .hex firmware\n"
+	 "       [--mcu|-m <device>] Sets the MCU type for an .hex firmware\n"
+	 "       [--gdb|-g [<port>]] Listen for gdb connection on <port> "
+	 "(default 1234)\n"
+#ifdef CONFIG_SIMAVR_TRACE
+	 "       [--trace, -t]       Run full scale decoder trace\n"
+#else
+	 "       [--trace, -t]       Run full scale decoder trace (Off)\n"
+#endif //CONFIG_SIMAVR_TRACE
+	 "       [-ti <vector>]      Add traces for IRQ vector <vector>\n"
+	 "       [--input|-i <file>] A VCD file to use as input signals\n"
+	 "       [--output|-o <file>] A VCD file to save the traced signals\n"
+	 "       [--add-trace|-at <name=kind@addr/mask>]\n"
+	 "                           Add signal to be included in VCD output\n"
+	 "       [-ff <.hex file>]   Load next .hex file as flash\n"
+	 "       [-ee <.hex file>]   Load next .hex file as eeprom\n"
+	 "       <firmware>          A .hex or an ELF file. ELF files are\n"
+	 "                           preferred, and can include "
+	 "debugging syms\n");
 	exit(1);
 }
 
@@ -87,9 +95,11 @@ main(
 		int argc,
 		char *argv[])
 {
+#ifdef CONFIG_SIMAVR_TRACE
+	int trace = 0;
+#endif //CONFIG_SIMAVR_TRACE
 	elf_firmware_t f = {{0}};
 	uint32_t f_cpu = 0;
-	int trace = 0;
 	int gdb = 0;
 	int log = 1;
 	int port = 1234;
@@ -122,15 +132,25 @@ main(
 				vcd_input = argv[++pi];
 			else
 				display_usage(basename(argv[0]));
-		} else if (!strcmp(argv[pi], "-t") || !strcmp(argv[pi], "--trace")) {
-			trace++;
-		} else if (!strcmp(argv[pi], "-o") || !strcmp(argv[pi], "--output")) {
+		} else if (!strcmp(argv[pi], "-o") ||
+				   !strcmp(argv[pi], "--output")) {
 			if (pi + 1 >= argc) {
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
 				exit(1);
 			}
 			snprintf(f.tracename, sizeof(f.tracename), "%s", argv[++pi]);
-		} else if (!strcmp(argv[pi], "-at") || !strcmp(argv[pi], "--add-trace")) {
+		} else if (!strcmp(argv[pi], "-t") ||
+				   !strcmp(argv[pi], "--trace")) {
+#ifdef CONFIG_SIMAVR_TRACE
+			trace++;
+#else
+			fprintf(stderr,
+					"%s: tracing option '%s' requires "
+					"compilation option CONFIG_SIMAVR_TRACE.\n",
+					argv[0], argv[pi]);
+#endif //CONFIG_SIMAVR_TRACE
+		} else if (!strcmp(argv[pi], "-at") ||
+				   !strcmp(argv[pi], "--add-trace")) {
 			if (pi + 1 >= argc) {
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
 				exit(1);
@@ -190,7 +210,8 @@ main(
 		} else if (!strcmp(argv[pi], "-ti")) {
 			if (pi < argc-1)
 				trace_vectors[trace_vectors_count++] = atoi(argv[++pi]);
-		} else if (!strcmp(argv[pi], "-g") || !strcmp(argv[pi], "--gdb")) {
+		} else if (!strcmp(argv[pi], "-g") ||
+				   !strcmp(argv[pi], "--gdb")) {
 			gdb++;
 			if (pi < (argc-2) && argv[pi+1][0] != '-' )
 				port = atoi(argv[++pi]);
@@ -252,7 +273,10 @@ main(
 	}
 	avr_init(avr);
 	avr->log = (log > LOG_TRACE ? LOG_TRACE : log);
+#ifdef CONFIG_SIMAVR_TRACE
 	avr->trace = trace;
+#endif //CONFIG_SIMAVR_TRACE
+
 	avr_load_firmware(avr, &f);
 	if (f.flashbase) {
 		printf("Attempted to load a bootloader at %04x\n", f.flashbase);
