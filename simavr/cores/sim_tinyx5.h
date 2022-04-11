@@ -107,9 +107,10 @@ const struct mcu_t SIM_CORENAME = {
 					AVR_IO_REGBIT(ADMUX, MUX2), AVR_IO_REGBIT(ADMUX, MUX3),},
 		.ref = { AVR_IO_REGBIT(ADMUX, REFS0), AVR_IO_REGBIT(ADMUX, REFS1), AVR_IO_REGBIT(ADMUX, REFS2), },
 		.ref_values = {
-				[0] = ADC_VREF_VCC, [1] = ADC_VREF_AVCC,
-				[2] = ADC_VREF_V110, [5] = ADC_VREF_V256,
-				[6] = ADC_VREF_V256,
+				[0] = ADC_VREF_VCC,
+				[2] = ADC_VREF_V110,
+				[4] = ADC_VREF_VCC,
+				[6] = ADC_VREF_V256, [7] = ADC_VREF_V256,
 		},
 
 		.adlar = AVR_IO_REGBIT(ADMUX, ADLAR),

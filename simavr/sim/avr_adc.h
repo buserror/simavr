@@ -108,7 +108,7 @@ typedef struct avr_adc_t {
 	// if the last bit exists in the mux, we are an extended ADC
 	avr_regbit_t	mux[6];
 	avr_regbit_t	ref[3];		// reference voltages bits
-	uint16_t		ref_values[7]; // ADC_VREF_*
+	uint16_t	ref_values[8];  // ADC_VREF_*
 
 	avr_regbit_t 	adlar;		// left/right adjustment bit
 
