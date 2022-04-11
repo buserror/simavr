@@ -33,6 +33,7 @@
 #include "avr_eeprom.h"
 #include "sim_gdb.h"
 
+// For debug printfs: "#define DBG(w) w"
 #define DBG(w)
 
 #define WATCH_LIMIT (32)
@@ -48,11 +49,16 @@ typedef struct {
 
 typedef struct avr_gdb_t {
 	avr_t * avr;
-	int		listen;	// listen socket
-	int		s;		// current gdb connection
+	int	listen;	// listen socket
+	int	s;	// current gdb connection
 
 	avr_gdb_watchpoints_t breakpoints;
 	avr_gdb_watchpoints_t watchpoints;
+
+	// These are used by gdb's "info io_registers" command.
+
+	uint16_t ior_base;
+	uint8_t  ior_count, mad;
 } avr_gdb_t;
 
 
@@ -71,7 +77,6 @@ gdb_watch_find(
 			return i;
 		}
 	}
-
 	return -1;
 }
 
@@ -87,11 +92,11 @@ gdb_watch_find_range(
 	for (int i = 0; i < w->len; i++) {
 		if (w->points[i].addr > addr) {
 			return -1;
-		} else if (w->points[i].addr <= addr && addr < w->points[i].addr + w->points[i].size) {
+		} else if (w->points[i].addr <= addr &&
+				   addr < w->points[i].addr + w->points[i].size) {
 			return i;
 		}
 	}
-
 	return -1;
 }
 
@@ -105,6 +110,9 @@ gdb_watch_add_or_update(
 		uint32_t addr,
 		uint32_t size )
 {
+	if (kind == AVR_GDB_WATCH_ACCESS)
+		kind |= AVR_GDB_WATCH_WRITE | AVR_GDB_WATCH_READ;
+
 	/* If the watchpoint exists, update it. */
 	int i = gdb_watch_find(w, addr);
 	if (i != -1) {
@@ -194,20 +202,40 @@ gdb_send_reply(
 }
 
 static void
+gdb_send_stop_status(
+		avr_gdb_t  * g,
+		uint8_t     signal,
+		const char * reason,
+		uint32_t   * pp )
+{
+	avr_t   * avr;
+	uint8_t   sreg;
+	int       n;
+	char      cmd[64];
+
+	avr = g->avr;
+	READ_SREG_INTO(avr, sreg);
+
+	n = sprintf(cmd, "T%02x20:%02x;21:%02x%02x;22:%02x%02x%02x00;",
+				signal, sreg,
+				avr->data[R_SPL], avr->data[R_SPH],
+				avr->pc & 0xff, (avr->pc >> 8) & 0xff,
+				(avr->pc >> 16) & 0xff);
+	if (reason) {
+		if (pp)
+			sprintf(cmd + n, "%s:%x;", reason, *pp);
+		else
+			sprintf(cmd + n, "%s:;", reason);
+	}
+	gdb_send_reply(g, cmd);
+}
+
+static void
 gdb_send_quick_status(
 		avr_gdb_t * g,
 		uint8_t signal )
 {
-	char cmd[64];
-	uint8_t sreg;
-
-	READ_SREG_INTO(g->avr, sreg);
-
-	sprintf(cmd, "T%02x20:%02x;21:%02x%02x;22:%02x%02x%02x00;",
-		signal ? signal : 5, sreg,
-		g->avr->data[R_SPL], g->avr->data[R_SPH],
-		g->avr->pc & 0xff, (g->avr->pc>>8)&0xff, (g->avr->pc>>16)&0xff);
-	gdb_send_reply(g, cmd);
+	gdb_send_stop_status(g, signal, NULL, NULL);
 }
 
 static int
@@ -218,14 +246,14 @@ gdb_change_breakpoint(
 		uint32_t addr,
 		uint32_t size )
 {
-	DBG(printf("set %d kind %d addr %08x len %d\n", set, kind, addr, len);)
+	DBG(printf("%s kind %d addr %08x len %d\n", set ? "Set" : "Clear",
+			   kind, addr, size);)
 
 	if (set) {
 		return gdb_watch_add_or_update(w, kind, addr, size);
 	} else {
 		return gdb_watch_rm(w, kind, addr);
 	}
-
 	return -1;
 }
 
@@ -281,10 +309,231 @@ gdb_read_register(
 	return strlen(rep);
 }
 
+static int tohex(const char *in, char *out, unsigned int len)
+{
+	int n = 0;
+
+	while (*in && n + 2 < len)
+		n += sprintf(out + n, "%02x", (uint8_t)*in++);
+	return n;
+}
+
+/* Send a message to the user. Gdb must be expecting a reply, otherwise this
+ * is ignored.
+ */
+
+static void message(avr_gdb_t * g, const char *m)
+{
+	char buff[256];
+
+	buff[0] = 'O';
+	tohex(m, buff + 1, sizeof buff - 1);
+	gdb_send_reply(g, buff);
+}
+
+static int
+handle_monitor(avr_t * avr, avr_gdb_t * g, char * cmd)
+{
+	char         *ip, *op;
+	unsigned int  c1, c2;
+	char          dehex[128];
+
+	if (*cmd++ != ',')
+		return 1;		// Bad format
+	for (op = dehex; op < dehex + (sizeof dehex - 1); ++op) {
+		if (!*cmd)
+			break;
+		if (sscanf(cmd, "%1x%1x", &c1, &c2) != 2)
+			return 2;	// Bad format
+		*op = (c1 << 4) + c2;
+		cmd += 2;
+	}
+	*op = '\0';
+	if (*cmd)
+		return 3;		// Too long
+	ip = dehex;
+	while (*ip) {
+		while (*ip == ' ' || *ip == '\t')
+			++ip;
+
+		if (strncmp(ip, "reset", 5) == 0) {
+			avr_reset(avr);
+			avr->state = cpu_Stopped;
+			ip += 5;
+		} else if (strncmp(ip, "halt", 4) == 0) {
+			avr->state = cpu_Stopped;
+			ip += 4;
+		} else if (strncmp(ip, "ior", 3) == 0) {
+			unsigned int base;
+			int          n, m, count;
+
+			// Format is "ior <base> <count>
+			// or just "ior" to reset.
+
+			ip += 3;
+			m = sscanf(ip, "%x %i%n", &base, &count, &n);
+			if (m <= 0) {
+				// Reset values.
+
+				g->ior_base = g->ior_count = 0;
+				n = 0;
+			} else if (m != 2) {
+				return 1;
+			} else {
+				if (count <= 0 || base + count + 32 > REG_NAME_COUNT ||
+					base + count + 32 > avr->ioend) {
+					return 4;	// bad value
+				}
+				g->ior_base = base;
+				g->ior_count = count;
+			}
+			ip += n;
+	DBG(
+		} else if (strncmp(ip, "say ", 4) == 0) {
+			// Put a message in the debug output.
+			printf("Say: %s\n", ip + 4);
+			ip += strlen(ip);
+		)
+		} else {
+			tohex("Monitor subcommands are: ior halt reset" DBG(" say") "\n",
+				  dehex, sizeof dehex);
+			gdb_send_reply(g, dehex);
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static void
+handle_io_registers(avr_t * avr, avr_gdb_t * g, char * cmd)
+{
+	extern const char *avr_regname(unsigned int); // sim_core.c
+	char *       params;
+	char *       reply;
+	unsigned int addr, count;
+	char         buff[1024];
+
+	if (g->mad) {
+		/* For this command, gdb employs a streaming protocol,
+		 * with the command being repeated until the stub sends
+		 * an empy packet as terminator.  That makes no sense,
+		 * as the requests are sized to ensure the reply will
+		 * fit in a single packet.
+		 */
+
+		reply = "";
+		g->mad = 0;
+	} else {
+		params = cmd + 11;
+		if (sscanf(params, ":%x,%x", &addr, &count) == 2) {
+			int i;
+
+			// Send names and values.
+			addr += 32;
+			if (addr + count > avr->ioend)
+				count = avr->ioend + 1 - addr;
+			reply = buff;
+			for (i = 0; i < count; ++i) {
+				const char *name;
+
+				name = avr_regname(addr + i);
+				reply += sprintf(reply, "%s,%x;",
+						 name, avr->data[addr + i]);
+				if (reply > buff + sizeof buff - 20)
+					break;
+			}
+		} else {
+			// Send register count.
+
+			count = g->ior_count ? g->ior_count :
+						avr->ioend > REG_NAME_COUNT ?
+							REG_NAME_COUNT - 32 : avr->ioend - 32;
+			sprintf(buff, "%x", count);
+		}
+		reply = buff;
+		g->mad = 1;
+	}
+	gdb_send_reply(g, reply);
+}
+
+static void
+handle_v(avr_t * avr, avr_gdb_t * g, char * cmd, int length)
+{
+	uint32_t  addr;
+	uint8_t  *src = NULL;
+	int       len, err = -1;
+
+	if (strncmp(cmd, "FlashErase", 10) == 0) {
+
+		sscanf(cmd, "%*[^:]:%x,%x", &addr, &len);
+		if (addr < avr->flashend) {
+			src = avr->flash + addr;
+			if (addr + len > avr->flashend)
+				len = avr->flashend - addr;
+			memset(src, 0xff, len);
+			DBG(printf("FlashErase: %x,%x\n", addr, len);) //Remove
+		} else {
+			err = 1;
+		}
+	} else if (strncmp(cmd, "FlashWrite", 10) == 0) {
+		if (sscanf(cmd, "%*[^:]:%x:%n", &addr, &len) != 1) {
+			err = 2;
+		} else {
+			if  (len >= length) {
+				err = 99;
+			} else if (addr < avr->flashend) {
+				int      escaped;
+				char    *end;
+				uint8_t *limit;
+
+				end = cmd + length - 1; // Ignore final '#'.
+				cmd += len;
+				src = avr->flash + addr;
+				limit = avr->flash + avr->flashend;
+				for (escaped = 0; cmd < end && src < limit; ++cmd) {
+					if (escaped) {
+						*src++ = *cmd ^ 0x20;
+						escaped = 0;
+					} else if (*cmd == '}') {
+						escaped = 1;
+					} else {
+						*src++ = *cmd;
+					}
+				}
+				DBG(printf("FlashWrite %x, %ld bytes\n", addr,
+						   (src - avr->flash) - addr);)
+				addr = src - avr->flash; // Address of end.
+				if (addr > avr->codeend) // Checked by sim_core.c
+					avr->codeend = addr;
+				if (cmd != end) {
+					DBG(printf("FlashWrite %ld bytes left!\n", end - cmd));
+				}
+			} else {
+				err = 1;
+			}
+		}
+	} else if (strncmp(cmd, "FlashDone", 9) == 0) {
+		DBG(printf("FlashDone\n");) //Remove
+	} else {
+		gdb_send_reply(g, "");
+		return;
+	}
+
+	if (err < 0) {
+		gdb_send_reply(g, "OK");
+	} else {
+		char b[32];
+
+		sprintf(b, "E %.2d", err);
+		gdb_send_reply(g, b);
+	}
+}
+
 static void
 gdb_handle_command(
 		avr_gdb_t * g,
-		char * cmd )
+		char      * cmd,
+		int         length)
 {
 	avr_t * avr = g->avr;
 	char rep[1024];
@@ -294,9 +543,9 @@ gdb_handle_command(
 			if (strncmp(cmd, "Supported", 9) == 0) {
 				/* If GDB asked what features we support, report back
 				 * the features we support, which is just memory layout
-				 * information for now.
+				 * information and stop reasons for now.
 				 */
-				gdb_send_reply(g, "qXfer:memory-map:read+");
+				gdb_send_reply(g, "qXfer:memory-map:read+;swbreak+;hwbreak+");
 				break;
 			} else if (strncmp(cmd, "Attached", 8) == 0) {
 				/* Respond that we are attached to an existing process..
@@ -349,25 +598,18 @@ gdb_handle_command(
 					// all available registers.
 				}
 			} else if (strncmp(cmd, "Rcmd", 4) == 0) { // monitor command
-				char * args = strchr(cmd, ',');
-				if (args != NULL) {
-					args++;
-					while (args != 0x00) {
-						printf("%s",args);
-						if (strncmp(args, "7265736574", 10) == 0) { // reset matched
-							avr->state = cpu_StepDone;
-							avr_reset(avr);
-							args += 10;
-						} else if (strncmp(args, "68616c74", 8) == 0) { // halt matched
-							avr->state = cpu_Stopped;
-							args += 8;
-						} else if (strncmp(args, "20", 2) == 0) { // space matched
-							args += 2;
-						} else // no match - end
-							break;
-					}
+				int err = handle_monitor(avr, g, cmd + 4);
+				if (err > 0) {
+					snprintf(rep, sizeof rep,
+						 "E%02x", err);
+					gdb_send_reply(g, rep);
+				} else if (err == 0) {
+					gdb_send_reply(g, "OK");
 				}
-				gdb_send_reply(g, "OK");
+				break;
+			} else if (strncmp(cmd, "Ravr.io_reg", 11) == 0) {
+				handle_io_registers(avr, g, cmd);
+				break;
 			}
 			gdb_send_reply(g, "");
 			break;
@@ -478,8 +720,8 @@ gdb_handle_command(
 			avr->state = cpu_Step;
 		}	break;
 		case 'r': {	// deprecated, suggested for AVRStudio compatibility
-			avr->state = cpu_StepDone;
 			avr_reset(avr);
+			avr->state = cpu_Stopped;
 		}	break;
 		case 'Z': 	// set clear break/watchpoint
 		case 'z': {
@@ -516,11 +758,22 @@ gdb_handle_command(
 					break;
 			}
 		}	break;
-		case 'K': 	// kill
-		case 'D': {	// detach
+		case 'D': 	// detach
+#ifdef DETACHABLE
+			if (avr->state = cpu_Stopped)
+				avr->state = cpu_Running;
+			gdb_send_reply(g, "OK");
+			close(g->s);
+			g->s = -1;
+			break;
+#endif
+		case 'k': 	// kill
 			avr->state = cpu_Done;
 			gdb_send_reply(g, "OK");
-		}	break;
+			break;
+		case 'v':
+			handle_v(avr, g, cmd, length);
+			break;
 		default:
 			gdb_send_reply(g, "");
 			break;
@@ -560,7 +813,7 @@ gdb_network_handler(
 		int i = 1;
 		setsockopt (g->s, IPPROTO_TCP, TCP_NODELAY, &i, sizeof (i));
 		g->avr->state = cpu_Stopped;
-		printf("%s connection opened\n", __FUNCTION__);
+		DBG(printf("%s connection opened\n", __FUNCTION__);)
 	}
 
 	if (g->s != -1 && FD_ISSET(g->s, &read_set)) {
@@ -569,7 +822,7 @@ gdb_network_handler(
 		ssize_t r = recv(g->s, buffer, sizeof(buffer)-1, 0);
 
 		if (r == 0) {
-			printf("%s connection closed\n", __FUNCTION__);
+			DBG(printf("%s connection closed\n", __FUNCTION__);)
 			close(g->s);
 			gdb_watch_clear(&g->breakpoints);
 			gdb_watch_clear(&g->watchpoints);
@@ -583,33 +836,51 @@ gdb_network_handler(
 			return 1;
 		}
 		buffer[r] = 0;
-	//	printf("%s: received %d bytes\n'%s'\n", __FUNCTION__, r, buffer);
-	//	hdump("gdb", buffer, r);
 
 		uint8_t * src = buffer;
 		while (*src == '+' || *src == '-')
 			src++;
+		DBG(
+			if (!strncmp("$vFlashWrite", (char *)src, 12)) {
+				printf("%s: received Flashwrite command %ld bytes\n",
+					   __FUNCTION__, r);
+			} else {
+				printf("%s: received command %ld bytes\n'%s'\n",
+					   __FUNCTION__, r, buffer);
+			})
+		// hdump("gdb", buffer, r);
 		// control C -- lets send the guy a nice status packet
 		if (*src == 3) {
 			src++;
-			g->avr->state = cpu_StepDone;
+			gdb_send_quick_status(g, 2); // SIGINT
+			g->avr->state = cpu_Stopped;
 			printf("GDB hit control-c\n");
-		}
-		if (*src  == '$') {
+		} else if (*src == '$') {
 			// strip checksum
 			uint8_t * end = buffer + r - 1;
 			while (end > src && *end != '#')
 				*end-- = 0;
 			*end = 0;
 			src++;
-			DBG(printf("GDB command = '%s'\n", src);)
-
+			DBG(
+				if (strncmp("vFlashWrite", (char *)src, 11))
+					printf("GDB command = '%s'\n", src);)
 			send(g->s, "+", 1, 0);
-
-			gdb_handle_command(g, (char*)src);
+			if (end > src)
+				gdb_handle_command(g, (char*)src, end - src);
 		}
 	}
 	return 1;
+}
+
+/* Called on a hardware break instruction. */
+void avr_gdb_handle_break(avr_t *avr)
+{
+	avr_gdb_t *g = avr->gdb;
+
+	message(g, "Simavr executed 'break' instruction.\n");
+	//gdb_send_stop_status(g, 5, "swbreak", NULL);  Correct but ignored!
+	gdb_send_quick_status(g, 5);
 }
 
 /**
@@ -623,6 +894,7 @@ avr_gdb_handle_watchpoints(
 		enum avr_gdb_watch_type type )
 {
 	avr_gdb_t *g = avr->gdb;
+    uint32_t   false_addr;
 
 	int i = gdb_watch_find_range(&g->watchpoints, addr);
 	if (i == -1) {
@@ -630,21 +902,17 @@ avr_gdb_handle_watchpoints(
 	}
 
 	int kind = g->watchpoints.points[i].kind;
+	DBG(printf("Addr %04x found watchpoint %d size %d type %x wanted %x\n",
+			   addr, i, g->watchpoints.points[i].size, kind, type);)
 	if (kind & type) {
 		/* Send gdb reply (see GDB user manual appendix E.3). */
-		char cmd[78];
-		uint8_t sreg;
 
-		READ_SREG_INTO(g->avr, sreg);
-		sprintf(cmd, "T%02x20:%02x;21:%02x%02x;22:%02x%02x%02x00;%s:%06x;",
-				5, sreg,
-				g->avr->data[R_SPL], g->avr->data[R_SPH],
-				g->avr->pc & 0xff, (g->avr->pc>>8)&0xff, (g->avr->pc>>16)&0xff,
-				kind & AVR_GDB_WATCH_ACCESS ? "awatch" :
-					kind & AVR_GDB_WATCH_WRITE ? "watch" : "rwatch",
-				addr | 0x800000);
-		gdb_send_reply(g, cmd);
+		const char * what;
 
+		what = (kind & AVR_GDB_WATCH_ACCESS) ? "awatch" :
+			(kind & AVR_GDB_WATCH_WRITE) ? "watch" : "rwatch";
+		false_addr = addr + 0x800000;
+		gdb_send_stop_status(g, 5, what, &false_addr);
 		avr->state = cpu_Stopped;
 	}
 }
@@ -661,7 +929,7 @@ avr_gdb_processor(
 	if (avr->state == cpu_Running &&
 			gdb_watch_find(&g->breakpoints, avr->pc) != -1) {
 		DBG(printf("avr_gdb_processor hit breakpoint at %08x\n", avr->pc);)
-		gdb_send_quick_status(g, 0);
+		gdb_send_stop_status(g, 5, "hwbreak", NULL);
 		avr->state = cpu_Stopped;
 	} else if (avr->state == cpu_StepDone) {
 		gdb_send_quick_status(g, 0);
