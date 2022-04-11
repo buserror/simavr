@@ -30,12 +30,12 @@
  * + As usual, the "RW" pin is optional if you are willing to wait for the
  *   specific number of cycles as per the datasheet (37uS between operations)
  * + If you decide to use the RW pin, the "busy" flag is supported and will
- *   be automaticly cleared on the second read, to exercisee the code a bit.
- * + Cursor is supported, but now "display shift"
+ *   be automatically cleared on the second read, to exercise the code a bit.
+ * + Cursor is supported, but no "display shift"
  * + The Character RAM is supported, but is not currently drawn.
  *
  * To interface this part, you can use the "INPUT" IRQs and hook them to the
- * simavr instance, if you use the RW pins or read back frim the display, you
+ * simavr instance, if you use the RW pins or read back from the display, you
  * can hook the data pins /back/ to the AVR too.
  *
  * The "part" also provides various IRQs that are there to be placed in a VCD file
@@ -77,13 +77,13 @@ enum {
     HD44780_FLAG_C,             // 1: Cursor on
     HD44780_FLAG_D,             // 1: Set Entire Display memory (for clear)
     HD44780_FLAG_S,             // 1: Follow display shift
-    HD44780_FLAG_I_D,			// 1: Increment, 0: Decrement
+    HD44780_FLAG_I_D,           // 1: Increment, 0: Decrement
 
     /*
      * Internal flags, not HD44780
      */
     HD44780_FLAG_LOWNIBBLE,		// 1: 4 bits mode, write/read low nibble
-    HD44780_FLAG_BUSY,			// 1: Busy between instruction, 0: ready
+    HD44780_FLAG_BUSY,			// 1: Busy between instructions, 0: ready
     HD44780_FLAG_REENTRANT,		// 1: Do not update pins
 
     HD44780_FLAG_DIRTY,			// 1: needs redisplay...
@@ -98,9 +98,9 @@ typedef struct hd44780_t
 	int		w, h;				// width and height of the LCD
 
 	uint16_t cursor;			// offset in vram
-	uint8_t  vram[80 + 64];
+	uint8_t  vram[0x80 + 0x40];
 
-	uint16_t pinstate;			// 'actual' LCd data pins (IRQ bit field)
+	uint16_t pinstate;			// 'actual' LCD data pins (IRQ bit field)
 	// uint16_t oldstate;			/// previous pins
 	uint8_t	 datapins;			// composite of 4 high bits, or 8 bits
 	uint8_t  readpins;
@@ -134,4 +134,4 @@ hd44780_get_flag(
 	return (b->flags &  (1 << bit)) != 0;
 }
 
-#endif 
+#endif
