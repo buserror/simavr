@@ -1,4 +1,4 @@
-# 
+#
 # 	Copyright 2008-2011 Michel Pollet <buserror@gmail.com>
 #
 #	This file is part of simavr.
@@ -39,7 +39,7 @@ all: obj atmega32_ssd1306.axf ${target}
 
 atmega32_ssd1306.axf: atmega32_ssd1306.c ssd1306.c images.c
 
-include ${simavr}/Makefile.common
+include ${simavr}/common.mk
 
 board = ${OBJ}/${target}.elf
 

@@ -1,4 +1,4 @@
-# 
+#
 # 	Copyright 2012 Torbjorn Tyridal <ttyridal@gmail.com>
 #
 #	This file is part of simavr.
@@ -36,7 +36,7 @@ LDFLAGS += -lpthread -lusb_vhci -L../vhci/lib
 
 all: obj ${firmware} ${target}
 
-include ${simavr}/Makefile.common
+include ${simavr}/common.mk
 
 board = ${OBJ}/${target}.elf
 
@@ -47,9 +47,9 @@ ${board} : ${OBJ}/${target}.o
 	@echo -n "BUILDIN $@ "
 	@{ export CC=;export CFLAGS=; $(MAKE) -j -C ../vhci >/tmp/vhci.build.log 2>&1 || \
 		{ echo "ERROR check /tmp/vhci.build.log"; exit 1; }; } && \
-			echo " Done" 
+			echo " Done"
 
-vhci : ../vhci/lib/libusb_vhci.a 
+vhci : ../vhci/lib/libusb_vhci.a
 
 clean-vhci:
 	$(MAKE) -C ../vhci clean

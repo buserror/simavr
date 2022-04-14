@@ -1,4 +1,4 @@
-# 
+#
 # 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 #
 #	This file is part of simavr.
@@ -35,7 +35,7 @@ include ../Makefile.opengl
 
 all: obj ${firmware} ${target}
 
-include ${simavr}/Makefile.common
+include ${simavr}/common.mk
 
 board = ${OBJ}/${target}.elf
 

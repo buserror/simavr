@@ -38,7 +38,7 @@ include ../Makefile.opengl
 
 all: obj ${firmware} ${target}
 
-include ${simavr}/Makefile.common
+include ${simavr}/common.mk
 
 atmega1280_${target}.axf: atmega32_${target}.c
 

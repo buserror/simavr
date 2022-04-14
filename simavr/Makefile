@@ -33,7 +33,7 @@ all:
 	$(MAKE) obj config
 	$(MAKE) libsimavr ${target}
 
-include ../Makefile.common
+include ../common.mk
 
 cores	:= ${wildcard cores/*.c}
 sim		:= ${wildcard sim/sim_*.c} ${wildcard sim/avr_*.c}

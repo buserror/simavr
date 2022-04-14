@@ -1,4 +1,4 @@
-# 
+#
 # 	Copyright 2008-2011 Michel Pollet <buserror@gmail.com>
 #
 #	This file is part of simavr.
@@ -33,11 +33,11 @@ LDFLAGS += -lpthread
 
 include ../Makefile.opengl
 
-all: obj atmega48_charlcd.axf ${target} 
+all: obj atmega48_charlcd.axf ${target}
 
 atmega48_charlcd.axf: atmega48_charlcd.c
 
-include ${simavr}/Makefile.common
+include ${simavr}/common.mk
 
 board = ${OBJ}/${target}.elf
 

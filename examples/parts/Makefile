@@ -24,7 +24,7 @@ target := libsimavrparts
 
 all: obj ${target}
 
-include ${simavr}/Makefile.common
+include ${simavr}/common.mk
 include ../Makefile.opengl
 
 objects := $(patsubst %.c,${OBJ}/%.o, $(wildcard *.c))

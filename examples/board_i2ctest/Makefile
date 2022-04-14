@@ -1,4 +1,4 @@
-# 
+#
 # 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 #
 #	This file is part of simavr.
@@ -32,9 +32,9 @@ VPATH += ${simavr}/examples/shared
 VPATH += ${simavr}/examples/parts
 
 
-all: obj ${firmware} ${target} 
+all: obj ${firmware} ${target}
 
-include ${simavr}/Makefile.common
+include ${simavr}/common.mk
 
 atmega1280_${target}.axf: atmega1280_${target}.c twimaster.c
 atmega1280_${target}.axf: ${simavr}/examples/shared/avr_twi_master.c

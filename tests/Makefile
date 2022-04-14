@@ -30,7 +30,7 @@ tests_src	:= ${wildcard test_*.c}
 
 all: obj axf tst
 
-include ../Makefile.common
+include ../common.mk
 
 tst: ${patsubst %.c, ${OBJ}/%.tst, ${tests_src}}
 
