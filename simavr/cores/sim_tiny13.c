@@ -55,6 +55,7 @@ static const struct mcu_t {
 		/*
 		 * tiny13 has no extended fuse byte, so can not use DEFAULT_CORE macro
 		 */
+		.ioend  = RAMSTART - 1,
 		.ramend = RAMEND,
 		.flashend = FLASHEND,
 		.e2end = E2END,
