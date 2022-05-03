@@ -53,7 +53,7 @@ int _avr_push_addr(avr_t * avr, avr_flashaddr_t addr);
 /*
  * Get a "pretty" register name
  */
-const char * avr_regname(uint8_t reg);
+const char * avr_regname(unsigned int reg);
 
 /*
  * DEBUG bits follow
