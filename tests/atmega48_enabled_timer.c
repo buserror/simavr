@@ -14,8 +14,11 @@
 #include "avr_mcu_section.h"
 AVR_MCU(F_CPU, "atmega48");
 
+volatile uint8_t count;
+
 ISR(TIMER0_COMPA_vect)
 {
+    ++count;
 }
 
 int main(void)
@@ -27,13 +30,30 @@ int main(void)
 
 	TCCR0B |= (1 << CS00) | (1 << CS01);        // Start timer: clk/64
 
+	while ((TIFR0 & (1 << OCF0A)) == 0)
+		;
+
+	// Now interrupt is pending.  Try and clear it.
+
+	TIFR0 = 0;
+	if (TIFR0 & (1 << OCF0A))
+		++count;			    // Should not clear
+	TIFR0 = (1 << OCF0A);
+	if ((TIFR0 & (1 << OCF0A)) == 0)
+		++count;			    // Should clear!
+
 	sei();                                      // Enable global interrupts
 
-	// here the interupts are enabled, but the interupt
-	// vector should not be called
-	sleep_mode();
+	// Let it run to next interrupt.
 
-	// this should not be reached
-	cli();
 	sleep_mode();
+	TIMSK0 = 0;		                    // Disable CTC interrupt
+
+	if (count == 3)				    // Expected
+		cli();
+
+	// Time out if interrupting or count wrong.
+
+	for (;;)
+		sleep_mode();
 }

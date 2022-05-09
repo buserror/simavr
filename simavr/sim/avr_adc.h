@@ -54,7 +54,7 @@ enum {
 };
 
 // Get the internal IRQ corresponding to the INT
-#define AVR_IOCTL_ADC_GETIRQ AVR_IOCTL_DEF('a','d','c',' ')
+#define AVR_IOCTL_ADC_GETIRQ AVR_IOCTL_DEF('a','d','c','0')
 
 /*
  * Definition of a ADC mux mode.
@@ -108,7 +108,7 @@ typedef struct avr_adc_t {
 	// if the last bit exists in the mux, we are an extended ADC
 	avr_regbit_t	mux[6];
 	avr_regbit_t	ref[3];		// reference voltages bits
-	uint16_t		ref_values[7]; // ADC_VREF_*
+	uint16_t	ref_values[8];  // ADC_VREF_*
 
 	avr_regbit_t 	adlar;		// left/right adjustment bit
 

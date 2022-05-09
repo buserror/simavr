@@ -141,7 +141,7 @@ static void * avr_run_thread(void * oaram)
 
 int main(int argc, char *argv[])
 {
-	elf_firmware_t f;
+	elf_firmware_t f = {{0}};;
 	const char * fname =  "atmega48_ledramp.axf";
 	//char path[256];
 

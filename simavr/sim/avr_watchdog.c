@@ -182,7 +182,7 @@ static void avr_watchdog_irq_notify(
 	 * again when cleared (after servicing), value = 0
 	 */
 
-	if (!value && avr_regbit_get(avr, p->watchdog.raised)) {
+	if (!value && avr_regbit_get(avr, p->watchdog.raised) && avr_regbit_get(avr, p->wde)) {
 		avr_regbit_clear(avr, p->watchdog.enable);
 	}
 }

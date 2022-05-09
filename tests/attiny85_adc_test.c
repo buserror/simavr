@@ -65,7 +65,7 @@ static struct params {
     {0x9a, 0x80},  // 2.56V ref, ADC0/ADC1 differential, signed +ve overflow
     {0x9a, 0x80},  // 2.56V ref, ADC0/ADC1 differential, signed, positive
     {0x86, 0x80},  // 1.10V ref, ADC2/ADC3 differential, signed, -ve overflow
-    {0x13, 0 },    // 3.00 V external ref, input ADC3
+    {0x43, 0 },    // 3.00 V external ref, input ADC3
 };
 
 #define NUM_SUBTESTS (sizeof params / sizeof params[0])

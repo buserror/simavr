@@ -18,3 +18,4 @@ callgrind.out.*
 perf.data
 .DS_Store
 .make.options*
+.vscode/*

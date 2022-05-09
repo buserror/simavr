@@ -34,7 +34,7 @@ enum avr_gdb_watch_type {
 
 	AVR_GDB_WATCH_WRITE  = 1 << 2,
 	AVR_GDB_WATCH_READ   = 1 << 3,
-	AVR_GDB_WATCH_ACCESS = AVR_GDB_WATCH_WRITE | AVR_GDB_WATCH_READ,
+	AVR_GDB_WATCH_ACCESS = 1 << 4
 };
 
 int avr_gdb_init(avr_t * avr);
@@ -46,6 +46,7 @@ int avr_gdb_processor(avr_t * avr, int sleep);
 
 // Called from sim_core.c
 void avr_gdb_handle_watchpoints(avr_t * g, uint16_t addr, enum avr_gdb_watch_type type);
+void avr_gdb_handle_break(avr_t *);
 
 #ifdef __cplusplus
 };

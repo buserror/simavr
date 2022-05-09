@@ -121,6 +121,20 @@ _avr_flash_read16le(
 	return(avr->flash[addr] | (avr->flash[addr + 1] << 8));
 }
 
+static inline void _call_register_irqs(avr_t * avr, uint16_t addr)
+{
+	if (addr > 31 && addr < 31 + MAX_IOs) {
+		avr_io_addr_t io = AVR_DATA_TO_IO(addr);
+
+		if (avr->io[io].irq) {
+			uint8_t v = avr->data[addr];
+			avr_raise_irq(avr->io[io].irq + AVR_IOMEM_IRQ_ALL, v);
+			for (int i = 0; i < 8; i++)
+				avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);
+		}
+	}
+}
+
 void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 {
 	if (addr > avr->ramend) {
@@ -155,6 +169,7 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 	}
 
 	avr->data[addr] = v;
+	_call_register_irqs(avr, addr);
 }
 
 uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
@@ -164,7 +179,8 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 				"CORE: *** Wrapping read address "
 				"PC=%04x SP=%04x O=%04x Address %04x %% %04x --> %04x\n"
 				FONT_DEFAULT,
-				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), addr, (avr->ramend + 1), addr % (avr->ramend + 1));
+				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc),
+				addr, (avr->ramend + 1), addr % (avr->ramend + 1));
 		addr = addr % (avr->ramend + 1);
 	}
 
@@ -172,6 +188,7 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 		avr_gdb_handle_watchpoints(avr, addr, AVR_GDB_WATCH_READ);
 	}
 
+//	_call_register_irqs(avr, addr);
 	return avr->data[addr];
 }
 
@@ -192,14 +209,15 @@ static inline void _avr_set_r(avr_t * avr, uint16_t r, uint8_t v)
 	}
 	if (r > 31) {
 		avr_io_addr_t io = AVR_DATA_TO_IO(r);
-		if (avr->io[io].w.c)
+		if (avr->io[io].w.c) {
 			avr->io[io].w.c(avr, r, v, avr->io[io].w.param);
-		else
+		} else {
 			avr->data[r] = v;
-		if (avr->io[io].irq) {
-			avr_raise_irq(avr->io[io].irq + AVR_IOMEM_IRQ_ALL, v);
-			for (int i = 0; i < 8; i++)
-				avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);
+			if (avr->io[io].irq) {
+				avr_raise_irq(avr->io[io].irq + AVR_IOMEM_IRQ_ALL, v);
+				for (int i = 0; i < 8; i++)
+					avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);
+			}
 		}
 	} else
 		avr->data[r] = v;
@@ -266,13 +284,14 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 
 		if (avr->io[io].r.c)
 			avr->data[addr] = avr->io[io].r.c(avr, addr, avr->io[io].r.param);
-
+#if 0
 		if (avr->io[io].irq) {
 			uint8_t v = avr->data[addr];
 			avr_raise_irq(avr->io[io].irq + AVR_IOMEM_IRQ_ALL, v);
 			for (int i = 0; i < 8; i++)
 				avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);
 		}
+#endif
 	}
 	return avr_core_watch_read(avr, addr);
 }
@@ -321,7 +340,7 @@ avr_flashaddr_t _avr_pop_addr(avr_t * avr)
 /*
  * "Pretty" register names
  */
-const char * reg_names[255] = {
+const char * reg_names[REG_NAME_COUNT] = {
 		[R_XH] = "XH", [R_XL] = "XL",
 		[R_YH] = "YH", [R_YL] = "YL",
 		[R_ZH] = "ZH", [R_ZL] = "ZL",
@@ -330,7 +349,7 @@ const char * reg_names[255] = {
 };
 
 
-const char * avr_regname(uint8_t reg)
+const char * avr_regname(unsigned int reg)
 {
 	if (!reg_names[reg]) {
 		char tt[16];
@@ -938,12 +957,9 @@ run_one_again:
 				case 0x9598: { // BREAK -- 1001 0101 1001 1000
 					STATE("break\n");
 					if (avr->gdb) {
-						// if gdb is on, we break here as in here
-						// and we do so until gdb restores the instruction
-						// that was here before
-						avr->state = cpu_StepDone;
-						new_pc = avr->pc;
-						cycle = 0;
+						// if gdb is on, break here.
+						avr->state = cpu_Stopped;
+						avr_gdb_handle_break(avr);
 					}
 				}	break;
 				case 0x95a8: { // WDR -- Watchdog Reset -- 1001 0101 1010 1000

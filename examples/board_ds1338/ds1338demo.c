@@ -35,7 +35,7 @@ ds1338_virt_t ds1338_virt;
 
 int main(int argc, char *argv[])
 {
-	elf_firmware_t f;
+	elf_firmware_t f = {{0}};
 	const char * fname =  "atmega32_ds1338.axf";
 
 	printf("Firmware pathname is %s\n", fname);
