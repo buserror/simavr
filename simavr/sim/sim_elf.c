@@ -274,24 +274,45 @@ elf_parse_mmcu_section(
 }
 
 static int
-elf_copy_section(
-	const char *name,
-	Elf_Data *data,
-	uint8_t **dest)
+elf_copy_segment(int fd, Elf32_Phdr *php, uint8_t **dest)
 {
-	*dest = malloc(data->d_size);
+	int rv;
+
+	if (*dest == NULL)
+		*dest = malloc(php->p_filesz);
 	if (!*dest)
 		return -1;
 
-	memcpy(*dest, data->d_buf, data->d_size);
-	AVR_LOG(NULL, LOG_DEBUG, "Loaded %zu %s\n", data->d_size, name);
-
+	lseek(fd, php->p_offset, SEEK_SET);
+	rv = read(fd, *dest, php->p_filesz);
+	if (rv != php->p_filesz) {
+		AVR_LOG(NULL, LOG_ERROR,
+				"Got %d when reading %d bytes for %x at offset %d "
+				"from ELF file\n",
+				rv, php->p_filesz, php->p_vaddr, php->p_offset);
+		return -1;
+	}
+	AVR_LOG(NULL, LOG_DEBUG, "Loaded %d bytes at %x\n",
+			php->p_filesz, php->p_vaddr);
 	return 0;
 }
 
+static int
+elf_handle_segment(int fd, Elf32_Phdr *php, uint8_t **dest, const char *name)
+{
+	if (*dest) {
+		AVR_LOG(NULL, LOG_ERROR,
+				"Unexpected extra %s data: %d bytes at %x.\n",
+				name, php->p_filesz, php->p_vaddr);
+		return -1;
+	} else {
+		elf_copy_segment(fd, php, dest);
+		return 0;
+	}
+}
 
 /* The structure *firmware must be pre-initialised to zero, then optionally
- * with tracing and VCD information.
+ * tracing and VCD information may be added.
  */
 
 int
@@ -299,9 +320,12 @@ elf_read_firmware(
 	const char * file,
 	elf_firmware_t * firmware)
 {
-	Elf32_Ehdr elf_header;			/* ELF header */
-	Elf *elf = NULL;                       /* Our Elf pointer for libelf */
-	int fd; // File Descriptor
+	Elf32_Ehdr  elf_header;			/* ELF header */
+	Elf        *elf = NULL;         /* Our Elf pointer for libelf */
+	Elf32_Phdr *php;				/* Program header. */
+	Elf_Scn    *scn = NULL;         /* Section Descriptor */
+	size_t      ph_count;           /* Program Header entry count. */
+	int         fd, i;              /* File Descriptor */
 
 	if ((fd = open(file, O_RDONLY | O_BINARY)) == -1 ||
 			(read(fd, &elf_header, sizeof(elf_header))) < sizeof(elf_header)) {
@@ -311,12 +335,6 @@ elf_read_firmware(
 		return -1;
 	}
 
-	Elf_Data *data_data = NULL,
-		*data_text = NULL,
-		*data_ee = NULL;                /* Data Descriptor */
-	Elf_Data *data_fuse = NULL;
-	Elf_Data *data_lockbits = NULL;
-
 #if ELF_SYMBOLS
 	firmware->symbolcount = 0;
 	firmware->symbol = NULL;
@@ -324,39 +342,106 @@ elf_read_firmware(
 
 	/* this is actually mandatory !! otherwise elf_begin() fails */
 	if (elf_version(EV_CURRENT) == EV_NONE) {
-			/* library out of date - recover from error */
+		/* library out of date - recover from error */
+		return -1;
 	}
 	// Iterate through section headers again this time well stop when we find symbols
 	elf = elf_begin(fd, ELF_C_READ, NULL);
 	//printf("Loading elf %s : %p\n", file, elf);
 
-	Elf_Scn *scn = NULL;                   /* Section Descriptor */
+	if (!elf)
+		return -1;
+	if (elf_kind(elf) != ELF_K_ELF) {
+		AVR_LOG(NULL, LOG_ERROR, "Unexpected ELF file type\n");
+		return -1;
+	}
+
+	/* Scan the Program Header Table. */
+
+	if (elf_getphdrnum(elf, &ph_count) != 0 || ph_count == 0 ||
+		(php = elf32_getphdr(elf)) == NULL) {
+		AVR_LOG(NULL, LOG_ERROR, "No ELF Program Headers\n");
+		return -1;
+	}
+
+	for (i = 0; i < (int)ph_count; ++i, ++php) {
+#if 0
+		printf("Header %d type %d addr %x/%x size %d/%d flags %x\n",
+			   i, php->p_type, php->p_vaddr, php->p_paddr,
+			   php->p_filesz, php->p_memsz, php->p_flags);
+#endif
+		if (php->p_type != PT_LOAD || php->p_filesz == 0)
+			continue;
+		if (php->p_vaddr < 0x800000) {
+			/* Explicit flash section. Load it. */
+
+			if (elf_handle_segment(fd, php, &firmware->flash, "Flash"))
+				continue;
+			firmware->flashsize = php->p_filesz;
+			firmware->flashbase = php->p_vaddr;
+		} else if (php->p_vaddr < 0x810000) {
+			/* Data space.  If there are initialised variables, treat
+			 * them as extra initialised flash.  The C startup function
+			 * understands that and will copy them to RAM.
+			 */
+
+			if (firmware->flash) {
+				uint8_t *where;
+
+				firmware->flash = realloc(firmware->flash,
+										  firmware->flashsize + php->p_filesz);
+				if (!firmware->flash)
+					return -1;
+				where = firmware->flash + firmware->flashsize;
+				elf_copy_segment(fd, php, &where);
+				firmware->flashsize += php->p_filesz;
+			} else {
+				/* If this ever happens, add a second pass. */
+
+				AVR_LOG(NULL, LOG_ERROR,
+						"Initialialised data but no flash (%d bytes at %x)!\n",
+						php->p_filesz, php->p_vaddr);
+				return -1;
+			}
+		} else if (php->p_vaddr < 0x820000) {
+			/* EEPROM. */
+
+			if (elf_handle_segment(fd, php, &firmware->eeprom, "EEPROM"))
+				continue;
+			firmware->eesize = php->p_filesz;
+		} else if (php->p_vaddr < 0x830000) {
+			/* Fuses. */
+
+			if (elf_handle_segment(fd, php, &firmware->fuse, "Fuses"))
+				continue;
+			firmware->fusesize = php->p_filesz;
+		} else if (php->p_vaddr < 0x840000) {
+			/* Lock bits. */
+
+			elf_handle_segment(fd, php, &firmware->lockbits, "Lock bits");
+		}
+	}
+
+	/* Scan the section table for .mmcu magic and symbols. */
 
 	while ((scn = elf_nextscn(elf, scn)) != NULL) {
 		GElf_Shdr shdr;                 /* Section Header */
 		gelf_getshdr(scn, &shdr);
 		char * name = elf_strptr(elf, elf_header.e_shstrndx, shdr.sh_name);
-	//	printf("Walking elf section '%s'\n", name);
+		//	printf("Walking elf section '%s'\n", name);
 
-		if (!strcmp(name, ".text"))
-			data_text = elf_getdata(scn, NULL);
-		else if (!strcmp(name, ".data"))
-			data_data = elf_getdata(scn, NULL);
-		else if (!strcmp(name, ".eeprom"))
-			data_ee = elf_getdata(scn, NULL);
-		else if (!strcmp(name, ".fuse"))
-			data_fuse = elf_getdata(scn, NULL);
-		else if (!strcmp(name, ".lock"))
-			data_lockbits = elf_getdata(scn, NULL);
-		else if (!strcmp(name, ".bss")) {
+		if (!strcmp(name, ".mmcu")) {
 			Elf_Data *s = elf_getdata(scn, NULL);
-			firmware->bsssize = s->d_size;
-		} else if (!strcmp(name, ".mmcu")) {
-			Elf_Data *s = elf_getdata(scn, NULL);
+
 			elf_parse_mmcu_section(firmware, s->d_buf, s->d_size);
-			//printf("%s: avr_mcu_t size %ld / read %ld\n", __FUNCTION__, sizeof(struct avr_mcu_t), s->d_size);
+			if (shdr.sh_addr < 0x860000)
+				AVR_LOG(NULL, LOG_WARNING,
+						"Warning: ELF .mmcu section at %x may be loaded.\n",
+						shdr.sh_addr);
+		//	printf("%s: size %ld\n", __FUNCTION__, s->d_size);
 		//	avr->frequency = f_cpu;
 		}
+
 #if ELF_SYMBOLS
 		// When we find a section header marked SHT_SYMTAB stop and get symbols
 		if (shdr.sh_type == SHT_SYMTAB) {
@@ -407,46 +492,9 @@ elf_read_firmware(
 				}
 			}
 		}
-#endif
+#endif // ELF_SYMBOLS
 	}
-	uint32_t offset = 0;
-	firmware->flashsize =
-			(data_text ? data_text->d_size : 0) +
-			(data_data ? data_data->d_size : 0);
-	firmware->flash = malloc(firmware->flashsize);
-
-	// using unsigned int for output, since there is no AVR with 4GB
-	if (data_text) {
-	//	hdump("code", data_text->d_buf, data_text->d_size);
-		memcpy(firmware->flash + offset, data_text->d_buf, data_text->d_size);
-		AVR_LOG(NULL, LOG_DEBUG, "Loaded %zu .text at address 0x%x\n",
-				(unsigned int)data_text->d_size, firmware->flashbase);
-		offset += data_text->d_size;
-	}
-	if (data_data) {
-	//	hdump("data", data_data->d_buf, data_data->d_size);
-		memcpy(firmware->flash + offset, data_data->d_buf, data_data->d_size);
-		AVR_LOG(NULL, LOG_DEBUG, "Loaded %zu .data\n", data_data->d_size);
-		offset += data_data->d_size;
-		firmware->datasize = data_data->d_size;
-	}
-	if (data_ee) {
-		if (elf_copy_section(".eeprom", data_ee, &firmware->eeprom))
-			return -1;
-		firmware->eesize = data_ee->d_size;
-	}
-	if (data_fuse) {
-		if (elf_copy_section(".fuse", data_fuse, &firmware->fuse))
-			return -1;
-		firmware->fusesize = data_fuse->d_size;
-	}
-	if (data_lockbits) {
-		if (elf_copy_section(".lock", data_lockbits, &firmware->lockbits))
-			return -1;
-	}
-//	hdump("flash", avr->flash, offset);
 	elf_end(elf);
 	close(fd);
 	return 0;
 }
-
