@@ -447,7 +447,7 @@ std_logger(
 		va_list ap)
 {
 	if (!avr || avr->log >= level) {
-		vfprintf((level > LOG_ERROR) ?  stdout : stderr , format, ap);
+		vfprintf((level < LOG_ERROR) ?  stdout : stderr, format, ap);
 	}
 }
 
