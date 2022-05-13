@@ -1,7 +1,6 @@
 #
-# This makefile takes each "at*" file, extracts it's part name
-# And compiles it into an ELF binary.
-# It also disassembles it for debugging purposes.
+# This makefile takes each "at*" file, extracts its part name
+# and compiles it into an ELF binary.
 #
 # 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
 #
@@ -28,7 +27,7 @@ IPATH 		+= ${simavr}/simavr/sim
 
 tests_src	:= ${wildcard test_*.c}
 
-all: obj axf tst
+all: obj axf hex tst
 
 include ../Makefile.common
 
@@ -36,6 +35,7 @@ tst: ${patsubst %.c, ${OBJ}/%.tst, ${tests_src}}
 
 axf: ${sources:.c=.axf}
 
+hex: atmega88_example.hex
 
 ${OBJ}/%.tst: tests.c %.c
 ifneq ($(E),)
@@ -58,4 +58,4 @@ run_tests: all
 	exit $$num_failed
 
 clean: clean-${OBJ}
-	rm -f *.axf *.vcd
+	rm -f *.axf *.hex *.vcd
