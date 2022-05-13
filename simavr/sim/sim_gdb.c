@@ -47,12 +47,17 @@ typedef struct {
 	} points[WATCH_LIMIT];
 } avr_gdb_watchpoints_t;
 
+/* How many AVR instructions to execute before looking for gdb input. */
+
+#define GDB_BURST 256
+
 typedef struct avr_gdb_t {
 	avr_t * avr;
-	int	listen;	// listen socket
-	int	s;	// current gdb connection
+	int burst_count;	// Current instruction burst size
+	int	listen;			// listen socket
+	int	s;				// current gdb connection
 
-	avr_gdb_watchpoints_t breakpoints;
+    avr_gdb_watchpoints_t breakpoints;
 	avr_gdb_watchpoints_t watchpoints;
 
 	// These are used by gdb's "info io_registers" command.
@@ -789,6 +794,7 @@ gdb_network_handler(
 	int max;
 	FD_ZERO(&read_set);
 
+	g->burst_count = 0; // Reset burst count
 	if (g->s != -1) {
 		FD_SET(g->s, &read_set);
 		max = g->s + 1;
@@ -934,8 +940,12 @@ avr_gdb_processor(
 	} else if (avr->state == cpu_StepDone) {
 		gdb_send_quick_status(g, 0);
 		avr->state = cpu_Stopped;
+	} else {
+		/* Look for gdb input every GDB_BURST instructions. */
+
+		if (sleep == 0 && g->burst_count++ < GDB_BURST)
+			return 0;
 	}
-	// this also sleeps for a bit
 	return gdb_network_handler(g, sleep);
 }
 
