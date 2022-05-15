@@ -1,6 +1,7 @@
 #include "tests.h"
 #include "sim_avr.h"
 #include "sim_elf.h"
+#include "sim_hex.h"
 #include "sim_core.h"
 #include "avr_uart.h"
 #include <stdio.h>
@@ -99,19 +100,24 @@ static int my_avr_run(avr_t * avr)
 	return avr->state;
 }
 
-avr_t *tests_init_avr(const char *elfname) {
+/* Set-up AVR from an initialised firmware struct.  Works with .hex files. */
+
+static avr_t *tests_init_fw(elf_firmware_t *fwp, const char *filename) {
 	tests_cycle_count = 0;
 	map_stderr();
 
-	elf_firmware_t fw = {{0}};
-	if (elf_read_firmware(elfname, &fw))
-		fail("Failed to read ELF firmware \"%s\"", elfname);
-	avr_t *avr = avr_make_mcu_by_name(fw.mmcu);
+	sim_setup_firmware(filename, 0, fwp, test_name);
+	avr_t *avr = avr_make_mcu_by_name(fwp->mmcu);
 	if (!avr)
 		fail("Creating AVR failed.");
 	avr_init(avr);
-	avr_load_firmware(avr, &fw);
+	avr_load_firmware(avr, fwp);
 	return avr;
+}
+
+avr_t *tests_init_avr(const char *elfname) {
+	elf_firmware_t fw = {};
+	return tests_init_fw(&fw, elfname);
 }
 
 int tests_run_test(avr_t *avr, unsigned long run_usec) {
@@ -208,6 +214,16 @@ static void tests_assert_xxxx_receive_avr(avr_t                *avr,
 		_fail(NULL, 0, "Outputs differ: expected \"%s\", got \"%s\"", expected, buf->str);
 }
 
+void tests_assert_uart_receive_fw(elf_firmware_t *fw,
+								  const char *firmware,
+								  unsigned long run_usec,
+								  const char *expected,
+								  char uart) {
+	avr_t *avr = tests_init_fw(fw, firmware);
+
+	tests_assert_uart_receive_avr(avr, run_usec, expected, uart);
+}
+
 void tests_assert_uart_receive_avr(avr_t *avr,
 			       unsigned long run_usec,
 			       const char *expected,
@@ -216,9 +232,9 @@ void tests_assert_uart_receive_avr(avr_t *avr,
 	init_output_buffer(&buf);
 
 	avr_irq_register_notify(
-                avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ(uart),
+							avr_io_getirq(avr, AVR_IOCTL_UART_GETIRQ(uart),
                               UART_IRQ_OUTPUT), buf_output_cb, &buf);
-        tests_assert_xxxx_receive_avr(avr, run_usec, &buf, expected);
+	tests_assert_xxxx_receive_avr(avr, run_usec, &buf, expected);
 }
 
 void tests_assert_uart_receive(const char *elfname,
@@ -227,10 +243,7 @@ void tests_assert_uart_receive(const char *elfname,
 			       char uart) {
 	avr_t *avr = tests_init_avr(elfname);
 
-	tests_assert_uart_receive_avr(avr,
-			       run_usec,
-			       expected,
-			       uart);
+	tests_assert_uart_receive_avr(avr, run_usec, expected, uart);
 }
 
 void tests_assert_register_receive_avr(avr_t         *avr,

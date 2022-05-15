@@ -30,6 +30,17 @@
 extern "C" {
 #endif
 
+// Load a firmware file, ELF or HEX format, ready for use.
+
+struct elf_firmware_t;                          // Predeclaration ...
+
+void
+sim_setup_firmware(
+				   const char * filename,       // Firmware file
+				   uint32_t loadBase,           // Base of load region
+				   struct elf_firmware_t * fp,  // Data returned here
+				   const char * progname);      // For error messages.
+
 // parses a hex text string 'src' of at max 'maxlen' characters, decodes it into 'buffer'
 int
 read_hex_string(
