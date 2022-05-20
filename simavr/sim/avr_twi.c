@@ -186,6 +186,14 @@ avr_twi_write(
 
 	/*int cleared = */
 	avr_clear_interrupt_if(avr, &p->twi, twint);
+	/**
+	 * ATMega328p Capt. 21.9.2 TWCR Control-Register
+	 * "The TWINT flag must be cleared by software by writing a logic one to it."
+	 */
+	if ((addr == p->twi.raised.reg) && (v & ( p->twi.raised.mask << p->twi.raised.bit )) && twint) {
+		twint = !twint;
+		avr_regbit_clear( avr, p->twi.raised );
+	}
 //	AVR_TRACE(avr, "cleared %d\n", cleared);
 
 	if (!twsto && avr_regbit_get(avr, p->twsto)) {
@@ -411,6 +419,36 @@ avr_twi_irq_input(
 
 	AVR_TRACE(avr, "%s %08x\n", __func__, value);
 
+	if (p->state & TWI_COND_SLAVE) {
+		if (msg.u.twi.msg & TWI_COND_WRITE) {
+			avr->data[p->r_twdr] = msg.u.twi.data;
+			_avr_twi_delay_state(p, 9, TWI_SRX_ADR_DATA_ACK );
+		}
+		if (msg.u.twi.msg & TWI_COND_READ) {
+			avr->data[p->r_twdr] = 0;
+			_avr_twi_delay_state(p, 9, msg.u.twi.msg & TWI_COND_ACK ?
+						TWI_STX_DATA_ACK : TWI_STX_DATA_NACK );
+		}
+	} else {
+		// receive a data byte from a slave
+		if (msg.u.twi.msg & TWI_COND_READ) {
+#if AVR_TWI_DEBUG
+			AVR_TRACE(avr, "I2C received %02x\n", msg.u.twi.data);
+#endif
+			avr->data[p->r_twdr] = msg.u.twi.data;
+		}
+	// receiving an acknowledge bit
+		if (msg.u.twi.msg & TWI_COND_ACK) {
+#if AVR_TWI_DEBUG
+			AVR_TRACE(avr, "I2C received ACK:%d\n", msg.u.twi.data & 1);
+#endif
+			if (msg.u.twi.data & 1)
+				p->state |= TWI_COND_ACK;
+			else
+				p->state &= ~TWI_COND_ACK;
+		}
+	}
+
 	// receiving an attempt at waking a slave
 	if (msg.u.twi.msg & TWI_COND_START) {
 		p->state = 0;
@@ -441,31 +479,7 @@ avr_twi_irq_input(
 	if (msg.u.twi.msg & TWI_COND_STOP) {
 		_avr_twi_delay_state(p, 9,
 			msg.u.twi.msg & TWI_COND_WRITE ?
-				TWI_SRX_ADR_ACK : TWI_STX_ADR_ACK );
-	}
-	// receiving an acknowledge bit
-	if (msg.u.twi.msg & TWI_COND_ACK) {
-#if AVR_TWI_DEBUG
-		AVR_TRACE(avr, "I2C received ACK:%d\n", msg.u.twi.data & 1);
-#endif
-		if (msg.u.twi.data & 1)
-			p->state |= TWI_COND_ACK;
-		else
-			p->state &= ~TWI_COND_ACK;
-	}
-	if (p->state & TWI_COND_SLAVE) {
-		if (msg.u.twi.msg & TWI_COND_WRITE) {
-			avr->data[p->r_twdr] = msg.u.twi.data;
-			_avr_twi_delay_state(p, 9, TWI_SRX_ADR_DATA_ACK );
-		}
-	} else {
-		// receive a data byte from a slave
-		if (msg.u.twi.msg & TWI_COND_READ) {
-#if AVR_TWI_DEBUG
-			AVR_TRACE(avr, "I2C received %02x\n", msg.u.twi.data);
-#endif
-			avr->data[p->r_twdr] = msg.u.twi.data;
-		}
+				TWI_SRX_ADR_ACK : TWI_SRX_STOP_RESTART );
 	}
 }
 

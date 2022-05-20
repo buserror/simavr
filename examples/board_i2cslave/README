@@ -1,0 +1,5 @@
+
+This example is similar to board_i2ctest, but treats the AVR
+as a bus slave, rather than bus master.   It uses a simulated i2c/twi
+"peripheral" that behaves as bus master, hooks it to an AVR,
+and then runs a firmware that behaves as a TWI slave to talk to it.

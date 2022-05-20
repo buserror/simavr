@@ -11,5 +11,5 @@ The code uses a generic i2c "eeprom" were the AVR writes some bytes,
 then read them again. The AVR code is based on the Atmel reference
 implementation, with quite a few changes to make it more functional.
 
-Thid "board" doesn't use opengl, the eeprom will display what the
+This "board" doesn't use opengl, the eeprom will display what the
 transactions are.
