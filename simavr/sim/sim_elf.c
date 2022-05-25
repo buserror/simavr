@@ -175,8 +175,7 @@ avr_load_firmware(
 					}
 					char comp[128];
 					sprintf(comp, "%s.%d", firmware->trace[ti].name, bi);
-					avr_vcd_add_signal(avr->vcd,
-							bit, 1, firmware->trace[ti].name);
+					avr_vcd_add_signal(avr->vcd, bit, 1, comp);
 				}
 		}
 	}
