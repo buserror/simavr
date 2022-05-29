@@ -21,6 +21,10 @@ On Ubuntu, SimAVR is available in the Bionic package source:
 
     apt-get install simavr
 
+On [GNU Guix](https://guix.gnu.org/), SimAVR can be installed as follows:
+
+    guix install simavr
+
 (Note that the command is made available under the name `simavr` not `run_avr`.)
 
 Otherwise, `make` is enough to just start using __bin/simavr__. To install the __simavr__ command system-wide, `make install RELEASE=1`.
