@@ -3,7 +3,7 @@ simavr - a lean and mean Atmel AVR simulator for linux
 
 _simavr_ is a new AVR simulator for linux, or any platform that uses avr-gcc. It uses 
 avr-gcc's own register definition to simplify creating new targets for supported AVR
-devices. The core was made to be small and compact, and hackable so allow quick 
+devices. The core was made to be small and compact, and hackable to allow quick 
 prototyping of an AVR project. The AVR core is now stable for use with parts 
 with <= 128KB flash, and with preliminary support for the bigger parts. The 
 simulator loads ELF files directly, and there is even a way to specify simulation 
@@ -59,7 +59,7 @@ Emulated Cores (very easy to add new ones!)
 
 Extras:
 -------
-* fully working _gdb_ support including some pretty cool “passive modes”.
+* Fully working _gdb_ support including some pretty cool “passive modes”.
 * There is also very easy support for “VCD” (Value Change Dump) that can be visualized 
 graphically as “waveforms” with tools like _gtkwave_ (see below).
 * There are a few examples of real life firmwares running on simavr, including OpenGL rendering of the display…
