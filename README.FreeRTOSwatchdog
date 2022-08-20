@@ -4,7 +4,7 @@ Facts:
   - Firmware loaded either on 'SimulIDE' or 'simavr' command line don't.
   - Command line 'simavr -f 16000000 -m atmega2560 -ti 12 MySketch.ino.mega.hex' shows
     "IRQ12 raising (enabled 1), IRQ12 calling, IRQ12 cleared" only once.
-  - FreeRTOS arranged to show "High Watermark" shows "Tick count: 1" an no progress.
+  - FreeRTOS arranged to show "High Watermark" displays "Tick count: 1" an no progress.
 
 It seems 'avr watchdog' is anabled and auto disabled.
 So, I "commented" a line in 'avr_watchdog.c' and 'MySketch.ino.mega.hex':
