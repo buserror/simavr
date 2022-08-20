@@ -1,0 +1,13 @@
+--- simavr/sim/avr_watchdog.c.orig	2018-01-10 07:05:15.000000000 -0300
++++ simavr/sim/avr_watchdog.c	2022-08-20 11:12:26.038063000 -0300
+@@ -183,7 +183,10 @@
+ 	 */
+ 
+ 	if (!value && avr_regbit_get(avr, p->watchdog.raised)) {
+-		avr_regbit_clear(avr, p->watchdog.enable);
++		/* It seems to me once activated WD it should never auto disable...
++		 * Edilson Azevedo <ekazevedo@github.com>
++		 */
++		// avr_regbit_clear(avr, p->watchdog.enable);
+ 	}
+ }
