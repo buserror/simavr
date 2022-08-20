@@ -9,7 +9,7 @@ Facts:
 It seems 'avr watchdog' is anabled and auto disabled.
 So, I "commented" a line in 'avr_watchdog.c' and 'MySketch.ino.mega.hex':
   - work fine in 'simavr' command line,
-  - worf fine in SimulIDE.
+  - work fine in SimulIDE.
 
 Edilson Azevedo
 <ekazevedo@github.com>
