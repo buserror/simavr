@@ -29,6 +29,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <malloc.h>
+#include <limits.h>
 #include <libelf.h>
 #include <gelf.h>
 
@@ -276,14 +278,20 @@ static int
 elf_copy_segment(int fd, Elf32_Phdr *php, uint8_t **dest)
 {
 	int rv;
+	Elf32_Addr segment_end;
 
-	if (*dest == NULL)
-		*dest = malloc(php->p_filesz);
+	/* Allocate enough memory to load the segment.
+           Note that both malloc_usable_size and realloc do the right thing in
+           case *dest==NULL (i.o.w. no memory allocated yet) */
+	segment_end = php->p_vaddr + php->p_memsz;
+	if (malloc_usable_size(*dest) < segment_end) {
+		*dest = realloc(*dest, segment_end);
+	}
 	if (!*dest)
 		return -1;
 
 	lseek(fd, php->p_offset, SEEK_SET);
-	rv = read(fd, *dest, php->p_filesz);
+	rv = read(fd, *dest + php->p_vaddr, php->p_filesz);
 	if (rv != php->p_filesz) {
 		AVR_LOG(NULL, LOG_ERROR,
 				"Got %d when reading %d bytes for %x at offset %d "
@@ -291,6 +299,11 @@ elf_copy_segment(int fd, Elf32_Phdr *php, uint8_t **dest)
 				rv, php->p_filesz, php->p_vaddr, php->p_offset);
 		return -1;
 	}
+	/* ELF specifications make a differnce between file size and memory
+	   size of the segment. If the memory size is larger than the file
+	   file, the remainder should be cleared with zeros. */
+	if (php->p_memsz > php->p_filesz)
+		bzero(*dest + php->p_filesz, php->p_memsz - php->p_filesz);
 	AVR_LOG(NULL, LOG_DEBUG, "Loaded %d bytes at %x\n",
 			php->p_filesz, php->p_vaddr);
 	return 0;
@@ -299,15 +312,7 @@ elf_copy_segment(int fd, Elf32_Phdr *php, uint8_t **dest)
 static int
 elf_handle_segment(int fd, Elf32_Phdr *php, uint8_t **dest, const char *name)
 {
-	if (*dest) {
-		AVR_LOG(NULL, LOG_ERROR,
-				"Unexpected extra %s data: %d bytes at %x.\n",
-				name, php->p_filesz, php->p_vaddr);
-		return -1;
-	} else {
-		elf_copy_segment(fd, php, dest);
-		return 0;
-	}
+	return elf_copy_segment(fd, php, dest);
 }
 
 /* The structure *firmware must be pre-initialised to zero, then optionally
@@ -363,6 +368,8 @@ elf_read_firmware(
 		return -1;
 	}
 
+	firmware->flashbase = UINT_MAX;
+
 	for (i = 0; i < (int)ph_count; ++i, ++php) {
 #if 0
 		printf("Header %d type %d addr %x/%x size %d/%d flags %x\n",
@@ -376,8 +383,8 @@ elf_read_firmware(
 
 			if (elf_handle_segment(fd, php, &firmware->flash, "Flash"))
 				continue;
-			firmware->flashsize = php->p_filesz;
-			firmware->flashbase = php->p_vaddr;
+			if (php->p_vaddr<firmware->flashbase)
+				firmware->flashbase = php->p_vaddr;
 		} else if (php->p_vaddr < 0x810000) {
 			/* Data space.  If there are initialised variables, treat
 			 * them as extra initialised flash.  The C startup function
@@ -420,6 +427,8 @@ elf_read_firmware(
 			elf_handle_segment(fd, php, &firmware->lockbits, "Lock bits");
 		}
 	}
+
+	firmware->flashsize = malloc_usable_size(firmware->flash);
 
 	/* Scan the section table for .mmcu magic and symbols. */
 
