@@ -33,9 +33,10 @@ LDFLAGS += -lpthread
 
 include ../Makefile.opengl
 
-all: obj atmega48_charlcd.axf ${target} 
+all: obj atmega48_charlcd.axf atmega48_fps_test.axf ${target} 
 
 atmega48_charlcd.axf: atmega48_charlcd.c
+atmega48_fps_test.axf: atmega48_fps_test.c
 
 include ${simavr}/Makefile.common
 
