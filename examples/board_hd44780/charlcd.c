@@ -172,6 +172,8 @@ main(
 
 	hd44780_init(avr, &hd44780, 20, 4);
 
+	hd44780_setup_mutex_for_gl(&hd44780);
+
 	/* Connect Data Lines to Port B, 0-3 */
 	/* These are bidirectional too */
 	for (int i = 0; i < 4; i++) {

@@ -76,7 +76,7 @@ _hd44780_busy_timer(
 {
 	hd44780_t *b = (hd44780_t *) param;
 //	printf("%s called\n", __FUNCTION__);
-	hd44780_set_flag(b, HD44780_FLAG_BUSY, 0);
+	hd44780_set_private_flag(b, HD44780_PRIV_FLAG_BUSY, 0);
 	avr_raise_irq(b->irq + IRQ_HD44780_BUSY, 0);
 	return 0;
 }
@@ -189,7 +189,7 @@ hd44780_write_command(
 			hd44780_set_flag(b, HD44780_FLAG_F, b->datapins & 4);
 			if (!four && !hd44780_get_flag(b, HD44780_FLAG_D_L)) {
 				printf("%s activating 4 bits mode\n", __FUNCTION__);
-				hd44780_set_flag(b, HD44780_FLAG_LOWNIBBLE, 0);
+				hd44780_set_private_flag(b, HD44780_PRIV_FLAG_LOWNIBBLE, 0);
 			}
 		}	break;
 		// Cursor display shift
@@ -231,7 +231,7 @@ hd44780_process_write(
 {
 	uint32_t delay = 0; // uS
 	int four = !hd44780_get_flag(b, HD44780_FLAG_D_L);
-	int comp = four && hd44780_get_flag(b, HD44780_FLAG_LOWNIBBLE);
+	int comp = four && hd44780_get_private_flag(b, HD44780_PRIV_FLAG_LOWNIBBLE);
 	int write = 0;
 
 	if (four) { // 4 bits !
@@ -240,7 +240,7 @@ hd44780_process_write(
 		else
 			b->datapins = (b->datapins & 0xf) | ((b->pinstate >>  (IRQ_HD44780_D4-4)) & 0xf0);
 		write = comp;
-		b->flags ^= (1 << HD44780_FLAG_LOWNIBBLE);
+		b->private_flags ^= (1 << HD44780_PRIV_FLAG_LOWNIBBLE);
 	} else {	// 8 bits
 		b->datapins = (b->pinstate >>  IRQ_HD44780_D0) & 0xff;
 		write++;
@@ -249,13 +249,15 @@ hd44780_process_write(
 
 	// write has 8 bits to process
 	if (write) {
-		if (hd44780_get_flag(b, HD44780_FLAG_BUSY)) {
+		if (hd44780_get_private_flag(b, HD44780_PRIV_FLAG_BUSY)) {
 			printf("%s command %02x write when still BUSY\n", __FUNCTION__, b->datapins);
 		}
+		hd44780_lock_state(b);
 		if (b->pinstate & (1 << IRQ_HD44780_RS))	// write data
 			delay = hd44780_write_data(b);
 		else										// write command
 			delay = hd44780_write_command(b);
+		hd44780_unlock_state(b);
 	}
 	return delay;
 }
@@ -266,14 +268,14 @@ hd44780_process_read(
 {
 	uint32_t delay = 0; // uS
 	int four = !hd44780_get_flag(b, HD44780_FLAG_D_L);
-	int comp = four && hd44780_get_flag(b, HD44780_FLAG_LOWNIBBLE);
+	int comp = four && hd44780_get_private_flag(b, HD44780_PRIV_FLAG_LOWNIBBLE);
 	int done = 0;	// has something on the datapin we want
 
 	if (comp) {
 		// ready the 4 final bits on the 'actual' lcd pins
 		b->readpins <<= 4;
 		done++;
-		b->flags ^= (1 << HD44780_FLAG_LOWNIBBLE);
+		b->private_flags ^= (1 << HD44780_PRIV_FLAG_LOWNIBBLE);
 	}
 
 	if (!done) { // new read
@@ -281,19 +283,21 @@ hd44780_process_read(
 		if (b->pinstate & (1 << IRQ_HD44780_RS)) {	// read data
 			delay = 37;
 			b->readpins = b->vram[b->cursor];
+			hd44780_lock_state(b);
 			hd44780_kick_cursor(b);
+			hd44780_unlock_state(b);
 		} else {	// read 'command' ie status register
 			delay = 0;	// no raising busy when reading busy !
 
 			// low bits are the current cursor
 			b->readpins = b->cursor < 0x80 ? b->cursor : b->cursor-0x80;
-			int busy = hd44780_get_flag(b, HD44780_FLAG_BUSY);
+			int busy = hd44780_get_private_flag(b, HD44780_PRIV_FLAG_BUSY);
 			b->readpins |= busy ? 0x80 : 0;
 
 		//	if (busy) printf("Good boy, guy's reading status byte\n");
 			// now that we're read the busy flag, clear it and clear
 			// the timer too
-			hd44780_set_flag(b, HD44780_FLAG_BUSY, 0);
+			hd44780_set_private_flag(b, HD44780_PRIV_FLAG_BUSY, 0);
 			avr_raise_irq(b->irq + IRQ_HD44780_BUSY, 0);
 			avr_cycle_timer_cancel(b->avr, _hd44780_busy_timer, b);
 		}
@@ -301,7 +305,7 @@ hd44780_process_read(
 
 		done++;
 		if (four)
-			b->flags |= (1 << HD44780_FLAG_LOWNIBBLE); // for next read
+			b->private_flags |= (1 << HD44780_PRIV_FLAG_LOWNIBBLE); // for next read
 	}
 
 	// now send the prepared output pins to send as IRQs
@@ -320,7 +324,7 @@ _hd44780_process_e_pinchange(
 {
 	hd44780_t *b = (hd44780_t *) param;
 
-	hd44780_set_flag(b, HD44780_FLAG_REENTRANT, 1);
+	hd44780_set_private_flag(b, HD44780_PRIV_FLAG_REENTRANT, 1);
 
 #if 0
 	uint16_t touch = b->oldstate ^ b->pinstate;
@@ -338,13 +342,13 @@ _hd44780_process_e_pinchange(
 		delay = hd44780_process_write(b);
 
 	if (delay) {
-		hd44780_set_flag(b, HD44780_FLAG_BUSY, 1);
+		hd44780_set_private_flag(b, HD44780_PRIV_FLAG_BUSY, 1);
 		avr_raise_irq(b->irq + IRQ_HD44780_BUSY, 1);
 		avr_cycle_timer_register_usec(b->avr, delay,
 			_hd44780_busy_timer, b);
 	}
 //	b->oldstate = b->pinstate;
-	hd44780_set_flag(b, HD44780_FLAG_REENTRANT, 0);
+	hd44780_set_private_flag(b, HD44780_PRIV_FLAG_REENTRANT, 0);
 	return 0;
 }
 
@@ -373,7 +377,7 @@ hd44780_pin_changed_hook(
 			return; // job already done!
 		case IRQ_HD44780_D0 ... IRQ_HD44780_D7:
 			// don't update these pins in read mode
-			if (hd44780_get_flag(b, HD44780_FLAG_REENTRANT))
+			if (hd44780_get_private_flag(b, HD44780_PRIV_FLAG_REENTRANT))
 				return;
 			break;
 	}
