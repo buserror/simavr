@@ -309,12 +309,6 @@ elf_copy_segment(int fd, Elf32_Phdr *php, uint8_t **dest)
 	return 0;
 }
 
-static int
-elf_handle_segment(int fd, Elf32_Phdr *php, uint8_t **dest, const char *name)
-{
-	return elf_copy_segment(fd, php, dest);
-}
-
 /* The structure *firmware must be pre-initialised to zero, then optionally
  * tracing and VCD information may be added.
  */
@@ -381,7 +375,7 @@ elf_read_firmware(
 		if (php->p_vaddr < 0x800000) {
 			/* Explicit flash section. Load it. */
 
-			if (elf_handle_segment(fd, php, &firmware->flash, "Flash"))
+			if (elf_copy_segment(fd, php, &firmware->flash))
 				continue;
 			if (php->p_vaddr<firmware->flashbase)
 				firmware->flashbase = php->p_vaddr;
@@ -394,8 +388,8 @@ elf_read_firmware(
 			if (firmware->flash) {
 				uint8_t *where;
 
-				firmware->flash = realloc(firmware->flash,
-										  firmware->flashsize + php->p_filesz);
+				firmware->flash =
+					realloc(firmware->flash,firmware->flashsize + php->p_filesz);
 				if (!firmware->flash)
 					return -1;
 				where = firmware->flash + firmware->flashsize;
@@ -412,19 +406,19 @@ elf_read_firmware(
 		} else if (php->p_vaddr < 0x820000) {
 			/* EEPROM. */
 
-			if (elf_handle_segment(fd, php, &firmware->eeprom, "EEPROM"))
+			if (elf_copy_segment(fd, php, &firmware->eeprom))
 				continue;
 			firmware->eesize = php->p_filesz;
 		} else if (php->p_vaddr < 0x830000) {
 			/* Fuses. */
 
-			if (elf_handle_segment(fd, php, &firmware->fuse, "Fuses"))
+			if (elf_copy_segment(fd, php, &firmware->fuse))
 				continue;
 			firmware->fusesize = php->p_filesz;
 		} else if (php->p_vaddr < 0x840000) {
 			/* Lock bits. */
 
-			elf_handle_segment(fd, php, &firmware->lockbits, "Lock bits");
+			elf_copy_segment(fd, php, &firmware->lockbits);
 		}
 	}
 
