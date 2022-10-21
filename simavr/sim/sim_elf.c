@@ -76,9 +76,8 @@ avr_load_firmware(
 #endif
 
 	avr_loadcode(avr, firmware->flash,
-			firmware->flashsize, firmware->flashbase);
-	avr->codeend = firmware->flashsize +
-			firmware->flashbase - firmware->datasize;
+			firmware->flashsize, 0);
+	avr->codeend = firmware->flashsize - firmware->datasize;
 
 	if (firmware->eeprom && firmware->eesize) {
 		avr_eeprom_desc_t d = {
@@ -362,8 +361,6 @@ elf_read_firmware(
 		return -1;
 	}
 
-	firmware->flashbase = UINT_MAX;
-
 	for (i = 0; i < (int)ph_count; ++i, ++php) {
 #if 0
 		printf("Header %d type %d addr %x/%x size %d/%d flags %x\n",
@@ -377,8 +374,6 @@ elf_read_firmware(
 
 			if (elf_copy_segment(fd, php, &firmware->flash))
 				continue;
-			if (php->p_vaddr<firmware->flashbase)
-				firmware->flashbase = php->p_vaddr;
 		} else if (php->p_vaddr < 0x810000) {
 			/* Data space.  If there are initialised variables, treat
 			 * them as extra initialised flash.  The C startup function
@@ -466,9 +461,6 @@ elf_read_firmware(
 						ELF32_ST_TYPE(sym.st_info) == STT_OBJECT) {
 					const char * name = elf_strptr(elf, shdr.sh_link, sym.st_name);
 
-					// if its a bootloader, this symbol will be the entry point we need
-					if (!strcmp(name, "__vectors"))
-						firmware->flashbase = sym.st_value;
 					avr_symbol_t * s = malloc(sizeof(avr_symbol_t) + strlen(name) + 1);
 					strcpy((char*)s->symbol, name);
 					s->addr = sym.st_value;

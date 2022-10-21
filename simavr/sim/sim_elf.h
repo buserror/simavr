@@ -64,7 +64,6 @@ typedef struct elf_firmware_t {
 	uint16_t	command_register_addr;
 	uint16_t	console_register_addr;
 
-	uint32_t	flashbase;	// base address
 	uint8_t * 	flash;
 	uint32_t	flashsize;
 	uint32_t 	datasize;

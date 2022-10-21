@@ -220,19 +220,18 @@ sim_setup_firmware(const char * filename, uint32_t loadBase,
 
 		for (int ci = 0; ci < cnt; ci++) {
 			if (chunk[ci].baseaddr < (1*1024*1024)) {
-				if (fp->flash) {
-					printf("Ignoring chunk %d, "
-						   "possible flash redefinition %08x, %d\n",
-						   ci, chunk[ci].baseaddr, chunk[ci].size);
-					free(chunk[ci].data);
-					chunk[ci].data = NULL;
-					continue;
-				}
-				fp->flash = chunk[ci].data;
-				fp->flashsize = chunk[ci].size;
-				fp->flashbase = chunk[ci].baseaddr;
-				printf("Load HEX flash %08x, %d at %08x\n",
-					   fp->flashbase, fp->flashsize, fp->flashbase);
+				uint32_t segment_end = chunk[ci].baseaddr + chunk[ci].size;
+				if (fp->flashsize<segment_end)
+					/* Allocate enough memory to load the segment.
+					   Note that realloc does the right thing in
+					   case fp->flash==NULL (i.o.w. no memory allocated yet) */
+					realloc(fp->flash,segment_end);
+				memcpy(fp->flash + chunk[ci].baseaddr, chunk[ci].data, chunk[ci].size);
+				free(chunk[ci].data);
+				chunk[ci].data = NULL;
+				fp->flashsize = segment_end;
+				printf("Load HEX flash addr=%08x sz=%d\n",
+					   chunk[ci].baseaddr, fp->flashsize);
 			} else if (chunk[ci].baseaddr >= AVR_SEGMENT_OFFSET_EEPROM ||
 					   (chunk[ci].baseaddr + loadBase) >=
 							AVR_SEGMENT_OFFSET_EEPROM) {
