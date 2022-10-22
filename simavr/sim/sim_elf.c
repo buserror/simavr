@@ -387,7 +387,7 @@ elf_read_firmware(
 				continue;
 		} else if (php->p_paddr < 0x840000) {
 			/* Lock bits. */
-			elf_copy_segment(fd, php, &firmware->lockbits, &firmware->fusesize);
+			elf_copy_segment(fd, php, &firmware->lockbits, &firmware->locksize);
 		}
 	}
 

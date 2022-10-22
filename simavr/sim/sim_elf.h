@@ -74,6 +74,7 @@ typedef struct elf_firmware_t {
 	uint8_t *	fuse;
 	uint32_t	fusesize;
 	uint8_t *	lockbits;
+	uint32_t	locksize;
 
 #if ELF_SYMBOLS
 	avr_symbol_t **  symbol;
