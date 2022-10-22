@@ -274,23 +274,24 @@ elf_parse_mmcu_section(
 }
 
 static int
-elf_copy_segment(int fd, Elf32_Phdr *php, uint8_t **dest)
+elf_copy_segment(int fd, Elf32_Phdr *php, uint8_t **buffer, uint32_t *bufsize)
 {
 	int rv;
 	Elf32_Addr segment_end;
 
 	/* Allocate enough memory to load the segment.
            Note that both malloc_usable_size and realloc do the right thing in
-           case *dest==NULL (i.o.w. no memory allocated yet) */
-	segment_end = php->p_vaddr + php->p_memsz;
-	if (malloc_usable_size(*dest) < segment_end) {
-		*dest = realloc(*dest, segment_end);
+           case *buffer==NULL (i.o.w. no memory allocated yet) */
+	segment_end = php->p_paddr + php->p_memsz;
+	if (*bufsize < segment_end) {
+		*buffer = realloc(*buffer, segment_end);
+		*bufsize = segment_end;
 	}
-	if (!*dest)
+	if (!*buffer)
 		return -1;
 
 	lseek(fd, php->p_offset, SEEK_SET);
-	rv = read(fd, *dest + php->p_vaddr, php->p_filesz);
+	rv = read(fd, *buffer + php->p_paddr, php->p_filesz);
 	if (rv != php->p_filesz) {
 		AVR_LOG(NULL, LOG_ERROR,
 				"Got %d when reading %d bytes for %x at offset %d "
@@ -302,9 +303,9 @@ elf_copy_segment(int fd, Elf32_Phdr *php, uint8_t **dest)
 	   size of the segment. If the memory size is larger than the file
 	   file, the remainder should be cleared with zeros. */
 	if (php->p_memsz > php->p_filesz)
-		bzero(*dest + php->p_filesz, php->p_memsz - php->p_filesz);
+		bzero(*buffer + php->p_filesz, php->p_memsz - php->p_filesz);
 	AVR_LOG(NULL, LOG_DEBUG, "Loaded %d bytes at %x\n",
-			php->p_filesz, php->p_vaddr);
+			php->p_filesz, php->p_paddr);
 	return 0;
 }
 
@@ -369,51 +370,21 @@ elf_read_firmware(
 #endif
 		if (php->p_type != PT_LOAD || php->p_filesz == 0)
 			continue;
-		if (php->p_vaddr < 0x800000) {
+		if (php->p_paddr < 0x800000) {
 			/* Explicit flash section. Load it. */
-
-			if (elf_copy_segment(fd, php, &firmware->flash))
+			if (elf_copy_segment(fd, php, &firmware->flash, &firmware->flashsize))
 				continue;
-		} else if (php->p_vaddr < 0x810000) {
-			/* Data space.  If there are initialised variables, treat
-			 * them as extra initialised flash.  The C startup function
-			 * understands that and will copy them to RAM.
-			 */
-
-			if (firmware->flash) {
-				uint8_t *where;
-
-				firmware->flash =
-					realloc(firmware->flash,firmware->flashsize + php->p_filesz);
-				if (!firmware->flash)
-					return -1;
-				where = firmware->flash + firmware->flashsize;
-				elf_copy_segment(fd, php, &where);
-				firmware->flashsize += php->p_filesz;
-			} else {
-				/* If this ever happens, add a second pass. */
-
-				AVR_LOG(NULL, LOG_ERROR,
-						"Initialialised data but no flash (%d bytes at %x)!\n",
-						php->p_filesz, php->p_vaddr);
-				return -1;
-			}
-		} else if (php->p_vaddr < 0x820000) {
+		} else if (php->p_paddr < 0x820000) {
 			/* EEPROM. */
-
-			if (elf_copy_segment(fd, php, &firmware->eeprom))
+			if (elf_copy_segment(fd, php, &firmware->eeprom, &firmware->eesize))
 				continue;
-			firmware->eesize = php->p_filesz;
-		} else if (php->p_vaddr < 0x830000) {
+		} else if (php->p_paddr < 0x830000) {
 			/* Fuses. */
-
-			if (elf_copy_segment(fd, php, &firmware->fuse))
+			if (elf_copy_segment(fd, php, &firmware->fuse, &firmware->fusesize))
 				continue;
-			firmware->fusesize = php->p_filesz;
-		} else if (php->p_vaddr < 0x840000) {
+		} else if (php->p_paddr < 0x840000) {
 			/* Lock bits. */
-
-			elf_copy_segment(fd, php, &firmware->lockbits);
+			elf_copy_segment(fd, php, &firmware->lockbits, &firmware->fusesize);
 		}
 	}
 
