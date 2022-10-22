@@ -388,8 +388,6 @@ elf_read_firmware(
 		}
 	}
 
-	firmware->flashsize = malloc_usable_size(firmware->flash);
-
 	/* Scan the section table for .mmcu magic and symbols. */
 
 	while ((scn = elf_nextscn(elf, scn)) != NULL) {
