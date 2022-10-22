@@ -74,9 +74,8 @@ avr_load_firmware(
 #endif
 
 	avr_loadcode(avr, firmware->flash,
-			firmware->flashsize, firmware->flashbase);
-	avr->codeend = firmware->flashsize +
-			firmware->flashbase - firmware->datasize;
+			firmware->flashsize, 0);
+	avr->codeend = firmware->flashsize - firmware->datasize;
 
 	if (firmware->eeprom && firmware->eesize) {
 		avr_eeprom_desc_t d = {
@@ -273,17 +272,24 @@ elf_parse_mmcu_section(
 }
 
 static int
-elf_copy_segment(int fd, Elf32_Phdr *php, uint8_t **dest)
+elf_copy_segment(int fd, Elf32_Phdr *php, uint8_t **buffer, uint32_t *bufsize)
 {
 	int rv;
+	Elf32_Addr segment_end;
 
-	if (*dest == NULL)
-		*dest = malloc(php->p_filesz);
-	if (!*dest)
+	/* Allocate enough memory to load the segment.
+           Note that both malloc_usable_size and realloc do the right thing in
+           case *buffer==NULL (i.o.w. no memory allocated yet) */
+	segment_end = php->p_paddr + php->p_memsz;
+	if (*bufsize < segment_end) {
+		*buffer = realloc(*buffer, segment_end);
+		*bufsize = segment_end;
+	}
+	if (!*buffer)
 		return -1;
 
 	lseek(fd, php->p_offset, SEEK_SET);
-	rv = read(fd, *dest, php->p_filesz);
+	rv = read(fd, *buffer + php->p_paddr, php->p_filesz);
 	if (rv != php->p_filesz) {
 		AVR_LOG(NULL, LOG_ERROR,
 				"Got %d when reading %d bytes for %x at offset %d "
@@ -291,23 +297,14 @@ elf_copy_segment(int fd, Elf32_Phdr *php, uint8_t **dest)
 				rv, php->p_filesz, php->p_vaddr, php->p_offset);
 		return -1;
 	}
+	/* ELF specifications make a differnce between file size and memory
+	   size of the segment. If the memory size is larger than the file
+	   file, the remainder should be cleared with zeros. */
+	if (php->p_memsz > php->p_filesz)
+		memset(*buffer + php->p_filesz, 0, php->p_memsz - php->p_filesz);
 	AVR_LOG(NULL, LOG_DEBUG, "Loaded %d bytes at %x\n",
-			php->p_filesz, php->p_vaddr);
+			php->p_filesz, php->p_paddr);
 	return 0;
-}
-
-static int
-elf_handle_segment(int fd, Elf32_Phdr *php, uint8_t **dest, const char *name)
-{
-	if (*dest) {
-		AVR_LOG(NULL, LOG_ERROR,
-				"Unexpected extra %s data: %d bytes at %x.\n",
-				name, php->p_filesz, php->p_vaddr);
-		return -1;
-	} else {
-		elf_copy_segment(fd, php, dest);
-		return 0;
-	}
 }
 
 /* The structure *firmware must be pre-initialised to zero, then optionally
@@ -371,53 +368,24 @@ elf_read_firmware(
 #endif
 		if (php->p_type != PT_LOAD || php->p_filesz == 0)
 			continue;
-		if (php->p_vaddr < 0x800000) {
+		if (php->p_paddr < 0x800000) {
 			/* Explicit flash section. Load it. */
-
-			if (elf_handle_segment(fd, php, &firmware->flash, "Flash"))
+			if (elf_copy_segment(fd, php, &firmware->flash, &firmware->flashsize))
 				continue;
-			firmware->flashsize = php->p_filesz;
-			firmware->flashbase = php->p_vaddr;
-		} else if (php->p_vaddr < 0x810000) {
-			/* Data space.  If there are initialised variables, treat
-			 * them as extra initialised flash.  The C startup function
-			 * understands that and will copy them to RAM.
-			 */
-
-			if (firmware->flash) {
-				uint8_t *where;
-
-				firmware->flash = realloc(firmware->flash,
-										  firmware->flashsize + php->p_filesz);
-				if (!firmware->flash)
-					return -1;
-				where = firmware->flash + firmware->flashsize;
-				elf_copy_segment(fd, php, &where);
-				firmware->flashsize += php->p_filesz;
-			} else {
-				/* If this ever happens, add a second pass. */
-
-				AVR_LOG(NULL, LOG_ERROR,
-						"Initialialised data but no flash (%d bytes at %x)!\n",
-						php->p_filesz, php->p_vaddr);
-				return -1;
-			}
-		} else if (php->p_vaddr < 0x820000) {
+		} else if (php->p_paddr < 0x810000) {
+			AVR_LOG(NULL, LOG_ERROR, "ELF file attempts to load data into AVR SRAM!\n");
+			return -1;
+		} else if (php->p_paddr < 0x820000) {
 			/* EEPROM. */
-
-			if (elf_handle_segment(fd, php, &firmware->eeprom, "EEPROM"))
+			if (elf_copy_segment(fd, php, &firmware->eeprom, &firmware->eesize))
 				continue;
-			firmware->eesize = php->p_filesz;
-		} else if (php->p_vaddr < 0x830000) {
+		} else if (php->p_paddr < 0x830000) {
 			/* Fuses. */
-
-			if (elf_handle_segment(fd, php, &firmware->fuse, "Fuses"))
+			if (elf_copy_segment(fd, php, &firmware->fuse, &firmware->fusesize))
 				continue;
-			firmware->fusesize = php->p_filesz;
-		} else if (php->p_vaddr < 0x840000) {
+		} else if (php->p_paddr < 0x840000) {
 			/* Lock bits. */
-
-			elf_handle_segment(fd, php, &firmware->lockbits, "Lock bits");
+			elf_copy_segment(fd, php, &firmware->lockbits, &firmware->locksize);
 		}
 	}
 
@@ -463,9 +431,6 @@ elf_read_firmware(
 						ELF32_ST_TYPE(sym.st_info) == STT_OBJECT) {
 					const char * name = elf_strptr(elf, shdr.sh_link, sym.st_name);
 
-					// if its a bootloader, this symbol will be the entry point we need
-					if (!strcmp(name, "__vectors"))
-						firmware->flashbase = sym.st_value;
 					avr_symbol_t * s = malloc(sizeof(avr_symbol_t) + strlen(name) + 1);
 					strcpy((char*)s->symbol, name);
 					s->addr = sym.st_value;
