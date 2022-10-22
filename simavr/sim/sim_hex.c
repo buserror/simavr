@@ -225,7 +225,7 @@ sim_setup_firmware(const char * filename, uint32_t loadBase,
 					/* Allocate enough memory to load the segment.
 					   Note that realloc does the right thing in
 					   case fp->flash==NULL (i.o.w. no memory allocated yet) */
-					realloc(fp->flash,segment_end);
+					fp->flash = realloc(fp->flash,segment_end);
 				memcpy(fp->flash + chunk[ci].baseaddr, chunk[ci].data, chunk[ci].size);
 				free(chunk[ci].data);
 				chunk[ci].data = NULL;
