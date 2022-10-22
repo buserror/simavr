@@ -374,6 +374,9 @@ elf_read_firmware(
 			/* Explicit flash section. Load it. */
 			if (elf_copy_segment(fd, php, &firmware->flash, &firmware->flashsize))
 				continue;
+		} else if (php->p_paddr < 0x810000) {
+			AVR_LOG(NULL, LOG_ERROR, "ELF file attempts to load data into AVR SRAM!\n");
+			return -1;
 		} else if (php->p_paddr < 0x820000) {
 			/* EEPROM. */
 			if (elf_copy_segment(fd, php, &firmware->eeprom, &firmware->eesize))
