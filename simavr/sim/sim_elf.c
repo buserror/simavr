@@ -29,8 +29,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <malloc.h>
-#include <limits.h>
 #include <libelf.h>
 #include <gelf.h>
 
