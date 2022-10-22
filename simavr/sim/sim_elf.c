@@ -303,7 +303,7 @@ elf_copy_segment(int fd, Elf32_Phdr *php, uint8_t **buffer, uint32_t *bufsize)
 	   size of the segment. If the memory size is larger than the file
 	   file, the remainder should be cleared with zeros. */
 	if (php->p_memsz > php->p_filesz)
-		bzero(*buffer + php->p_filesz, php->p_memsz - php->p_filesz);
+		memset(*buffer + php->p_filesz, 0, php->p_memsz - php->p_filesz);
 	AVR_LOG(NULL, LOG_DEBUG, "Loaded %d bytes at %x\n",
 			php->p_filesz, php->p_paddr);
 	return 0;
