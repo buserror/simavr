@@ -123,7 +123,7 @@ avr_init(
 	avr->sleep = avr_callback_sleep_raw;
 	// number of address bytes to push/pull on/off the stack
 	avr->address_size = avr->eind ? 3 : 2;
-	avr->log = 1;
+	avr->log = LOG_ERROR;
 	avr_reset(avr);
 	avr_regbit_set(avr, avr->reset_flags.porf);		// by  default set to power-on reset
 	return 0;
