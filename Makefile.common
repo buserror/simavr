@@ -114,7 +114,7 @@ OBJ 		:= obj-${shell $(CC) -dumpmachine}
 LIBDIR		:= ${shell pwd}/${SIMAVR}/${OBJ}
 LDFLAGS 	+= -L${LIBDIR} -lsimavr -lm
 
-LDFLAGS 	+= -lelf
+LDFLAGS 	+= -lelf -ldwarf
 
 ifeq (${WIN}, Msys)
 LDFLAGS      += -lws2_32

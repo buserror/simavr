@@ -105,7 +105,9 @@ avr_init(
 	memset(avr->data, 0, avr->ramend + 1);
 #ifdef CONFIG_SIMAVR_TRACE
 	avr->trace_data = calloc(1, sizeof(struct avr_trace_data_t));
+        avr->trace_data->data_names_size = avr->ioend + 1;
 #endif
+        avr->data_names = calloc(avr->ioend + 1, sizeof (char *));
 
 	AVR_LOG(avr, LOG_TRACE, "%s init\n", avr->mmcu);
 
