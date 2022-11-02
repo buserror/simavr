@@ -114,7 +114,13 @@ OBJ 		:= obj-${shell $(CC) -dumpmachine}
 LIBDIR		:= ${shell pwd}/${SIMAVR}/${OBJ}
 LDFLAGS 	+= -L${LIBDIR} -lsimavr -lm
 
-LDFLAGS 	+= -lelf -ldwarf
+# Are libelf and/or libdwarf installed?
+# The included file is created when running "make" at the top level.
+
+ifeq ($(shell test -f $(SIMAVR)/../Libs.mk || echo Exists), Exists)
+$(warning Missing library configuration file.  Make from top level to create it.)
+endif
+-include $(SIMAVR)/../Libs.mk
 
 ifeq (${WIN}, Msys)
 LDFLAGS      += -lws2_32

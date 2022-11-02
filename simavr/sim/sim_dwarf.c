@@ -5,7 +5,7 @@
 	Extract debug symbols and line numbers from  .elf file for use
         by gdb ("info io_registers" command) and tracing.
 
-	Copyright 2021, Giles Atkinson
+	Copyright 2021, 2022 Giles Atkinson
 
  	This file is part of simavr.
 
@@ -22,6 +22,8 @@
 	You should have received a copy of the GNU General Public License
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+#ifdef HAVE_LIBDWARF
 
 #include <stdio.h>
 #include <string.h>
@@ -349,3 +351,8 @@ int avr_read_dwarf(avr_t *avr, const char *filename)
     close(fd);
     return 0;
 }
+
+# else // No libdwarf
+#include "sim_avr.h"
+int avr_read_dwarf(avr_t *avr, const char *filename) { return 0; }
+#endif
