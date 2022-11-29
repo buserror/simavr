@@ -26,6 +26,7 @@
 
 #include "sim_core_declare.h"
 #include "avr_eeprom.h"
+#include "avr_flash.h"
 #include "avr_watchdog.h"
 #include "avr_extint.h"
 #include "avr_ioport.h"
@@ -43,6 +44,7 @@ struct mcu_t {
 	avr_t core;
 	avr_eeprom_t 	eeprom;
 	avr_watchdog_t	watchdog;
+	avr_flash_t 	selfprog;
 	avr_extint_t	extint;
 	avr_ioport_t	portb;
 	avr_acomp_t		acomp;
@@ -66,6 +68,15 @@ const struct mcu_t SIM_CORENAME = {
 
 		.init = tx5_init,
 		.reset = tx5_reset,
+	},
+	.selfprog = {
+		.flags = 0,
+		.r_spm = SPMCSR,
+		.spm_pagesize = SPM_PAGESIZE,
+		.selfprgen = AVR_IO_REGBIT(SPMCSR, SPMEN),
+		.pgers = AVR_IO_REGBIT(SPMCSR, PGERS),
+		.pgwrt = AVR_IO_REGBIT(SPMCSR, PGWRT),
+		.blbset = AVR_IO_REGBIT(SPMCSR, RFLB),
 	},
 	AVR_EEPROM_DECLARE(EE_RDY_vect),
 	AVR_WATCHDOG_DECLARE(WDTCR, WDT_vect),
