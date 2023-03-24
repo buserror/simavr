@@ -83,7 +83,8 @@ typedef struct avr_usi_t {
 
 void avr_usi_init(avr_t * avr, avr_usi_t * port);
 
-#define AVR_USI_DECLARE(_portname, _portreg, _pin_di, _pin_do, _pin_usck) \
+#define AVR_USI_BASE_DECLARE(_portname, _portreg, \
+							 _pin_di, _pin_do, _pin_usck, _vec) \
 	.usi = { \
 		.r_usicr = USICR, \
 		.r_usisr = USISR, \
@@ -112,11 +113,17 @@ void avr_usi_init(avr_t * avr, avr_usi_t * port);
 		.usi_ovf = { \
 			.enable = AVR_IO_REGBIT(USICR, USIOIE), \
 			.raised = AVR_IO_REGBIT(USISR, USIOIF), \
-			.vector = USI_OVF_vect, \
+			.vector = _vec, \
 			.raise_sticky = 1, \
 		}, \
 	}
 
+#define AVR_USI_DECLARE(_portname, _portreg, _pin_di, _pin_do, _pin_usck) \
+	AVR_USI_BASE_DECLARE(_portname, _portreg, _pin_di, _pin_do, _pin_usck, \
+						 USI_OVF_vect)
+#define AVR_USI_ALT_DECLARE(_portname, _portreg, _pin_di, _pin_do, _pin_usck) \
+	AVR_USI_BASE_DECLARE(_portname, _portreg, _pin_di, _pin_do, _pin_usck, \
+						 USI_OVERFLOW_vect)
 #ifdef __cplusplus
 };
 #endif

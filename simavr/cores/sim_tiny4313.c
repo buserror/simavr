@@ -26,6 +26,7 @@
 #include "avr_uart.h"
 #include "avr_timer.h"
 #include "avr_acomp.h"
+#include "avr_usi.h"
 
 static void init(struct avr_t * avr);
 static void reset(struct avr_t * avr);
@@ -48,6 +49,7 @@ static const struct mcu_t {
 	avr_uart_t		uart;
 	avr_timer_t		timer0,timer1;
 	avr_acomp_t		acomp;
+	avr_usi_t	    usi;
 } mcu = {
 	.core = {
 		.mmcu = "attiny4313",
@@ -216,7 +218,7 @@ static const struct mcu_t {
 			.vector = ANA_COMP_vect,
 		}
 	},
-
+    AVR_USI_ALT_DECLARE('B', PORTB, 5, 6, 7)
 };
 
 static avr_t * make()
@@ -243,6 +245,7 @@ static void init(struct avr_t * avr)
 	avr_timer_init(avr, &mcu->timer0);
 	avr_timer_init(avr, &mcu->timer1);
 	avr_acomp_init(avr, &mcu->acomp);
+	avr_usi_init(avr, &mcu->usi);
 }
 
 static void reset(struct avr_t * avr)

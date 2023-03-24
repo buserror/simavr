@@ -54,8 +54,9 @@ static void _avr_usi_clock_counter(struct avr_t * avr, avr_usi_t * p)
 	DBG(printf("USI ------------------- 	4bC new value %d\n", counter_val));
 
 	if(counter_val > AVR_USI_COUNTER_MAX) {
-		avr_core_watch_write(avr, p->r_usibr, avr->data[p->r_usidr]);
-		DBG(printf("USI ------------------- 	OVERFLOW! usibr = 0x%02X\n", avr->data[p->r_usibr]));
+		if (p->r_usibr)
+			avr_core_watch_write(avr, p->r_usibr, avr->data[p->r_usidr]);
+		DBG(printf("USI ------------------- 	OVERFLOW! usidr = 0x%02X\n", avr->data[p->r_usidr]));
 		avr_raise_interrupt(avr, &p->usi_ovf);
 	}
 }
@@ -366,6 +367,7 @@ void avr_usi_init(avr_t * avr, avr_usi_t * p)
 	avr_register_io_write(avr, p->r_usisr, avr_usi_write_usisr, p);
 	avr_register_io_read (avr, p->r_usicr, avr_usi_read_usicr,  p);
 	avr_register_io_write(avr, p->r_usicr, avr_usi_write_usicr, p);
-	avr_register_io_write(avr, p->r_usibr, avr_usi_write_usibr, p);
+	if (p->r_usibr)
+		avr_register_io_write(avr, p->r_usibr, avr_usi_write_usibr, p);
 	avr_register_io_write(avr, p->r_usidr, avr_usi_write_usidr, p);
 }

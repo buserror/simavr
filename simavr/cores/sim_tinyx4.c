@@ -37,6 +37,7 @@ void tx4_init(struct avr_t * avr)
     avr_adc_init(avr, &mcu->adc);
     avr_timer_init(avr, &mcu->timer0);
     avr_timer_init(avr, &mcu->timer1);
+	avr_usi_init(avr, &mcu->usi);
 }
 
 void tx4_reset(struct avr_t * avr)
