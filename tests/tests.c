@@ -20,7 +20,8 @@ static int finished = 0;
 #if defined(__GLIBC__) && !defined(__MINGW32__)
 static FILE *orig_stderr = NULL;
 #define restore_stderr()	{ if (orig_stderr) stderr = orig_stderr; }
-#define map_stderr()		{ if (tests_disable_stdout) { \
+#define map_stderr()		{ if (tests_disable_stdout && \
+								  orig_stderr == NULL) {  \
 								orig_stderr = stderr;	\
 								fclose(stdout);			\
 								stderr = stdout;		\
@@ -117,6 +118,8 @@ static avr_t *tests_init_fw(elf_firmware_t *fwp, const char *filename) {
 
 avr_t *tests_init_avr(const char *elfname) {
 	elf_firmware_t fw = {};
+
+	map_stderr();
 	return tests_init_fw(&fw, elfname);
 }
 

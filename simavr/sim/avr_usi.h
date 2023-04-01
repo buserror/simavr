@@ -74,11 +74,13 @@ typedef struct avr_usi_t {
 	avr_regbit_t	pin_do;		// data out pin
 	avr_regbit_t	pin_usck;	// clock pin
 
+	avr_irq_t      *toggle_irq; // Clock pins IRQ
+
 	avr_int_vector_t usi_start;	// start condition interrupt
 	avr_int_vector_t usi_ovf;	// overflow interrupt
 
-	uint8_t			in_bit0;   // DI pin input value to be clocked into USIDR bit 0
-	uint8_t			in_usck;   // the last value that USCK was set to
+	uint8_t		clock_high;	// clock phase
+	uint8_t		in_bit0;        // DI pin input value.
 } avr_usi_t;
 
 void avr_usi_init(avr_t * avr, avr_usi_t * port);

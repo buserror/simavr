@@ -35,23 +35,15 @@
 #define DBG(x)
 #endif
 
-static uint8_t _usi_get_counter(struct avr_t * avr, avr_usi_t * p)
-{
-	return avr->data[p->r_usisr] & 0xF;
-}
-
-static void _usi_set_counter(struct avr_t * avr, avr_usi_t * p, uint8_t new_val)
-{
-	avr->data[p->r_usisr] = (_usi_get_counter(avr, p) & ~0xF) | (new_val & 0xF);
-}
-
 static void _avr_usi_clock_counter(struct avr_t * avr, avr_usi_t * p)
 {
-	uint8_t counter_val = _usi_get_counter(avr, p);
-	counter_val++;
-	_usi_set_counter(avr, p, counter_val);
+	uint8_t counter_val = avr->data[p->r_usisr] & 0xF;
 
-	DBG(printf("USI ------------------- 	4bC new value %d\n", counter_val));
+	counter_val++;
+	avr->data[p->r_usisr] &= 0xf0;
+	avr->data[p->r_usisr] |= (counter_val & 0x0f);
+
+	DBG(printf("USI ------------------- 	new value %d\n", counter_val));
 
 	if(counter_val > AVR_USI_COUNTER_MAX) {
 		if (p->r_usibr)
@@ -61,15 +53,25 @@ static void _avr_usi_clock_counter(struct avr_t * avr, avr_usi_t * p)
 	}
 }
 
+/* Force out current high bit. */
+
+static void _avr_usi_push_high_bit(avr_usi_t * p)
+{
+	avr_raise_irq(&p->io.irq[USI_IRQ_DO],
+				  ((p->io.avr->data[p->r_usidr] & 0x80) ? 1 : 0) |
+				      AVR_IOPORT_OUTPUT);
+}
+
 static void _avr_usi_set_usidr(struct avr_t * avr, avr_usi_t * p, uint8_t new_val)
 {
 	DBG(printf("USI ------------------- 	USIDR new value 0x%02X\n", new_val));
-	bool top_set = avr->data[p->r_usidr] & 0x80;
+
 	avr_core_watch_write(avr, p->r_usidr, new_val);
 
 	switch(avr_regbit_get(avr, p->usiwm)) {
 		case USI_WM_THREEWIRE:
-			avr_raise_irq(&p->io.irq[USI_IRQ_DO], AVR_IOPORT_OUTPUT | (top_set ? 1 : 0));
+			if (!p->clock_high)
+				_avr_usi_push_high_bit(p);
 			break;
 		case USI_WM_TWOWIRE:
 		case USI_WM_TWOWIRE_HOLD:
@@ -158,20 +160,32 @@ static void avr_usi_write_usisr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 	avr_usi_t * p = (avr_usi_t *)param;
 	DBG(printf("USI ------------------- avr_usi_write_usisr = %02x\n", v));
 
-	uint8_t old_usisif = avr_regbit_get(avr, p->usi_start.raised);
-	uint8_t old_usioif = avr_regbit_get(avr, p->usi_ovf.raised);
+	if (v & (1 << p->usi_start.raised.bit)) {
+		DBG(printf("USI ------------------- 	clearing USISIF\n"));
+		v &= ~(1 << p->usi_start.raised.bit);
+		avr_clear_interrupt(avr, &p->usi_start);
+	}
+
+	if (v & (1 << p->usi_ovf.raised.bit)) {
+		DBG(printf("USI ------------------- 	clearing USIOIF\n"));
+		v &= ~(1 << p->usi_ovf.raised.bit);
+		avr_clear_interrupt(avr, &p->usi_ovf);
+	}
+
+	if (v & (1 << p->usipf.bit)) {
+		DBG(printf("USI ------------------- 	clearing USIPF\n"));
+		v &= ~(1 << p->usipf.bit);
+	} else {
+		v |= (avr->data[addr] & (1 << p->usipf.bit));
+	}
+
+	if (v & (1 << p->usidc.bit)) {
+		DBG(printf("USI ------------------- 	ignoring USIDC\n"));
+		v &= ~(1 << p->usidc.bit);
+		v |= (avr->data[addr] & (1 << p->usidc.bit));
+	}
 
 	avr_core_watch_write(avr, addr, v);
-
-	if (avr_clear_interrupt_if(avr, &p->usi_start, old_usisif)) {
-		DBG(printf("USI ------------------- 	acknowledging USISIF\n"));
-		// TODO: release the hold on USCL
-	}
-
-	if (avr_clear_interrupt_if(avr, &p->usi_ovf, old_usioif)) {
-		DBG(printf("USI ------------------- 	acknowledging USIOIF\n"));
-		// TODO: release the hold on USCL
-	}
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -205,31 +219,66 @@ static void avr_usi_write_usicr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 	uint8_t new_wm = avr_regbit_get(avr, p->usiwm);
 	uint8_t new_cs = avr_regbit_get(avr, p->usics);
 
+	// check if clock select changed
+
+	if (new_cs != old_cs) {
+		uint8_t old_clock_high = p->clock_high;
+
+		DBG(printf("USI -------------------     cs = %d\n", new_cs));
+		if (new_cs < USI_CS_EXT_POS) {
+			p->clock_high = 0;
+		} else {
+			avr_ioport_getirq_t req_ck = { .bit = p->pin_usck };
+
+			if (avr_ioctl(avr, AVR_IOCTL_IOPORT_GETIRQ_REGBIT, &req_ck) > 0)
+				p->clock_high = ((req_ck.irq[0]->value & 0xff) != 0);
+			if (new_cs == USI_CS_EXT_NEG)
+				p->clock_high ^= 1;
+		}
+
+		if (old_clock_high && !p->clock_high)
+			_avr_usi_push_high_bit(p);
+
+		// TODO: hook things up differently
+	}
+
 	// check if wire mode changed
+
 	if (new_wm != old_wm) {
 		DBG(printf("USI -------------------     wm = %d\n", new_wm));
 		_avr_usi_disconnect_irqs(avr, p, old_wm);
 		_avr_usi_connect_irqs(avr, p, new_wm);
-	}
 
-	// check if clock select changed
-	if (new_cs != old_cs) {
-		DBG(printf("USI -------------------     cs = %d\n", new_cs));
-		// TODO: hook things up differently
+		if (new_wm && !old_wm && !p->clock_high)
+			_avr_usi_push_high_bit(p);
 	}
 
 	// check if we're strobing the USI clock
 	if (avr_regbit_get(avr, p->usiclk)) {
 		DBG(printf("USI -------------------     strobe USI clock\n"));
+		if (new_cs == 0) {
+			/* Strobe - a fake clock bit. */
+
+			_avr_usi_clock_usidr(avr, p);
+			_avr_usi_clock_counter(avr, p);
+		}
 		avr_regbit_clear(avr, p->usiclk);
-		// TODO: this
 	}
 
 	// check if we're toggling the clock output
+
 	if (avr_regbit_get(avr, p->usitc)) {
+		uint8_t out;
+
+		/* The feature of directly clocking the counter is not implemented
+		 * as it would cause double clocking without increasing speed.
+		 */
+
 		DBG(printf("USI -------------------     toggle USCL\n"));
+
+		out = !(p->toggle_irq->value & 0xff);
+		avr_raise_irq(p->toggle_irq, out | AVR_IOPORT_OUTPUT);
 		avr_regbit_clear(avr, p->usitc);
-		// TODO: this
 	}
 }
 
@@ -258,7 +307,7 @@ static void avr_usi_write_usidr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 static void _avr_usi_di_changed(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	avr_usi_t * p = (avr_usi_t *)param;
-	// avr_t * avr = p->io.avr;
+
 	DBG(printf("USI ------------------- DI changed to %d at cycle %llu\n",
 		value,
 		p->io.avr->cycle));
@@ -268,33 +317,46 @@ static void _avr_usi_di_changed(struct avr_irq_t * irq, uint32_t value, void * p
 static void _avr_usi_usck_changed(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	avr_usi_t * p = (avr_usi_t *)param;
-	avr_t * avr = p->io.avr;
+	avr_t     * avr = p->io.avr;
+    int         up, down;
+	uint8_t     wm, cs;
 
-	int up = !irq->value && value;
-	int down = irq->value && !value;
+	cs = avr_regbit_get(avr, p->usics);
+	if (cs < USI_CS_EXT_POS)
+		return;					// Clocked elsewhere.
 
-	DBG(printf("USI ------------------- USCK had a %s edge at cycle %llu\n",
+	wm = avr_regbit_get(avr, p->usiwm);
+
+	value &= 0xff;	// Ignore output flag
+	if (cs == USI_CS_EXT_POS) {
+		up = !(irq->value & 0xff) && value;
+		down = (irq->value & 0xff) && !value;
+	} else {
+		down = !(irq->value & 0xff) && value;
+		up = (irq->value & 0xff) && !value;
+	}
+
+	DBG(printf("USI ------------------- USCK had a logically %s edge at cycle %llu\n",
 		up ? "rising" : down ? "falling" : "?",
 		avr->cycle));
-
-	uint8_t wm = avr_regbit_get(avr, p->usiwm);
 
 	if(wm == USI_WM_TWOWIRE || wm == USI_WM_TWOWIRE_HOLD) {
 		// TODO: tell the TWI CCU that something happened
 	}
 
-	uint8_t cs = avr_regbit_get(avr, p->usics);
+	/* External input clocks the counter on both edges.  Clock USIDR first,
+	 * so if the counter overflows, the interrupt will see it.  Latch output
+	 * on "falling" edge.
+	 */
 
-	// clock USIDR first, so if the counter overflows, the interrupt will see it
-	if(cs == USI_CS_EXT_POS) {
-		if(up)
+	if (up || down) {
+		if (up) {
+			p->clock_high = 1;
 			_avr_usi_clock_usidr(avr, p);
-
-		_avr_usi_clock_counter(avr, p);
-	} else if(cs == USI_CS_EXT_NEG) {
-		if(down)
-			_avr_usi_clock_usidr(avr, p);
-
+		} else {
+			p->clock_high = 0;
+			_avr_usi_push_high_bit(p);
+		}
 		_avr_usi_clock_counter(avr, p);
 	}
 }
@@ -319,8 +381,8 @@ void avr_usi_reset(struct avr_io_t *io)
 	struct avr_t * avr = p->io.avr;
 
 	// set up input IRQs
-	avr_irq_register_notify(&p->io.irq[USI_IRQ_DI],        _avr_usi_di_changed,   p);
-	avr_irq_register_notify(&p->io.irq[USI_IRQ_USCK],      _avr_usi_usck_changed, p);
+	avr_irq_register_notify(&p->io.irq[USI_IRQ_DI], _avr_usi_di_changed, p);
+	avr_irq_register_notify(&p->io.irq[USI_IRQ_USCK], _avr_usi_usck_changed, p);
 	avr_irq_register_notify(&p->io.irq[USI_IRQ_TIM0_COMP], _avr_usi_tim0_comp,    p);
 
 	// connect DI
@@ -333,6 +395,7 @@ void avr_usi_reset(struct avr_io_t *io)
 	avr_ioport_getirq_t req_ck = { .bit = p->pin_usck };
 	if (avr_ioctl(avr, AVR_IOCTL_IOPORT_GETIRQ_REGBIT, &req_ck) > 0) {
 		avr_connect_irq(req_ck.irq[0], &p->io.irq[USI_IRQ_USCK]);
+		p->toggle_irq = req_ck.irq[0];
 	}
 
 	// connect TIM0
