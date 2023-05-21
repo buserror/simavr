@@ -158,6 +158,11 @@ avr_ioport_irq_notify(
 	value &= 0xff;
 	uint8_t mask = 1 << irq->irq;
 	uint8_t ddr = avr->data[p->r_ddr];
+	// Set the real PIN bit. Ignore DDR as it's masked when read.
+
+	avr->data[p->r_pin] &= ~mask;
+	if (value)
+		avr->data[p->r_pin] |= mask;
 
 	if (output) {
 		if ((mask & ddr) == 0)
