@@ -532,8 +532,11 @@ avr_uart_init(
 	// status bits
 	// monitor code that reads the rxc flag, and delay it a bit
 	avr_register_io_read(avr, p->rxc.raised.reg, avr_uart_status_read, p);
-	if (p->fe.reg != p->rxc.raised.reg)
-		avr_register_io_read(avr, p->fe.reg, avr_uart_status_read, p);
+    if (p->fe.reg) {
+        if (p->fe.reg != p->rxc.raised.reg) {
+            avr_register_io_read(avr, p->fe.reg, avr_uart_status_read, p);
+        }
+    }
 
 	if (p->udrc.vector)
 		avr_register_io_write(avr, p->udrc.enable.reg, avr_uart_write, p);
