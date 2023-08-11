@@ -935,7 +935,7 @@ avr_gdb_processor(
 		gdb_send_stop_status(g, 5, "hwbreak", NULL);
 		avr->state = cpu_Stopped;
 	} else if (avr->state == cpu_StepDone) {
-		gdb_send_quick_status(g, 0);
+		gdb_send_stop_status(g, 5, "hwbreak", NULL);
 		avr->state = cpu_Stopped;
 	} else {
 		/* Look for gdb input every GDB_BURST instructions. */
