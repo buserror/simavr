@@ -29,8 +29,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+#ifdef HAVE_LIBELF
 #include <libelf.h>
 #include <gelf.h>
+#else
+#undef ELF_SYMBOLS
+#define ELF_SYMBOLS 0
+#endif
 
 #include "sim_elf.h"
 #include "sim_vcd_file.h"
@@ -39,6 +45,43 @@
 
 #ifndef O_BINARY
 #define O_BINARY 0
+#endif
+
+#if CONFIG_SIMAVR_TRACE && ELF_SYMBOLS
+// Put a symbol name in a table, preferring names without leadling '_'.
+
+static void
+elf_set_preferred(const char **sp, const char *new)
+{
+	if (*sp) {
+		const char *prev;
+
+		// Replace duplicates definitions beginning '_' and '__'.
+
+		prev = *sp;
+		if (prev[0] && (prev[0] != '_' || (new[0] == '_' && prev[1] != '_')))
+			return;
+
+		// Most of array already leaks - FIXME
+		//free((void *)*sp);
+	}
+	*sp = new;
+}
+
+// "Spread" the pointers for known symbols forward.
+
+static void
+avr_spread_lines(const char **table, int count)
+{
+	const char * last = NULL;
+
+	for (int i = 0; i < count; i++) {
+		if (!table[i])
+			table[i] = last;
+		else
+			last = table[i];
+	}
+}
 #endif
 
 void
@@ -54,24 +97,74 @@ avr_load_firmware(
 		avr->avcc = firmware->avcc;
 	if (firmware->aref)
 		avr->aref = firmware->aref;
-#if CONFIG_SIMAVR_TRACE && ELF_SYMBOLS
-	int scount = firmware->flashsize >> 1;
-	avr->trace_data->codeline = malloc(scount * sizeof(avr_symbol_t*));
-	memset(avr->trace_data->codeline, 0, scount * sizeof(avr_symbol_t*));
+#if ELF_SYMBOLS
+#if CONFIG_SIMAVR_TRACE
+	/* Store the symbols read from the ELF file. */
 
-	for (int i = 0; i < firmware->symbolcount; i++)
-		if (firmware->symbol[i]->addr < firmware->flashsize)	// code address
-			avr->trace_data->codeline[firmware->symbol[i]->addr >> 1] =
-				firmware->symbol[i];
-	// "spread" the pointers for known symbols forward
-	avr_symbol_t * last = NULL;
-	for (int i = 0; i < scount; i++) {
-		if (!avr->trace_data->codeline[i])
-			avr->trace_data->codeline[i] = last;
-		else
-			last = avr->trace_data->codeline[i];
+	int           scount = firmware->flashsize >> 1;
+	uint32_t      addr;
+	const char ** table;
+
+	// Allocate table of Flash address strings.
+
+        table = calloc(scount, sizeof (char *));
+	avr->trace_data->codeline = table;
+	avr->trace_data->codeline_size = scount;
+
+	// Re-allocate table of data address strings.
+
+	if (firmware->highest_data_symbol >= avr->trace_data->data_names_size) {
+		uint32_t new_size;
+
+		new_size = firmware->highest_data_symbol + 1;
+		avr->data_names = realloc(avr->data_names, new_size * sizeof (char *));
+		memset(avr->data_names + avr->trace_data->data_names_size,
+		       0,
+		       (new_size - avr->trace_data->data_names_size) *
+		           sizeof (char *));
+		avr->trace_data->data_names_size = new_size;
 	}
+
+	for (int i = 0; i < firmware->symbolcount; i++) {
+		const char **sp, *new;
+
+		new = firmware->symbol[i]->symbol;
+		addr = firmware->symbol[i]->addr;
+		if (addr < firmware->flashsize) {
+			// A code address.
+
+			sp = &table[addr >> 1];
+			elf_set_preferred(sp, new);
+		} else if (addr >= AVR_SEGMENT_OFFSET_DATA &&
+			   addr < AVR_SEGMENT_OFFSET_DATA +
+                           	  avr->trace_data->data_names_size) {
+			// Address in data space.
+
+			addr -= AVR_SEGMENT_OFFSET_DATA;
+			sp = &avr->data_names[addr];
+			elf_set_preferred(sp, new);
+		}
+	}
+
+	// Parse given ELF file for DWARF info.
+
+	if (firmware->dwarf_file)
+		avr_read_dwarf(avr, firmware->dwarf_file);
+	free(firmware->dwarf_file);
+
+	// Fill out the flash and data space name tables with duplicates.
+
+	avr_spread_lines(table, scount);
+	avr_spread_lines(avr->data_names + avr->ioend + 1,
+			 avr->trace_data->data_names_size - (avr->ioend + 1));
+#else
+	// Parse given ELF file for DWARF info.
+
+	if (firmware->dwarf_file)
+		avr_read_dwarf(avr, firmware->dwarf_file);
+	free(firmware->dwarf_file);
 #endif
+#endif // ELF_SYMBOLS
 
 	avr_loadcode(avr, firmware->flash,
 			firmware->flashsize, firmware->flashbase);
@@ -185,6 +278,7 @@ avr_load_firmware(
 		avr_vcd_start(avr->vcd);
 }
 
+#ifdef HAVE_LIBELF
 static void
 elf_parse_mmcu_section(
 		elf_firmware_t * firmware,
@@ -423,6 +517,9 @@ elf_read_firmware(
 
 	/* Scan the section table for .mmcu magic and symbols. */
 
+	if (!firmware->dwarf_file)
+		firmware->dwarf_file = strdup(file);	// Parse later.
+
 	while ((scn = elf_nextscn(elf, scn)) != NULL) {
 		GElf_Shdr shdr;                 /* Section Header */
 		gelf_getshdr(scn, &shdr);
@@ -444,6 +541,8 @@ elf_read_firmware(
 #if ELF_SYMBOLS
 		// When we find a section header marked SHT_SYMTAB stop and get symbols
 		if (shdr.sh_type == SHT_SYMTAB) {
+			uint32_t highest_data = 0;
+
 			// edata points to our symbol table
 			Elf_Data *edata = elf_getdata(scn, NULL);
 
@@ -459,9 +558,44 @@ elf_read_firmware(
 
 				// print out the value and size
 				if (ELF32_ST_BIND(sym.st_info) == STB_GLOBAL ||
-						ELF32_ST_TYPE(sym.st_info) == STT_FUNC ||
-						ELF32_ST_TYPE(sym.st_info) == STT_OBJECT) {
+                                    ELF32_ST_TYPE(sym.st_info) == STT_FUNC ||
+                                    ELF32_ST_TYPE(sym.st_info) == STT_OBJECT) {
 					const char * name = elf_strptr(elf, shdr.sh_link, sym.st_name);
+#if VERBOSE
+					printf("Symbol %s bind %d type %d value %lx size %ld visibility %d\n",
+					       name, ELF32_ST_BIND(sym.st_info),
+					       ELF32_ST_TYPE(sym.st_info),
+                                               sym.st_value, sym.st_size,
+                                               GELF_ST_VISIBILITY(sym.st_other));
+#endif
+					// Some names are lengths of data areas
+					// that are not obviously distinguished
+					// from labels like __vectors.
+
+					if (ELF32_ST_TYPE(sym.st_info) == STT_NOTYPE &&
+					    sym.st_size == 0) {
+						int n;
+
+						n = strlen(name);
+						if (n > 9 &&
+						    !strcmp(&name[n - 9],
+							    "_LENGTH__")) {
+							//printf(" Ignored\n");
+							continue;
+						}
+					}
+
+					// Look for the highest RAM sysmbol.
+
+					if (sym.st_value >
+					    AVR_SEGMENT_OFFSET_DATA +
+					        highest_data &&
+					    sym.st_value <
+					        AVR_SEGMENT_OFFSET_EEPROM) {
+						highest_data =
+                                                    sym.st_value + sym.st_size -
+						    AVR_SEGMENT_OFFSET_DATA;
+					}
 
 					// if its a bootloader, this symbol will be the entry point we need
 					if (!strcmp(name, "__vectors"))
@@ -490,6 +624,7 @@ elf_read_firmware(
 					firmware->symbolcount++;
 				}
 			}
+			firmware->highest_data_symbol = highest_data;
 		}
 #endif // ELF_SYMBOLS
 	}
@@ -497,3 +632,11 @@ elf_read_firmware(
 	close(fd);
 	return 0;
 }
+#else //  HAVE_LIBELF not defined.
+int
+elf_read_firmware(const char * file, elf_firmware_t * firmware)
+{
+	AVR_LOG(NULL, LOG_ERROR, "ELF format is not supported by this build.\n");
+	return -1;
+}
+#endif

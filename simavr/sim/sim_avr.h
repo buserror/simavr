@@ -106,7 +106,7 @@ enum {
 
 	cpu_Sleeping,	// we're now sleeping until an interrupt
 
-	cpu_Step,		// run ONE instruction, then...
+	cpu_Step,	// run ONE instruction, then...
 	cpu_StepDone,	// tell gdb it's all OK, and give it registers
 	cpu_Done,       // avr software stopped gracefully
 	cpu_Crashed,    // avr software crashed (watchdog fired)
@@ -114,7 +114,9 @@ enum {
 
 // this is only ever used if CONFIG_SIMAVR_TRACE is defined
 struct avr_trace_data_t {
-	struct avr_symbol_t ** codeline;
+	const char **   codeline;       // Text for each Flash address
+	uint32_t        codeline_size;  // Size of codeline table.
+	uint32_t        data_names_size;// Size of data_names table.
 
 	/* DEBUG ONLY
 	 * this keeps track of "jumps" ie, call,jmp,ret,reti and so on
@@ -152,14 +154,12 @@ typedef void (*avr_run_t)(
 #define AVR_FUSE_HIGH	1
 #define AVR_FUSE_EXT	2
 
-#define REG_NAME_COUNT (256 + 32)       // Size of reg_names table.
-
 /*
  * Main AVR instance. Some of these fields are set by the AVR "Core" definition files
  * the rest is runtime data (as little as possible)
  */
 typedef struct avr_t {
-	const char * 		mmcu;	// name of the AVR
+	const char *	 		mmcu;	// name of the AVR
 	// these are filled by sim_core_declare from constants in /usr/lib/avr/include/avr/io*.h
 	uint16_t			ioend;
 	uint16_t 			ramend;
@@ -348,6 +348,10 @@ typedef struct avr_t {
 		uint32_t size;
 		uint32_t len;
 	} io_console_buffer;
+
+	// Table of register names used by gdb and tracing.
+
+	const char ** data_names;
 } avr_t;
 
 

@@ -385,8 +385,7 @@ handle_monitor(avr_t * avr, avr_gdb_t * g, char * cmd)
 			} else if (m != 2) {
 				return 1;
 			} else {
-				if (count <= 0 || base + count + 32 > REG_NAME_COUNT ||
-					base + count + 32 > avr->ioend) {
+				if (count <= 0 || base + count + 32 > avr->ioend) {
 					return 4;	// bad value
 				}
 				g->ior_base = base;
@@ -412,7 +411,6 @@ handle_monitor(avr_t * avr, avr_gdb_t * g, char * cmd)
 static void
 handle_io_registers(avr_t * avr, avr_gdb_t * g, char * cmd)
 {
-	extern const char *avr_regname(unsigned int); // sim_core.c
 	char *       params;
 	char *       reply;
 	unsigned int addr, count;
@@ -434,14 +432,15 @@ handle_io_registers(avr_t * avr, avr_gdb_t * g, char * cmd)
 			int i;
 
 			// Send names and values.
-			addr += 32;
+			addr += 32 + g->ior_base;
+
 			if (addr + count > avr->ioend)
 				count = avr->ioend + 1 - addr;
 			reply = buff;
 			for (i = 0; i < count; ++i) {
 				const char *name;
 
-				name = avr_regname(addr + i);
+				name = avr_regname(avr, addr + i);
 				reply += sprintf(reply, "%s,%x;",
 						 name, avr->data[addr + i]);
 				if (reply > buff + sizeof buff - 20)
@@ -450,9 +449,7 @@ handle_io_registers(avr_t * avr, avr_gdb_t * g, char * cmd)
 		} else {
 			// Send register count.
 
-			count = g->ior_count ? g->ior_count :
-						avr->ioend > REG_NAME_COUNT ?
-							REG_NAME_COUNT - 32 : avr->ioend - 32;
+			count = g->ior_count ? g->ior_count : avr->ioend - 32 + 1;
 			sprintf(buff, "%x", count);
 		}
 		reply = buff;

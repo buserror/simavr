@@ -48,12 +48,12 @@ uint16_t _avr_sp_get(avr_t * avr);
 void _avr_sp_set(avr_t * avr, uint16_t sp);
 int _avr_push_addr(avr_t * avr, avr_flashaddr_t addr);
 
-#if CONFIG_SIMAVR_TRACE
-
 /*
  * Get a "pretty" register name
  */
-const char * avr_regname(unsigned int reg);
+const char * avr_regname(avr_t * avr, unsigned int reg);
+
+#if CONFIG_SIMAVR_TRACE
 
 /*
  * DEBUG bits follow
@@ -61,13 +61,19 @@ const char * avr_regname(unsigned int reg);
  */
 void avr_dump_state(avr_t * avr);
 
+// In this file there is always an avr!
+
+#define AVR_REGNAME(reg) avr_regname(avr, reg)
+
 #define DUMP_REG() { \
-				for (int i = 0; i < 32; i++) printf("%s=%02x%c", avr_regname(i), avr->data[i],i==15?'\n':' ');\
-				printf("\n");\
-				uint16_t y = avr->data[R_YL] | (avr->data[R_YH]<<8);\
-				for (int i = 0; i < 20; i++) printf("Y+%02d=%02x ", i, avr->data[y+i]);\
-				printf("\n");\
-		}
+	for (int i = 0; i < 32; i++) \
+		printf("%s=%02x%c", AVR_REGNAME(i), avr->data[i], \
+			   (i % 8) == 7 ? '\n' : ' '); \
+	uint16_t y = avr->data[R_YL] | (avr->data[R_YH] << 8); \
+	for (int i = 0; i < 20; i++) \
+		printf("Y+%02d=%02x%c", i, avr->data[y+i], i % 10 == 9 ? '\n' : ' '); \
+	printf("\n"); \
+}
 
 
 #if AVR_STACK_WATCH
