@@ -101,7 +101,7 @@ main(
 	elf_firmware_t f = {{0}};
 	uint32_t f_cpu = 0;
 	int gdb = 0;
-	int log = 1;
+	int log = LOG_ERROR;
 	int port = 1234;
 	char name[24] = "";
 	uint32_t loadBase = AVR_SEGMENT_OFFSET_FLASH;
