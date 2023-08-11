@@ -27,6 +27,11 @@
 
 #include <stdint.h>
 
+
+#ifdef __MINGW32__
+char *strsep(char **stringp, const char *delim);
+#endif
+
 typedef struct argv_t {
 	uint32_t size, argc;
 	char * line;

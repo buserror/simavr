@@ -85,11 +85,12 @@ else
 endif
 
 # FIXME uname -o doesn't work on bsd derivatives
-#WIN := ${shell uname -o}
+WIN := ${shell uname -o}
 
 ifeq (${WIN}, Msys)
-AVR_ROOT    := ${shell echo "${AVR32_HOME}" | tr '\\' '/'}
-AVR         := ${AVR_ROOT}/bin/avr-
+AVR_ROOT     := /mingw64/avr
+# compiler is globally available, no need to direct to a full path
+AVR          := avr-
 IPATH       += ${PREFIX}/include
 CFLAGS      += -I${PREFIX}/include
 LDFLAGS		+= -L/lib -L/local/lib

@@ -1,6 +1,95 @@
 simavr - a lean and mean Atmel AVR simulator for linux
 ======
 
+# Notes for compiling on MinGW
+
+Get MSys2 mingw from https://www.msys2.org/
+Start the MSYS MinGW shortcut (e.g. MSYS2 MinGW 32-bit or 64-bit)
+
+Update packages 
+
+```
+pacman -Syu
+```
+
+Install toolchains and dependencies. For 64-bit 
+
+```
+pacman -S mingw-w64-x86_64-toolchain
+pacman -S mingw-w64-x86_64-libelf
+pacman -S mingw-w64-x86_64-avr-toolchain
+pacman -S mingw-w64-x86_64-freeglut
+```
+
+Replace `x86_64` with `i686` to get the 32-bit version instead.
+
+```
+pacman -S mingw-w64-i686-toolchain
+pacman -S mingw-w64-i686-libelf
+pacman -S mingw-w64-i686-avr-toolchain
+pacman -S mingw-w64-i686-freeglut
+```
+
+etc. **There currently is an issuw with the AVR toolchain:** https://github.com/msys2/MINGW-packages/issues/9183
+
+Note: If you are using the 32-bit version, you **may** have to adapt `Makefile.common` regarding `AVR_ROOT := /mingw64/avr` to `AVR_ROOT := /mingw32/avr`. I have not tested this and the paths may be the same, but if you run into errors regarding AVR, check there.
+
+In the normal user directory (`cd ~`), clone this repo 
+
+```
+git clone https://github.com/maxgerhardt/simavr.git
+cd simavr
+```
+
+Start building with
+
+```
+make build-simavr V=1
+```
+
+That should be successfull. 
+
+Now create a install directory and install it. Note that `/home/Max/` is in this case my home directory.
+
+Additionally this renames `simavr` to `simavr.exe` to make it properly executable. Ignore the compile error in the examples, it only counts that simavr is copied to the install directory.
+
+```
+mkdir simavr_installed
+make install DESTDIR=/home/$USER/simavr/simavr_installed/
+mv simavr_installed/bin/simavr simavr_installed/bin/simavr.exe
+```
+
+Copy the compiled output back to the normal Windows environment, e.g.
+
+```
+cp -r /home/$USER/simavr/simavr_installed/ /c/Users/$USER/Desktop
+```
+
+You should now have a working simavr executable. 
+
+```
+C:\Users\Max\Desktop\simavr_installed\bin>simavr --help
+Usage: simavr [...] <firmware>
+       [--freq|-f <freq>]  Sets the frequency for an .hex firmware
+       [--mcu|-m <device>] Sets the MCU type for an .hex firmware
+       [--list-cores]      List all supported AVR cores and exit
+       [--help|-h]         Display this usage message and exit
+       [--trace, -t]       Run full scale decoder trace
+       [-ti <vector>]      Add traces for IRQ vector <vector>
+       [--gdb|-g [<port>]] Listen for gdb connection on <port> (default 1234)
+       [-ff <.hex file>]   Load next .hex file as flash
+       [-ee <.hex file>]   Load next .hex file as eeprom
+       [--input|-i <file>] A vcd file to use as input signals
+       [--output|-o <file>] A vcd file to save the traced signals
+       [--add-trace|-at <name=kind@addr/mask>] Add signal to be traced
+       [-v]                Raise verbosity level
+                           (can be passed more than once)
+       <firmware>          A .hex or an ELF file. ELF files are
+                           prefered, and can include debugging syms
+```
+
+-----------------------
+
 _simavr_ is a new AVR simulator for linux, or any platform that uses avr-gcc. It uses 
 avr-gcc's own register definition to simplify creating new targets for supported AVR
 devices. The core was made to be small and compact, and hackable so allow quick 
