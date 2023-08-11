@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iomxx0_1.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id$ */
 
 /* avr/iomxx0_1.h - definitions for ATmega640, Atmega1280, ATmega1281,
    ATmega2560 and ATmega2561. */

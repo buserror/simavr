@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iotn2313.h 2456 2014-11-19 09:57:29Z saaadhu $ */
+/* $Id: iotn2313.h 2236 2011-03-17 21:53:39Z arcanum $ */
 
 /* iotn2313.h derived from io2313.h by Bob Paddock.
 
@@ -698,6 +698,5 @@
 #define SLEEP_MODE_IDLE (0x00<<4)
 #define SLEEP_MODE_STANDBY (0x04<<4)
 #define SLEEP_MODE_PWR_DOWN (0x05<<4)
-
 
 #endif  /* _AVR_IOTN2313_H_ */

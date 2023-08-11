@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom16hva.h 2456 2014-11-19 09:57:29Z saaadhu $ */
+/* $Id: iom16hva.h 2102 2010-03-16 22:52:39Z joerg_wunsch $ */
 
 /* iom16hva.h - definitions for ATmega16HVA.  */
 
@@ -72,11 +72,9 @@
 #define SIGNATURE_1 0x94
 #define SIGNATURE_2 0x0C
 
-
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)
 #define SLEEP_MODE_PWR_SAVE (0x03<<1)
 #define SLEEP_MODE_PWR_OFF (0x04<<1)
-
 
 #endif /* _AVR_IOM16HVA_H_ */

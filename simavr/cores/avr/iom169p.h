@@ -31,7 +31,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom169p.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iom169p.h 2231 2011-03-07 05:06:55Z arcanum $ */
 
 /* iom169p.h - definitions for ATmega169P */
 
@@ -1088,12 +1088,10 @@
 #endif  /* !defined(__AVR_LIBC_DEPRECATED_ENABLE__) */
 
 
-
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)
 #define SLEEP_MODE_PWR_DOWN (0x02<<1)
 #define SLEEP_MODE_PWR_SAVE (0x03<<1)
 #define SLEEP_MODE_STANDBY (0x06<<1)
-
 
 #endif  /* _AVR_IOM169P_H_ */

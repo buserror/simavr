@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom16.h 2456 2014-11-19 09:57:29Z saaadhu $ */
+/* $Id: iom16.h 2228 2011-03-05 15:33:19Z arcanum $ */
 
 /* avr/iom16.h - definitions for ATmega16 */
 
@@ -666,13 +666,11 @@
 
 #endif  /* !defined(__AVR_LIBC_DEPRECATED_ENABLE__) */
 
-
 #define SLEEP_MODE_IDLE (0x00<<4)
 #define SLEEP_MODE_ADC (0x01<<4)
 #define SLEEP_MODE_PWR_DOWN (0x02<<4)
 #define SLEEP_MODE_PWR_SAVE (0x03<<4)
 #define SLEEP_MODE_STANDBY (0x0A<<4)
 #define SLEEP_MODE_EXT_STANDBY (0x0B<<4)
-
 
 #endif /* _AVR_IOM16_H_ */

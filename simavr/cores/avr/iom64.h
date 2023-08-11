@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom64.h 2456 2014-11-19 09:57:29Z saaadhu $ */
+/* $Id: iom64.h 2235 2011-03-17 04:13:14Z arcanum $ */
 
 /* avr/iom64.h - defines for ATmega64 
 
@@ -1301,13 +1301,11 @@
 
 #endif  /* !defined(__AVR_LIBC_DEPRECATED_ENABLE__) */
 
-
 #define SLEEP_MODE_IDLE (0x00<<2)
 #define SLEEP_MODE_ADC (0x02<<2)
 #define SLEEP_MODE_PWR_DOWN (0x04<<2)
 #define SLEEP_MODE_PWR_SAVE (0x06<<2)
 #define SLEEP_MODE_STANDBY (0x05<<2)
 #define SLEEP_MODE_EXT_STANDBY (0x07<<2)
-
 
 #endif /* _AVR_IOM64_H_ */

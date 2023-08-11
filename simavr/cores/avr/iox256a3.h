@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iox256a3.h 2482 2015-08-06 08:54:17Z pitchumani $ */
+/* $Id: iox256a3.h 2200 2010-12-14 04:24:24Z arcanum $ */
 
 /* avr/iox256a3.h - definitions for ATxmega256A3 */
 
@@ -42,7 +42,7 @@
 #  define _AVR_IOXXX_H_ "iox256a3.h"
 #else
 #  error "Attempt to include more than one <avr/ioXXX.h> file."
-#endif 
+#endif
 
 
 #ifndef _AVR_ATxmega256A3_H_
@@ -971,8 +971,8 @@ typedef struct NVM_PROD_SIGNATURES_struct
 typedef enum NVM_CMD_enum
 {
     NVM_CMD_NO_OPERATION_gc = (0x00<<0),  /* Noop/Ordinary LPM */
-    NVM_CMD_READ_CALIB_ROW_gc = (0x02<<0),  /* Read calibration row */
     NVM_CMD_READ_USER_SIG_ROW_gc = (0x01<<0),  /* Read user signature row */
+    NVM_CMD_READ_CALIB_ROW_gc = (0x02<<0),  /* Read calibration row */
     NVM_CMD_READ_EEPROM_gc = (0x06<<0),  /* Read EEPROM */
     NVM_CMD_READ_FUSES_gc = (0x07<<0),  /* Read fuse byte */
     NVM_CMD_WRITE_LOCK_BITS_gc = (0x08<<0),  /* Write lock bits */
@@ -985,17 +985,25 @@ typedef enum NVM_CMD_enum
     NVM_CMD_ERASE_WRITE_APP_PAGE_gc = (0x25<<0),  /* Erase-and-write Application Section page */
     NVM_CMD_ERASE_FLASH_BUFFER_gc = (0x26<<0),  /* Erase/flush Flash page buffer */
     NVM_CMD_ERASE_BOOT_PAGE_gc = (0x2A<<0),  /* Erase Boot Section page */
+    NVM_CMD_ERASE_FLASH_PAGE_gc = (0x2B<<0),  /* Erase Flash Page */
     NVM_CMD_WRITE_BOOT_PAGE_gc = (0x2C<<0),  /* Write Boot Section page */
     NVM_CMD_ERASE_WRITE_BOOT_PAGE_gc = (0x2D<<0),  /* Erase-and-write Boot Section page */
+    NVM_CMD_WRITE_FLASH_PAGE_gc = (0x2E<<0),  /* Write Flash Page */
+    NVM_CMD_ERASE_WRITE_FLASH_PAGE_gc = (0x2F<<0),  /* Erase-and-write Flash Page */
     NVM_CMD_ERASE_EEPROM_gc = (0x30<<0),  /* Erase EEPROM */
     NVM_CMD_ERASE_EEPROM_PAGE_gc = (0x32<<0),  /* Erase EEPROM page */
     NVM_CMD_LOAD_EEPROM_BUFFER_gc = (0x33<<0),  /* Load EEPROM page buffer */
     NVM_CMD_WRITE_EEPROM_PAGE_gc = (0x34<<0),  /* Write EEPROM page */
     NVM_CMD_ERASE_WRITE_EEPROM_PAGE_gc = (0x35<<0),  /* Erase-and-write EEPROM page */
     NVM_CMD_ERASE_EEPROM_BUFFER_gc = (0x36<<0),  /* Erase/flush EEPROM page buffer */
-    NVM_CMD_APP_CRC_gc = (0x38<<0),  /* Generate Application section CRC */
-    NVM_CMD_BOOT_CRC_gc = (0x39<<0),  /* Generate Boot Section CRC */
-    NVM_CMD_FLASH_RANGE_CRC_gc = (0x3A<<0),  /* Generate Flash Range CRC */
+    NVM_CMD_APP_CRC_gc = (0x38<<0),  /* Application section CRC */
+    NVM_CMD_BOOT_CRC_gc = (0x39<<0),  /*  Boot Section CRC */
+    NVM_CMD_FLASH_RANGE_CRC_gc = (0x3A<<0),  /* Flash Range CRC */
+    NVM_CMD_CHIP_ERASE_gc = (0x40<<0),  /* Erase Chip */
+    NVM_CMD_READ_NVM_gc = (0x43<<0),  /* Read NVM */
+    NVM_CMD_WRITE_FUSE_gc = (0x4C<<0),  /* Write Fuse byte */
+    NVM_CMD_ERASE_BOOT_gc = (0x68<<0),  /* Erase Boot Section */
+    NVM_CMD_FLASH_CRC_gc = (0x78<<0),  /* Flash CRC */
 } NVM_CMD_t;
 
 /* SPM ready interrupt level */
@@ -1284,15 +1292,33 @@ typedef enum ADC_CH_MUXINT_enum
 /* Negative input multiplexer selection */
 typedef enum ADC_CH_MUXNEG_enum
 {
-    ADC_CH_MUXNEG_PIN0_gc = (0x00<<0),  /* Input pin 0 */
-    ADC_CH_MUXNEG_PIN1_gc = (0x01<<0),  /* Input pin 1 */
-    ADC_CH_MUXNEG_PIN2_gc = (0x02<<0),  /* Input pin 2 */
-    ADC_CH_MUXNEG_PIN3_gc = (0x03<<0),  /* Input pin 3 */
-    ADC_CH_MUXNEG_PIN4_gc = (0x04<<0),  /* Input pin 4 */
-    ADC_CH_MUXNEG_PIN5_gc = (0x05<<0),  /* Input pin 5 */
-    ADC_CH_MUXNEG_PIN6_gc = (0x06<<0),  /* Input pin 6 */
-    ADC_CH_MUXNEG_PIN7_gc = (0x07<<0),  /* Input pin 7 */
+    ADC_CH_MUXNEG_PIN0_gc = (0x00<<0),  /* Input pin 0 (Input Mode = 2) */
+    ADC_CH_MUXNEG_PIN1_gc = (0x01<<0),  /* Input pin 1 (Input Mode = 2) */
+    ADC_CH_MUXNEG_PIN2_gc = (0x02<<0),  /* Input pin 2 (Input Mode = 2) */
+    ADC_CH_MUXNEG_PIN3_gc = (0x03<<0),  /* Input pin 3 (Input Mode = 2) */
+    ADC_CH_MUXNEG_PIN4_gc = (0x00<<0),  /* Input pin 4 (Input Mode = 3) */
+    ADC_CH_MUXNEG_PIN5_gc = (0x01<<0),  /* Input pin 5 (Input Mode = 3) */
+    ADC_CH_MUXNEG_PIN6_gc = (0x02<<0),  /* Input pin 6 (Input Mode = 3) */
+    ADC_CH_MUXNEG_PIN7_gc = (0x03<<0),  /* Input pin 7 (Input Mode = 3) */
 } ADC_CH_MUXNEG_t;
+
+/* Negative input multiplexer selection when gain on 4 MSB pins */
+typedef enum ADC_CH_MUXNEGH_enum
+{
+    ADC_CH_MUXNEGH_PIN4_gc = (0x00<<0),  /* Input pin 4 */
+    ADC_CH_MUXNEGH_PIN5_gc = (0x01<<0),  /* Input pin 5 */
+    ADC_CH_MUXNEGH_PIN6_gc = (0x02<<0),  /* Input pin 6 */
+    ADC_CH_MUXNEGH_PIN7_gc = (0x03<<0),  /* Input pin 7 */
+} ADC_CH_MUXNEGH_t;
+
+/* Negative input multiplexer selection when gain on 4 LSB pins */
+typedef enum ADC_CH_MUXNEGL_enum
+{
+    ADC_CH_MUXNEGL_PIN0_gc = (0x00<<0),  /* Input pin 0 */
+    ADC_CH_MUXNEGL_PIN1_gc = (0x01<<0),  /* Input pin 1 */
+    ADC_CH_MUXNEGL_PIN2_gc = (0x02<<0),  /* Input pin 2 */
+    ADC_CH_MUXNEGL_PIN3_gc = (0x03<<0),  /* Input pin 3 */
+} ADC_CH_MUXNEGL_t;
 
 /* Input mode */
 typedef enum ADC_CH_INPUTMODE_enum
@@ -4482,7 +4508,7 @@ IO Module Instances. Mapped to memory.
 
 /* NVM - Non Volatile Memory Controller */
 /* NVM.CMD  bit masks and bit positions */
-#define NVM_CMD_gm  0xFF  /* Command group mask. */
+#define NVM_CMD_gm  0x7F  /* Command group mask. */
 #define NVM_CMD_gp  0  /* Command group position. */
 #define NVM_CMD0_bm  (1<<0)  /* Command bit 0 mask. */
 #define NVM_CMD0_bp  0  /* Command bit 0 position. */
@@ -4498,8 +4524,6 @@ IO Module Instances. Mapped to memory.
 #define NVM_CMD5_bp  5  /* Command bit 5 position. */
 #define NVM_CMD6_bm  (1<<6)  /* Command bit 6 mask. */
 #define NVM_CMD6_bp  6  /* Command bit 6 position. */
-#define NVM_CMD7_bm  (1<<7)  /* Command bit 7 mask. */
-#define NVM_CMD7_bp  7  /* Command bit 7 position. */
 
 
 /* NVM.CTRLA  bit masks and bit positions */
@@ -6473,21 +6497,21 @@ IO Module Instances. Mapped to memory.
 
 // Generic Port Pins
 
-#define PIN0_bm 0x01 
+#define PIN0_bm 0x01
 #define PIN0_bp 0
 #define PIN1_bm 0x02
 #define PIN1_bp 1
-#define PIN2_bm 0x04 
+#define PIN2_bm 0x04
 #define PIN2_bp 2
-#define PIN3_bm 0x08 
+#define PIN3_bm 0x08
 #define PIN3_bp 3
-#define PIN4_bm 0x10 
+#define PIN4_bm 0x10
 #define PIN4_bp 4
-#define PIN5_bm 0x20 
+#define PIN5_bm 0x20
 #define PIN5_bp 5
-#define PIN6_bm 0x40 
+#define PIN6_bm 0x40
 #define PIN6_bp 6
-#define PIN7_bm 0x80 
+#define PIN7_bm 0x80
 #define PIN7_bp 7
 
 

@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom88pa.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iom88pa.h 2035 2009-11-02 02:44:17Z arcanum $ */
 
 /* avr/iom88pa.h - definitions for ATmega88PA */
 
@@ -1173,7 +1173,6 @@
 #define PCINT18_PORT  PORTD
 #define PCINT18_PIN   PIND
 #define PCINT18_BIT   2
-
 
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)

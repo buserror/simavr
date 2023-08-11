@@ -29,7 +29,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: io90pwm1.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: io90pwm1.h 2225 2011-03-02 16:27:26Z arcanum $ */
 
 /* avr/iopwm1.h - definitions for AT90PWM1 device */
 
@@ -1149,11 +1149,9 @@
 #define __BOOT_LOCK_BITS_0_EXIST
 #define __BOOT_LOCK_BITS_1_EXIST 
 
-
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)
 #define SLEEP_MODE_PWR_DOWN (0x02<<1)
 #define SLEEP_MODE_STANDBY (0x06<<1)
-
 
 #endif /* _AVR_IOPWM1_H_ */

@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom324pa.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iom324pa.h 2063 2009-11-18 22:06:28Z arcanum $ */
 
 /* avr/iom324pa.h - definitions for ATmega324PA */
 
@@ -1360,7 +1360,6 @@
 #define PCINT12_PORT  PORTB
 #define PCINT12_PIN   PINB
 #define PCINT12_BIT   4
-
 
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)

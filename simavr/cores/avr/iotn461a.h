@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iotn461a.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iotn461a.h 2063 2009-11-18 22:06:28Z arcanum $ */
 
 /* avr/iotn461a.h - definitions for ATtiny461A */
 
@@ -496,6 +496,7 @@
 #define DTPS10 4
 #define DTPS11 5
 #define PSR1 6
+#define PWM1X 7
 
 #define TCCR1A _SFR_IO8(0x30)
 #define PWM1B 0
@@ -977,7 +978,6 @@
 #define PA0_PORT  PORTADC
 #define PA0_PIN   PINADC
 #define PA0_BIT   ADC0
-
 
 #define SLEEP_MODE_IDLE (0x00<<3)
 #define SLEEP_MODE_ADC (0x01<<3)

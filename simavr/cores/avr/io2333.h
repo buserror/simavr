@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: io2333.h 2456 2014-11-19 09:57:29Z saaadhu $ */
+/* $Id: io2333.h 2225 2011-03-02 16:27:26Z arcanum $ */
 
 /* avr/io2333.h - definitions for AT90S2333 */
 
@@ -457,6 +457,5 @@
 
 #define SLEEP_MODE_IDLE         0
 #define SLEEP_MODE_PWR_DOWN     _BV(SM)
-
 
 #endif /* _AVR_IO2333_H_ */

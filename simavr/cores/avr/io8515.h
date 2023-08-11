@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: io8515.h 2456 2014-11-19 09:57:29Z saaadhu $ */
+/* $Id: io8515.h 2225 2011-03-02 16:27:26Z arcanum $ */
 
 /* avr/io8515.h - definitions for AT90S8515 */
 
@@ -495,9 +495,7 @@
 #define SIGNATURE_1 0x93
 #define SIGNATURE_2 0x01
 
-
 #define SLEEP_MODE_IDLE         0
 #define SLEEP_MODE_PWR_DOWN     _BV(SM)
-
 
 #endif /* _AVR_IO8515_H_ */

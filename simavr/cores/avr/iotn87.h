@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iotn87.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iotn87.h 2181 2010-08-23 03:46:23Z arcanum $ */
 
 /* avr/iotn87.h - definitions for ATtiny87 */
 
@@ -849,7 +849,6 @@
 #define SIGNATURE_0 0x1E
 #define SIGNATURE_1 0x93
 #define SIGNATURE_2 0x87
-
 
 
 #define SLEEP_MODE_IDLE (0x00<<1)

@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: io90pwm216.h 2483 2015-08-06 09:16:30Z pitchumani $ */
+/* $Id: io90pwm216.h 2225 2011-03-02 16:27:26Z arcanum $ */
 
 /* avr/io90pwm216.h - definitions for AT90PWM216 */
 
@@ -1217,11 +1217,9 @@
 #define SIGNATURE_1 0x94
 #define SIGNATURE_2 0x83
 
-
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)
 #define SLEEP_MODE_PWR_DOWN (0x02<<1)
 #define SLEEP_MODE_STANDBY (0x06<<1)
-
 
 #endif /* _AVR_IO90PWM216_H_ */

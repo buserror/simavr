@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom8u2.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iom8u2.h 2245 2011-05-12 22:42:21Z arcanum $ */
 
 /* avr/iom8u2.h - definitions for ATmega8U2 */
 
@@ -986,8 +986,6 @@
 #define SIGNATURE_1 0x93
 #define SIGNATURE_2 0x89
 
-
-/* Device Pin Definitions */
 
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_PWR_DOWN (0x02<<1)

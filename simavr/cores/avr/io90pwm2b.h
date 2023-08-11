@@ -26,10 +26,10 @@
   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-  POSSIBILITY OF SUCH DAMAGE. 
+  POSSIBILITY OF SUCH DAMAGE.
 */
 
-/* $Id: io90pwm2b.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: io90pwm2b.h 2225 2011-03-02 16:27:26Z arcanum $ */
 
 /* avr/io90pwm2b.h - definitions for AT90PWM2B */
 
@@ -43,7 +43,7 @@
 #  define _AVR_IOXXX_H_ "io90pwm2b.h"
 #else
 #  error "Attempt to include more than one <avr/ioXXX.h> file."
-#endif 
+#endif
 
 
 #ifndef _AVR_IO90PWM2B_H_
@@ -80,7 +80,7 @@
 #define PORTB5 5
 #define PORTB6 6
 #define PORTB7 7
-      
+
 #define PINC _SFR_IO8(0x06)
 #define PINC0 0
 #define PINC1 1
@@ -828,7 +828,7 @@
 #define STP0 0
 #define STP1 1
 #define F1617 2
-#define FEM 3 
+#define FEM 3
 
 #define MUBRR _SFR_MEM16(0xCC)
 
@@ -1433,7 +1433,7 @@
 #define FUSE_SPIEN     (unsigned char)~_BV(5)  /* Enable Serial programming and Data Downloading */
 #define FUSE_DWEN      (unsigned char)~_BV(6)  /* debugWIRE Enable */
 #define FUSE_RSTDISBL  (unsigned char)~_BV(7)  /* External Reset Disable */
-#define HFUSE_DEFAULT (FUSE_SPIEN)    
+#define HFUSE_DEFAULT (FUSE_SPIEN)
 
 
 /* Extended Fuse Byte */
@@ -1450,7 +1450,7 @@
 /* Lock Bits */
 #define __LOCK_BITS_EXIST
 #define __BOOT_LOCK_BITS_0_EXIST
-#define __BOOT_LOCK_BITS_1_EXIST 
+#define __BOOT_LOCK_BITS_1_EXIST
 
 
 /* Signature */
@@ -1458,11 +1458,9 @@
 #define SIGNATURE_1 0x93
 #define SIGNATURE_2 0x83
 
-
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)
 #define SLEEP_MODE_PWR_DOWN (0x02<<1)
 #define SLEEP_MODE_STANDBY (0x06<<1)
-
 
 #endif /* _AVR_IO90PWM2B_H_ */

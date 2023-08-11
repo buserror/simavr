@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iocanxx.h 2225 2011-03-02 16:27:26Z arcanum $ */
+/* $Id$ */
 
 /* This file is based largely on:
    - iom128.h by Peter Jansen (bit defines)

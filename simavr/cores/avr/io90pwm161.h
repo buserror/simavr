@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (C) 2014 Atmel Corporation
+ * Copyright (C) 2015 Atmel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,8 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  ****************************************************************************/
 
-
-/* $Id: io90pwm161.h 2460 2014-12-03 05:39:25Z pitchumani $ */
 
 #ifndef _AVR_AT90PWM161_H_INCLUDED
 #define _AVR_AT90PWM161_H_INCLUDED
@@ -78,13 +76,29 @@
 
 #define DDRB    _SFR_IO8(0x04)
 #define DDRB7   7
+// Inserted "DDB7" from "DDRB7" due to compatibility
+#define DDB7    7
 #define DDRB6   6
+// Inserted "DDB6" from "DDRB6" due to compatibility
+#define DDB6    6
 #define DDRB5   5
+// Inserted "DDB5" from "DDRB5" due to compatibility
+#define DDB5    5
 #define DDRB4   4
+// Inserted "DDB4" from "DDRB4" due to compatibility
+#define DDB4    4
 #define DDRB3   3
+// Inserted "DDB3" from "DDRB3" due to compatibility
+#define DDB3    3
 #define DDRB2   2
+// Inserted "DDB2" from "DDRB2" due to compatibility
+#define DDB2    2
 #define DDRB1   1
+// Inserted "DDB1" from "DDRB1" due to compatibility
+#define DDB1    1
 #define DDRB0   0
+// Inserted "DDB0" from "DDRB0" due to compatibility
+#define DDB0    0
 
 #define PORTB   _SFR_IO8(0x05)
 #define PORTB7  7
@@ -136,13 +150,29 @@
 
 #define DDRD    _SFR_IO8(0x0A)
 #define DDRD7   7
+// Inserted "DDD7" from "DDRD7" due to compatibility
+#define DDD7    7
 #define DDRD6   6
+// Inserted "DDD6" from "DDRD6" due to compatibility
+#define DDD6    6
 #define DDRD5   5
+// Inserted "DDD5" from "DDRD5" due to compatibility
+#define DDD5    5
 #define DDRD4   4
+// Inserted "DDD4" from "DDRD4" due to compatibility
+#define DDD4    4
 #define DDRD3   3
+// Inserted "DDD3" from "DDRD3" due to compatibility
+#define DDD3    3
 #define DDRD2   2
+// Inserted "DDD2" from "DDRD2" due to compatibility
+#define DDD2    2
 #define DDRD1   1
+// Inserted "DDD1" from "DDRD1" due to compatibility
+#define DDD1    1
 #define DDRD0   0
+// Inserted "DDD0" from "DDRD0" due to compatibility
+#define DDD0    0
 
 #define PORTD   _SFR_IO8(0x0B)
 #define PORTD7  7
@@ -161,8 +191,14 @@
 
 #define DDRE    _SFR_IO8(0x0D)
 #define DDRE2   2
+// Inserted "DDE2" from "DDRE2" due to compatibility
+#define DDE2    2
 #define DDRE1   1
+// Inserted "DDE1" from "DDRE1" due to compatibility
+#define DDE1    1
 #define DDRE0   0
+// Inserted "DDE0" from "DDRE0" due to compatibility
+#define DDE0    0
 
 #define PORTE   _SFR_IO8(0x0E)
 #define PORTE2  2
@@ -721,6 +757,14 @@
 
 
 
+/* Values and associated defines */
+
+
+#define SLEEP_MODE_IDLE (0x00<<1)
+#define SLEEP_MODE_ADC (0x01<<1)
+#define SLEEP_MODE_PWR_DOWN (0x02<<1)
+#define SLEEP_MODE_STANDBY (0x06<<1)
+
 /* Interrupt vectors */
 /* Vector 0 is the reset vector */
 /* PSC2 Capture Event */
@@ -830,6 +874,8 @@
 #define FUSE_SUT_CKSEL5  (unsigned char)~_BV(5)
 #define FUSE_CKOUT       (unsigned char)~_BV(6)
 #define FUSE_CKDIV8      (unsigned char)~_BV(7)
+#define LFUSE_DEFAULT    (FUSE_SUT_CKSEL0 & FUSE_SUT_CKSEL2 & FUSE_SUT_CKSEL3 & FUSE_SUT_CKSEL4 & FUSE_CKDIV8)
+
 
 /* High Fuse Byte */
 #define FUSE_BOOTRST     (unsigned char)~_BV(0)
@@ -840,6 +886,8 @@
 #define FUSE_SPIEN       (unsigned char)~_BV(5)
 #define FUSE_DWEN        (unsigned char)~_BV(6)
 #define FUSE_RSTDISBL    (unsigned char)~_BV(7)
+#define HFUSE_DEFAULT    (FUSE_BOOTSZ0 & FUSE_BOOTSZ1 & FUSE_SPIEN)
+
 
 /* Extended Fuse Byte */
 #define FUSE_BODLEVEL0   (unsigned char)~_BV(0)
@@ -850,6 +898,8 @@
 #define FUSE_PSC0RB      (unsigned char)~_BV(5)
 #define FUSE_PSC2RBA     (unsigned char)~_BV(6)
 #define FUSE_PSC2RB      (unsigned char)~_BV(7)
+#define EFUSE_DEFAULT    (FUSE_BODLEVEL1)
+
 
 
 /* Lock Bits */
@@ -863,12 +913,6 @@
 #define SIGNATURE_1 0x94
 #define SIGNATURE_2 0x8B
 
-
-
-#define SLEEP_MODE_IDLE (0x00<<1)
-#define SLEEP_MODE_ADC (0x01<<1)
-#define SLEEP_MODE_PWR_DOWN (0x02<<1)
-#define SLEEP_MODE_STANDBY (0x06<<1)
 
 #endif /* #ifdef _AVR_AT90PWM161_H_INCLUDED */
 

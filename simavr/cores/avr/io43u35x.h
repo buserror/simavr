@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: io43u35x.h 2456 2014-11-19 09:57:29Z saaadhu $ */
+/* $Id: io43u35x.h 1873 2009-02-11 17:53:39Z arcanum $ */
 
 /* avr/io43u35x.h - definitions for AT43USB35x */
 
@@ -428,6 +428,5 @@
 
 #define SLEEP_MODE_IDLE         0
 #define SLEEP_MODE_PWR_DOWN     _BV(SM)
-
 
 #endif /* _AVR_43USB355_H_ */

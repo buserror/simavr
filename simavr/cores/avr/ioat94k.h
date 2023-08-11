@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: ioat94k.h 2456 2014-11-19 09:57:29Z saaadhu $ */
+/* $Id: ioat94k.h 602 2004-11-01 22:23:56Z arcanum $ */
 
 /* avr/ioat94k.h - definitions for AT94K series FPSLIC(tm) */
 
@@ -561,6 +561,5 @@
 #define SLEEP_MODE_IDLE         0
 #define SLEEP_MODE_PWR_DOWN     _BV(SM1)
 #define SLEEP_MODE_PWR_SAVE     (_BV(SM0) | _BV(SM1))
-
 
 #endif /* _AVR_IOAT94K_H_ */

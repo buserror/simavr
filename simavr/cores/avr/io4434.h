@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: io4434.h 2456 2014-11-19 09:57:29Z saaadhu $ */
+/* $Id: io4434.h 2225 2011-03-02 16:27:26Z arcanum $ */
 
 /* avr/io4434.h - definitions for AT90S4434 */
 
@@ -580,11 +580,9 @@
 #define SIGNATURE_1 0x93
 #define SIGNATURE_2 0x03
 
-
 #define SLEEP_MODE_IDLE         0
 #define SLEEP_MODE_ADC          _BV(SM0)
 #define SLEEP_MODE_PWR_DOWN     _BV(SM1)
 #define SLEEP_MODE_PWR_SAVE     (_BV(SM0) | _BV(SM1))
-
 
 #endif /* _AVR_IO4434_H_ */

@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iotn2313a.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iotn2313a.h 2412 2014-03-20 11:21:20Z pitchumani $ */
 
 /* avr/iotn2313a.h - definitions for ATtiny2313A */
 
@@ -42,7 +42,7 @@
 #  define _AVR_IOXXX_H_ "iotn2313a.h"
 #else
 #  error "Attempt to include more than one <avr/ioXXX.h> file."
-#endif 
+#endif
 
 
 #ifndef _AVR_ATtiny2313A_H_
@@ -316,6 +316,7 @@
 #define EEDR7 7
 
 #define EEAR _SFR_IO8(0x01E)
+#define EEARL _SFR_IO8(0x01E)
 #define EEAR0 0
 #define EEAR1 1
 #define EEAR2 2
@@ -803,7 +804,6 @@
 #define SCL_PORT  PORTB
 #define SCL_PIN   PINB
 #define SCL_BIT   7
-
 
 #define SLEEP_MODE_IDLE (0x00<<4)
 #define SLEEP_MODE_STANDBY (0x04<<4)

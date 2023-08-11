@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom8515.h 2456 2014-11-19 09:57:29Z saaadhu $ */
+/* $Id: iom8515.h 2235 2011-03-17 04:13:14Z arcanum $ */
 
 /* avr/iom8515.h - definitions for ATmega8515 */
 
@@ -677,13 +677,11 @@
 
 #endif  /* !defined(__AVR_LIBC_DEPRECATED_ENABLE__) */
 
-
 #define SLEEP_MODE_IDLE         0
 #define SLEEP_MODE_PWR_DOWN     1
 #define SLEEP_MODE_PWR_SAVE     2
 #define SLEEP_MODE_ADC          3
 #define SLEEP_MODE_STANDBY      4
 #define SLEEP_MODE_EXT_STANDBY  5
-
 
 #endif /* _AVR_IOM8515_H_ */

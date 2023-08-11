@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom16u4.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iom16u4.h 2185 2010-09-22 07:06:35Z aboyapati $ */
 
 /* avr/iom16u4.h - definitions for ATmega16U4 */
 
@@ -42,7 +42,7 @@
 #  define _AVR_IOXXX_H_ "iom16u4.h"
 #else
 #  error "Attempt to include more than one <avr/ioXXX.h> file."
-#endif 
+#endif
 
 
 #ifndef _AVR_ATmega16U4_H_
@@ -446,7 +446,7 @@
 #define PRTIM2 6
 #define PRTWI 7
 
-#define __AVR_HAVE_PRR0	((1<<PRADC)|(1<<PRUSART0)|(1<<PRSPI)|(1<<PRTIM1)|(1<<PRTIM0)|(1<<PRTIM2)|(1<<PRTWI))
+#define __AVR_HAVE_PRR0 ((1<<PRADC)|(1<<PRUSART0)|(1<<PRSPI)|(1<<PRTIM1)|(1<<PRTIM0)|(1<<PRTIM2)|(1<<PRTWI))
 #define __AVR_HAVE_PRR0_PRADC
 #define __AVR_HAVE_PRR0_PRUSART0
 #define __AVR_HAVE_PRR0_PRSPI
@@ -458,11 +458,13 @@
 #define PRR1 _SFR_MEM8(0x65)
 #define PRUSART1 0
 #define PRTIM3 3
+#define PRTIM4 4
 #define PRUSB 7
 
-#define __AVR_HAVE_PRR1	((1<<PRUSART1)|(1<<PRTIM3)|(1<<PRUSB))
+#define __AVR_HAVE_PRR1 ((1<<PRUSART1)|(1<<PRTIM4)|(1<<PRTIM3)|(1<<PRUSB))
 #define __AVR_HAVE_PRR1_PRUSART1
 #define __AVR_HAVE_PRR1_PRTIM3
+#define __AVR_HAVE_PRR1_PRTIM4
 #define __AVR_HAVE_PRR1_PRUSB
 
 #define OSCCAL _SFR_MEM8(0x66)
@@ -1410,7 +1412,6 @@
 #define SIGNATURE_0 0x1E
 #define SIGNATURE_1 0x94
 #define SIGNATURE_2 0x88
-
 
 
 #define SLEEP_MODE_IDLE (0x00<<1)

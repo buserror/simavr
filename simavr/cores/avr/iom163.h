@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom163.h 2456 2014-11-19 09:57:29Z saaadhu $ */
+/* $Id: iom163.h 2231 2011-03-07 05:06:55Z arcanum $ */
 
 /* avr/iom163.h - definitions for ATmega163 */
 
@@ -653,6 +653,10 @@
 #define SIGNATURE_1 0x94
 #define SIGNATURE_2 0x02
 
+#define SLEEP_MODE_IDLE         0
+#define SLEEP_MODE_ADC          _BV(SM0)
+#define SLEEP_MODE_PWR_DOWN     _BV(SM1)
+#define SLEEP_MODE_PWR_SAVE     (_BV(SM0) | _BV(SM1))
 
 /* Deprecated items */
 #if !defined(__AVR_LIBC_DEPRECATED_ENABLE__)
@@ -678,14 +682,5 @@
 #pragma GCC poison SIG_2WIRE_SERIAL
 
 #endif  /* !defined(__AVR_LIBC_DEPRECATED_ENABLE__) */
-
-
-
-
-#define SLEEP_MODE_IDLE         0
-#define SLEEP_MODE_ADC          _BV(SM0)
-#define SLEEP_MODE_PWR_DOWN     _BV(SM1)
-#define SLEEP_MODE_PWR_SAVE     (_BV(SM0) | _BV(SM1))
-
 
 #endif /* _AVR_IOM163_H_ */

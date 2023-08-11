@@ -29,7 +29,7 @@
   POSSIBILITY OF SUCH DAMAGE. 
 */
 
-/* $Id: iom32hvbrevb.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iom32hvbrevb.h 2102 2010-03-16 22:52:39Z joerg_wunsch $ */
 
 /* avr/iom32hvbrevb.h - definitions for ATmega32HVB revision B. */
 
@@ -945,11 +945,9 @@
 /* Lock Bits */
 #define __LOCK_BITS_EXIST
 
-
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)
 #define SLEEP_MODE_PWR_SAVE (0x03<<1)
 #define SLEEP_MODE_PWR_OFF (0x04<<1)
-
 
 #endif  /* _AVR_IOM32HVBREVB_H_ */

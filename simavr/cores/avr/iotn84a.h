@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iotn84a.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iotn84a.h 2435 2014-08-11 10:31:52Z joerg_wunsch $ */
 
 /* avr/iotn84a.h - definitions for ATtiny84A */
 
@@ -834,7 +834,6 @@
 #define PCINT5_PORT  PORTA
 #define PCINT5_PIN   PINA
 #define PCINT5_BIT   5
-
 
 #define SLEEP_MODE_IDLE (0x00<<3)
 #define SLEEP_MODE_ADC (0x01<<3)

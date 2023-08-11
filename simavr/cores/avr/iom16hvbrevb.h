@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom16hvbrevb.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iom16hvbrevb.h 2086 2009-12-15 03:24:16Z arcanum $ */
 
 /* avr/iom16hvbrevb.h - definitions for ATmega16HVB revision B */
 
@@ -1042,7 +1042,6 @@
 #define OC_PORT  PORTOC
 #define OC_PIN   PINOC
 #define OC_BIT   OC
-
 
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)

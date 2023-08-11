@@ -29,7 +29,7 @@
   POSSIBILITY OF SUCH DAMAGE. 
 */
 
-/* $Id: iotn167.h 2480 2015-07-22 06:31:48Z pitchumani $ */
+/* $Id: iotn167.h 2253 2011-09-26 14:53:41Z arcanum $ */
 
 /* avr/iotn167.h - definitions for ATtiny167. */
 

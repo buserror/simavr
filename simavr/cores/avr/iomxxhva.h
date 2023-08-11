@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iomxxhva.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id$ */
 
 /* iomxxhva.h - definitions for ATmega8HVA and ATmega16HVA.  */
 

@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: io90scr100.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: io90scr100.h 1910 2009-03-04 17:45:30Z arcanum $ */
 
 /* avr/io90scr100.h - definitions for AT90SCR100 */
 
@@ -1708,8 +1708,6 @@
 #define SIGNATURE_0 0x1E
 #define SIGNATURE_1 0x96
 #define SIGNATURE_2 0xC1
-
-
 
 #define SLEEP_MODE_IDLE         (0)
 #define SLEEP_MODE_PWR_DOWN     _BV(SM1)

@@ -26,10 +26,10 @@
   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-  POSSIBILITY OF SUCH DAMAGE. 
+  POSSIBILITY OF SUCH DAMAGE.
 */
 
-/* $Id: iom32u4.h 2479 2015-07-22 05:32:39Z pitchumani $ */
+/* $Id: iom32u4.h 2225 2011-03-02 16:27:26Z arcanum $ */
 
 /* avr/iom32u4.h - definitions for ATmega32U4. */
 
@@ -43,7 +43,7 @@
 #  define _AVR_IOXXX_H_ "iom32u4.h"
 #else
 #  error "Attempt to include more than one <avr/ioXXX.h> file."
-#endif 
+#endif
 
 
 #ifndef _AVR_IOM32U4_H_
@@ -462,11 +462,13 @@
 #define PRR1 _SFR_MEM8(0x65)
 #define PRUSART1 0
 #define PRTIM3 3
+#define PRTIM4 4
 #define PRUSB 7
 
-#define __AVR_HAVE_PRR1	((1<<PRUSART1)|(1<<PRTIM3)|(1<<PRUSB))
+#define __AVR_HAVE_PRR1	((1<<PRUSART1)|(1<<PRTIM4)|(1<<PRTIM3)|(1<<PRUSB))
 #define __AVR_HAVE_PRR1_PRUSART1
 #define __AVR_HAVE_PRR1_PRTIM3
+#define __AVR_HAVE_PRR1_PRTIM4
 #define __AVR_HAVE_PRR1_PRUSB
 
 #define OSCCAL _SFR_MEM8(0x66)
@@ -642,9 +644,9 @@
 #define ICNC1 7
 
 #define TCCR1C _SFR_MEM8(0x82)
-#define FOC1C 5 
-#define FOC1B 6 
-#define FOC1A 7 
+#define FOC1C 5
+#define FOC1B 6
+#define FOC1A 7
 
 /* Reserved [0x83] */
 
@@ -1448,7 +1450,7 @@
 #define XRAMSIZE     (0x10000)
 #define XRAMEND      (XRAMSIZE - 1)
 #define E2END        (0x3FF)
-#define E2PAGESIZE   (4) 
+#define E2PAGESIZE   (4)
 #define FLASHEND     (0x7FFF)
 
 
@@ -1490,7 +1492,7 @@
 /* Lock Bits */
 #define __LOCK_BITS_EXIST
 #define __BOOT_LOCK_BITS_0_EXIST
-#define __BOOT_LOCK_BITS_1_EXIST 
+#define __BOOT_LOCK_BITS_1_EXIST
 
 
 

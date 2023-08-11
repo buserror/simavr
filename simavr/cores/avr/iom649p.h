@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom649p.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iom649p.h 2146 2010-06-09 06:38:54Z joerg_wunsch $ */
 
 /* avr/iom649p.h - definitions for ATmega649 */
 
@@ -42,7 +42,7 @@
 #  define _AVR_IOXXX_H_ "iom649p.h"
 #else
 #  error "Attempt to include more than one <avr/ioXXX.h> file."
-#endif 
+#endif
 
 
 #ifndef _AVR_ATmega649_H_
@@ -325,7 +325,8 @@
 #define EEAR10 2
 
 #define GTCCR _SFR_IO8(0x23)
-#define PSR310 0
+#define PSR310 0 /* Kept for legacy reasons */
+#define PSR10 0
 #define PSR2 1
 #define TSM 7
 
@@ -1479,7 +1480,6 @@
 #define ADC0_PORT  PORTF
 #define ADC0_PIN   PINF
 #define ADC0_BIT   0
-
 
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)

@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom16m1.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iom16m1.h 2183 2010-09-21 05:37:46Z aboyapati $ */
 
 /* avr/iom16m1.h - definitions for ATmega16M1 */
 
@@ -1560,7 +1560,6 @@
 #define SIGNATURE_0 0x1E
 #define SIGNATURE_1 0x94
 #define SIGNATURE_2 0x84
-
 
 
 #define SLEEP_MODE_IDLE (0x00<<1)

@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iotn24a.h 2494 2015-11-26 08:08:43Z pitchumani $ */
+/* $Id: iotn24a.h 2414 2014-03-21 16:04:00Z pitchumani $ */
 
 /* avr/iotn24a.h - definitions for ATtiny24A */
 
@@ -836,7 +836,6 @@
 #define PCINT5_PORT  PORTA
 #define PCINT5_PIN   PINA
 #define PCINT5_BIT   5
-
 
 #define SLEEP_MODE_IDLE (0x00<<3)
 #define SLEEP_MODE_ADC (0x01<<3)

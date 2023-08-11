@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: io2343.h 2456 2014-11-19 09:57:29Z saaadhu $ */
+/* $Id: io2343.h 2225 2011-03-02 16:27:26Z arcanum $ */
 
 /* avr/io2343.h - definitions for AT90S2343 */
 
@@ -208,9 +208,7 @@
 #define SIGNATURE_1 0x91
 #define SIGNATURE_2 0x03
 
-
 #define SLEEP_MODE_IDLE         0
 #define SLEEP_MODE_PWR_DOWN     _BV(SM)
-
 
 #endif /* _AVR_IO2343_H_ */

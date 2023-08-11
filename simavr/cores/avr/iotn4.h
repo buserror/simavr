@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iotn4.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id$ */
 
 /* avr/iotn4.h - definitions for ATtiny4 */
 
@@ -354,7 +354,7 @@
 
 
 /* Fuses */
-#define FUSE_MEMORY_SIZE 0
+#define FUSE_MEMORY_SIZE 1
 
 
 /* Lock Bits */
@@ -467,7 +467,6 @@
 #define PB3_PORT  PORTRESET
 #define PB3_PIN   PINRESET
 #define PB3_BIT   RESET
-
 
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)

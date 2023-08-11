@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom406.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iom406.h 2225 2011-03-02 16:27:26Z arcanum $ */
 
 /* avr/iom406.h - definitions for ATmega406 */
 
@@ -779,6 +779,5 @@
 #define SLEEP_MODE_PWR_DOWN (0x02<<1)
 #define SLEEP_MODE_PWR_SAVE (0x03<<1)
 #define SLEEP_MODE_PWR_OFF (0x04<<1)
-
 
 #endif /* _AVR_IOM406_H_ */

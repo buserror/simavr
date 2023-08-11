@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: io90pwm81.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: io90pwm81.h 2206 2011-02-11 06:58:02Z aboyapati $ */
 
 /* avr/io90pwm81.h - definitions for AT90PWM81 */
 
@@ -1028,11 +1028,9 @@
 #define SIGNATURE_2 0x88
 
 
-
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)
 #define SLEEP_MODE_PWR_DOWN (0x02<<1)
 #define SLEEP_MODE_STANDBY (0x06<<1)
-
 #endif /* _AVR_AT90PWM81_H_ */
 

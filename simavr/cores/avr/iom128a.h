@@ -1,38 +1,21 @@
 /*****************************************************************************
  *
- * Copyright (C) 2014 Atmel Corporation
+ * Copyright (C) 2019 Atmel Corporation, a wholly owned subsidiary of Microchip Technology Inc.
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * * Redistributions of source code must retain the above copyright
- *   notice, this list of conditions and the following disclaimer.
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * * Redistributions in binary form must reproduce the above copyright
- *   notice, this list of conditions and the following disclaimer in
- *   the documentation and/or other materials provided with the
- *   distribution.
- *
- * * Neither the name of the copyright holders nor the names of
- *   contributors may be used to endorse or promote products derived
- *   from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  ****************************************************************************/
 
-
-/* $Id: iom128a.h 2456 2014-11-19 09:57:29Z saaadhu $ */
 
 #ifndef _AVR_ATMEGA128A_H_INCLUDED
 #define _AVR_ATMEGA128A_H_INCLUDED
@@ -72,13 +55,29 @@
 
 #define DDRE    _SFR_IO8(0x02)
 #define DDRE7   7
+// Inserted "DDE7" from "DDRE7" due to compatibility
+#define DDE7    7
 #define DDRE6   6
+// Inserted "DDE6" from "DDRE6" due to compatibility
+#define DDE6    6
 #define DDRE5   5
+// Inserted "DDE5" from "DDRE5" due to compatibility
+#define DDE5    5
 #define DDRE4   4
+// Inserted "DDE4" from "DDRE4" due to compatibility
+#define DDE4    4
 #define DDRE3   3
+// Inserted "DDE3" from "DDRE3" due to compatibility
+#define DDE3    3
 #define DDRE2   2
+// Inserted "DDE2" from "DDRE2" due to compatibility
+#define DDE2    2
 #define DDRE1   1
+// Inserted "DDE1" from "DDRE1" due to compatibility
+#define DDE1    1
 #define DDRE0   0
+// Inserted "DDE0" from "DDRE0" due to compatibility
+#define DDE0    0
 
 #define PORTE   _SFR_IO8(0x03)
 #define PORTE7  7
@@ -182,13 +181,29 @@
 
 #define DDRD    _SFR_IO8(0x11)
 #define DDRD7   7
+// Inserted "DDD7" from "DDRD7" due to compatibility
+#define DDD7    7
 #define DDRD6   6
+// Inserted "DDD6" from "DDRD6" due to compatibility
+#define DDD6    6
 #define DDRD5   5
+// Inserted "DDD5" from "DDRD5" due to compatibility
+#define DDD5    5
 #define DDRD4   4
+// Inserted "DDD4" from "DDRD4" due to compatibility
+#define DDD4    4
 #define DDRD3   3
+// Inserted "DDD3" from "DDRD3" due to compatibility
+#define DDD3    3
 #define DDRD2   2
+// Inserted "DDD2" from "DDRD2" due to compatibility
+#define DDD2    2
 #define DDRD1   1
+// Inserted "DDD1" from "DDRD1" due to compatibility
+#define DDD1    1
 #define DDRD0   0
+// Inserted "DDD0" from "DDRD0" due to compatibility
+#define DDD0    0
 
 #define PORTD   _SFR_IO8(0x12)
 #define PORTD7  7
@@ -212,13 +227,29 @@
 
 #define DDRC    _SFR_IO8(0x14)
 #define DDRC7   7
+// Inserted "DDC7" from "DDRC7" due to compatibility
+#define DDC7    7
 #define DDRC6   6
+// Inserted "DDC6" from "DDRC6" due to compatibility
+#define DDC6    6
 #define DDRC5   5
+// Inserted "DDC5" from "DDRC5" due to compatibility
+#define DDC5    5
 #define DDRC4   4
+// Inserted "DDC4" from "DDRC4" due to compatibility
+#define DDC4    4
 #define DDRC3   3
+// Inserted "DDC3" from "DDRC3" due to compatibility
+#define DDC3    3
 #define DDRC2   2
+// Inserted "DDC2" from "DDRC2" due to compatibility
+#define DDC2    2
 #define DDRC1   1
+// Inserted "DDC1" from "DDRC1" due to compatibility
+#define DDC1    1
 #define DDRC0   0
+// Inserted "DDC0" from "DDRC0" due to compatibility
+#define DDC0    0
 
 #define PORTC   _SFR_IO8(0x15)
 #define PORTC7  7
@@ -242,13 +273,29 @@
 
 #define DDRB    _SFR_IO8(0x17)
 #define DDRB7   7
+// Inserted "DDB7" from "DDRB7" due to compatibility
+#define DDB7    7
 #define DDRB6   6
+// Inserted "DDB6" from "DDRB6" due to compatibility
+#define DDB6    6
 #define DDRB5   5
+// Inserted "DDB5" from "DDRB5" due to compatibility
+#define DDB5    5
 #define DDRB4   4
+// Inserted "DDB4" from "DDRB4" due to compatibility
+#define DDB4    4
 #define DDRB3   3
+// Inserted "DDB3" from "DDRB3" due to compatibility
+#define DDB3    3
 #define DDRB2   2
+// Inserted "DDB2" from "DDRB2" due to compatibility
+#define DDB2    2
 #define DDRB1   1
+// Inserted "DDB1" from "DDRB1" due to compatibility
+#define DDB1    1
 #define DDRB0   0
+// Inserted "DDB0" from "DDRB0" due to compatibility
+#define DDB0    0
 
 #define PORTB   _SFR_IO8(0x18)
 #define PORTB7  7
@@ -272,13 +319,29 @@
 
 #define DDRA    _SFR_IO8(0x1A)
 #define DDRA7   7
+// Inserted "DDA7" from "DDRA7" due to compatibility
+#define DDA7    7
 #define DDRA6   6
+// Inserted "DDA6" from "DDRA6" due to compatibility
+#define DDA6    6
 #define DDRA5   5
+// Inserted "DDA5" from "DDRA5" due to compatibility
+#define DDA5    5
 #define DDRA4   4
+// Inserted "DDA4" from "DDRA4" due to compatibility
+#define DDA4    4
 #define DDRA3   3
+// Inserted "DDA3" from "DDRA3" due to compatibility
+#define DDA3    3
 #define DDRA2   2
+// Inserted "DDA2" from "DDRA2" due to compatibility
+#define DDA2    2
 #define DDRA1   1
+// Inserted "DDA1" from "DDRA1" due to compatibility
+#define DDA1    1
 #define DDRA0   0
+// Inserted "DDA0" from "DDRA0" due to compatibility
+#define DDA0    0
 
 #define PORTA   _SFR_IO8(0x1B)
 #define PORTA7  7
@@ -486,13 +549,29 @@
 
 #define DDRF    _SFR_MEM8(0x61)
 #define DDRF7   7
+// Inserted "DDF7" from "DDRF7" due to compatibility
+#define DDF7    7
 #define DDRF6   6
+// Inserted "DDF6" from "DDRF6" due to compatibility
+#define DDF6    6
 #define DDRF5   5
+// Inserted "DDF5" from "DDRF5" due to compatibility
+#define DDF5    5
 #define DDRF4   4
+// Inserted "DDF4" from "DDRF4" due to compatibility
+#define DDF4    4
 #define DDRF3   3
+// Inserted "DDF3" from "DDRF3" due to compatibility
+#define DDF3    3
 #define DDRF2   2
+// Inserted "DDF2" from "DDRF2" due to compatibility
+#define DDF2    2
 #define DDRF1   1
+// Inserted "DDF1" from "DDRF1" due to compatibility
+#define DDF1    1
 #define DDRF0   0
+// Inserted "DDF0" from "DDRF0" due to compatibility
+#define DDF0    0
 
 #define PORTF   _SFR_MEM8(0x62)
 #define PORTF7  7
@@ -513,10 +592,20 @@
 
 #define DDRG    _SFR_MEM8(0x64)
 #define DDRG4   4
+// Inserted "DDG4" from "DDRG4" due to compatibility
+#define DDG4    4
 #define DDRG3   3
+// Inserted "DDG3" from "DDRG3" due to compatibility
+#define DDG3    3
 #define DDRG2   2
+// Inserted "DDG2" from "DDRG2" due to compatibility
+#define DDG2    2
 #define DDRG1   1
+// Inserted "DDG1" from "DDRG1" due to compatibility
+#define DDG1    1
 #define DDRG0   0
+// Inserted "DDG0" from "DDRG0" due to compatibility
+#define DDG0    0
 
 #define PORTG   _SFR_MEM8(0x65)
 #define PORTG4  4
@@ -749,6 +838,16 @@
 
 
 
+/* Values and associated defines */
+
+
+#define SLEEP_MODE_IDLE (0x00<<2)
+#define SLEEP_MODE_ADC (0x02<<2)
+#define SLEEP_MODE_PWR_DOWN (0x04<<2)
+#define SLEEP_MODE_PWR_SAVE (0x06<<2)
+#define SLEEP_MODE_STANDBY (0x05<<2)
+#define SLEEP_MODE_EXT_STANDBY (0x07<<2)
+
 /* Interrupt vectors */
 /* Vector 0 is the reset vector */
 /* External Interrupt Request 0 */
@@ -887,21 +986,44 @@
 #define SPM_READY_vect            _VECTOR(34)
 #define SPM_READY_vect_num        34
 
-#define _VECTORS_SIZE 140
+#if (defined(__ASSEMBLER__) || defined(__IAR_SYSTEMS_ASM__))
+#  define _VECTORS_SIZE 140
+#else
+#  define _VECTORS_SIZE 140U
+#endif
 
 
 /* Constants */
 
-#define SPM_PAGESIZE 256
-#define FLASHSTART   0x0000
-#define FLASHEND     0x1FFFF
-#define RAMSTART     0x0100
-#define RAMSIZE      4096
-#define RAMEND       0x10FF
-#define E2START     0
-#define E2SIZE      4096
-#define E2PAGESIZE  8
-#define E2END       0x0FFF
+#if (defined(__ASSEMBLER__) || defined(__IAR_SYSTEMS_ASM__))
+#  define SPM_PAGESIZE 256
+#  define FLASHSTART   0x0000
+#  define FLASHEND     0x1FFFF
+#else
+#  define SPM_PAGESIZE 256U
+#  define FLASHSTART   0x0000U
+#  define FLASHEND     0x1FFFFU
+#endif
+#if (defined(__ASSEMBLER__) || defined(__IAR_SYSTEMS_ASM__))
+#  define RAMSTART     0x0100
+#  define RAMSIZE      4096
+#  define RAMEND       0x10FF
+#else
+#  define RAMSTART     0x0100U
+#  define RAMSIZE      4096U
+#  define RAMEND       0x10FFU
+#endif
+#if (defined(__ASSEMBLER__) || defined(__IAR_SYSTEMS_ASM__))
+#  define E2START     0
+#  define E2SIZE      4096
+#  define E2PAGESIZE  8
+#  define E2END       0x0FFF
+#else
+#  define E2START     0U
+#  define E2SIZE      4096U
+#  define E2PAGESIZE  8U
+#  define E2END       0x0FFFU
+#endif
 #define XRAMEND      RAMEND
 
 
@@ -918,6 +1040,8 @@
 #define FUSE_SUT_CKSEL5  (unsigned char)~_BV(5)
 #define FUSE_BODEN       (unsigned char)~_BV(6)
 #define FUSE_BODLEVEL    (unsigned char)~_BV(7)
+#define LFUSE_DEFAULT    (FUSE_SUT_CKSEL1 & FUSE_SUT_CKSEL2 & FUSE_SUT_CKSEL3 & FUSE_SUT_CKSEL4)
+
 
 /* High Fuse Byte */
 #define FUSE_BOOTRST     (unsigned char)~_BV(0)
@@ -928,10 +1052,14 @@
 #define FUSE_SPIEN       (unsigned char)~_BV(5)
 #define FUSE_JTAGEN      (unsigned char)~_BV(6)
 #define FUSE_OCDEN       (unsigned char)~_BV(7)
+#define HFUSE_DEFAULT    (FUSE_BOOTSZ0 & FUSE_BOOTSZ1 & FUSE_SPIEN & FUSE_JTAGEN)
+
 
 /* Extended Fuse Byte */
 #define FUSE_WDTON       (unsigned char)~_BV(0)
 #define FUSE_M103C       (unsigned char)~_BV(1)
+#define EFUSE_DEFAULT    (FUSE_M103C)
+
 
 
 /* Lock Bits */
@@ -947,12 +1075,6 @@
 
 
 
-#define SLEEP_MODE_IDLE (0x00<<2)
-#define SLEEP_MODE_ADC (0x02<<2)
-#define SLEEP_MODE_PWR_DOWN (0x04<<2)
-#define SLEEP_MODE_PWR_SAVE (0x06<<2)
-#define SLEEP_MODE_STANDBY (0x05<<2)
-#define SLEEP_MODE_EXT_STANDBY (0x07<<2)
 
 #endif /* #ifdef _AVR_ATMEGA128A_H_INCLUDED */
 

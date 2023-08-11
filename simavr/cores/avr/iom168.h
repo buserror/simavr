@@ -1,4 +1,4 @@
-/* Copyright (c) 2004, Theodore A. Roth
+/* Copyright (c) 2004,2005 Theodore A. Roth
    All rights reserved.
 
    Redistribution and use in source and binary forms, with or without
@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom168.h 2456 2014-11-19 09:57:29Z saaadhu $ */
+/* $Id: iom168.h 2115 2010-04-05 23:19:53Z arcanum $ */
 
 #ifndef _AVR_IOM168_H_
 #define _AVR_IOM168_H_ 1
@@ -88,12 +88,10 @@
 #define SIGNATURE_1 0x94
 #define SIGNATURE_2 0x06
 
-
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)
 #define SLEEP_MODE_PWR_DOWN (0x02<<1)
 #define SLEEP_MODE_PWR_SAVE (0x03<<1)
 #define SLEEP_MODE_STANDBY (0x06<<1)
-
 
 #endif /* _AVR_IOM168_H_ */

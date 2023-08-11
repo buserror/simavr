@@ -32,7 +32,7 @@
  ****************************************************************************/
 
 
-/* $Id: iom165a.h 2483 2015-08-06 09:16:30Z pitchumani $ */
+/* $Id: iom165a.h 2442 2014-08-11 21:42:11Z joerg_wunsch $ */
 
 #ifndef _AVR_ATMEGA165A_H_INCLUDED
 #define _AVR_ATMEGA165A_H_INCLUDED
@@ -823,12 +823,10 @@
 #define SIGNATURE_2 0x10
 
 
-
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)
 #define SLEEP_MODE_PWR_DOWN (0x02<<1)
 #define SLEEP_MODE_PWR_SAVE (0x03<<1)
 #define SLEEP_MODE_STANDBY (0x06<<1)
-
 #endif /* #ifdef _AVR_ATMEGA165A_H_INCLUDED */
 

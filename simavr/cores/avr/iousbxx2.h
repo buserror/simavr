@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iousbxx2.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id$ */
 
 /* iousbxx2.h - definitions for AT90USB82 and AT90USB162.  */
 

@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom161.h 2456 2014-11-19 09:57:29Z saaadhu $ */
+/* $Id: iom161.h 2229 2011-03-05 17:00:18Z arcanum $ */
 
 /* avr/iom161.h - definitions for ATmega161 */
 
@@ -690,6 +690,9 @@
 #define SIGNATURE_1 0x94
 #define SIGNATURE_2 0x01
 
+#define SLEEP_MODE_IDLE         0
+#define SLEEP_MODE_PWR_DOWN     1
+#define SLEEP_MODE_PWR_SAVE     2
 
 /* Deprecated items */
 #if !defined(__AVR_LIBC_DEPRECATED_ENABLE__)
@@ -718,11 +721,6 @@
 #pragma GCC poison SIG_COMPARATOR
 
 #endif  /* !defined(__AVR_LIBC_DEPRECATED_ENABLE__) */
-
-
-#define SLEEP_MODE_IDLE         0
-#define SLEEP_MODE_PWR_DOWN     1
-#define SLEEP_MODE_PWR_SAVE     2
 
 
 #endif /* _AVR_IOM161_H_ */

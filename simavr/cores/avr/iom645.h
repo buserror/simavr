@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom645.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iom645.h 2235 2011-03-17 04:13:14Z arcanum $ */
 
 /* avr/iom645.h - definitions for ATmega645 */
 
@@ -872,12 +872,10 @@
 #endif  /* !defined(__AVR_LIBC_DEPRECATED_ENABLE__) */
 
 
-
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)
 #define SLEEP_MODE_PWR_DOWN (0x02<<1)
 #define SLEEP_MODE_PWR_SAVE (0x03<<1)
 #define SLEEP_MODE_STANDBY (0x06<<1)
-
 
 #endif /* _AVR_IOM645_H_ */

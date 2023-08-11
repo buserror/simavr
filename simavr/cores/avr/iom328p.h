@@ -29,7 +29,7 @@
   POSSIBILITY OF SUCH DAMAGE. 
 */
 
-/* $Id: iom328p.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iom328p.h 2444 2014-08-11 22:10:47Z joerg_wunsch $ */
 
 /* avr/iom328p.h - definitions for ATmega328P. */
 
@@ -938,13 +938,11 @@
 #  define SIGNATURE_2 0x0F
 #endif
 
-
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)
 #define SLEEP_MODE_PWR_DOWN (0x02<<1)
 #define SLEEP_MODE_PWR_SAVE (0x03<<1)
 #define SLEEP_MODE_STANDBY (0x06<<1)
 #define SLEEP_MODE_EXT_STANDBY (0x07<<1)
-
 
 #endif  /* _AVR_IOM328P_H_ */

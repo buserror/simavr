@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom16hva2.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iom16hva2.h 2192 2010-11-08 13:53:24Z arcanum $ */
 
 /* avr/iom16hva2.h - definitions for ATmega16HVA2 */
 
@@ -42,7 +42,7 @@
 #  define _AVR_IOXXX_H_ "iom16hva2.h"
 #else
 #  error "Attempt to include more than one <avr/ioXXX.h> file."
-#endif 
+#endif
 
 
 #ifndef _AVR_ATmega16HVA2_H_
@@ -817,7 +817,7 @@
 #define PI_DDR   DDRI
 #define PI_PORT  PORTI
 #define PI_PIN   PINI
-#define PI_BIT   
+#define PI_BIT
 
 #define NI_DDR   DDRNI
 #define NI_PORT  PORTNI
@@ -873,7 +873,6 @@
 #define OC_PORT  PORTOC
 #define OC_PIN   PINOC
 #define OC_BIT   OC
-
 
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)

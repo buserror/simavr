@@ -30,8 +30,6 @@
 
 /* avr/io86r401.h - definitions for AT86RF401 */
 
-/* $Id: io86r401.h 2436 2014-08-11 10:37:37Z joerg_wunsch $ */
-
 #ifndef _AVR_IO86RF401_H_
 #define _AVR_IO86RF401_H_ 1
 
@@ -288,7 +286,7 @@ you may want to remove the leading D.
 #define ZH      r31
 
 /* Constants */
-#define RAMSTART    0x60
+#define RAMSTART	0x60
 #define RAMEND      0xDF
 #define XRAMEND     RAMEND
 #define E2END       0x7F

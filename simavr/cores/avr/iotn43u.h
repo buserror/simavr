@@ -29,7 +29,7 @@
   POSSIBILITY OF SUCH DAMAGE. 
 */
 
-/* $Id: iotn43u.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iotn43u.h 2225 2011-03-02 16:27:26Z arcanum $ */
 
 /* avr/iotn43u.h - definitions for ATtiny43U */
 
@@ -596,11 +596,9 @@
 #define SIGNATURE_1 0x92
 #define SIGNATURE_2 0x0C
 
-
 #define SLEEP_MODE_IDLE (0x00<<3)
 #define SLEEP_MODE_ADC (0x01<<3)
 #define SLEEP_MODE_PWR_DOWN (0x02<<3)
 #define SLEEP_MODE_STANDBY (0x03<<3)
-
 
 #endif /* _AVR_IOTN43U_H_ */

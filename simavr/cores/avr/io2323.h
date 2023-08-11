@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: io2323.h 2483 2015-08-06 09:16:30Z pitchumani $ */
+/* $Id: io2323.h 2225 2011-03-02 16:27:26Z arcanum $ */
 
 /* avr/io2323.h - definitions for AT90S2323 */
 

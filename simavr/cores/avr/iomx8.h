@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iomx8.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iomx8.h 2235 2011-03-17 04:13:14Z arcanum $ */
 
 /* avr/iomx8.h - definitions for ATmega48, ATmega88 and ATmega168 */
 
@@ -297,7 +297,7 @@ must be defined for the mega48.
 #define MCUCR   _SFR_IO8 (0x35)
 /* MCUCR */
 #define PUD     4
-#if defined (__AVR_ATmega88__) || defined (__AVR_ATmega168__) 
+#if defined (__AVR_ATmega88__) || defined (__AVR_ATmega168__)  || defined (__AVR_ATmega48A__) || defined(__AVR_ATmega48PA__)
 #define IVSEL   1
 #define IVCE    0
 #endif

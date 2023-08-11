@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom169pa.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iom169pa.h 2192 2010-11-08 13:53:24Z arcanum $ */
 
 /* avr/iom169pa.h - definitions for ATmega169PA */
 
@@ -42,7 +42,7 @@
 #  define _AVR_IOXXX_H_ "iom169pa.h"
 #else
 #  error "Attempt to include more than one <avr/ioXXX.h> file."
-#endif 
+#endif
 
 
 #ifndef _AVR_ATmega169PA_H_
@@ -1474,7 +1474,6 @@
 #define ADC0_PORT  PORTF
 #define ADC0_PIN   PINF
 #define ADC0_BIT   0
-
 
 #define SLEEP_MODE_IDLE (0x00<<1)
 #define SLEEP_MODE_ADC (0x01<<1)

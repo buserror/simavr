@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom32u6.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: iom32u6.h 1873 2009-02-11 17:53:39Z arcanum $ */
 
 /* avr/iom32u6.h - definitions for ATmega32U6 */
 
@@ -1418,7 +1418,6 @@
 #define SIGNATURE_0 0x1E
 #define SIGNATURE_1 0x95
 #define SIGNATURE_2 0x88
-
 
 
 #define SLEEP_MODE_IDLE (0x00<<1)

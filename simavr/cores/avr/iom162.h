@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom162.h 2456 2014-11-19 09:57:29Z saaadhu $ */
+/* $Id: iom162.h 2230 2011-03-06 02:42:04Z arcanum $ */
 
 /* iom162.h - definitions for ATmega162 */
 
@@ -976,6 +976,12 @@
 #define SIGNATURE_1 0x94
 #define SIGNATURE_2 0x04
 
+#define SLEEP_MODE_IDLE         0
+#define SLEEP_MODE_PWR_DOWN     1
+#define SLEEP_MODE_PWR_SAVE     2
+#define SLEEP_MODE_ADC          3
+#define SLEEP_MODE_STANDBY      4
+#define SLEEP_MODE_EXT_STANDBY  5
 
 /* Deprecated items */
 #if !defined(__AVR_LIBC_DEPRECATED_ENABLE__)
@@ -1011,14 +1017,6 @@
 #pragma GCC poison SIG_SPM_READY
 
 #endif  /* !defined(__AVR_LIBC_DEPRECATED_ENABLE__) */
-
-
-#define SLEEP_MODE_IDLE         0
-#define SLEEP_MODE_PWR_DOWN     1
-#define SLEEP_MODE_PWR_SAVE     2
-#define SLEEP_MODE_ADC          3
-#define SLEEP_MODE_STANDBY      4
-#define SLEEP_MODE_EXT_STANDBY  5
 
 
 #endif  /* _AVR_IOM162_H_ */

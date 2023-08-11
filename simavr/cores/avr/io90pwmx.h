@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: io90pwmx.h 2460 2014-12-03 05:39:25Z pitchumani $ */
+/* $Id: io90pwmx.h 2225 2011-03-02 16:27:26Z arcanum $ */
 
 /* avr/io90pwmx.h - definitions for AT90PWM2(B) and AT90PWM3(B) */
 
@@ -1407,11 +1407,9 @@
 #define __BOOT_LOCK_BITS_0_EXIST
 #define __BOOT_LOCK_BITS_1_EXIST 
 
-
 #define SLEEP_MODE_IDLE         (0)
 #define SLEEP_MODE_ADC          _BV(SM0)
 #define SLEEP_MODE_PWR_DOWN     _BV(SM1)
 #define SLEEP_MODE_STANDBY      (_BV(SM1) | _BV(SM2))
-
 
 #endif /* _AVR_IO90PWMX_H_ */

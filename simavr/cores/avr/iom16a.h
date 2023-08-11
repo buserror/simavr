@@ -28,7 +28,7 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE. */
 
-/* $Id: iom16a.h 2483 2015-08-06 09:16:30Z pitchumani $ */
+/* $Id: iom16a.h 2248 2011-05-23 19:54:32Z joerg_wunsch $ */
 
 /* avr/iom16a.h - definitions for ATmega16A */
 
@@ -678,8 +678,6 @@
 #define TIMER0_OVF_vect      _VECTOR(9)  /* Timer/Counter0 Overflow */
 #define SPI_STC_vect_num  10
 #define SPI_STC_vect      _VECTOR(10)  /* Serial Transfer Complete */
-#define SPISTC_vect_num  10
-#define SPISTC_vect      _VECTOR(10)  /* Keep for backward-compatibility */
 
 /* The following vectors use an inconsistent (to the ATmega16 etc.)
    naming scheme.  The inconsistent names are preserved here for softwares
@@ -913,7 +911,6 @@
 #define SS_PORT  PORTB
 #define SS_PIN   PINB
 #define SS_BIT   4
-
 
 #define SLEEP_MODE_IDLE (0x00<<4)
 #define SLEEP_MODE_ADC (0x01<<4)
