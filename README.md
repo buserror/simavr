@@ -149,6 +149,6 @@ on a real hardware.
 ![lcd-gtkwave](https://github.com/buserror-uk/simavr/raw/master/doc/img/hd44780-wave.png)
 
 And this is a gtkwave trace of what the firmware is doing. You can zoom in, measure, etc
-in gtkwave, select trades to see etc.
+in gtkwave, select traces to see etc.
 
 Quite a few other examples are available!
