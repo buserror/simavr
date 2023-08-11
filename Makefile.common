@@ -85,14 +85,14 @@ else
 endif
 
 # FIXME uname -o doesn't work on bsd derivatives
-WIN := ${shell uname -o}
+WIN		:= ${shell uname -o}
 
 ifeq (${WIN}, Msys)
-AVR_ROOT     := /mingw64/avr
+AVR_ROOT	:= /mingw64/avr
 # compiler is globally available, no need to direct to a full path
-AVR          := avr-
-IPATH       += ${PREFIX}/include
-CFLAGS      += -I${PREFIX}/include
+AVR		:= avr-
+IPATH		+= ${PREFIX}/include
+CFLAGS		+= -I${PREFIX}/include
 LDFLAGS		+= -L/lib -L/local/lib
 CFLAGS 		+= -DNO_COLOR
 else
@@ -104,8 +104,8 @@ CPPFLAGS	+= ${patsubst %,-I%,${subst :, ,${IPATH}}}
 
 AVR_CPPFLAGS	= ${CPPFLAGS} -I${SIMAVR}/cores
 
-CC 			?= clang
-AR 			?= ar
+CC 		?= clang
+AR 		?= ar
 RANLIB 		?= ranlib
 MKDIR		?= mkdir -p
 INSTALL		?= install
@@ -116,15 +116,21 @@ LIBDIR		:= ${shell pwd}/${SIMAVR}/${OBJ}
 LDFLAGS 	+= -L${LIBDIR} -lsimavr -lm
 
 # Are libelf and/or libdwarf installed?
-# The included file is created when running "make" at the top level.
+C_LIBELF	:= ${shell pkg-config --cflags \
+			libelf 2>/dev/null && \
+			echo -DHAVE_LIBELF=1 }
+LD_LIBELF	:= ${shell pkg-config --libs libelf }
+# Hmmm silly libdwarf doesn't have a .pc file! Its 2023 guys...
+C_LIBDWARF	:= ${shell ls /usr/include/libdwarf/libdwarf.h >/dev/null 2>&1 && \
+			echo -DHAVE_LIBDWARF=1 }
+LD_LIBDWARF	:= ${shell ls /usr/include/libdwarf/libdwarf.h >/dev/null 2>&1 && \
+			echo -ldwarf}
 
-ifeq ($(shell test -f $(SIMAVR)/../Libs.mk || echo Exists), Exists)
-$(warning Missing library configuration file.  Make from top level to create it.)
-endif
--include $(SIMAVR)/../Libs.mk
+CFLAGS		+= $(C_LIBELF) $(C_LIBDWARF)
+LDFLAGS		+= $(LD_LIBELF) $(LD_LIBDWARF)
 
 ifeq (${WIN}, Msys)
-LDFLAGS      += -lws2_32
+LDFLAGS     	 += -lws2_32
 endif
 
 # for clock_gettime on RHEL 6.X
