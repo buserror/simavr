@@ -116,19 +116,14 @@ typedef struct __name##_t {			\
 	FIFO_VOLATILE uint8_t	flags;		\
 } __name##_t
 
-#define DEFINE_FIFO(__type, __name) \
-FIFO_DECL FIFO_INLINE FIFO_BOOL_TYPE __name##_write(__name##_t * c, __type b)\
-{\
-	FIFO_CURSOR_TYPE now = c->write;\
-	FIFO_CURSOR_TYPE next = (now + 1) & (__name##_fifo_size-1);\
-	if (c->read != next) {	\
-		c->buffer[now] = b;\
-		FIFO_SYNC; \
-		c->write = next;\
-		return 1;\
-	}\
-	return 0;\
-}\
+/*
+ * This allow declaring a FIFO without the functions that use
+ * pass-by-value arguments. The compiler isn't too happy using
+ * some of the variable length array these days and outputs a warning.
+ * Also, it is not efficient, so if your FIFO member is a big struct,
+ * you should use the pass by pointer instead.
+ */
+#define DEFINE_PTR_FIFO(__type, __name) \
 FIFO_DECL FIFO_INLINE FIFO_BOOL_TYPE __name##_isfull(__name##_t *c)\
 {\
 	FIFO_CURSOR_TYPE next = (c->write + 1) & (__name##_fifo_size-1);\
@@ -137,17 +132,6 @@ FIFO_DECL FIFO_INLINE FIFO_BOOL_TYPE __name##_isfull(__name##_t *c)\
 FIFO_DECL FIFO_INLINE FIFO_BOOL_TYPE __name##_isempty(__name##_t * c)\
 {\
 	return c->read == c->write;\
-}\
-FIFO_DECL FIFO_INLINE __type __name##_read(__name##_t * c)\
-{\
-	__type res = FIFO_ZERO_INIT; \
-	FIFO_CURSOR_TYPE read = c->read;\
-	if (read == c->write)\
-		return res;\
-	res = c->buffer[read];\
-	FIFO_SYNC; \
-	c->read = (read + 1) & (__name##_fifo_size-1);\
-	return res;\
 }\
 FIFO_DECL FIFO_INLINE FIFO_CURSOR_TYPE __name##_get_read_size(__name##_t *c)\
 {\
@@ -162,14 +146,6 @@ FIFO_DECL FIFO_INLINE void __name##_read_offset(__name##_t *c, FIFO_CURSOR_TYPE 
 	FIFO_SYNC; \
 	c->read = (c->read + o) & (__name##_fifo_size-1);\
 }\
-FIFO_DECL FIFO_INLINE __type __name##_read_at(__name##_t *c, FIFO_CURSOR_TYPE o)\
-{\
-	return c->buffer[(c->read + o) & (__name##_fifo_size-1)];\
-}\
-FIFO_DECL FIFO_INLINE void __name##_write_at(__name##_t *c, FIFO_CURSOR_TYPE o, __type b)\
-{\
-	c->buffer[(c->write + o) & (__name##_fifo_size-1)] = b;\
-}\
 FIFO_DECL FIFO_INLINE void __name##_write_offset(__name##_t *c, FIFO_CURSOR_TYPE o)\
 {\
 	FIFO_SYNC; \
@@ -179,6 +155,52 @@ FIFO_DECL FIFO_INLINE void __name##_reset(__name##_t *c)\
 {\
 	FIFO_SYNC; \
 	c->read = c->write = c->flags = 0;\
+}\
+FIFO_DECL FIFO_INLINE __type * __name##_write_ptr(__name##_t * c) \
+{\
+	return c->buffer + c->write;\
+}\
+FIFO_DECL FIFO_INLINE __type * __name##_read_ptr(__name##_t * c) \
+{\
+	return c->buffer + c->read;\
+}\
+struct __name##_t
+
+/*
+ * And this declares the whole FIFO, including the pass-by-value functions
+ */
+#define DEFINE_FIFO(__type, __name) \
+DEFINE_PTR_FIFO(__type, __name); \
+FIFO_DECL FIFO_INLINE FIFO_BOOL_TYPE __name##_write(__name##_t * c, __type b)\
+{\
+	FIFO_CURSOR_TYPE now = c->write;\
+	FIFO_CURSOR_TYPE next = (now + 1) & (__name##_fifo_size-1);\
+	if (c->read != next) {	\
+		c->buffer[now] = b;\
+		FIFO_SYNC; \
+		c->write = next;\
+		return 1;\
+	}\
+	return 0;\
+}\
+FIFO_DECL FIFO_INLINE __type __name##_read(__name##_t * c)\
+{\
+	__type res = FIFO_ZERO_INIT; \
+	FIFO_CURSOR_TYPE read = c->read;\
+	if (read == c->write)\
+		return res;\
+	res = c->buffer[read];\
+	FIFO_SYNC; \
+	c->read = (read + 1) & (__name##_fifo_size-1);\
+	return res;\
+}\
+FIFO_DECL FIFO_INLINE __type __name##_read_at(__name##_t *c, FIFO_CURSOR_TYPE o)\
+{\
+	return c->buffer[(c->read + o) & (__name##_fifo_size-1)];\
+}\
+FIFO_DECL FIFO_INLINE void __name##_write_at(__name##_t *c, FIFO_CURSOR_TYPE o, __type b)\
+{\
+	c->buffer[(c->write + o) & (__name##_fifo_size-1)] = b;\
 }\
 struct __name##_t
 
