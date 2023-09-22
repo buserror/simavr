@@ -20,3 +20,5 @@ perf.data
 .make.options*
 .vscode/*
 .bash_history
+compile_commands.json
+.cache
