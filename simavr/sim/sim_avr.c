@@ -107,9 +107,16 @@ avr_init(
 	avr->trace_data = calloc(1, sizeof(struct avr_trace_data_t));
         avr->trace_data->data_names_size = avr->ioend + 1;
 #endif
-        avr->data_names = calloc(avr->ioend + 1, sizeof (char *));
-
+	avr->data_names = calloc(avr->ioend + 1, sizeof (char *));
+	/* put "something" in the serial number */
+	uint32_t r = getpid() + random();
+	for (int i = 0; i < ARRAY_SIZE(avr->serial); i++)
+		avr->serial[i] = r >> (i * 3);
 	AVR_LOG(avr, LOG_TRACE, "%s init\n", avr->mmcu);
+	AVR_LOG(avr, LOG_TRACE, "   serial %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+			avr->serial[0], avr->serial[1], avr->serial[2], avr->serial[3],
+			avr->serial[4], avr->serial[5], avr->serial[6], avr->serial[7],
+			avr->serial[8]);
 
 	// cpu is in limbo before init is finished.
 	avr->state = cpu_Limbo;

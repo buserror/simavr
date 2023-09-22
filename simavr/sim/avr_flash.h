@@ -47,17 +47,20 @@ typedef struct avr_flash_t {
 	avr_regbit_t blbset;	// lock bit set
 	avr_regbit_t rwwsre;    // read while write section read enable
 	avr_regbit_t rwwsb;		// read while write section busy
+	avr_regbit_t sigrd;		// signature (and serial number) byte read
 
 	avr_int_vector_t flash;	// Interrupt vector
 } avr_flash_t;
 
 /* Set if the flash supports a Read While Write section */
 #define AVR_SELFPROG_HAVE_RWW (1 << 0)
+#define AVR_SELFPROG_HAVE_SIGRD (1 << 1)
 
 void avr_flash_init(avr_t * avr, avr_flash_t * p);
 
 
 #define AVR_IOCTL_FLASH_SPM		AVR_IOCTL_DEF('f','s','p','m')
+#define AVR_IOCTL_FLASH_LPM		AVR_IOCTL_DEF('f','l','p','m')
 
 #define AVR_SELFPROG_DECLARE_INTERNAL(_spmr, _spen, _vector) \
 		.r_spm = _spmr,\
@@ -76,11 +79,21 @@ void avr_flash_init(avr_t * avr, avr_flash_t * p);
 		.flags = 0,\
 		AVR_SELFPROG_DECLARE_INTERNAL(_spmr, _spen, _vector),\
 	}
+/*
+ * Signature/serial read is not always available, so we make it optional
+ */
+#ifdef SIGRD
+#define AVR_SELFPROG_DECLARE_SIGRD(_spmr) \
+	.sigrd = AVR_IO_REGBIT(_spmr, SIGRD),
+#else
+#define AVR_SELFPROG_DECLARE_SIGRD(_spmr)
+#endif
 
 #define AVR_SELFPROG_DECLARE(_spmr, _spen, _vector) \
 	.selfprog = {\
 		.flags = AVR_SELFPROG_HAVE_RWW,\
 		AVR_SELFPROG_DECLARE_INTERNAL(_spmr, _spen, _vector),\
+		AVR_SELFPROG_DECLARE_SIGRD(_spmr) \
 		.rwwsre = AVR_IO_REGBIT(_spmr, RWWSRE),\
 		.rwwsb = AVR_IO_REGBIT(_spmr, RWWSB),\
 	}

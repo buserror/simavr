@@ -1065,8 +1065,10 @@ run_one_again:
 					uint16_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
 					STATE("lpm %s, (Z[%04x]) \t%s\n",
 					      AVR_REGNAME(0), z, FAS(z));
+					uint8_t v = avr->flash[z];
+					avr_ioctl(avr, AVR_IOCTL_FLASH_LPM, &v);
+					_avr_set_r(avr, 0, v);
 					cycle += 2; // 3 cycles
-					_avr_set_r(avr, 0, avr->flash[z]);
 				}	break;
 				case 0x95d8: {	// ELPM -- Load Program Memory R0 <- (Z) -- 1001 0101 1101 1000
 					if (!avr->rampz)
@@ -1075,7 +1077,9 @@ run_one_again:
 					STATE("elpm %s, (Z[%02x:%04x] \t%s)\n",
 					      AVR_REGNAME(0), z >> 16,
 					      z & 0xffff, FAS(z));
-					_avr_set_r(avr, 0, avr->flash[z]);
+					uint8_t v = avr->flash[z];
+					avr_ioctl(avr, AVR_IOCTL_FLASH_LPM, &v);
+					_avr_set_r(avr, 0, v);
 					cycle += 2; // 3 cycles
 				}	break;
 				default:  {
@@ -1096,7 +1100,9 @@ run_one_again:
 							int op = opcode & 1;
 							STATE("lpm %s, (Z[%04x]%s)\t\t%s\n",
 							      AVR_REGNAME(d), z, op ? "+" : "", FAS(z));
-							_avr_set_r(avr, d, avr->flash[z]);
+							uint8_t v = avr->flash[z];
+							avr_ioctl(avr, AVR_IOCTL_FLASH_LPM, &v);
+							_avr_set_r(avr, d, v);
 							if (op) {
 								z++;
 								_avr_set_r16le_hl(avr, R_ZL, z);
@@ -1112,7 +1118,9 @@ run_one_again:
 							int op = opcode & 1;
 							STATE("elpm %s, (Z[%02x:%04x]%s)\t\t%s\n",
 							      AVR_REGNAME(d), z >> 16, z & 0xffff, op ? "+" : "", FAS(z));
-							_avr_set_r(avr, d, avr->flash[z]);
+							uint8_t v = avr->flash[z];
+							avr_ioctl(avr, AVR_IOCTL_FLASH_LPM, &v);
+							_avr_set_r(avr, d, v);
 							if (op) {
 								z++;
 								_avr_set_r(avr, avr->rampz, z >> 16);

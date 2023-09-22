@@ -27,15 +27,13 @@ IPATH 		+= ${simavr}/simavr/sim
 
 tests_src	:= ${wildcard test_*.c}
 
-all: obj axf hex tst
+all: obj axf tst
 
 include ../Makefile.common
 
 tst: ${patsubst %.c, ${OBJ}/%.tst, ${tests_src}}
 
 axf: ${sources:.c=.axf}
-
-hex: atmega88_example.hex
 
 ${OBJ}/%.tst: tests.c %.c
 ifneq ($(E),)

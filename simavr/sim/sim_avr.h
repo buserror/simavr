@@ -36,6 +36,7 @@ extern "C" {
 	#define FALLTHROUGH
 #endif
 
+#include <stdint.h>
 #include "sim_irq.h"
 #include "sim_interrupts.h"
 #include "sim_cmds.h"
@@ -159,16 +160,20 @@ typedef void (*avr_run_t)(
  * the rest is runtime data (as little as possible)
  */
 typedef struct avr_t {
-	const char *	 		mmcu;	// name of the AVR
+	const char *	 	mmcu;	// name of the AVR
 	// these are filled by sim_core_declare from constants in /usr/lib/avr/include/avr/io*.h
 	uint16_t			ioend;
 	uint16_t 			ramend;
 	uint32_t			flashend;
 	uint32_t			e2end;
 	uint8_t				vector_size;
-	uint8_t				signature[3];
+	// accessible via LPM (BLBSET)
 	uint8_t				fuse[6];
 	uint8_t				lockbits;
+	// accessible via LPM (if SIGRD is present)
+	uint8_t				signature[3];
+	uint8_t				serial[9];
+
 	avr_io_addr_t		rampz;	// optional, only for ELPM/SPM on >64Kb cores
 	avr_io_addr_t		eind;	// optional, only for EIJMP/EICALL on >64Kb cores
 	uint8_t				address_size;	// 2, or 3 for cores >128KB in flash
