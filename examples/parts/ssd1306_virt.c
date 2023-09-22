@@ -429,13 +429,14 @@ ssd1306_reset_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 
 }
 
-static const char * irq_names[IRQ_SSD1306_COUNT] =
-{ [IRQ_SSD1306_SPI_BYTE_IN] = "=ssd1306.SDIN", [IRQ_SSD1306_RESET
-                ] = "<ssd1306.RS", [IRQ_SSD1306_DATA_INSTRUCTION
-                ] = "<ssd1306.RW", [IRQ_SSD1306_ENABLE] = "<ssd1306.E",
-                [IRQ_SSD1306_ADDR] = "7>hd44780.ADDR",
-                [IRQ_SSD1306_TWI_OUT] = "32<sdd1306.TWI.out",
-                [IRQ_SSD1306_TWI_IN] = "8>sdd1306.TWI.in",
+static const char *irq_names[IRQ_SSD1306_COUNT] = {
+		[IRQ_SSD1306_SPI_BYTE_IN] = "=ssd1306.SDIN",
+		[IRQ_SSD1306_RESET ] = "<ssd1306.RS",
+		[IRQ_SSD1306_DATA_INSTRUCTION ] = "<ssd1306.RW",
+		[IRQ_SSD1306_ENABLE] = "<ssd1306.E",
+		[IRQ_SSD1306_ADDR] = "7>hd44780.ADDR",
+		[IRQ_SSD1306_TWI_OUT] = "32<sdd1306.TWI.out",
+		[IRQ_SSD1306_TWI_IN] = "8>sdd1306.TWI.in",
 };
 
 void
