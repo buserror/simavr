@@ -23,7 +23,11 @@
 #include <stdio.h>
 #include "avr_spi.h"
 
-static avr_cycle_count_t avr_spi_raise(struct avr_t * avr, avr_cycle_count_t when, void * param)
+static avr_cycle_count_t
+avr_spi_raise(
+		struct avr_t * avr,
+		avr_cycle_count_t when,
+		void * param)
 {
 	avr_spi_t * p = (avr_spi_t *)param;
 
@@ -37,7 +41,11 @@ static avr_cycle_count_t avr_spi_raise(struct avr_t * avr, avr_cycle_count_t whe
 	return 0;
 }
 
-static uint8_t avr_spi_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
+static uint8_t
+avr_spi_read(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		void * param)
 {
 	avr_spi_t * p = (avr_spi_t *)param;
 	uint8_t v = avr_core_watch_read(avr, addr);
@@ -47,7 +55,12 @@ static uint8_t avr_spi_read(struct avr_t * avr, avr_io_addr_t addr, void * param
 	return v;
 }
 
-static void avr_spi_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
+static void
+avr_spi_write(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
 {
 
 	static const uint8_t _avr_spi_clkdiv[4] = {4,16,64,128};
@@ -68,7 +81,11 @@ static void avr_spi_write(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, voi
 	}
 }
 
-static void avr_spi_irq_input(struct avr_irq_t * irq, uint32_t value, void * param)
+static void
+avr_spi_irq_input(
+		struct avr_irq_t * irq,
+		uint32_t value,
+		void * param)
 {
 	avr_spi_t * p = (avr_spi_t *)param;
 	avr_t * avr = p->io.avr;
@@ -87,7 +104,9 @@ static void avr_spi_irq_input(struct avr_irq_t * irq, uint32_t value, void * par
 	}
 }
 
-void avr_spi_reset(struct avr_io_t *io)
+void
+avr_spi_reset(
+		struct avr_io_t *io)
 {
 	avr_spi_t * p = (avr_spi_t *)io;
 	avr_irq_register_notify(p->io.irq + SPI_IRQ_INPUT, avr_spi_irq_input, p);
@@ -104,7 +123,10 @@ static	avr_io_t	_io = {
 	.irq_names = irq_names,
 };
 
-void avr_spi_init(avr_t * avr, avr_spi_t * p)
+void
+avr_spi_init(
+		avr_t * avr,
+		avr_spi_t * p)
 {
 	p->io = _io;
 

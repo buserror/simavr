@@ -54,7 +54,10 @@ typedef struct avr_spi_t {
 	avr_int_vector_t spi;	// spi interrupt
 } avr_spi_t;
 
-void avr_spi_init(avr_t * avr, avr_spi_t * port);
+void
+avr_spi_init(
+		avr_t * avr,
+		avr_spi_t * port);
 
 #define AVR_SPIX_DECLARE(_name, _prr, _prspi) \
 	.spi = { \
