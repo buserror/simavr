@@ -40,8 +40,8 @@ static avr_cycle_count_t avr_spi_raise(struct avr_t * avr, avr_cycle_count_t whe
 static uint8_t avr_spi_read(struct avr_t * avr, avr_io_addr_t addr, void * param)
 {
 	avr_spi_t * p = (avr_spi_t *)param;
-	uint8_t v = p->input_data_register;
-	p->input_data_register = 0;
+	uint8_t v = avr_core_watch_read(avr, addr);
+
 	avr_regbit_clear(avr, p->spi.raised);
 //	printf("avr_spi_read = %02x\n", v);
 	return v;
@@ -77,8 +77,7 @@ static void avr_spi_irq_input(struct avr_irq_t * irq, uint32_t value, void * par
 	if (!avr_regbit_get(avr, p->spe))
 		return;
 
-	// double buffer the input.. ?
-	p->input_data_register = value;
+	avr_core_watch_write(avr, p->r_spdr, value);
 	avr_raise_interrupt(avr, &p->spi);
 
 	// if in slave mode,

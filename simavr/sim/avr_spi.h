@@ -52,8 +52,6 @@ typedef struct avr_spi_t {
 	avr_regbit_t spr[4];	// clock divider
 
 	avr_int_vector_t spi;	// spi interrupt
-
-	uint8_t		input_data_register;
 } avr_spi_t;
 
 void avr_spi_init(avr_t * avr, avr_spi_t * port);
