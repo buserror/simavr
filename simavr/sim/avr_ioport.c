@@ -155,8 +155,10 @@ avr_ioport_irq_notify(
 	avr_t * avr = p->io.avr;
 
 	int output = value & AVR_IOPORT_OUTPUT;
-	value &= 0xff;
-	uint8_t mask = 1 << irq->irq;
+	value = irq->irq == IOPORT_IRQ_PIN_ALL_IN ?
+					value & 0xff : (!!value << irq->irq);
+	uint8_t mask = irq->irq == IOPORT_IRQ_PIN_ALL_IN ?
+					0xff : (1 << irq->irq);
 	uint8_t ddr = avr->data[p->r_ddr];
 
 	if (output) {
@@ -164,18 +166,14 @@ avr_ioport_irq_notify(
 			return;	   // TODO: stop further processing of IRQ.
 
 		// If the IRQ was marked as Output, also do the IO write.
-
 		avr_ioport_write(avr,
 				 p->r_port,
-				 (avr->data[p->r_port] & ~mask) |
-				     (value ? mask : 0),
+				 (avr->data[p->r_port] & ~mask) | value,
 				 p);
 	} else {
 		// Set the real PIN bit. Ignore DDR as it's masked when read.
-
 		avr_core_watch_write(avr, p->r_pin,
-							 (avr->data[p->r_pin] & ~mask) |
-								(value ? mask : 0));
+							 (avr->data[p->r_pin] & ~mask) | value);
 
 		/* BUG: If DDR bit is set here, there should be no
 		 * interrupt.  But a spurious IRQ call by the user
@@ -201,9 +199,9 @@ avr_ioport_irq_notify(
 		if (uiRegMask) // If mask is 0, do nothing (backwards compat)
 			raisedata &= uiRegMask; // Mask off
 
-		if (iShift>0) // Shift data if necessary for alignment.
+		if (iShift > 0) // Shift data if necessary for alignment.
 			raisedata <<= iShift;
-		else if (iShift<0)
+		else if (iShift < 0)
 			raisedata >>= -iShift;
 
 		int raise = raisedata & mask;
@@ -219,6 +217,8 @@ avr_ioport_reset(
 	avr_ioport_t * p = (avr_ioport_t *)port;
 	for (int i = 0; i < IOPORT_IRQ_PIN_ALL; i++)
 		avr_irq_register_notify(p->io.irq + i, avr_ioport_irq_notify, p);
+	avr_irq_register_notify(p->io.irq + IOPORT_IRQ_PIN_ALL_IN,
+					avr_ioport_irq_notify, p);
 }
 
 static int
@@ -295,6 +295,7 @@ static const char * irq_names[IOPORT_IRQ_COUNT] = {
 	[IOPORT_IRQ_PIN6] = "=pin6",
 	[IOPORT_IRQ_PIN7] = "=pin7",
 	[IOPORT_IRQ_PIN_ALL] = "8>all",
+	[IOPORT_IRQ_PIN_ALL_IN] = "8<all_in",
 	[IOPORT_IRQ_DIRECTION_ALL] = "8>ddr",
 	[IOPORT_IRQ_REG_PORT] = "8>port",
 	[IOPORT_IRQ_REG_PIN] = "8>pin",
@@ -326,8 +327,8 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 
 	for (int i = 0; i < IOPORT_IRQ_REG_PIN; i++) {
 		p->io.irq[i].flags |= IRQ_FLAG_FILTERED;
-                if (i < IOPORT_IRQ_PIN_ALL)
-                    p->io.irq[i].flags &= ~IRQ_FLAG_INIT;
+		if (i < IOPORT_IRQ_PIN_ALL)
+			p->io.irq[i].flags &= ~IRQ_FLAG_INIT;
 	}
 	avr_register_io_write(avr, p->r_port, avr_ioport_write, p);
 	avr_register_io_read(avr, p->r_pin, avr_ioport_read, p);
