@@ -48,7 +48,7 @@ avr_flash_write(
 
 	avr_core_watch_write(avr, addr, v);
 
-	printf("** %s %02x\n", __func__, v);
+	// printf("** %s %02x\n", __func__, v);
 
 	if (avr_regbit_get(avr, p->selfprgen))
 		avr_cycle_timer_register(avr, 4, avr_progen_clear, p); // 4 cycles is very little!
@@ -190,8 +190,8 @@ avr_flash_init(
 		avr_flash_t * p)
 {
 	p->io = _io;
-	printf("%s init SPM %04x BLB %d SIGRD %d\n",
-			__FUNCTION__, p->r_spm, p->blbset.bit, p->sigrd.bit);
+	// printf("%s init SPM %04x BLB %d SIGRD %d\n",
+	//		__FUNCTION__, p->r_spm, p->blbset.bit, p->sigrd.bit);
 
 	if (!p->tmppage)
 		p->tmppage = malloc(p->spm_pagesize);
