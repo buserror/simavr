@@ -115,6 +115,7 @@ avr_eeprom_ioctl(
 			memcpy(p->eeprom + desc->offset, desc->ee, desc->size);
 			AVR_LOG(port->avr, LOG_TRACE, "EEPROM: %s: AVR_IOCTL_EEPROM_SET Loaded %d at offset %d\n",
 					__FUNCTION__, desc->size, desc->offset);
+			res = 0;
 		}	break;
 		case AVR_IOCTL_EEPROM_GET: {
 			avr_eeprom_desc_t * desc = (avr_eeprom_desc_t*)io_param;
@@ -127,6 +128,7 @@ avr_eeprom_ioctl(
 				memcpy(desc->ee, p->eeprom + desc->offset, desc->size);
 			else	// allow to get access to the read data, for gdb support
 				desc->ee = p->eeprom + desc->offset;
+			res = 0;
 		}	break;
 	}
 
