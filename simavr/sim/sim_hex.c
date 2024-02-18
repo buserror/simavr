@@ -251,6 +251,8 @@ sim_setup_firmware(const char * filename, uint32_t loadBase,
 				}
 				fp->eeprom = chunk[ci].data;
 				fp->eesize = chunk[ci].size;
+				fp->eeprombase = chunk[ci].baseaddr + loadBase -
+							AVR_SEGMENT_OFFSET_EEPROM;
 				printf("Load HEX eeprom %08x, %d\n",
 					   chunk[ci].baseaddr, fp->eesize);
 			}

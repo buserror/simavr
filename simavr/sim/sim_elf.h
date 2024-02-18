@@ -71,6 +71,7 @@ typedef struct elf_firmware_t {
 	uint32_t 	datasize;
 	uint32_t 	bsssize;
 	// read the .eeprom section of the elf, too
+	uint32_t	eeprombase;
 	uint8_t * 	eeprom;
 	uint32_t 	eesize;
 	uint8_t *	fuse;
