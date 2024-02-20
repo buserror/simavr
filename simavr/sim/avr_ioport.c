@@ -158,23 +158,34 @@ avr_ioport_irq_notify(
 	uint8_t mask = irq->irq == IOPORT_IRQ_PIN_ALL_IN ?
 					0xff : (1 << irq->irq);
 	uint8_t ddr = avr->data[p->r_ddr];
+	uint8_t new_pin;
 
 	value &= 0xff;
 	value = (irq->irq == IOPORT_IRQ_PIN_ALL_IN) ?
 				value : (!!value << irq->irq);
+	new_pin = (avr->data[p->r_pin] & ~mask) | (value ? mask : 0);
 	if (output) {
-		if ((mask & ddr) == 0)
-			return;	   // TODO: stop further processing of IRQ.
+		uint8_t new_out;
 
-		// If the IRQ was marked as Output, also do the IO write.
-		avr_ioport_write(avr,
-				 p->r_port,
-				 (avr->data[p->r_port] & ~mask) | value,
-				 p);
+		new_out = (avr->data[p->r_port] & ~mask) | (value ? mask : 0);
+		if (mask & ddr) {
+			// If the IRQ was marked as Output, do the IO write.
+
+			avr_ioport_write(avr, p->r_port, new_out, p);
+			avr_core_watch_write(avr, p->r_pin, new_pin);
+		} else {
+			/* Set the PORT register so the output will be visible
+			 * when the corresponding DDR bit is set.
+			 * Real hardware does not do this.
+			 */
+
+			avr->data[p->r_port] = new_out;
+			return;	   // TODO: stop further processing of IRQ.
+		}
 	} else {
 		// Set the real PIN bit. Ignore DDR as it's masked when read.
-		avr_core_watch_write(avr, p->r_pin,
-							 (avr->data[p->r_pin] & ~mask) | value);
+
+		avr_core_watch_write(avr, p->r_pin, new_pin);
 
 		/* BUG: If DDR bit is set here, there should be no
 		 * interrupt.  But a spurious IRQ call by the user
