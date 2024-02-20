@@ -174,7 +174,7 @@ avr_load_firmware(
 	if (firmware->eeprom && firmware->eesize) {
 		avr_eeprom_desc_t d = {
 				.ee = firmware->eeprom,
-				.offset = 0,
+				.offset = firmware->eeprombase,
 				.size = firmware->eesize
 		};
 		avr_ioctl(avr, AVR_IOCTL_EEPROM_SET, &d);
@@ -502,6 +502,7 @@ elf_read_firmware(
 			if (elf_handle_segment(fd, php, &firmware->eeprom, "EEPROM"))
 				continue;
 			firmware->eesize = php->p_filesz;
+			firmware->eeprombase = php->p_vaddr - 0x820000;
 		} else if (php->p_vaddr < 0x830000) {
 			/* Fuses. */
 

@@ -72,6 +72,7 @@ avr_flash_ioctl(
 {
 	avr_flash_t * p = (avr_flash_t *)port;
 	avr_t * avr = p->io.avr;
+	int res = -1;
 
 	avr_flashaddr_t z = avr->data[R_ZL] | (avr->data[R_ZH] << 8);
 	if (avr->rampz)
@@ -85,24 +86,24 @@ avr_flash_ioctl(
 #endif
 	switch (ctl) {
 		case AVR_IOCTL_FLASH_LPM: {
-			uint8_t *res = io_param;
+			uint8_t *result = io_param;
 			if (avr_regbit_get(avr, p->selfprgen)) {
 				avr_cycle_timer_cancel(avr, avr_progen_clear, p);
 				if (avr_regbit_get(avr, p->blbset)) {
 					AVR_LOG(avr, LOG_TRACE, "FLASH: Reading fuse/lock byte %02x\n", z);
 					switch (z) {
-						case 0x0: *res = avr->fuse[0]; break; // LFuse
-						case 0x1: *res = avr->lockbits; break; // lock bits
-						case 0x2: *res = avr->fuse[2]; break; // EFuse
-						case 0x3: *res = avr->fuse[1]; break; // HFuse
+						case 0x0: *result = avr->fuse[0]; break; // LFuse
+						case 0x1: *result = avr->lockbits; break; // lock bits
+						case 0x2: *result = avr->fuse[2]; break; // EFuse
+						case 0x3: *result = avr->fuse[1]; break; // HFuse
 					}
 				} else if (avr_regbit_get(avr, p->sigrd)) {
 					AVR_LOG(avr, LOG_TRACE, "FLASH: Reading signature&serial byte %02x\n", z);
 					switch (z) {
-						case 0x00: *res = avr->signature[0]; break;
-						case 0x02: *res = avr->signature[1]; break;
-						case 0x04: *res = avr->signature[2]; break;
-						case 0x01: *res = 0x55; break;	// OSC Cal
+						case 0x00: *result = avr->signature[0]; break;
+						case 0x02: *result = avr->signature[1]; break;
+						case 0x04: *result = avr->signature[2]; break;
+						case 0x01: *result = 0x55; break;	// OSC Cal
 						/* serial# bytes are ordered bizarelly */
 						/* NOTE: Not all AVR that have sigrd have a
 						 * serial number, currenly we return one anyway */
@@ -111,11 +112,12 @@ avr_flash_ioctl(
 								1,0,3,2,5,4,0,6,7,8
 							};
 							z -= 0x0e;
-							*res = avr->serial[idx[z]]; break;
+							*result = avr->serial[idx[z]]; break;
 						}	break;
 					}
 				}
 			}
+			res = 0;
 		}	break;
 		case AVR_IOCTL_FLASH_SPM: {
 			uint16_t r01 = avr->data[0] | (avr->data[1] << 8);
@@ -150,12 +152,13 @@ avr_flash_ioctl(
 					}
 				}
 			}
+			res = 0;
 		}	break;
 	    default:
 			return -1;
 	}
 	avr_regbit_clear(avr, p->selfprgen);
-	return 0;
+	return res;
 }
 
 static void
