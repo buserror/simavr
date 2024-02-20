@@ -151,6 +151,8 @@ avr_flash_ioctl(
 				}
 			}
 		}	break;
+	    default:
+			return -1;
 	}
 	avr_regbit_clear(avr, p->selfprgen);
 	return 0;

@@ -155,12 +155,13 @@ avr_ioport_irq_notify(
 	avr_t * avr = p->io.avr;
 
 	int output = value & AVR_IOPORT_OUTPUT;
-	value = irq->irq == IOPORT_IRQ_PIN_ALL_IN ?
-					value & 0xff : (!!value << irq->irq);
 	uint8_t mask = irq->irq == IOPORT_IRQ_PIN_ALL_IN ?
 					0xff : (1 << irq->irq);
 	uint8_t ddr = avr->data[p->r_ddr];
 
+	value &= 0xff;
+	value = (irq->irq == IOPORT_IRQ_PIN_ALL_IN) ?
+				value : (!!value << irq->irq);
 	if (output) {
 		if ((mask & ddr) == 0)
 			return;	   // TODO: stop further processing of IRQ.
