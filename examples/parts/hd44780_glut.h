@@ -24,6 +24,14 @@
 
 #include "hd44780.h"
 
+// This sets the change callbacks of the hd44780 to
+// lock and unlock the mutex of the internal display.
+void
+hd44780_setup_mutex_for_gl(hd44780_t *b);
+
+// Draws the contents of the LCD display.
+// You must call hd44780_gl_init() and
+// hd44780_setup_mutex_for_gl() first.
 void
 hd44780_gl_draw(
 		hd44780_t *b,
