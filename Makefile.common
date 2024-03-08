@@ -186,7 +186,7 @@ endif
 			-ffunction-sections -fdata-sections \
 			-Wl,--relax,--gc-sections \
 			-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000 \
-			-I../simavr/sim/avr -I../../simavr/sim/avr \
+			-I$(SIMAVR)/sim/avr -I../simavr/sim/avr -I../../simavr/sim/avr \
 			${^} -o ${@}
 	@${AVR}size ${@}|sed '1d'
 
