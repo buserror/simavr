@@ -27,7 +27,14 @@
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
 # simavr directory
+ifndef SIMAVR
 SIMAVR		:= ${shell for p in . .. ../.. ../../..;do test -d $$p/simavr/sim && echo $$p/simavr; done}
+endif
+
+# check if it is found
+ifeq ("$(wildcard $(SIMAVR)/sim/)","")
+$(warning Simavr path not found. SIMAVR=$(SIMAVR))
+endif
 
 # You can override the build settings with local changes in this file
 # for example:
@@ -179,7 +186,7 @@ endif
 			-ffunction-sections -fdata-sections \
 			-Wl,--relax,--gc-sections \
 			-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000 \
-			-I../simavr/sim/avr -I../../simavr/sim/avr \
+			-I$(SIMAVR)/sim/avr -I../simavr/sim/avr -I../../simavr/sim/avr \
 			${^} -o ${@}
 	@${AVR}size ${@}|sed '1d'
 
