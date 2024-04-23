@@ -79,15 +79,21 @@ enum {
     HD44780_FLAG_S,             // 1: Follow display shift
     HD44780_FLAG_I_D,           // 1: Increment, 0: Decrement
 
-    /*
-     * Internal flags, not HD44780
-     */
-    HD44780_FLAG_LOWNIBBLE,		// 1: 4 bits mode, write/read low nibble
-    HD44780_FLAG_BUSY,			// 1: Busy between instructions, 0: ready
-    HD44780_FLAG_REENTRANT,		// 1: Do not update pins
-
+	/*
+	 * Internal flags, not HD44780
+	 */
     HD44780_FLAG_DIRTY,			// 1: needs redisplay...
     HD44780_FLAG_CRAM_DIRTY,	// 1: Character memory has changed
+};
+
+/*
+ * Private internal flags. These are not protected by
+ * callbacks, so other threads must not access them.
+ */
+enum {
+    HD44780_PRIV_FLAG_BUSY = 0,			// 1: Busy between instructions, 0: ready
+    HD44780_PRIV_FLAG_LOWNIBBLE,		// 1: 4 bits mode, write/read low nibble
+    HD44780_PRIV_FLAG_REENTRANT,		// 1: Do not update pins
 };
 
 
@@ -106,6 +112,21 @@ typedef struct hd44780_t
 	uint8_t  readpins;
 
 	uint16_t flags;				// LCD flags ( HD44780_FLAG_*)
+	// LCD private flags, not protected by callbacks ( HD44780_PRIV_FLAG_*)
+	// You must not use these flags from a different thread than the simavr one.
+	uint8_t private_flags;
+
+	// These callbacks are called before and after a data or
+	// command packet is sent to the unit and as a 
+	// result the internal state of the device changes.
+	// If you lock and unlock a mutex in these, you can guard
+	// the cursor, vram and flags variables with it.
+	// The avr thread reads these variables outside
+	// of these functions, but writes always happen between them.
+	void *on_state_lock_parameter;
+	void (*on_state_lock)(void *);
+	void *on_state_unlock_parameter;
+	void (*on_state_unlock)(void *);
 } hd44780_t;
 
 void
@@ -132,6 +153,36 @@ hd44780_get_flag(
 		hd44780_t *b, uint16_t bit)
 {
 	return (b->flags &  (1 << bit)) != 0;
+}
+
+static inline int
+hd44780_set_private_flag(
+		hd44780_t *b, uint16_t bit, int val)
+{
+	int old = b->private_flags &  (1 << bit);
+	b->private_flags = (b->private_flags & ~(1 << bit)) | (val ? (1 << bit) : 0);
+	return old != 0;
+}
+
+static inline int
+hd44780_get_private_flag(
+		hd44780_t *b, uint16_t bit)
+{
+	return (b->private_flags &  (1 << bit)) != 0;
+}
+
+static inline void
+hd44780_lock_state(hd44780_t *b)
+{
+	if (b->on_state_lock)
+		(*(b->on_state_lock))(b->on_state_lock_parameter);
+}
+
+static inline void
+hd44780_unlock_state(hd44780_t *b)
+{
+	if (b->on_state_unlock)
+		(*(b->on_state_unlock))(b->on_state_unlock_parameter);
 }
 
 #endif
