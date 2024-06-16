@@ -8,18 +8,12 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           update: true
-          install: git make mingw-w64-x86_64-toolchain mingw-w64-x86_64-libelf mingw-w64-x86_64-freeglut
-      - name: Install AVR toolchain
-        run: |
-           wget "https://github.com/ZakKemble/avr-gcc-build/releases/download/v14.1.0-1/avr-gcc-14.1.0-x86-windows.zip"
-           unzip avr-gcc-14.1.0-x86-windows.zip
-           ls -l
-           echo "$(pwd)/avr-gcc-14.1.0-x86-windows/avr-gcc-14.1.0-x86-windows/bin" >> $GITHUB_PATH
+          install: git make mingw-w64-x86_64-toolchain mingw-w64-x86_64-libelf mingw-w64-x86_64-avr-toolchain  mingw-w64-x86_64-freeglut
       - name: CI-Build
         run: |
           echo 'Running in MSYS2!'
@@ -28,7 +22,7 @@ jobs:
           CFLAGS="-D_XOPEN_SOURCE=600" make -k install DESTDIR=$(pwd)/simavr_installed/ || true
           mv simavr_installed/bin/simavr simavr_installed/bin/simavr.exe
           file simavr_installed/bin/*
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: Windows 64-bit
           path: simavr_installed
@@ -38,12 +32,18 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW32
           update: true
-          install: git make mingw-w64-i686-toolchain mingw-w64-i686-libelf mingw-w64-i686-avr-toolchain mingw-w64-i686-freeglut
+          install: git make mingw-w64-i686-toolchain mingw-w64-i686-libelf mingw-w64-i686-freeglut unzip
+      - name: Install AVR toolchain
+        run: |
+          wget "https://github.com/ZakKemble/avr-gcc-build/releases/download/v14.1.0-1/avr-gcc-14.1.0-x86-windows.zip"
+          unzip avr-gcc-14.1.0-x86-windows.zip
+          ls -l
+          echo "$(pwd)/avr-gcc-14.1.0-x86-windows/avr-gcc-14.1.0-x86-windows/bin" >> $GITHUB_PATH  
       - name: CI-Build
         run: |
           make build-simavr V=1
@@ -51,14 +51,14 @@ jobs:
           make -k install DESTDIR=$(pwd)/simavr_installed/ || true
           mv simavr_installed/bin/simavr simavr_installed/bin/simavr.exe
           file simavr_installed/bin/*
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: Windows 32-bit
           path: simavr_installed
   build-lin64:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install Dependenncies
         run: sudo apt-get install -y build-essential git make gcc-avr avr-libc libelf-dev freeglut3-dev patchelf
       - name: CI-Build
@@ -74,14 +74,14 @@ jobs:
           simavr_installed/bin/simavr --list-cores || true
       - name: Tar files
         run: tar -cvf simavr.tar.gz -C simavr_installed .
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: Linux 64-bit
           path: simavr.tar.gz
   build-lin32:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install Dependenncies
         run: | 
           sudo dpkg --add-architecture i386
@@ -105,14 +105,14 @@ jobs:
           simavr_installed/bin/simavr --list-cores || true
       - name: Tar files
         run: tar -cvf simavr.tar.gz -C simavr_installed .
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: Linux 32-bit
           path: simavr.tar.gz
   build-armv7l:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: pguyot/arm-runner-action@v2
         id: build_image
         with:
@@ -133,14 +133,14 @@ jobs:
             ldd simavr_installed/bin/*
             simavr_installed/bin/simavr --list-cores || true
             tar -cvf simavr.tar.gz -C simavr_installed .
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: Linux ARMv7l
           path: simavr.tar.gz
   build-armv6l:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: pguyot/arm-runner-action@v2
         id: build_image
         with:
@@ -161,14 +161,14 @@ jobs:
             ldd simavr_installed/bin/*
             simavr_installed/bin/simavr --list-cores || true
             tar -cvf simavr.tar.gz -C simavr_installed .
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: Linux ARMv6l
           path: simavr.tar.gz
   build-aarch64:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: pguyot/arm-runner-action@v2
         id: build_image
         with:
@@ -189,7 +189,7 @@ jobs:
             ldd simavr_installed/bin/*
             simavr_installed/bin/simavr --list-cores || true
             tar -cvf simavr.tar.gz -C simavr_installed .
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: Linux AArch64
           path: simavr.tar.gz
@@ -197,10 +197,10 @@ jobs:
     # this is currently macos-11, Big Sur
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install Dependenncies
         run: | 
-          brew install make libelf freeglut patchelf 
+          HOMEBREW_NO_INSTALL_FROM_API=1 brew install make libelf freeglut patchelf 
           HOMEBREW_NO_INSTALL_FROM_API=1 brew tap osx-cross/avr
           HOMEBREW_NO_INSTALL_FROM_API=1 brew install avr-gcc@5 avr-binutils
           export PATH="/usr/local/opt/avr-gcc@5/bin:$PATH"
@@ -217,7 +217,7 @@ jobs:
           simavr_installed/bin/simavr --list-cores || true
       - name: Tar files
         run: tar -cvf simavr.tar.gz -C simavr_installed .
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: Mac OS Intel 64-bit
           path: simavr.tar.gz
