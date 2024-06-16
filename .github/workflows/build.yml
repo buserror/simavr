@@ -195,7 +195,7 @@ jobs:
       - name: Install Dependenncies
         run: | 
           brew install make libelf freeglut patchelf 
-          brew tap osx-cross/avr
+          HOMEBREW_NO_INSTALL_FROM_API=1 brew tap osx-cross/avr
           HOMEBREW_NO_INSTALL_FROM_API=1 brew install avr-gcc@5 avr-binutils
           export PATH="/usr/local/opt/avr-gcc@5/bin:$PATH"
       - name: CI-Build
