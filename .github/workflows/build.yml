@@ -43,6 +43,7 @@ jobs:
           wget "https://github.com/ZakKemble/avr-gcc-build/releases/download/v14.1.0-1/avr-gcc-14.1.0-x86-windows.zip"
           unzip avr-gcc-14.1.0-x86-windows.zip
           ls -l
+          rm avr-gcc-14.1.0-x86-windows.zip
           echo "$(pwd)/avr-gcc-14.1.0-x86-windows/avr-gcc-14.1.0-x86-windows/bin" >> $GITHUB_PATH  
       - name: CI-Build
         run: |
