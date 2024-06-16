@@ -1,0 +1,217 @@
+name: Build Binaries
+on: [push, pull_request]
+
+jobs:
+  build-win64:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: git make mingw-w64-x86_64-toolchain mingw-w64-x86_64-libelf mingw-w64-x86_64-avr-toolchain mingw-w64-x86_64-freeglut
+      - name: CI-Build
+        run: |
+          echo 'Running in MSYS2!'
+          make build-simavr V=1
+          mkdir simavr_installed
+          make -k install DESTDIR=$(pwd)/simavr_installed/ || true
+          mv simavr_installed/bin/simavr simavr_installed/bin/simavr.exe
+          file simavr_installed/bin/*
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Windows 64-bit
+          path: simavr_installed
+  build-win32:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          update: true
+          install: git make mingw-w64-i686-toolchain mingw-w64-i686-libelf mingw-w64-i686-avr-toolchain mingw-w64-i686-freeglut
+      - name: CI-Build
+        run: |
+          make build-simavr V=1
+          mkdir simavr_installed
+          make -k install DESTDIR=$(pwd)/simavr_installed/ || true
+          mv simavr_installed/bin/simavr simavr_installed/bin/simavr.exe
+          file simavr_installed/bin/*
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Windows 32-bit
+          path: simavr_installed
+  build-lin64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Dependenncies
+        run: sudo apt-get install -y build-essential git make gcc-avr avr-libc libelf-dev freeglut3-dev patchelf
+      - name: CI-Build
+        run: |
+          make build-simavr V=1 RELEASE=1
+          mkdir simavr_installed
+          make  install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
+          file simavr_installed/bin/*
+          patchelf --remove-needed ./libsimavr.so.1 simavr_installed/bin/simavr || true
+          patchelf --add-needed libsimavr.so.1 simavr_installed/bin/simavr
+          patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
+          ldd simavr_installed/bin/*
+          simavr_installed/bin/simavr --list-cores || true
+      - name: Tar files
+        run: tar -cvf simavr.tar.gz -C simavr_installed .
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Linux 64-bit
+          path: simavr.tar.gz
+  build-lin32:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Dependenncies
+        run: | 
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y libstdc++6:i386 libgcc1:i386 zlib1g:i386 libncurses5:i386 gcc-9:i386 binutils:i386 cpp-9:i386 libelf-dev:i386 freeglut3-dev:i386 gcc-avr avr-libc patchelf
+          ls -l /usr/bin/*gcc*
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 10
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 20
+          sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc 30
+          sudo update-alternatives --set cc /usr/bin/gcc
+      - name: CI-Build
+        run: |
+          make build-simavr V=1 RELEASE=1
+          mkdir simavr_installed
+          make  install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
+          file simavr_installed/bin
+          patchelf --remove-needed ./libsimavr.so.1 simavr_installed/bin/simavr || true
+          patchelf --add-needed libsimavr.so.1 simavr_installed/bin/simavr
+          patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
+          ldd simavr_installed/bin/*
+          simavr_installed/bin/simavr --list-cores || true
+      - name: Tar files
+        run: tar -cvf simavr.tar.gz -C simavr_installed .
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Linux 32-bit
+          path: simavr.tar.gz
+  build-armv7l:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: pguyot/arm-runner-action@v2
+        id: build_image
+        with:
+          cpu: cortex-a7
+          base_image: raspios_lite:latest
+          copy_artifact_path: simavr.tar.gz
+          image_additional_mb: 1024
+          commands: |
+            df -h /
+            sudo apt-get install -y build-essential git make gcc-avr avr-libc libelf-dev freeglut3-dev patchelf file
+            make -j4 build-simavr V=1 RELEASE=1
+            mkdir simavr_installed
+            make -j4 install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
+            file simavr_installed/bin/*
+            patchelf --remove-needed ./libsimavr.so.1 simavr_installed/bin/simavr || true
+            patchelf --add-needed libsimavr.so.1 simavr_installed/bin/simavr
+            patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
+            ldd simavr_installed/bin/*
+            simavr_installed/bin/simavr --list-cores || true
+            tar -cvf simavr.tar.gz -C simavr_installed .
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Linux ARMv7l
+          path: simavr.tar.gz
+  build-armv6l:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: pguyot/arm-runner-action@v2
+        id: build_image
+        with:
+          cpu: arm1176
+          base_image: raspios_lite:latest
+          copy_artifact_path: simavr.tar.gz
+          image_additional_mb: 1024
+          commands: |
+            df -h /
+            sudo apt-get install -y build-essential git make gcc-avr avr-libc libelf-dev freeglut3-dev patchelf file
+            make build-simavr V=1 RELEASE=1
+            mkdir simavr_installed
+            make install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
+            file simavr_installed/bin/*
+            patchelf --remove-needed ./libsimavr.so.1 simavr_installed/bin/simavr || true
+            patchelf --add-needed libsimavr.so.1 simavr_installed/bin/simavr
+            patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
+            ldd simavr_installed/bin/*
+            simavr_installed/bin/simavr --list-cores || true
+            tar -cvf simavr.tar.gz -C simavr_installed .
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Linux ARMv6l
+          path: simavr.tar.gz
+  build-aarch64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: pguyot/arm-runner-action@v2
+        id: build_image
+        with:
+          cpu: cortex-a53
+          base_image: raspios_lite_arm64:latest
+          copy_artifact_path: simavr.tar.gz
+          image_additional_mb: 1024
+          commands: |
+            df -h /
+            sudo apt-get install -y build-essential git make gcc-avr avr-libc libelf-dev freeglut3-dev patchelf file
+            make -j4 build-simavr V=1 RELEASE=1
+            mkdir simavr_installed
+            make -j4 install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
+            file simavr_installed/bin/*
+            patchelf --remove-needed ./libsimavr.so.1 simavr_installed/bin/simavr || true
+            patchelf --add-needed libsimavr.so.1 simavr_installed/bin/simavr
+            patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
+            ldd simavr_installed/bin/*
+            simavr_installed/bin/simavr --list-cores || true
+            tar -cvf simavr.tar.gz -C simavr_installed .
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Linux AArch64
+          path: simavr.tar.gz
+  build-darwin-x64:
+    # this is currently macos-11, Big Sur
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Dependenncies
+        run: | 
+          brew install make libelf freeglut patchelf 
+          brew tap osx-cross/avr
+          brew install avr-gcc@5 avr-binutils
+          export PATH="/usr/local/opt/avr-gcc@5/bin:$PATH"
+      - name: CI-Build
+        run: |
+          avr-gcc --version || true
+          clang --version
+          export CFLAGS="-DGL_SILENCE_DEPRECATION"
+          make -j4 build-simavr V=1 RELEASE=1
+          mkdir simavr_installed
+          make -k -j4 install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/ || true
+          file simavr_installed/bin/*
+          otool -L simavr_installed/bin/*
+          simavr_installed/bin/simavr --list-cores || true
+      - name: Tar files
+        run: tar -cvf simavr.tar.gz -C simavr_installed .
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Mac OS Intel 64-bit
+          path: simavr.tar.gz
