@@ -17,9 +17,9 @@ jobs:
       - name: CI-Build
         run: |
           echo 'Running in MSYS2!'
-          CFLAGS="-D_XOPEN_SOURCE=600" make build-simavr V=1
+          make build-simavr V=1
           mkdir simavr_installed
-          CFLAGS="-D_XOPEN_SOURCE=600" make -k install DESTDIR=$(pwd)/simavr_installed/ || true
+          make -k install DESTDIR=$(pwd)/simavr_installed/ || true
           mv simavr_installed/bin/simavr simavr_installed/bin/simavr.exe
           file simavr_installed/bin/*
       - uses: actions/upload-artifact@v4
@@ -202,8 +202,8 @@ jobs:
         run: | 
           HOMEBREW_NO_INSTALL_FROM_API=1 brew install make libelf freeglut patchelf 
           HOMEBREW_NO_INSTALL_FROM_API=1 brew tap osx-cross/avr
-          HOMEBREW_NO_INSTALL_FROM_API=1 brew install avr-gcc@5 avr-binutils
-          export PATH="/usr/local/opt/avr-gcc@5/bin:$PATH"
+          HOMEBREW_NO_INSTALL_FROM_API=1 brew install avr-gcc@9 avr-binutils
+          export PATH="/usr/local/opt/avr-gcc@9/bin:$PATH"
       - name: CI-Build
         run: |
           avr-gcc --version || true
