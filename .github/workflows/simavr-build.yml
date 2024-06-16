@@ -1,0 +1,113 @@
+#
+# simavr-build.yml
+#
+# This will build simavr.  It also checks to be sure that the sample from the
+# README.md has the expected output.
+#
+
+name: Simavr Build
+
+
+on:
+  push:
+    branches: [
+      master,
+      github-action
+    ]
+  pull_request:
+    branches: [
+      master
+    ]
+  workflow_dispatch:  # Allows running this workflow manually from Actions tab
+
+
+# Standardize to use bash on all platforms.
+#
+defaults:
+  run:
+    shell: bash
+
+
+# Each "Job" runs in its own VM, and a workflow run is made up of one or more
+# jobs that can run sequentially or in parallel.
+#
+jobs:
+  avr-build:  # Name of this workflow's only job
+
+    strategy:  # GitHub Matrix variables are `${{ matrix.xxx }}`, not `${xxx}`
+      matrix:
+        include:  # put in order of visibility importance (shown in UI)
+
+        - os: ubuntu-latest
+
+        - os: macos-latest
+
+    # https://github.com/actions/virtual-environments#available-environments
+    #
+    runs-on: ${{ matrix.os }}
+
+    # You can put global environment variables here.
+    #
+    env:
+      SOME_ENVIRONMENT_VARIABLES: /you/can/set/them/here
+
+    # Steps are a sequence of tasks that will be executed within a single VM
+    # as part of the job.
+    #
+    steps:  # (no indentatation needed below; so indent the minimum!)
+
+
+  #====# CHECKOUT CODE #======================================================#
+
+    # https://github.com/actions/checkout
+    #
+    - uses: actions/checkout@v2
+
+
+  #====# INSTALL AVR CROSS COMPILER TOOLCHAIN #===============================#
+
+    # Microchip.com has downloadable versions, e.g. for Windows:
+    #
+    # https://www.microchip.com/en-us/development-tools-tools-and-software/gcc-compilers-avr-and-arm
+    #
+    # Unfortunately those require a login and cookie to download.  On Linux you
+    # can use `apt` and on MacOS you can use `brew` to get packaged variants.
+
+    - name: Install AVR GCC Cross-Compiler and C Runtime Library (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt install avr-libc
+        sudo apt install gcc-avr
+        sudo apt install libelf-dev
+        sudo apt install freeglut3-dev  # for simduiono, ledramp
+
+    - name: Install AVR GCC Cross-Compiler and C Runtime Library (MacOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew tap osx-cross/avr
+        # avr-libc is now included in avr-gcc
+        brew install avr-gcc avr-binutils
+        # brew install avrdude  # package is available if needed
+        brew install freeglut  # for simduino, ledramp
+
+    - name: Check AVR-GCC is Working And Get Version Details
+      run: |
+        avr-gcc -v  # -v gives compiler configuration details
+
+
+  #====# BUILD #==============================================================#
+
+    - name: Build AVR Binary Products
+      run: |
+        make
+
+
+  #====# TEST #===============================================================#
+
+    # Note: Ideally this would extract the actual claimed output from README.md
+    # with a command line utility, and then diff it.  Then fail the test if
+    # the diff wasn't identical.  For now, just inspect it.
+    #
+    - name: Test For Consistency With README.md
+      run: |
+        ./simavr/run_avr tests/atmega88_example.axf
