@@ -13,7 +13,13 @@ jobs:
         with:
           msystem: MINGW64
           update: true
-          install: git make mingw-w64-x86_64-toolchain mingw-w64-x86_64-libelf mingw-w64-x86_64-avr-toolchain mingw-w64-x86_64-freeglut
+          install: git make mingw-w64-x86_64-toolchain mingw-w64-x86_64-libelf mingw-w64-x86_64-freeglut
+      - name: Install AVR toolchain
+        run: |
+           wget "https://github.com/ZakKemble/avr-gcc-build/releases/download/v14.1.0-1/avr-gcc-14.1.0-x86-windows.zip"
+           unzip avr-gcc-14.1.0-x86-windows.zip
+           ls -l
+           echo "$(pwd)/avr-gcc-14.1.0-x86-windows/avr-gcc-14.1.0-x86-windows/bin" >> $GITHUB_PATH
       - name: CI-Build
         run: |
           echo 'Running in MSYS2!'
