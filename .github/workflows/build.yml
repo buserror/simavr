@@ -17,9 +17,9 @@ jobs:
       - name: CI-Build
         run: |
           echo 'Running in MSYS2!'
-          make build-simavr V=1
+          CFLAGS="-D_XOPEN_SOURCE=600" make build-simavr V=1
           mkdir simavr_installed
-          make -k install DESTDIR=$(pwd)/simavr_installed/ || true
+          CFLAGS="-D_XOPEN_SOURCE=600" make -k install DESTDIR=$(pwd)/simavr_installed/ || true
           mv simavr_installed/bin/simavr simavr_installed/bin/simavr.exe
           file simavr_installed/bin/*
       - uses: actions/upload-artifact@v3
