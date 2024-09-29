@@ -80,7 +80,7 @@ jobs:
           name: Linux 64-bit
           path: simavr.tar.gz
   build-lin32:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Install Dependenncies
@@ -123,6 +123,7 @@ jobs:
           image_additional_mb: 1024
           commands: |
             df -h /
+            sudo apt-get update
             sudo apt-get install -y build-essential git make gcc-avr avr-libc libelf-dev freeglut3-dev patchelf file
             make -j4 build-simavr V=1 RELEASE=1
             mkdir simavr_installed
@@ -151,6 +152,7 @@ jobs:
           image_additional_mb: 1024
           commands: |
             df -h /
+            sudo apt-get update
             sudo apt-get install -y build-essential git make gcc-avr avr-libc libelf-dev freeglut3-dev patchelf file
             make build-simavr V=1 RELEASE=1
             mkdir simavr_installed
