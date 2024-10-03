@@ -90,6 +90,9 @@ i2c_mcp23008_in_hook(
 				if (p->verbose)
 					printf("mcp23008 WRITE data 0x%04x: %02x\n", p->reg_addr, v.u.twi.data);
 				p->reg[p->reg_addr] = v.u.twi.data;
+                if (p->reg_addr == MCP23008_REG_GPIO) {
+                    p->reg[MCP23008_REG_OLAT] = p->reg[MCP23008_REG_GPIO];
+                }
                 if ((p->reg[MCP23008_REG_IOCON] & (1<<MCP23008_REGBIT_SEQOP)) == 0) {
                     p->reg_addr++;
                     if (p->reg_addr > MCP23008_REG_NUM) {
