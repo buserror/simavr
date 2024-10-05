@@ -10,6 +10,12 @@ simulator loads ELF files directly, and there is even a way to specify simulatio
 parameters directly in the emulated code using an .elf section. You can also 
 load multipart HEX files.
 
+```diff
+- _simavr_ is provided **AS IS**. If you think you should report "security vulnerabilities"
+- and waste everyones time with them, you are either a grifter OR an idiot, or both. And
+- anyone checking the CV you brag about it will see this paragraph, first.
+```
+
 Installation
 ------------
 On OSX, we recommend using [homebrew](https://brew.sh):
