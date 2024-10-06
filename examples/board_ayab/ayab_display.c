@@ -111,12 +111,6 @@ specialkeyCB (int key, int x, int y)
 {
 	switch (key)
     {
-		case GLUT_KEY_UP:
-            fprintf(stderr, "u");
-            break;
-		case GLUT_KEY_DOWN:
-            fprintf(stderr, "d");
-            break;
 		case GLUT_KEY_LEFT:
             queue_push(&event_queue, CARRIAGE_LEFT, 0);
             break;
