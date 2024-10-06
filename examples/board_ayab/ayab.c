@@ -77,15 +77,14 @@ display_usage(
 	printf(
 	 "       [--help|-h|-?]      Display this usage message and exit\n"
 	 "       [--list-cores]      List all supported AVR cores and exit\n"
-	 "       [-v]                Raise verbosity level\n"
-	 "                           (can be passed more than once)\n"
+	 "       [-v]                Raise verbosity level (can be passed more than once)\n"
 	 "       [--freq|-f <freq>]  Sets the frequency for an .hex firmware\n"
 	 "       [--mcu|-m <device>] Sets the MCU type for an .hex firmware\n"
 	 "       [--gdb|-g [<port>]] Listen for gdb connection on <port> (default 1234)\n"
-     "       [--machine|-m <machine>]   Select KH910/KH930 machine (default=KH910)\n"
-     "       [--carriage|-c <carriage>] Select K/L/G carriage (default=K)\n"
-     "       [--beltphase|-b <phase>]   Select Regular/Shifted (default=Regular)\n"
-     "       [--startside|-s <side>]    Select Left/Right side to start (default=Left)\n"
+     "       [--machine <machine>]   Select KH910/KH930 machine (default=KH910)\n"
+     "       [--carriage <carriage>] Select K/L/G carriage (default=K)\n"
+     "       [--beltphase <phase>]   Select Regular/Shifted (default=Regular)\n"
+     "       [--startside <side>]    Select Left/Right side to start (default=Left)\n"
 	 "       <firmware>          An ELF file (can include debugging syms)\n"
      "\n");
 	exit(1);
@@ -121,7 +120,7 @@ parse_arguments(int argc, char *argv[])
 			gdb++;
 			if (pi < (argc-2) && argv[pi+1][0] != '-' )
 				gdb_port = atoi(argv[++pi]);
-		} else if (!strcmp(argv[pi], "-m") || !strcmp(argv[pi], "--machine")) {
+		} else if (!strcmp(argv[pi], "--machine")) {
 			if (pi < argc-1) {
                 if (!strcmp(argv[++pi], "KH910")) {
                     machine.type = KH910;
@@ -133,7 +132,7 @@ parse_arguments(int argc, char *argv[])
             } else {
 				display_usage(basename(argv[0]));
             }
-		} else if (!strcmp(argv[pi], "-c") || !strcmp(argv[pi], "--carriage")) {
+		} else if (!strcmp(argv[pi], "--carriage")) {
 			if (pi < argc-1) {
                 if (!strcmp(argv[++pi], "K")) {
                     machine.carriage.type = KNIT;
@@ -147,7 +146,7 @@ parse_arguments(int argc, char *argv[])
             } else {
 				display_usage(basename(argv[0]));
             }
-		} else if (!strcmp(argv[pi], "-s") || !strcmp(argv[pi], "--startside")) {
+		} else if (!strcmp(argv[pi], "--startside")) {
 			if (pi < argc-1) {
                 if (!strcmp(argv[++pi], "Left")) {
                     machine.carriage.position = -24;
@@ -159,7 +158,7 @@ parse_arguments(int argc, char *argv[])
             } else {
 				display_usage(basename(argv[0]));
             }
-		} else if (!strcmp(argv[pi], "-b") || !strcmp(argv[pi], "--beltphase")) {
+		} else if (!strcmp(argv[pi], "--beltphase")) {
 			if (pi < argc-1) {
                 if (!strcmp(argv[++pi], "Regular")) {
                     machine.belt_phase = REGULAR;
@@ -349,6 +348,7 @@ static void * avr_run_thread(void * param)
                 fprintf(stderr, "->  %.100s\n", needles+100);
             }
         }
+        // Run one AVR cycle
 		state = avr_run(avr);
     }
 
@@ -376,6 +376,15 @@ int main(int argc, char *argv[])
     machine.carriage.type = KNIT;
     machine.belt_phase = REGULAR;
     machine.carriage.position = -24;
+
+	printf (
+        "---------------------------------------------------------\n"
+        "AYAB shield emulation \n"
+        "- Use left/right arrows to move the carriage\n"
+        "- 'v' to start/stop VCD traces"
+        "- 'q' or ESC to quit\n"
+        "----------------------------------------------------------\n"
+    );
 
     parse_arguments(argc, argv);
 
@@ -448,7 +457,7 @@ int main(int argc, char *argv[])
     // Beeper not implemented (simavr lacks PWM support)
 
     // Start display 
-    printf( "\nsimavr launching ('q' to quit):\n");
+    printf( "\nsimavr launching\n");
 
     ayab_display(argc, argv, avr_run_thread, &machine, &shield);
 

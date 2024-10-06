@@ -17,6 +17,7 @@ typedef struct {
 
 typedef struct {
     enum machine_type type;
+    enum side start_side;
     carriage_t carriage;
     int belt_phase;
     int hall_left, hall_right;
