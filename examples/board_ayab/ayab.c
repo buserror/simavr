@@ -25,6 +25,7 @@
 #include <string.h>
 
 #include "sim_avr.h"
+#include "sim_time.h"
 #include "sim_core.h"
 #include "avr_ioport.h"
 #include "avr_adc.h"
@@ -233,6 +234,7 @@ void vcd_trace_enable(int enable) {
 static void * avr_run_thread(void * param)
 {
 	int state = cpu_Running;
+    avr_cycle_count_t lastChange = avr->cycle;
     int *run = (int *)param;
     avr_irq_t vcd_irq_pc;
     
@@ -256,7 +258,7 @@ static void * avr_run_thread(void * param)
     }
 
     vcd_trace_enable(vcd_enabled);
-    
+
     // Phase overlaps 16 needles/solenoids
     unsigned encoder_phase=0;
     // {v1, v2} encoding over 4 phases
@@ -269,178 +271,182 @@ static void * avr_run_thread(void * param)
 
 	while (*run && (state != cpu_Done) && (state != cpu_Crashed))
     {
-        enum event_type event;
-        int value;
-        while (queue_pop(&event_queue, &event, &value))
-        {
-            unsigned new_phase = encoder_phase;
-            switch (event)
-            {
-                case CARRIAGE_LEFT:
-                    new_phase = (encoder_phase-1)%16;
-                    if ((new_phase%4) == 0) {
-                        if (machine.carriage.position > -24) {
-                            machine.carriage.position--;
-                        } else {
-                            machine.carriage.position = -24;
-                            new_phase = encoder_phase;
-                        }
-                    }
-                    break;
-                case CARRIAGE_RIGHT:
-                    new_phase = (encoder_phase+1)%16;
-                    if ((new_phase%4) == 0) {
-                        if (machine.carriage.position < (machine.num_needles + 24)) {
-                            machine.carriage.position++;
-                        } else {
-                            machine.carriage.position = (machine.num_needles + 24);
-                            new_phase = encoder_phase;
-                        }
-                    }
-                    break;
-                case VCD_DUMP:
-                    vcd_enabled = ! vcd_enabled;
-                    vcd_trace_enable(vcd_enabled);
-                    continue;
-                    break;
-                default:
-                    fprintf(stderr, "Unexpect event from graphic thread\n");
-                    break;
-            }
+        // Limit event/interrupt rate towards avr
+        if (avr_cycles_to_usec(avr, avr->cycle - lastChange)  > 10000) {
+            lastChange = avr->cycle;
 
-            machine.hall_left = 1650;
-            machine.hall_right = 1650;
-            uint16_t solenoid_states = (shield.mcp23008[1].reg[MCP23008_REG_OLAT] << 8) + shield.mcp23008[0].reg[MCP23008_REG_OLAT]; 
-            int solenoid_update = 0;
-            int selected_needle;
-            int select_offset = 0;
-            switch (machine.carriage.type) {
-                case KNIT:
-                    // Handle hall sensors
-                    if (machine.carriage.position == 0) {
-                        machine.hall_left = 2200; //TBC North
-                    } else if (machine.carriage.position == (machine.num_needles - 1)) {
-                        machine.hall_right = 2200; //TBC North
-                        if(machine.type == KH910) { // Shield error
-                            machine.hall_right = 0; // Digital low
-                        }
-                    }
-                    // Handle solenoids
-                    select_offset = 24;
-                    if (event == CARRIAGE_RIGHT) {
-                        select_offset = -24;
-                    }
-                    break;
-                case LACE:
-                    if (machine.carriage.position == 0) {
-                        machine.hall_left = 100; //TBC South
-                    } else if (machine.carriage.position == (machine.num_needles - 1)) {
-                        machine.hall_right = 100; //TBC South
-                        if(machine.type == KH910) { // Shield error
-                            machine.hall_right = 1650; // HighZ
-                        }
-                    }
-                    // Handle solenoids
-                    select_offset = 12;
-                    if (event == CARRIAGE_RIGHT) {
-                        select_offset = -12;
-                    }
-                    break;
-                case GARTNER:
-                    switch (machine.carriage.position) {
-                        case -13:
-                        case  13:
-                            machine.hall_left = 100; //TBC South
-                            break;
-                        case -11:
-                        case  11:
-                            machine.hall_left = 2200; //TBC North
-                            break;
-                        case 186:
-                        case 212:
-                            machine.hall_right = 100; //TBC South
-                            if(machine.type == KH910) { // Shield error
-                                machine.hall_right = 1650; // HighZ
+            enum event_type event;
+            int value;
+            if (queue_pop(&event_queue, &event, &value))
+            {
+                unsigned new_phase = encoder_phase;
+                switch (event)
+                {
+                    case CARRIAGE_LEFT:
+                        new_phase = (encoder_phase-1)%16;
+                        if ((new_phase%4) == 0) {
+                            if (machine.carriage.position > -24) {
+                                machine.carriage.position--;
+                            } else {
+                                machine.carriage.position = -24;
+                                new_phase = encoder_phase;
                             }
-                            break;
-                        case 188:
-                        case 210:
+                        }
+                        break;
+                    case CARRIAGE_RIGHT:
+                        new_phase = (encoder_phase+1)%16;
+                        if ((new_phase%4) == 0) {
+                            if (machine.carriage.position < (machine.num_needles + 24)) {
+                                machine.carriage.position++;
+                            } else {
+                                machine.carriage.position = (machine.num_needles + 24);
+                                new_phase = encoder_phase;
+                            }
+                        }
+                        break;
+                    case VCD_DUMP:
+                        vcd_enabled = ! vcd_enabled;
+                        vcd_trace_enable(vcd_enabled);
+                        continue;
+                        break;
+                    default:
+                        fprintf(stderr, "Unexpect event from graphic thread\n");
+                        break;
+                }
+
+                machine.hall_left = 1650;
+                machine.hall_right = 1650;
+                uint16_t solenoid_states = (shield.mcp23008[1].reg[MCP23008_REG_OLAT] << 8) + shield.mcp23008[0].reg[MCP23008_REG_OLAT]; 
+                int solenoid_update = 0;
+                int selected_needle;
+                int select_offset = 0;
+                switch (machine.carriage.type) {
+                    case KNIT:
+                        // Handle hall sensors
+                        if (machine.carriage.position == 0) {
+                            machine.hall_left = 2200; //TBC North
+                        } else if (machine.carriage.position == (machine.num_needles - 1)) {
                             machine.hall_right = 2200; //TBC North
                             if(machine.type == KH910) { // Shield error
                                 machine.hall_right = 0; // Digital low
                             }
-                            break;
-                        default:
-                            break;
-                    }
-                    // Handle solenoids
-                    select_offset = 0;
-                    break;
-                case KNIT270:
-                    switch (machine.carriage.position) {
-                        case -6:
-                            machine.hall_left = 2200; //TBC North
-                            break;
-                        case  0:
+                        }
+                        // Handle solenoids
+                        select_offset = 24;
+                        if (event == CARRIAGE_RIGHT) {
+                            select_offset = -24;
+                        }
+                        break;
+                    case LACE:
+                        if (machine.carriage.position == 0) {
                             machine.hall_left = 100; //TBC South
-                            break;
-                        case 111:
-                            machine.hall_right = 2200; //TBC North
-                            break;
-                        case 117:
+                        } else if (machine.carriage.position == (machine.num_needles - 1)) {
                             machine.hall_right = 100; //TBC South
-                            break;
-                        default:
-                            break;
+                            if(machine.type == KH910) { // Shield error
+                                machine.hall_right = 1650; // HighZ
+                            }
+                        }
+                        // Handle solenoids
+                        select_offset = 12;
+                        if (event == CARRIAGE_RIGHT) {
+                            select_offset = -12;
+                        }
+                        break;
+                    case GARTNER:
+                        switch (machine.carriage.position) {
+                            case -13:
+                            case  13:
+                                machine.hall_left = 100; //TBC South
+                                break;
+                            case -11:
+                            case  11:
+                                machine.hall_left = 2200; //TBC North
+                                break;
+                            case 186:
+                            case 212:
+                                machine.hall_right = 100; //TBC South
+                                if(machine.type == KH910) { // Shield error
+                                    machine.hall_right = 1650; // HighZ
+                                }
+                                break;
+                            case 188:
+                            case 210:
+                                machine.hall_right = 2200; //TBC North
+                                if(machine.type == KH910) { // Shield error
+                                    machine.hall_right = 0; // Digital low
+                                }
+                                break;
+                            default:
+                                break;
+                        }
+                        // Handle solenoids
+                        select_offset = 0;
+                        break;
+                    case KNIT270:
+                        switch (machine.carriage.position) {
+                            case -6:
+                                machine.hall_left = 2200; //TBC North
+                                break;
+                            case  0:
+                                machine.hall_left = 100; //TBC South
+                                break;
+                            case 111:
+                                machine.hall_right = 2200; //TBC North
+                                break;
+                            case 117:
+                                machine.hall_right = 100; //TBC South
+                                break;
+                            default:
+                                break;
+                        }
+                        // Handle solenoids
+                        select_offset = 12;
+                        if (event == CARRIAGE_RIGHT) {
+                            select_offset = -12;
+                        }
+                        break;
+                    default:
+                        fprintf(stderr, "Unexpected carriage type (%d)\n", machine.carriage.type);
+                        break;
+                }
+
+                selected_needle = machine.carriage.position + select_offset;
+                if ((selected_needle < machine.num_needles) && (selected_needle >= 0)) {
+                    int solenoid_offset =  (machine.type == KH270) ? 3 : 0;
+                    needles[selected_needle] = solenoid_states & (1<< (solenoid_offset + selected_needle % machine.num_solenoids)) ? '.' : '|';
+                    solenoid_update = 1;
+                }
+
+                encoder_phase = new_phase;
+                avr_raise_irq(encoder_v2.irq + IRQ_BUTTON_OUT, (phase_map[encoder_phase % 4] & 1) ? 1 : 0);
+                avr_raise_irq(encoder_v1.irq + IRQ_BUTTON_OUT, (phase_map[encoder_phase % 4] & 2) ? 1 : 0);
+                avr_raise_irq(encoder_beltPhase.irq + IRQ_BUTTON_OUT, (encoder_phase & 8) ? 1 : 0);
+
+                if ((encoder_phase % 4) == 0) {
+                    int half_num_needles = machine.num_needles / 2;
+
+                    char info_buffer[machine.num_needles];
+                    memset(info_buffer, ' ', machine.num_needles);
+                    if ((selected_needle >=0) && (selected_needle < machine.num_needles)) {
+                        info_buffer[selected_needle]           = 'x';
                     }
-                    // Handle solenoids
-                    select_offset = 12;
-                    if (event == CARRIAGE_RIGHT) {
-                        select_offset = -12;
+                    if ((machine.carriage.position >=0) && (machine.carriage.position < machine.num_needles)) {
+                        info_buffer[machine.carriage.position] = '^';
                     }
-                    break;
-                default:
-                    fprintf(stderr, "Unexpected carriage type (%d)\n", machine.carriage.type);
-                    break;
-            }
 
-            selected_needle = machine.carriage.position + select_offset;
-            if (selected_needle < machine.num_needles && selected_needle >= 0) {
-                int solenoid_offset =  (machine.type == KH270) ? 3 : 0;
-            needles[selected_needle] = solenoid_states & (1<< (solenoid_offset + selected_needle % machine.num_solenoids)) ? '.' : '|';
-                solenoid_update = 1;
-            }
+                    fprintf(stderr, "Solenoids =[");
+                    for (int i=15; i>=0;i--) {
+                        fprintf(stderr, "%c", solenoid_states & (1<<i) ? '.' : '|');
+                    }
+                    fprintf(stderr, "], Carriage = %3d, Sensors = (%4d, %4d)\n", machine.carriage.position, machine.hall_left, machine.hall_right);
 
-            encoder_phase = new_phase;
+                    if (solenoid_update != 0) {
+                        fprintf(stderr, "<- %.*s\n", half_num_needles, needles);
+                        fprintf(stderr, "   %.*s\n", half_num_needles, info_buffer);
 
-            avr_raise_irq(encoder_v2.irq + IRQ_BUTTON_OUT, (phase_map[encoder_phase % 4] & 1) ? 1 : 0);
-            avr_raise_irq(encoder_v1.irq + IRQ_BUTTON_OUT, (phase_map[encoder_phase % 4] & 2) ? 1 : 0);
-            avr_raise_irq(encoder_beltPhase.irq + IRQ_BUTTON_OUT, (encoder_phase & 8) ? 1 : 0);
-
-            if ((encoder_phase % 4) == 0) {
-                int half_num_needles = machine.num_needles / 2;
-
-                char info_buffer[machine.num_needles];
-                memset(info_buffer, ' ', machine.num_needles);
-                if ((selected_needle >=0) && (selected_needle < machine.num_needles)) {
-                    info_buffer[selected_needle]           = 'x';
-                }
-                if ((machine.carriage.position >=0) && (machine.carriage.position < machine.num_needles)) {
-                    info_buffer[machine.carriage.position] = '^';
-                }
-
-                fprintf(stderr, "Solenoids =[");
-                for (int i=15; i>=0;i--) {
-                    fprintf(stderr, "%c", solenoid_states & (1<<i) ? '.' : '|');
-                }
-                fprintf(stderr, "], Carriage = %3d, Sensors = (%4d, %4d)\n", machine.carriage.position, machine.hall_left, machine.hall_right);
-
-                if (solenoid_update != 0) {
-                    fprintf(stderr, "<- %.*s\n", half_num_needles, needles);
-                    fprintf(stderr, "   %.*s\n", half_num_needles, info_buffer);
-
-                    fprintf(stderr, "-> %.*s\n", half_num_needles, needles+half_num_needles);
-                    fprintf(stderr, "   %.*s\n", half_num_needles, info_buffer+half_num_needles);
+                        fprintf(stderr, "-> %.*s\n", half_num_needles, needles+half_num_needles);
+                        fprintf(stderr, "   %.*s\n", half_num_needles, info_buffer+half_num_needles);
+                    }
                 }
             }
         }
