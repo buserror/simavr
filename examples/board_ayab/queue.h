@@ -5,6 +5,7 @@
 enum event_type {
     CARRIAGE_LEFT,
     CARRIAGE_RIGHT,
+    VCD_DUMP,
 };
 
 typedef struct {

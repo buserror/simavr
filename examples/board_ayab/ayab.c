@@ -25,11 +25,13 @@
 #include <string.h>
 
 #include "sim_avr.h"
+#include "sim_core.h"
 #include "avr_ioport.h"
 #include "avr_adc.h"
 #include "avr_twi.h"
 #include "sim_elf.h"
 #include "sim_gdb.h"
+#include "sim_vcd_file.h"
 #include "uart_pty.h"
 #include "queue.h"
 
@@ -45,6 +47,8 @@ elf_firmware_t firmware = {{0}};
 int loglevel = LOG_ERROR;
 int gdb = 0;
 int gdb_port = 1234;
+int trace_pc = 0;
+int vcd_enabled = 0;
 
 uart_pty_t uart_pty;
 
@@ -81,6 +85,9 @@ display_usage(
 	 "       [--freq|-f <freq>]  Sets the frequency for an .hex firmware\n"
 	 "       [--mcu|-m <device>] Sets the MCU type for an .hex firmware\n"
 	 "       [--gdb|-g [<port>]] Listen for gdb connection on <port> (default 1234)\n"
+	 "       [--output|-o <file>] VCD file to save signal traces\n"
+	 "       [--start-vcd|-s     Start VCD output from reset\n"
+	 "       [--pc-trace|-p      Add PC to VCD traces\n"
      "       [--machine <machine>]   Select KH910/KH930 machine (default=KH910)\n"
      "       [--carriage <carriage>] Select K/L/G carriage (default=K)\n"
      "       [--beltphase <phase>]   Select Regular/Shifted (default=Regular)\n"
@@ -120,6 +127,19 @@ parse_arguments(int argc, char *argv[])
 			gdb++;
 			if (pi < (argc-2) && argv[pi+1][0] != '-' )
 				gdb_port = atoi(argv[++pi]);
+		} else if (!strcmp(argv[pi], "-o") ||
+				   !strcmp(argv[pi], "--output")) {
+			if (pi + 1 >= argc) {
+				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
+				exit(1);
+			}
+			snprintf(firmware.tracename, sizeof(firmware.tracename), "%s", argv[++pi]);
+		} else if (!strcmp(argv[pi], "-s") ||
+				   !strcmp(argv[pi], "--start-vcd")) {
+            vcd_enabled = 1;
+		} else if (!strcmp(argv[pi], "-p") ||
+				   !strcmp(argv[pi], "--pc-trace")) {
+            trace_pc = 1;
 		} else if (!strcmp(argv[pi], "--machine")) {
 			if (pi < argc-1) {
                 if (!strcmp(argv[++pi], "KH910")) {
@@ -201,10 +221,39 @@ static void adcTriggerCB(struct avr_irq_t *irq, uint32_t value, void *param)
     }
 }
 
+void vcd_trace_enable(int enable) {
+    if (avr->vcd) {
+        enable ? avr_vcd_start(avr->vcd) : avr_vcd_stop(avr->vcd);
+        printf("VCD trace %s (%s)\n", avr->vcd->filename, enable ? "enabled":"disabled");
+    }
+}
+
 static void * avr_run_thread(void * param)
 {
 	int state = cpu_Running;
     int *run = (int *)param;
+    avr_irq_t vcd_irq_pc;
+    
+#if AVR_STACK_WATCH
+    uint16_t SP_min = (avr->data[R_SPH]<<8) +  avr->data[R_SPL];
+#endif
+
+    // Initialize VCD for PC-only traces
+    if (!avr->vcd && trace_pc) {
+        avr->vcd = malloc(sizeof(*avr->vcd));
+        avr_vcd_init(avr,
+            firmware.tracename[0] ? firmware.tracename: "simavr.vcd",
+            avr->vcd,
+            100000 /* usec */
+        );
+    }
+
+    // Add Program Counter (PC) to vcd file
+    if (trace_pc) {
+        avr_vcd_add_signal(avr->vcd, &vcd_irq_pc, 16, "PC");
+    }
+
+    vcd_trace_enable(vcd_enabled);
     
     // Phase overlaps 16 needles/solenoids
     unsigned encoder_phase=0;
@@ -246,6 +295,11 @@ static void * avr_run_thread(void * param)
                             new_phase = encoder_phase;
                         }
                     }
+                    break;
+                case VCD_DUMP:
+                    vcd_enabled = ! vcd_enabled;
+                    vcd_trace_enable(vcd_enabled);
+                    continue;
                     break;
                 default:
                     fprintf(stderr, "Unexpect event from graphic thread\n");
@@ -348,6 +402,20 @@ static void * avr_run_thread(void * param)
                 fprintf(stderr, "->  %.100s\n", needles+100);
             }
         }
+
+        // Trigger IRQ for a PC trace
+        if (trace_pc && avr->vcd->output) {
+            avr_raise_irq(&vcd_irq_pc, avr->pc);
+        }
+
+#if AVR_STACK_WATCH
+        uint16_t SP = (avr->data[R_SPH]<<8) +  avr->data[R_SPL];
+        if (SP < SP_min) {
+            SP_min = SP;
+            fprintf(stderr, "-- New SP minima (SP = 0x%04x) --\n", SP);
+            DUMP_STACK();
+        }
+#endif
         // Run one AVR cycle
 		state = avr_run(avr);
     }

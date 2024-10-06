@@ -101,6 +101,9 @@ keyCB (unsigned char key, int x, int y)
             // ... and exit
             exit(0);
 			break;
+		case 'v':
+            queue_push(&event_queue, VCD_DUMP, 0);
+			break;
 		default:
 			break;
 	}
