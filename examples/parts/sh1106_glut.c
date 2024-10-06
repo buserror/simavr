@@ -34,7 +34,7 @@
 #include <GL/glut.h>
 #endif
 
-sh1106_colour_t oled_colour_g;
+sh1106_colour_t sh1106_oled_colour_g;
 float sh1106_pix_size_g = 1.0;
 float sh1106_pix_gap_g = 0.0;
 
@@ -49,7 +49,7 @@ void
 sh1106_gl_init (float pix_size, sh1106_colour_t oled_colour)
 {
 	sh1106_pix_size_g = pix_size;
-	oled_colour_g = oled_colour;
+	sh1106_oled_colour_g = oled_colour;
 }
 
 void
@@ -57,9 +57,9 @@ sh1106_gl_set_colour (uint8_t invert, float opacity)
 {
 	if (invert)
 	{
-		glColor4f (sh1106_colours[oled_colour_g][0],
-		           sh1106_colours[oled_colour_g][1],
-		           sh1106_colours[oled_colour_g][2],
+		glColor4f (sh1106_colours[sh1106_oled_colour_g][0],
+		           sh1106_colours[sh1106_oled_colour_g][1],
+		           sh1106_colours[sh1106_oled_colour_g][2],
 		           opacity);
 	} else
 	{
