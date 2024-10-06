@@ -88,7 +88,7 @@ display_usage(
 	 "       [--output|-o <file>] VCD file to save signal traces\n"
 	 "       [--start-vcd|-s     Start VCD output from reset\n"
 	 "       [--pc-trace|-p      Add PC to VCD traces\n"
-     "       [--machine <machine>]   Select KH910/KH930 machine (default=KH910)\n"
+     "       [--machine <machine>]   Select KH910/KH930/KH270 machine (default=KH910)\n"
      "       [--carriage <carriage>] Select K/L/G carriage (default=K)\n"
      "       [--beltphase <phase>]   Select Regular/Shifted (default=Regular)\n"
      "       [--startside <side>]    Select Left/Right side to start (default=Left)\n"
@@ -146,6 +146,8 @@ parse_arguments(int argc, char *argv[])
                     machine.type = KH910;
                 } else if (!strcmp(argv[pi], "KH930")) {
                     machine.type = KH930;
+                } else if (!strcmp(argv[pi], "KH270")) {
+                    machine.type = KH270;
                 } else {
                     display_usage(basename(argv[0]));
                 }
@@ -169,9 +171,9 @@ parse_arguments(int argc, char *argv[])
 		} else if (!strcmp(argv[pi], "--startside")) {
 			if (pi < argc-1) {
                 if (!strcmp(argv[++pi], "Left")) {
-                    machine.carriage.position = -24;
+                    machine.start_side = LEFT;
                 } else if (!strcmp(argv[pi], "Right")) {
-                    machine.carriage.position = 224;
+                    machine.start_side = RIGHT;
                 } else {
                     display_usage(basename(argv[0]));
                 }
@@ -288,10 +290,10 @@ static void * avr_run_thread(void * param)
                 case CARRIAGE_RIGHT:
                     new_phase = (encoder_phase+1)%16;
                     if ((new_phase%4) == 0) {
-                        if (machine.carriage.position < 224) {
+                        if (machine.carriage.position < (machine.num_needles + 24)) {
                             machine.carriage.position++;
                         } else {
-                            machine.carriage.position = 224;
+                            machine.carriage.position = (machine.num_needles + 24);
                             new_phase = encoder_phase;
                         }
                     }
@@ -317,7 +319,7 @@ static void * avr_run_thread(void * param)
                     // Handle hall sensors
                     if (machine.carriage.position == 0) {
                         machine.hall_left = 2200; //TBC North
-                    } else if (machine.carriage.position == 199) {
+                    } else if (machine.carriage.position == (machine.num_needles - 1)) {
                         machine.hall_right = 2200; //TBC North
                         if(machine.type == KH910) { // Shield error
                             machine.hall_right = 0; // Digital low
@@ -332,7 +334,7 @@ static void * avr_run_thread(void * param)
                 case LACE:
                     if (machine.carriage.position == 0) {
                         machine.hall_left = 100; //TBC South
-                    } else if (machine.carriage.position == 199) {
+                    } else if (machine.carriage.position == (machine.num_needles - 1)) {
                         machine.hall_right = 100; //TBC South
                         if(machine.type == KH910) { // Shield error
                             machine.hall_right = 1650; // HighZ
@@ -374,14 +376,38 @@ static void * avr_run_thread(void * param)
                     // Handle solenoids
                     select_offset = 0;
                     break;
+                case KNIT270:
+                    switch (machine.carriage.position) {
+                        case -6:
+                            machine.hall_left = 2200; //TBC North
+                            break;
+                        case  0:
+                            machine.hall_left = 100; //TBC South
+                            break;
+                        case 111:
+                            machine.hall_right = 2200; //TBC North
+                            break;
+                        case 117:
+                            machine.hall_right = 100; //TBC South
+                            break;
+                        default:
+                            break;
+                    }
+                    // Handle solenoids
+                    select_offset = 12;
+                    if (event == CARRIAGE_RIGHT) {
+                        select_offset = -12;
+                    }
+                    break;
                 default:
                     fprintf(stderr, "Unexpected carriage type (%d)\n", machine.carriage.type);
                     break;
             }
 
             selected_needle = machine.carriage.position + select_offset;
-            if (selected_needle < 200 && selected_needle >= 0) {
-                needles[selected_needle] = solenoid_states & (1<< (selected_needle%16)) ? '.' : '|';
+            if (selected_needle < machine.num_needles && selected_needle >= 0) {
+                int solenoid_offset =  (machine.type == KH270) ? 3 : 0;
+            needles[selected_needle] = solenoid_states & (1<< (solenoid_offset + selected_needle % machine.num_solenoids)) ? '.' : '|';
                 solenoid_update = 1;
             }
 
@@ -391,15 +417,31 @@ static void * avr_run_thread(void * param)
             avr_raise_irq(encoder_v1.irq + IRQ_BUTTON_OUT, (phase_map[encoder_phase % 4] & 2) ? 1 : 0);
             avr_raise_irq(encoder_beltPhase.irq + IRQ_BUTTON_OUT, (encoder_phase & 8) ? 1 : 0);
 
-            if ((solenoid_update != 0) && (encoder_phase % 4) == 0) {
-                fprintf(stderr, "<-  %.100s\n", needles);
-                fprintf(stderr, "%3d ", machine.carriage.position);
-                if (selected_needle < 100) {
-                    fprintf(stderr, "%*s^\n", selected_needle, "");
-                } else {
-                    fprintf(stderr, "%*sv\n", selected_needle - 100, "");
+            if ((encoder_phase % 4) == 0) {
+                int half_num_needles = machine.num_needles / 2;
+
+                char info_buffer[machine.num_needles];
+                memset(info_buffer, ' ', machine.num_needles);
+                if ((selected_needle >=0) && (selected_needle < machine.num_needles)) {
+                    info_buffer[selected_needle]           = 'x';
                 }
-                fprintf(stderr, "->  %.100s\n", needles+100);
+                if ((machine.carriage.position >=0) && (machine.carriage.position < machine.num_needles)) {
+                    info_buffer[machine.carriage.position] = '^';
+                }
+
+                fprintf(stderr, "Solenoids =[");
+                for (int i=15; i>=0;i--) {
+                    fprintf(stderr, "%c", solenoid_states & (1<<i) ? '.' : '|');
+                }
+                fprintf(stderr, "], Carriage = %3d, Sensors = (%4d, %4d)\n", machine.carriage.position, machine.hall_left, machine.hall_right);
+
+                if (solenoid_update != 0) {
+                    fprintf(stderr, "<- %.*s\n", half_num_needles, needles);
+                    fprintf(stderr, "   %.*s\n", half_num_needles, info_buffer);
+
+                    fprintf(stderr, "-> %.*s\n", half_num_needles, needles+half_num_needles);
+                    fprintf(stderr, "   %.*s\n", half_num_needles, info_buffer+half_num_needles);
+                }
             }
         }
 
@@ -441,9 +483,10 @@ void port_d_changed_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 int main(int argc, char *argv[])
 {
     machine.type = KH910;
+    machine.num_needles = 200;
+    machine.num_solenoids = 16;
     machine.carriage.type = KNIT;
     machine.belt_phase = REGULAR;
-    machine.carriage.position = -24;
 
 	printf (
         "---------------------------------------------------------\n"
@@ -455,6 +498,18 @@ int main(int argc, char *argv[])
     );
 
     parse_arguments(argc, argv);
+
+    if (machine.type == KH270) {
+        machine.num_needles = 112;
+        machine.num_solenoids = 12;
+        machine.carriage.type = KNIT270;
+    }
+
+    if (machine.start_side == LEFT) {
+        machine.carriage.position = -24;
+    } else {
+        machine.carriage.position = machine.num_needles + 24;
+    }
 
 	avr = avr_make_mcu_by_name(firmware.mmcu);
 	if (!avr) {

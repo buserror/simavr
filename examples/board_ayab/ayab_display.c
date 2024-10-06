@@ -80,8 +80,8 @@ displayCB (void)
     glColor3f(1,1,1);
     glVertex2f(50, 70);
     glVertex2f(50, WINDOW_HEIGHT);
-    glVertex2f(50+199, 70);
-    glVertex2f(50+199, WINDOW_HEIGHT);
+    glVertex2f(50+_machine->num_needles-1, 70);
+    glVertex2f(50+_machine->num_needles-1, WINDOW_HEIGHT);
     glEnd();
 
     // Swap display buffer
