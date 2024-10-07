@@ -386,16 +386,12 @@ static void * avr_run_thread(void * param)
                     case KNIT270:
                         switch (machine.carriage.position) {
                             case -6:
+                            case  0:
                                 machine.hall_left = 2200; //TBC North
                                 break;
-                            case  0:
-                                machine.hall_left = 100; //TBC South
-                                break;
                             case 111:
-                                machine.hall_right = 2200; //TBC North
-                                break;
                             case 117:
-                                machine.hall_right = 100; //TBC South
+                                machine.hall_right = 2200; //TBC North
                                 break;
                             default:
                                 break;
