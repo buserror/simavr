@@ -267,7 +267,8 @@ static void * avr_run_thread(void * param)
     encoder_phase = (machine.carriage.position +
         (machine.belt_phase == REGULAR) ? 4 : 12) % 16;
 
-    char needles[200] = {'.'};
+    char needles[machine.num_needles];
+    memset(needles, ' ', machine.num_needles);
 
 	while (*run && (state != cpu_Done) && (state != cpu_Crashed))
     {
