@@ -31,6 +31,7 @@
 #include "avr_adc.h"
 #include "avr_twi.h"
 #include "sim_elf.h"
+#include "sim_hex.h"
 #include "sim_gdb.h"
 #include "sim_vcd_file.h"
 #include "uart_pty.h"
@@ -93,7 +94,7 @@ display_usage(
      "       [--carriage <carriage>] Select K/L/G carriage (default=K)\n"
      "       [--beltphase <phase>]   Select Regular/Shifted (default=Regular)\n"
      "       [--startside <side>]    Select Left/Right side to start (default=Left)\n"
-	 "       <firmware>          An ELF file (can include debugging syms)\n"
+	 "       <firmware>          HEX or ELF file to load (can include debugging syms)\n"
      "\n");
 	exit(1);
 }
@@ -194,11 +195,8 @@ parse_arguments(int argc, char *argv[])
 				display_usage(basename(argv[0]));
             }
 		} else if (argv[pi][0] != '-') {
-            if (elf_read_firmware(argv[pi], &firmware) == -1) {
-                fprintf(stderr, "%s: Unable to load firmware from file %s\n",
-                        argv[0], argv[pi]);
-                exit(1);
-            }
+            uint32_t loadBase = AVR_SEGMENT_OFFSET_FLASH;
+			sim_setup_firmware(argv[pi], loadBase, &firmware, argv[0]);
             printf ("%s loaded (f=%d mmcu=%s)\n", argv[pi], (int) firmware.frequency, firmware.mmcu);
         }
     }
@@ -516,7 +514,11 @@ int main(int argc, char *argv[])
 
 	avr = avr_make_mcu_by_name(firmware.mmcu);
 	if (!avr) {
-		fprintf(stderr, "%s: AVR '%s' not known\n", argv[0], firmware.mmcu);
+        if (! strcmp(firmware.mmcu, "")) {
+            fprintf(stderr, "%s: AVR mcu not defined\n", argv[0]);
+        } else {
+            fprintf(stderr, "%s: AVR '%s' not known\n", argv[0], firmware.mmcu);
+        }
 		exit(1);
 	}
 
