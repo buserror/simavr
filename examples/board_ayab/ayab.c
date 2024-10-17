@@ -257,13 +257,16 @@ static void * avr_run_thread(void * param)
 
     vcd_trace_enable(vcd_enabled);
 
-    // Phase overlaps 16 needles/solenoids
-    unsigned encoder_phase=0;
     // {v1, v2} encoding over 4 phases
     unsigned phase_map[4] = {0, 1, 3, 2};
 
-    encoder_phase = (machine.carriage.position +
-        (machine.belt_phase == REGULAR) ? 4 : 12) % 16;
+    // Phase overlaps 16 needles/solenoids (16*4 v1/v2 states)
+    unsigned encoder_phase;
+    if (machine.belt_phase == REGULAR) {
+       encoder_phase = (unsigned)(machine.carriage.position * 4 + 16) % 64;
+    } else {
+       encoder_phase = (unsigned)(machine.carriage.position * 4 + 48) % 64;
+    }
 
     char needles[machine.num_needles];
     memset(needles, ' ', machine.num_needles);
@@ -282,7 +285,7 @@ static void * avr_run_thread(void * param)
                 switch (event)
                 {
                     case CARRIAGE_LEFT:
-                        new_phase = (encoder_phase-1)%16;
+                        new_phase = (encoder_phase-1)%64;
                         if ((new_phase%4) == 0) {
                             if (machine.carriage.position > -24) {
                                 machine.carriage.position--;
@@ -293,7 +296,7 @@ static void * avr_run_thread(void * param)
                         }
                         break;
                     case CARRIAGE_RIGHT:
-                        new_phase = (encoder_phase+1)%16;
+                        new_phase = (encoder_phase+1)%64;
                         if ((new_phase%4) == 0) {
                             if (machine.carriage.position < (machine.num_needles + 24)) {
                                 machine.carriage.position++;
@@ -312,7 +315,6 @@ static void * avr_run_thread(void * param)
                         fprintf(stderr, "Unexpect event from graphic thread\n");
                         break;
                 }
-
                 machine.hall_left = 1650;
                 machine.hall_right = 1650;
                 uint16_t solenoid_states = (shield.mcp23008[1].reg[MCP23008_REG_OLAT] << 8) + shield.mcp23008[0].reg[MCP23008_REG_OLAT]; 
@@ -407,15 +409,35 @@ static void * avr_run_thread(void * param)
 
                 selected_needle = machine.carriage.position + select_offset;
                 if ((selected_needle < machine.num_needles) && (selected_needle >= 0)) {
-                    int solenoid_offset =  (machine.type == KH270) ? 3 : 0;
-                    needles[selected_needle] = solenoid_states & (1<< (solenoid_offset + selected_needle % machine.num_solenoids)) ? '.' : '|';
+                    int solenoid_index;
+                    switch (machine.type) {
+                        case KH270:
+                            solenoid_index = selected_needle + 4;
+                            // On KH270 solenoid to needle mapping is direction-dependent
+                            if (event == CARRIAGE_LEFT) {
+                                solenoid_index += machine.num_solenoids >> 1;
+                            }
+                            // 12 solenoids mapped to position [3-14]
+                            solenoid_index = 3 + solenoid_index % machine.num_solenoids; 
+                            break;
+                        default:
+                            solenoid_index = selected_needle;
+                            // Solenoid to needle mapping is belt phase-dependent
+                            if (machine.belt_phase == SHIFTED) {
+                                solenoid_index += machine.num_solenoids >> 1;
+                            }
+                            solenoid_index = solenoid_index % machine.num_solenoids; 
+                            break;
+                    }
+
+                    needles[selected_needle] = solenoid_states & (1<< solenoid_index) ? '.' : '|';
                     solenoid_update = 1;
                 }
 
                 encoder_phase = new_phase;
                 avr_raise_irq(encoder_v2.irq + IRQ_BUTTON_OUT, (phase_map[encoder_phase % 4] & 1) ? 1 : 0);
                 avr_raise_irq(encoder_v1.irq + IRQ_BUTTON_OUT, (phase_map[encoder_phase % 4] & 2) ? 1 : 0);
-                avr_raise_irq(encoder_beltPhase.irq + IRQ_BUTTON_OUT, (encoder_phase & 8) ? 1 : 0);
+                avr_raise_irq(encoder_beltPhase.irq + IRQ_BUTTON_OUT, (encoder_phase & 32) ? 1 : 0);
 
                 if ((encoder_phase % 4) == 0) {
                     int half_num_needles = machine.num_needles / 2;
