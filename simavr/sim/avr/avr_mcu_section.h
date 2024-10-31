@@ -62,6 +62,8 @@ enum {
 	AVR_MMCU_TAG_VCD_TRACE,
 	AVR_MMCU_TAG_VCD_PORTPIN,
 	AVR_MMCU_TAG_VCD_IRQ,
+	AVR_MMCU_TAG_VCD_SRAM_8,
+	AVR_MMCU_TAG_VCD_SRAM_16,
 	AVR_MMCU_TAG_PORT_EXTERNAL_PULL,
 };
 
@@ -146,6 +148,16 @@ struct avr_mmcu_vcd_trace_t {
  */
 #define AVR_MCU_VCD_SYMBOL(_name) \
 	.tag = AVR_MMCU_TAG_VCD_TRACE, \
+	.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
+	.name = _name
+
+#define AVR_MCU_VCD_SRAM_8(_name) \
+	.tag = AVR_MMCU_TAG_VCD_SRAM_8, \
+	.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
+	.name = _name
+
+#define AVR_MCU_VCD_SRAM_16(_name) \
+	.tag = AVR_MMCU_TAG_VCD_SRAM_16, \
 	.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
 	.name = _name
 

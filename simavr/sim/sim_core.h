@@ -82,7 +82,7 @@ void avr_dump_state(avr_t * avr);
 			int pci = i-1;\
 			printf(FONT_RED "*** %04x: %-25s sp %04x\n" FONT_DEFAULT,\
 					avr->trace_data->stack_frame[pci].pc, \
-					avr->trace_data->codeline ? avr->trace_data->codeline[avr->trace_data->stack_frame[pci].pc>>1]->symbol : "unknown", \
+					avr->trace_data->codeline ? avr->trace_data->codeline[avr->trace_data->stack_frame[pci].pc>>1] : "unknown", \
 							avr->trace_data->stack_frame[pci].sp);\
 		}
 #else
