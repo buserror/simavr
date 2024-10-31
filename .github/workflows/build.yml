@@ -61,7 +61,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Dependenncies
-        run: sudo apt-get install -y build-essential git make gcc-avr avr-libc libelf-dev freeglut3-dev patchelf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential git make gcc-avr avr-libc libelf-dev freeglut3-dev patchelf
       - name: CI-Build
         run: |
           make build-simavr V=1 RELEASE=1
