@@ -263,9 +263,9 @@ static void * avr_run_thread(void * param)
     // Phase overlaps 16 needles/solenoids (16*4 v1/v2 states)
     unsigned encoder_phase;
     if (machine.belt_phase == REGULAR) {
-       encoder_phase = (unsigned)(machine.carriage.position * 4 + 16) % 64;
+       encoder_phase = (unsigned)(machine.carriage.position * 4 + 24) % 64;
     } else {
-       encoder_phase = (unsigned)(machine.carriage.position * 4 + 48) % 64;
+       encoder_phase = (unsigned)(machine.carriage.position * 4 + 56) % 64;
     }
 
     char needles[machine.num_needles];
@@ -287,10 +287,10 @@ static void * avr_run_thread(void * param)
                     case CARRIAGE_LEFT:
                         new_phase = (encoder_phase-1)%64;
                         if ((new_phase%4) == 0) {
-                            if (machine.carriage.position > -24) {
+                            if (machine.carriage.position > -28) {
                                 machine.carriage.position--;
                             } else {
-                                machine.carriage.position = -24;
+                                machine.carriage.position = -28;
                                 new_phase = encoder_phase;
                             }
                         }
@@ -298,10 +298,10 @@ static void * avr_run_thread(void * param)
                     case CARRIAGE_RIGHT:
                         new_phase = (encoder_phase+1)%64;
                         if ((new_phase%4) == 0) {
-                            if (machine.carriage.position < (machine.num_needles + 24)) {
+                            if (machine.carriage.position < (machine.num_needles + 28)) {
                                 machine.carriage.position++;
                             } else {
-                                machine.carriage.position = (machine.num_needles + 24);
+                                machine.carriage.position = (machine.num_needles + 28);
                                 new_phase = encoder_phase;
                             }
                         }
@@ -455,7 +455,7 @@ static void * avr_run_thread(void * param)
                     for (int i=15; i>=0;i--) {
                         fprintf(stderr, "%c", solenoid_states & (1<<i) ? '.' : '|');
                     }
-                    fprintf(stderr, "], Carriage = %3d, Sensors = (%4d, %4d)\n", machine.carriage.position, machine.hall_left, machine.hall_right);
+                    fprintf(stderr, "], Carriage = %3d, BP = %d, Sensors = (%4d, %4d)\n", machine.carriage.position, (encoder_phase >> 5), machine.hall_left, machine.hall_right);
 
                     if (solenoid_update != 0) {
                         fprintf(stderr, "<- %.*s\n", half_num_needles, needles);
@@ -529,9 +529,9 @@ int main(int argc, char *argv[])
     }
 
     if (machine.start_side == LEFT) {
-        machine.carriage.position = -24;
+        machine.carriage.position = -28;
     } else {
-        machine.carriage.position = machine.num_needles + 24;
+        machine.carriage.position = machine.num_needles + 28;
     }
 
 	avr = avr_make_mcu_by_name(firmware.mmcu);
