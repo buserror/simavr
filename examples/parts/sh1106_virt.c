@@ -61,14 +61,14 @@ sh1106_update_command_register (sh1106_t *part)
 			return;
 		case SH1106_VIRT_DISP_NORMAL:
 			sh1106_set_flag (part, SH1106_FLAG_DISPLAY_INVERTED,
-			                  0);
+								0);
 			sh1106_set_flag (part, SH1106_FLAG_DIRTY, 1);
 			//printf ("SH1106: DISPLAY NORMAL\n");
 			SH1106_CLEAR_COMMAND_REG(part);
 			return;
 		case SH1106_VIRT_DISP_INVERTED:
 			sh1106_set_flag (part, SH1106_FLAG_DISPLAY_INVERTED,
-			                  1);
+								1);
 			sh1106_set_flag (part, SH1106_FLAG_DIRTY, 1);
 			//printf ("SH1106: DISPLAY INVERTED\n");
 			SH1106_CLEAR_COMMAND_REG(part);
@@ -86,22 +86,22 @@ sh1106_update_command_register (sh1106_t *part)
 			SH1106_CLEAR_COMMAND_REG(part);
 			return;
 		case SH1106_VIRT_SET_PAGE_START_ADDR
-		                ... SH1106_VIRT_SET_PAGE_START_ADDR
-		                                + SH1106_VIRT_PAGES - 1:
+						... SH1106_VIRT_SET_PAGE_START_ADDR
+										+ SH1106_VIRT_PAGES - 1:
 			part->cursor.page = part->spi_data
-			                - SH1106_VIRT_SET_PAGE_START_ADDR;
+							- SH1106_VIRT_SET_PAGE_START_ADDR;
 			//printf ("SH1106: SET PAGE ADDRESS: 0x%02x\n", part->cursor.page);
 			SH1106_CLEAR_COMMAND_REG(part);
 			return;
 		case SH1106_VIRT_SET_COLUMN_LOW_NIBBLE
-		                ... SH1106_VIRT_SET_COLUMN_LOW_NIBBLE + 0xF:
+						... SH1106_VIRT_SET_COLUMN_LOW_NIBBLE + 0xF:
 			part->spi_data -= SH1106_VIRT_SET_COLUMN_LOW_NIBBLE;
 			part->cursor.column = (part->cursor.column & 0xF0) | (part->spi_data & 0xF);
 			//printf ("SH1106: SET COLUMN LOW NIBBLE: 0x%02x\n",part->spi_data);
 			SH1106_CLEAR_COMMAND_REG(part);
 			return;
 		case SH1106_VIRT_SET_COLUMN_HIGH_NIBBLE
-		                ... SH1106_VIRT_SET_COLUMN_HIGH_NIBBLE + 0xF:
+						... SH1106_VIRT_SET_COLUMN_HIGH_NIBBLE + 0xF:
 			part->spi_data -= SH1106_VIRT_SET_COLUMN_HIGH_NIBBLE;
 			part->cursor.column = (part->cursor.column & 0xF) | ((part->spi_data & 0xF) << 4);
 			//printf ("SH1106: SET COLUMN HIGH NIBBLE: 0x%02x\n", part->spi_data);
@@ -109,25 +109,25 @@ sh1106_update_command_register (sh1106_t *part)
 			return;
 		case SH1106_VIRT_SET_SEG_REMAP_0:
 			sh1106_set_flag (part, SH1106_FLAG_SEGMENT_REMAP_0,
-			                  1);
+								1);
 			//printf ("SH1106: SET COLUMN ADDRESS 0 TO OLED SEG0 to \n");
 			SH1106_CLEAR_COMMAND_REG(part);
 			return;
 		case SH1106_VIRT_SET_SEG_REMAP_131:
 			sh1106_set_flag (part, SH1106_FLAG_SEGMENT_REMAP_0,
-			                  0);
+								0);
 			//printf ("SH1106: SET COLUMN ADDRESS 131 TO OLED SEG0 to \n");
 			SH1106_CLEAR_COMMAND_REG(part);
 			return;
 		case SH1106_VIRT_SET_COM_SCAN_NORMAL:
 			sh1106_set_flag (part, SH1106_FLAG_COM_SCAN_NORMAL,
-			                  1);
+								1);
 			//printf ("SH1106: SET COM OUTPUT SCAN DIRECTION NORMAL \n");
 			SH1106_CLEAR_COMMAND_REG(part);
 			return;
 		case SH1106_VIRT_SET_COM_SCAN_INVERTED:
 			sh1106_set_flag (part, SH1106_FLAG_COM_SCAN_NORMAL,
-			                  0);
+								0);
 			//printf ("SH1106: SET COM OUTPUT SCAN DIRECTION REMAPPED \n");
 			SH1106_CLEAR_COMMAND_REG(part);
 			return;
@@ -356,51 +356,51 @@ void
 sh1106_connect (sh1106_t * part, sh1106_wiring_t * wiring)
 {
 	avr_connect_irq (
-	                avr_io_getirq (part->avr, AVR_IOCTL_SPI_GETIRQ(0),
-	                               SPI_IRQ_OUTPUT),
-	                part->irq + IRQ_SH1106_SPI_BYTE_IN);
+		avr_io_getirq (part->avr, AVR_IOCTL_SPI_GETIRQ(0),
+			SPI_IRQ_OUTPUT),
+			part->irq + IRQ_SH1106_SPI_BYTE_IN);
 
 	avr_connect_irq (
-	                avr_io_getirq (part->avr,
-	                               AVR_IOCTL_IOPORT_GETIRQ(
-	                                               wiring->chip_select.port),
-	                               wiring->chip_select.pin),
-	                part->irq + IRQ_SH1106_ENABLE);
+		avr_io_getirq (part->avr,
+			AVR_IOCTL_IOPORT_GETIRQ(
+			wiring->chip_select.port),
+			wiring->chip_select.pin),
+			part->irq + IRQ_SH1106_ENABLE);
 
 	avr_connect_irq (
-	                avr_io_getirq (part->avr,
-	                               AVR_IOCTL_IOPORT_GETIRQ(
-	                                               wiring->data_instruction.port),
-	                               wiring->data_instruction.pin),
-	                part->irq + IRQ_SH1106_DATA_INSTRUCTION);
+		avr_io_getirq (part->avr,
+			AVR_IOCTL_IOPORT_GETIRQ(
+			wiring->data_instruction.port),
+			wiring->data_instruction.pin),
+			part->irq + IRQ_SH1106_DATA_INSTRUCTION);
 
 	avr_connect_irq (
-	                avr_io_getirq (part->avr,
-	                               AVR_IOCTL_IOPORT_GETIRQ(
-	                                               wiring->reset.port),
-	                               wiring->reset.pin),
-	                part->irq + IRQ_SH1106_RESET);
+		avr_io_getirq (part->avr,
+			AVR_IOCTL_IOPORT_GETIRQ(
+			wiring->reset.port),
+			wiring->reset.pin),
+			part->irq + IRQ_SH1106_RESET);
 }
 
 void
 sh1106_connect_twi (sh1106_t * part, sh1106_wiring_t * wiring)
 {
 	avr_connect_irq (
-            avr_io_getirq (part->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_OUTPUT),
-            part->irq + IRQ_SH1106_TWI_OUT);
+			avr_io_getirq (part->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_OUTPUT),
+			part->irq + IRQ_SH1106_TWI_OUT);
 
 	avr_connect_irq (
-            part->irq + IRQ_SH1106_TWI_IN,
-            avr_io_getirq (part->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT));
+			part->irq + IRQ_SH1106_TWI_IN,
+			avr_io_getirq (part->avr, AVR_IOCTL_TWI_GETIRQ(0), TWI_IRQ_INPUT));
 
 	if (wiring)
 	{
 		avr_connect_irq (
 				avr_io_getirq (part->avr,
-					       AVR_IOCTL_IOPORT_GETIRQ(
-							       wiring->reset.port),
-					       wiring->reset.pin),
-				part->irq + IRQ_SH1106_RESET);
+					AVR_IOCTL_IOPORT_GETIRQ(
+					wiring->reset.port),
+					wiring->reset.pin),
+					part->irq + IRQ_SH1106_RESET);
 	}
 }
 
@@ -418,7 +418,7 @@ sh1106_init (struct avr_t *avr, struct sh1106_t * part, int width, int height)
 	part->write_cursor_end.page = SH1106_VIRT_PAGES-1;
 	part->write_cursor_end.column = SH1106_VIRT_COLUMNS-1;
 
-    AVR_LOG(avr, LOG_OUTPUT, "SH1106: size %dx%d (flags=0x%04x)\n", part->columns, part->rows, part->flags);
+	AVR_LOG(avr, LOG_OUTPUT, "SH1106: size %dx%d (flags=0x%04x)\n", part->columns, part->rows, part->flags);
 	/*
 	 * Register callbacks on all our IRQs
 	 */
@@ -426,13 +426,13 @@ sh1106_init (struct avr_t *avr, struct sh1106_t * part, int width, int height)
 	                           irq_names);
 
 	avr_irq_register_notify (part->irq + IRQ_SH1106_SPI_BYTE_IN,
-	                         sh1106_spi_in_hook, part);
+								sh1106_spi_in_hook, part);
 	avr_irq_register_notify (part->irq + IRQ_SH1106_RESET,
-	                         sh1106_reset_hook, part);
+								sh1106_reset_hook, part);
 	avr_irq_register_notify (part->irq + IRQ_SH1106_ENABLE,
-	                         sh1106_cs_hook, part);
+								sh1106_cs_hook, part);
 	avr_irq_register_notify (part->irq + IRQ_SH1106_DATA_INSTRUCTION,
-	                         sh1106_di_hook, part);
+								sh1106_di_hook, part);
 	avr_irq_register_notify (part->irq + IRQ_SH1106_TWI_OUT,
-	                         sh1106_twi_hook, part);
+								sh1106_twi_hook, part);
 }
