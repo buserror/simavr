@@ -27,6 +27,7 @@
 #include "sim_interrupts.h"
 #include "sim_avr.h"
 #include "sim_core.h"
+#include "sim_core_declare.h"
 
 DEFINE_FIFO(avr_int_vector_p, avr_int_pending);
 
@@ -281,7 +282,13 @@ avr_service_interrupts(
 			printf("IRQ%d calling\n", vector->vector);
 		_avr_push_addr(avr, avr->pc);
 		avr_sreg_set(avr, S_I, 0);
-		avr->pc = vector->vector * avr->vector_size;
+		const int mcucr = _SFR_IO8(0x35);
+		const int ivsel = 1;
+		const char interrupt_sector_moved_to_bootloader = avr->data[mcucr] & (1 << ivsel);
+		if (interrupt_sector_moved_to_bootloader)
+			avr->pc = vector->vector * avr->vector_size + 0x7000;
+		else
+			avr->pc = vector->vector * avr->vector_size;
 
 		avr_raise_irq(vector->irq + AVR_INT_IRQ_RUNNING, 1);
 		avr_raise_irq(table->irq + AVR_INT_IRQ_RUNNING, vector->vector);
