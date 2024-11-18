@@ -262,7 +262,6 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 	}
 
 //	_call_register_irqs(avr, addr);
-	_call_sram_irqs(avr, addr); // Catch update from io read callback
 	return avr->data[addr];
 }
 

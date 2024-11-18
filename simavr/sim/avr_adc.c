@@ -36,12 +36,11 @@ avr_adc_int_raise(
 		avr_regbit_clear(avr, p->adsc);
 		if( p->adts_mode == avr_adts_free_running )
 			avr_raise_irq(p->io.irq + ADC_IRQ_IN_TRIGGER, 1);
-                if (!p->read_status) {
-                    /* Update I/O registers. */
-
-                    avr->data[p->r_adcl] = p->result & 0xff;
-                    avr->data[p->r_adch] = p->result >> 8;
-                }
+		if (!p->read_status) {
+			/* Update I/O registers. */
+			avr_core_watch_write(avr, p->r_adcl, p->result & 0xff);
+			avr_core_watch_write(avr, p->r_adch, p->result >> 8);
+		}
 	}
 	return 0;
 }
