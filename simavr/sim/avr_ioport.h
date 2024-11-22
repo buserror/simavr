@@ -60,7 +60,7 @@ typedef struct avr_ioport_getirq_t {
  *
  * for (int i = 'A'; i <= 'F'; i++) {
  * 	avr_ioport_state_t state;
- * 	if (avr_ioctl(AVR_IOCTL_IOPORT_GETSTATE(i), &state) == 0)
+ * 	if (avr_ioctl(avr, AVR_IOCTL_IOPORT_GETSTATE(i), &state) == 0)
  * 		printf("PORT%c %02x DDR %02x PIN %02x\n",
  * 			state.name, state.port, state.ddr, state.pin);
  * }
