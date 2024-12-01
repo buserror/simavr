@@ -310,6 +310,15 @@ typedef struct avr_t {
 		} io[4];
 	} io_shared_io[4];
 
+    // SRAM tracepoint
+    #define SRAM_TRACEPOINT_SIZE 16
+	int				sram_tracepoint_count;
+	struct {
+		struct avr_irq_t * irq;
+		int width;
+		uint16_t addr;
+	} sram_tracepoint[SRAM_TRACEPOINT_SIZE];
+
 	// flash memory (initialized to 0xff, and code loaded into it)
 	uint8_t *		flash;
 	// this is the general purpose registers, IO registers, and SRAM

@@ -55,7 +55,8 @@ display_usage(
 	 "       [-ti <vector>]      Add traces for IRQ vector <vector>\n"
 	 "       [--input|-i <file>] A VCD file to use as input signals\n"
 	 "       [--output|-o <file>] A VCD file to save the traced signals\n"
-	 "       [--add-trace|-at <name=kind@addr/mask>]\n"
+	 "       [--add-trace|-at    <name=[portpin|irq|trace]@addr/mask>] or \n"
+	 "                           <name=[sram8|sram16]@addr>]\n"
 	 "                           Add signal to be included in VCD output\n"
 	 "       [-ff <.hex file>]   Load next .hex file as flash\n"
 	 "       [-ee <.hex file>]   Load next .hex file as eeprom\n"
@@ -174,9 +175,11 @@ main(
 				&trace.addr,
 				&trace.mask
 			);
-			if (n_args != 4) {
+
+			if ((n_args != 4) &&
+				((n_args != 3) || (strcmp(trace.kind, "sram8") && strcmp(trace.kind, "sram16")))) {
 				--pi;
-				fprintf(stderr, "%s: format for %s is name=kind@addr/mask.\n", argv[0], argv[pi]);
+				fprintf(stderr, "%s: format for %s is name=kind@addr</mask>.\n", argv[0], argv[pi]);
 				exit(1);
 			}
 
@@ -186,6 +189,10 @@ main(
 				f.trace[f.tracecount].kind = AVR_MMCU_TAG_VCD_IRQ;
 			} else if (!strcmp(trace.kind, "trace")) {
 				f.trace[f.tracecount].kind = AVR_MMCU_TAG_VCD_TRACE;
+			} else if (!strcmp(trace.kind, "sram8")) {
+				f.trace[f.tracecount].kind = AVR_MMCU_TAG_VCD_SRAM_8;
+			} else if (!strcmp(trace.kind, "sram16")) {
+				f.trace[f.tracecount].kind = AVR_MMCU_TAG_VCD_SRAM_16;
 			} else {
 				fprintf(
 					stderr,
@@ -204,6 +211,8 @@ main(
 				  f.trace[f.tracecount].kind == AVR_MMCU_TAG_VCD_PORTPIN ? "portpin"
 				: f.trace[f.tracecount].kind == AVR_MMCU_TAG_VCD_IRQ     ? "irq"
 				: f.trace[f.tracecount].kind == AVR_MMCU_TAG_VCD_TRACE   ? "trace"
+				: f.trace[f.tracecount].kind == AVR_MMCU_TAG_VCD_SRAM_8  ? "sram8"
+				: f.trace[f.tracecount].kind == AVR_MMCU_TAG_VCD_SRAM_16 ? "sram16"
 				: "unknown",
 				f.trace[f.tracecount].addr,
 				f.trace[f.tracecount].mask,
