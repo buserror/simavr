@@ -27,12 +27,34 @@
 #else
 #include <GL/glut.h>
 #endif
+#include <pthread.h>
+#include <stdio.h>
 
 #include "lcd_font.h"	// generated with gimp
 
 static GLuint font_texture;
 static int charwidth = 5;
 static int charheight = 7;
+
+static pthread_mutex_t hd44780_state_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void before_state_lock_cb(void *b)
+{
+	pthread_mutex_lock(&hd44780_state_mutex);
+}
+
+void after_state_lock_cb(void *b)
+{
+	pthread_mutex_unlock(&hd44780_state_mutex);
+}
+
+void hd44780_setup_mutex_for_gl(hd44780_t *b)
+{
+	b->on_state_lock = &before_state_lock_cb;
+	b->on_state_lock_parameter = b;
+	b->on_state_unlock = &after_state_lock_cb;
+	b->on_state_unlock_parameter = b;
+}
 
 void
 hd44780_gl_init()
@@ -123,6 +145,13 @@ hd44780_gl_draw(
 		uint32_t text,
 		uint32_t shadow)
 {
+	if (b->on_state_lock != &before_state_lock_cb ||
+		b->on_state_unlock != &after_state_lock_cb)
+	{
+		printf("Error: the hd44780 instance is not using the mutex of the OpenGL thread!\nCall hd44780_setup_mutex_for_gl() first!\n");
+		exit(EXIT_FAILURE);
+	}
+
 	int rows = b->w;
 	int lines = b->h;
 	int border = 3;
@@ -139,16 +168,27 @@ hd44780_gl_draw(
 	        + (lines - 1) + border, 0);
 	glEnd();
 
+	// create a local copy (so we can release the mutex as fast as possible)
+	uint8_t vram[192];
+	pthread_mutex_lock(&hd44780_state_mutex);
+	// cgram is not updated yet
+	// int cgram_dirty = hd44780_get_flag(b, HD44780_FLAG_CRAM_DIRTY);
+	for (uint8_t i = 0; i < 192; i++)
+		vram[i] = b->vram[i];
+	// the values have been seen, they are not dirty anymore
+	hd44780_set_flag(b, HD44780_FLAG_CRAM_DIRTY, 0);
+	hd44780_set_flag(b, HD44780_FLAG_DIRTY, 0);
+	pthread_mutex_unlock(&hd44780_state_mutex);
+
 	glColor3f(1.0f, 1.0f, 1.0f);
 	const uint8_t offset[] = { 0x00, 0x40, 0x00 + 20, 0x40 + 20 };
-	for (int v = 0 ; v < b->h; v++) {
+	for (int v = 0 ; v < lines; v++) {
 		glPushMatrix();
-		for (int i = 0; i < b->w; i++) {
-			glputchar(b->vram[offset[v] + i], character, text, shadow);
+		for (int i = 0; i < rows; i++) {
+			glputchar(vram[offset[v] + i], character, text, shadow);
 			glTranslatef(6, 0, 0);
 		}
 		glPopMatrix();
 		glTranslatef(0, 8, 0);
 	}
-	hd44780_set_flag(b, HD44780_FLAG_DIRTY, 0);
 }
