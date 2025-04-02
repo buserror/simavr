@@ -146,11 +146,15 @@ main(
 		char *argv[])
 {
 	elf_firmware_t f = {{0}};
-	const char * fname = "atmega48_charlcd.axf";
+	const char *fname = argc > 1 ? argv[1] : "atmega48_charlcd.axf";
 //	char path[256];
 //	sprintf(path, "%s/%s", dirname(argv[0]), fname);
 //	printf("Firmware pathname is %s\n", path);
-	elf_read_firmware(fname, &f);
+	if (elf_read_firmware(fname, &f) == -1)
+	{
+		fprintf(stderr, "Unable to load firmware from file %s\n", fname);
+		exit(EXIT_FAILURE);
+	};
 
 	printf("firmware %s f=%d mmcu=%s\n", fname, (int) f.frequency, f.mmcu);
 
@@ -167,6 +171,8 @@ main(
 			AVR_IOCTL_IOPORT_GETIRQ('D'), 2));
 
 	hd44780_init(avr, &hd44780, 20, 4);
+
+	hd44780_setup_mutex_for_gl(&hd44780);
 
 	/* Connect Data Lines to Port B, 0-3 */
 	/* These are bidirectional too */
