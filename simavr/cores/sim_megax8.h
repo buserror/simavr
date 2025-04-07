@@ -313,6 +313,7 @@ const struct mcu_t SIM_CORENAME = {
 
 		.cs = { AVR_IO_REGBIT(TCCR2B, CS20), AVR_IO_REGBIT(TCCR2B, CS21), AVR_IO_REGBIT(TCCR2B, CS22) },
 		.cs_div = { 0, 0, 3 /* 8 */, 5 /* 32 */, 6 /* 64 */, 7 /* 128 */, 8 /* 256 */, 10 /* 1024 */ },
+		.ext_clock_pin = AVR_IO_REGBIT(PORTB, 6), /* External clock pin */
 
 		.r_tcnt = TCNT2,
 		
