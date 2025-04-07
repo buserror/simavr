@@ -26,6 +26,7 @@
 
 #define _AVR_IO_H_
 #define __ASSEMBLER__
+
 #include "avr/iom324pa.h"
 // instantiate the new core
 #include "sim_megax4.h"
@@ -36,7 +37,7 @@ static avr_t * make()
 }
 
 avr_kind_t mega324a = {
-	.names = { "atmega324a", "atmega324pa" },
+	.names = {  "atmega324", "atmega324p", "atmega324a", "atmega324pa" },
 	.make = make
 };
 
