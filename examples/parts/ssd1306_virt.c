@@ -42,10 +42,10 @@ ssd1306_write_data (ssd1306_t *part)
 		case SSD1306_ADDR_MODE_VERT:
 			if (++(part->cursor.page) > part->write_cursor_end.page)
 			{
-				part->cursor.page = part->write_cursor_start.column;
+				part->cursor.page = part->write_cursor_start.page;
 				if (++(part->cursor.column) > part->write_cursor_end.column)
 				{
-					part->cursor.column = part->write_cursor_start.page;
+					part->cursor.column = part->write_cursor_start.column;
 				}
 			}
 			break;
