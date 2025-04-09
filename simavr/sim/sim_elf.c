@@ -553,7 +553,7 @@ elf_read_firmware(
 		char * name = elf_strptr(elf, elf_header.e_shstrndx, shdr.sh_name);
 		//	printf("Walking elf section '%s'\n", name);
 
-		if (!strcmp(name, ".mmcu")) {
+		if (name && !strcmp(name, ".mmcu")) {
 			Elf_Data *s = elf_getdata(scn, NULL);
 
 			elf_parse_mmcu_section(firmware, s->d_buf, s->d_size);

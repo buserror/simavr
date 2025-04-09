@@ -126,7 +126,7 @@ static const char *get_data_address_string(avr_t* avr, uint16_t addr)
 }
 
 #define DAS(addr) get_data_address_string(avr, addr)
-#define FAS(addr) (((addr >> 1) > avr->trace_data->codeline_size) ? \
+#define FAS(addr) (((addr >> 1) >= avr->trace_data->codeline_size) ? \
                    "[not loaded]" : avr->trace_data->codeline[addr >> 1])
 
 void crash(avr_t* avr)
