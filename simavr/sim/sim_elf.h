@@ -38,8 +38,25 @@ extern "C" {
 #define AVR_SEGMENT_OFFSET_FLASH 0
 #define AVR_SEGMENT_OFFSET_DATA   0x00800000
 #define AVR_SEGMENT_OFFSET_EEPROM 0x00810000
+#define AVR_SEGMENT_OFFSET_FUSES  0x00820000
+#define AVR_SEGMENT_OFFSET_LOCK   0x00830000
+#define AVR_SEGMENT_OFFSET_LAST   0x00840000
 
 #include "sim_avr.h"
+
+/* The contents of a firmware file are held as a list of chunks. */
+
+enum mem_type { FLASH, DATA, EEPROM, FUSES, LOCK, UNKNOWN };
+
+typedef struct fw_chunk {
+	enum mem_type    type;
+	uint32_t         addr;
+	uint32_t         size, fill_size;
+	struct fw_chunk *next;
+	uint8_t          data[1];	// Actually defined by 'size', above.
+} fw_chunk_t;
+
+/* A parsed firmware file. */
 
 typedef struct elf_firmware_t {
 	char  mmcu[64];
@@ -65,19 +82,8 @@ typedef struct elf_firmware_t {
 	uint16_t	command_register_addr;
 	uint16_t	console_register_addr;
 
-	uint32_t	flashbase;	// base address
-	uint8_t * 	flash;
-	uint32_t	flashsize;
-	uint32_t 	datasize;
-	uint32_t 	bsssize;
-	// read the .eeprom section of the elf, too
-	uint32_t	eeprombase;
-	uint8_t * 	eeprom;
-	uint32_t 	eesize;
-	uint8_t *	fuse;
-	uint32_t	fusesize;
-	uint8_t *	lockbits;
-
+	uint32_t    flashbase;      // Base/start address.
+	fw_chunk_t *chunks;         // List of data chunks.
 #if ELF_SYMBOLS
 	avr_symbol_t **  symbol;
 	uint32_t	symbolcount;

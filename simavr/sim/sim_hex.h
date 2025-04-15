@@ -48,27 +48,6 @@ read_hex_string(
 		uint8_t * buffer,
 		int maxlen);
 
-// a .hex file chunk (base address + size)
-typedef struct ihex_chunk_t {
-	uint32_t baseaddr;	// offset it started at in the .hex file
-	uint8_t * data;		// read data
-	uint32_t size;		// read data size
-} ihex_chunk_t, *ihex_chunk_p;
-
-/*
- * Read a .hex file, detects the various different chunks in it from their starting
- * addresses and allocate an array of ihex_chunk_t returned in 'chunks'.
- * Returns the number of chunks found, or -1 if an error occurs.
- */
-int
-read_ihex_chunks(
-		const char * fname,
-		ihex_chunk_p * chunks );
-/* Frees previously allocated chunks */
-void
-free_ihex_chunks(
-		ihex_chunk_p chunks);
-
 // reads IHEX file 'fname', puts it's decoded size in *'dsize' and returns
 // a newly allocated buffer with the binary data (or NULL, if error)
 uint8_t *

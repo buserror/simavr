@@ -50,8 +50,9 @@ void hdump(const char *w, uint8_t *b, size_t l)
 int read_hex_string(const char * src, uint8_t * buffer, int maxlen)
 {
     uint8_t * dst = buffer;
-    int ls = 0;
-    uint8_t b = 0;
+    int       ls = 0;
+    uint8_t   b = 0;
+
     while (*src && maxlen) {
         char c = *src++;
         switch (c) {
@@ -71,69 +72,69 @@ int read_hex_string(const char * src, uint8_t * buffer, int maxlen)
         }
         ls++;
     }
-
     return dst - buffer;
 }
 
-void
-free_ihex_chunks(
-		ihex_chunk_p chunks)
-{
-	if (!chunks)
-		return;
-	for (int i = 0; chunks[i].size; i++)
-		if (chunks[i].data)
-			free(chunks[i].data);
-}
+#define ALLOCATION 512
+#define INCREMENT  512
 
-int
+static void
 read_ihex_chunks(
-		const char * fname,
-		ihex_chunk_p * chunks )
+		const char  * fname,
+		fw_chunk_t ** chunks_p )
 {
-	if (!fname || !chunks)
-		return -1;
+	fw_chunk_t *chunk = *chunks_p;
+	int         len, allocation = 0;
+	uint8_t     chk = 0;
+	uint8_t     bline[272];
+
+	if (!fname || !chunks_p)
+		return;
 	FILE * f = fopen(fname, "r");
 	if (!f) {
 		perror(fname);
-		return -1;
+		return;
 	}
 	uint32_t segment = 0;	// segment address
-	int chunk = 0, max_chunks = 0;
-	*chunks = NULL;
 
 	while (!feof(f)) {
-		char line[128];
+		uint32_t addr = 0;
+		char     line[544];
+
 		if (!fgets(line, sizeof(line)-1, f))
-			continue;
+			break;
 		if (line[0] != ':') {
-			fprintf(stderr, "AVR: '%s' invalid ihex format (%.4s)\n", fname, line);
+			fprintf(stderr, "AVR: '%s' invalid ihex format (%.4s)\n",
+					fname, line);
 			break;
 		}
-		uint8_t bline[64];
 
-		int len = read_hex_string(line + 1, bline, sizeof(bline));
+		len = read_hex_string(line + 1, bline, sizeof(bline));
 		if (len <= 0)
 			continue;
 
-		uint8_t chk = 0;
 		{	// calculate checksum
 			uint8_t * src = bline;
 			int tlen = len-1;
+
+			chk = 0;
 			while (tlen--)
 				chk += *src++;
 			chk = 0x100 - chk;
 		}
 		if (chk != bline[len-1]) {
-			fprintf(stderr, "%s: %s, invalid checksum %02x/%02x\n", __FUNCTION__, fname, chk, bline[len-1]);
+			fprintf(stderr, "%s: %s, invalid checksum %02x/%02x\n",
+					__FUNCTION__, fname, chk, bline[len-1]);
 			break;
 		}
-		uint32_t addr = 0;
+
 		switch (bline[3]) {
 			case 0: // normal data
 				addr = segment | (bline[1] << 8) | bline[2];
+				if (bline[0] == 0)
+					continue; // No data!
 				break;
-			case 1: // end of file - reset segment
+			case 1: // "End of file" - reset segment as could be multi-part.
 				segment = 0;
 				continue;
 			case 2: // extended address 2 bytes
@@ -143,29 +144,38 @@ read_ihex_chunks(
 				segment = ((bline[4] << 8) | bline[5]) << 16;
 				continue;
 			default:
-				fprintf(stderr, "%s: %s, unsupported check type %02x\n", __FUNCTION__, fname, bline[3]);
+				fprintf(stderr, "%s: %s, unsupported check type %02x\n",
+						__FUNCTION__, fname, bline[3]);
 				continue;
 		}
-		if (chunk < max_chunks && addr != ((*chunks)[chunk].baseaddr + (*chunks)[chunk].size)) {
-			if ((*chunks)[chunk].size)
-				chunk++;
+		if (!chunk || (chunk->size && addr != chunk->addr + chunk->size)) {
+			/* New chunk. */
+
+			allocation = ALLOCATION - sizeof *chunk + 1;
+			chunk = (fw_chunk_t *)malloc(ALLOCATION);
+			*chunks_p = chunk;
+			chunks_p = &chunk->next;
+			chunk->type = UNKNOWN;
+			chunk->addr = addr;
+			chunk->fill_size = chunk->size = bline[0];
+			chunk->next = NULL;
+			memcpy(chunk->data, bline + 4, bline[0]);
+			continue;
 		}
-		if (chunk >= max_chunks) {
-			max_chunks++;
-			/* Here we allocate and zero an extra chunk, to act as terminator */
-			*chunks = realloc(*chunks, (1 + max_chunks) * sizeof(ihex_chunk_t));
-			memset(*chunks + chunk, 0,
-					(1 + (max_chunks - chunk)) * sizeof(ihex_chunk_t));
-			(*chunks)[chunk].baseaddr = addr;
+
+		/* Continuation of chunk. */
+
+		if (bline[0] > allocation - chunk->size) {
+			/* Expand chunk. */
+
+			allocation += INCREMENT;
+			chunk = realloc(chunk, allocation + (sizeof *chunk - 1));
 		}
-		(*chunks)[chunk].data = realloc((*chunks)[chunk].data,
-									(*chunks)[chunk].size + bline[0]);
-		memcpy((*chunks)[chunk].data + (*chunks)[chunk].size,
-				bline + 4, bline[0]);
-		(*chunks)[chunk].size += bline[0];
+		memcpy(chunk->data + chunk->size, bline + 4, bline[0]);
+		chunk->size += bline[0];
+		chunk->fill_size = chunk->size;
 	}
 	fclose(f);
-	return max_chunks;
 }
 
 
@@ -173,21 +183,23 @@ uint8_t *
 read_ihex_file(
 		const char * fname, uint32_t * dsize, uint32_t * start)
 {
-	ihex_chunk_p chunks = NULL;
-	int count = read_ihex_chunks(fname, &chunks);
-	uint8_t * res = NULL;
+	fw_chunk_t *chunk = NULL, *next_chunk;
+	uint8_t    *res = NULL;
 
-	if (count > 0) {
-		*dsize = chunks[0].size;
-		*start = chunks[0].baseaddr;
-		res = chunks[0].data;
-		chunks[0].data = NULL;
+	read_ihex_chunks(fname, &chunk);
+	if (chunk) {
+		*dsize = chunk->size;
+		*start = chunk->addr;
+		res = malloc((size_t)chunk->size);
+		memcpy(res, chunk->data,  chunk->size);
 	}
-	if (count > 1) {
-		fprintf(stderr, "AVR: '%s' ihex contains more chunks than loaded (%d)\n",
-				fname, count);
+	if (chunk->next)
+		fprintf(stderr, "%s: Additional data blocks were ignored.\n", fname);
+	while(chunk) {
+		next_chunk = chunk->next;
+		free(chunk);
+		chunk = next_chunk;
 	}
-	free_ihex_chunks(chunks);
 	return res;
 }
 
@@ -202,88 +214,69 @@ void
 sim_setup_firmware(const char * filename, uint32_t loadBase,
                    elf_firmware_t * fp, const char * progname)
 {
-	char * suffix = strrchr(filename, '.');
+	fw_chunk_t * chunks = NULL, *cp;
+	char       * suffix = strrchr(filename, '.');
 
-	if (suffix && !strcasecmp(suffix, ".hex")) {
-		if (!(fp->mmcu[0] && fp->frequency > 0)) {
-			printf("MCU type and frequency are not set "
-					"when loading .hex file\n");
-		}
-		ihex_chunk_p chunk = NULL;
-		int cnt = read_ihex_chunks(filename, &chunk);
-		if (cnt <= 0) {
-			fprintf(stderr,
-					"%s: Unable to load IHEX file %s\n", progname, filename);
-			exit(1);
-		}
-		printf("Loaded %d section(s) of ihex\n", cnt);
+	if (!suffix || strcasecmp(suffix, ".hex")) {
+		/* Not suffix .hex, try reading as an ELF file. */
 
-		for (int ci = 0; ci < cnt; ci++) {
-			if (chunk[ci].baseaddr+loadBase < (1*1024*1024)) {
-				if (fp->flash) {
-					printf("Ignoring chunk %d, "
-						   "possible flash redefinition %08x, %d\n",
-						   ci, chunk[ci].baseaddr, chunk[ci].size);
-					free(chunk[ci].data);
-					chunk[ci].data = NULL;
-					continue;
-				}
-				fp->flash = chunk[ci].data;
-				fp->flashsize = chunk[ci].size;
-				fp->flashbase = chunk[ci].baseaddr;
-				printf("Load HEX flash %08x, %d at %08x\n",
-					   fp->flashbase, fp->flashsize, fp->flashbase);
-			} else if (chunk[ci].baseaddr >= AVR_SEGMENT_OFFSET_EEPROM ||
-					   (chunk[ci].baseaddr + loadBase) >=
-							AVR_SEGMENT_OFFSET_EEPROM) {
-				// eeprom!
-
-				if (fp->eeprom) {
-
-					// Converting ELF with .mmcu section will do this.
-
-					printf("Ignoring chunk %d, "
-						   "possible eeprom redefinition %08x, %d\n",
-						   ci, chunk[ci].baseaddr, chunk[ci].size);
-					free(chunk[ci].data);
-					chunk[ci].data = NULL;
-					continue;
-				}
-				fp->eeprom = chunk[ci].data;
-				fp->eesize = chunk[ci].size;
-				fp->eeprombase = chunk[ci].baseaddr + loadBase -
-							AVR_SEGMENT_OFFSET_EEPROM;
-				printf("Load HEX eeprom %08x, %d\n",
-					   chunk[ci].baseaddr, fp->eesize);
-			}
-		}
-                free(chunk);
-	} else {
 		if (elf_read_firmware(filename, fp) == -1) {
 			fprintf(stderr, "%s: Unable to load firmware from file %s\n",
 					progname, filename);
 			exit(1);
 		}
+		return;
 	}
+
+	if (!(fp->mmcu[0] && fp->frequency > 0))
+		printf("MCU type and frequency are not set when loading .hex file\n");
+
+	read_ihex_chunks(filename, &chunks);
+	if (!chunks) {
+		fprintf(stderr, "%s: Unable to load IHEX file %s\n",
+				progname, filename);
+		exit(1);
+	}
+
+	for (cp = chunks; cp; cp = cp->next) {
+		if (cp->addr + loadBase < (1*1024*1024)) {
+			cp->type = FLASH;
+		} else if (cp->addr >= AVR_SEGMENT_OFFSET_EEPROM ||
+				   (cp->addr + loadBase) >= AVR_SEGMENT_OFFSET_EEPROM) {
+			// eeprom!
+			if (cp->addr >= AVR_SEGMENT_OFFSET_EEPROM)
+				cp->addr -= AVR_SEGMENT_OFFSET_EEPROM;
+			cp->type = EEPROM;
+		} else {
+			cp->type = UNKNOWN;
+		}
+	}
+	fp->chunks = chunks;
 }
 
 #ifdef IHEX_TEST
 // gcc -std=gnu99 -Isimavr/sim simavr/sim/sim_hex.c -o sim_hex -DIHEX_TEST -Dtest_main=main
 int test_main(int argc, char * argv[])
 {
-	struct ihex_chunk_t chunk[4];
+	fw_chunk_t *chunks;
+	int         fi;
 
-	for (int fi = 1; fi < argc; fi++) {
-		int c = read_ihex_chunks(argv[fi], chunk, 4);
-		if (c == -1) {
+	for (fi = 1; fi < argc; fi++) {
+		chunks = NULL;
+		read_ihex_chunks(argv[fi], &chunks);
+		if (!chunks) {
 			perror(argv[fi]);
 			continue;
 		}
-		for (int ci = 0; ci < c; ci++) {
+		for (int ci = 0; chunks; ++ci) {
 			char n[96];
-			sprintf(n, "%s[%d] = %08x", argv[fi], ci, chunk[ci].baseaddr);
-			hdump(n, chunk[ci].data, chunk[ci].size);
+
+			snprintf(n, sizeof n, "%s[%d] = %08x",
+					  argv[fi], ci, chunks->addr);
+			hdump(n, chunks->data, chunks->size);
+			chunks = chunks->next;
 		}
 	}
+	return 0;
 }
 #endif
