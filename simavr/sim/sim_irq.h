@@ -64,8 +64,9 @@ enum {
  * IRQ Pool structure
  */
 typedef struct avr_irq_pool_t {
-	int count;						//!< number of irqs living in the pool
+	int 				count;		//!< number of irqs living in the pool
 	struct avr_irq_t ** irq;		//!< irqs belonging in this pool
+	struct avr_t      * avr;		//!< Link back to owner.
 } avr_irq_pool_t;
 
 /*!

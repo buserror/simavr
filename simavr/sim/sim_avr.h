@@ -167,6 +167,7 @@ typedef struct avr_t {
 	uint32_t			flashend;
 	uint32_t			e2end;
 	uint8_t				vector_size;
+	uint8_t				resetting; // Set only during avr_reset().
 	// accessible via LPM (BLBSET)
 	uint8_t				fuse[6];
 	uint8_t				lockbits;

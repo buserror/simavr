@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "sim_irq.h"
+#include "sim_avr.h"
 
 // internal structure for a hook, never seen by the notify procs
 typedef struct avr_irq_hook_t {
@@ -153,8 +153,13 @@ avr_irq_register_notify(
 
 	avr_irq_hook_t *hook = irq->hook;
 	while (hook) {
-		if (hook->notify == notify && hook->param == param)
+		if (hook->notify == notify && hook->param == param) {
+			if (irq->pool->avr->resetting) {
+				irq->value = 0;
+				irq->flags |= IRQ_FLAG_INIT;
+			}
 			return;	// already there
+		}
 		hook = hook->next;
 	}
 	hook = _avr_alloc_irq_hook(irq);
