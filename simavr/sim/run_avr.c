@@ -43,7 +43,7 @@ display_usage(
 	 "       [--list-cores]      List all supported AVR cores and exit\n"
 	 "       [-v]                Raise verbosity level\n"
 	 "                           (can be passed more than once)\n"
-	 "       [--freq|-f <freq>]  Sets the frequency for an .hex firmware\n"
+	 "       [--freq|-f <freq>]  Sets the frequency (in Hz) for an .hex firmware\n"
 	 "       [--mcu|-m <device>] Sets the MCU type for an .hex firmware\n"
 	 "       [--gdb|-g [<port>]] Listen for gdb connection on <port> "
 	 "(default 1234)\n"
