@@ -63,10 +63,12 @@ avr_ioport_update_irqs(
 {
 	avr_t * avr = p->io.avr;
 	uint8_t ddr = avr->data[p->r_ddr];
+
 	// Set the PORT value if the pin is marked as output
 	// otherwise, if there is an 'external' pullup, set it
 	// otherwise, if the PORT pin was 1 to indicate an
 	// internal pullup, set that.
+
 	for (int i = 0; i < 8; i++) {
 		if (ddr & (1 << i))
 			avr_raise_irq(p->io.irq + i, (avr->data[p->r_port] >> i) & 1);
@@ -82,7 +84,7 @@ avr_ioport_update_irqs(
 	// if IRQs are registered on the PORT register (for example, VCD dumps) send
 	// those as well
 	avr_io_addr_t port_io = AVR_DATA_TO_IO(p->r_port);
-	if (avr->io[port_io].irq) {
+	if (avr->io[port_io].irq && !p->irqing) {
 		avr_raise_irq(avr->io[port_io].irq + AVR_IOMEM_IRQ_ALL, avr->data[p->r_port]);
 		for (int i = 0; i < 8; i++)
 			avr_raise_irq(avr->io[port_io].irq + i, (avr->data[p->r_port] >> i) & 1);
@@ -153,21 +155,20 @@ avr_ioport_irq_notify(
 {
 	avr_ioport_t * p = (avr_ioport_t *)param;
 	avr_t * avr = p->io.avr;
-
 	int output = value & AVR_IOPORT_OUTPUT;
-	uint8_t mask = irq->irq == IOPORT_IRQ_PIN_ALL_IN ?
-					0xff : (1 << irq->irq);
+	uint8_t mask = irq->irq == IOPORT_IRQ_PIN_ALL_IN ? 0xff : (1 << irq->irq);
 	uint8_t ddr = avr->data[p->r_ddr];
 	uint8_t new_pin;
 
 	value &= 0xff;
-	value = (irq->irq == IOPORT_IRQ_PIN_ALL_IN) ?
-				value : (!!value << irq->irq);
-	new_pin = (avr->data[p->r_pin] & ~mask) | (value ? mask : 0);
+	if (value && irq->irq != IOPORT_IRQ_PIN_ALL_IN)
+		value = mask;
+	new_pin = (avr->data[p->r_pin] & ~mask) | (value & mask);
+
 	if (output) {
 		uint8_t new_out;
 
-		new_out = (avr->data[p->r_port] & ~mask) | (value ? mask : 0);
+		new_out = (avr->data[p->r_port] & ~mask) | value;
 		if (mask & ddr) {
 			// If the IRQ was marked as Output, do the IO write.
 
@@ -183,8 +184,16 @@ avr_ioport_irq_notify(
 			return;	   // TODO: stop further processing of IRQ.
 		}
 	} else {
-		// Set the real PIN bit. Ignore DDR as it's masked when read.
+		// Set the real PIN bit.
 
+		if (irq->irq == IOPORT_IRQ_PIN_ALL_IN) {
+			new_pin = (avr->data[p->r_port] & ddr) | (new_pin & ~ddr);
+			p->irqing = 1;
+			for (int i = 0; i < 8; ++i)
+				avr_raise_irq(p->io.irq + i, (new_pin >> i) & 1);
+			avr_raise_irq(p->io.irq + IOPORT_IRQ_PIN_ALL, new_pin);
+			p->irqing = 0;
+		}
 		avr_core_watch_write(avr, p->r_pin, new_pin);
 
 		/* BUG: If DDR bit is set here, there should be no

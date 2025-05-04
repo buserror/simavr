@@ -32,6 +32,11 @@ static void monitor_5(struct avr_irq_t *irq, uint32_t value, void *param)
 static void monitor_ddrb(struct avr_irq_t *irq, uint32_t value, void *param)
 {
     LOG("BD-%02X ", value);
+    if (value == 2) {
+        /* Treat this a signal to send input with IRQ IOPORT_IRQ_PIN_ALL_IN. */
+
+		avr_raise_irq(base_irq + IOPORT_IRQ_PIN_ALL_IN, 0x99);
+	}
 }
 
 /* This monitors the simulator's idea of the I/O pin states.
@@ -49,8 +54,9 @@ static void monitor(struct avr_irq_t *irq, uint32_t value, void *param)
          */
 
         avr_raise_irq(base_irq + IOPORT_IRQ_PIN0, 0);
-    } if (value == 0xf0) {
-        /* Assume this is a combination of 0x30 (direct) and 0xc0 (pullups).
+    } if (value == 0xf1) {
+        /* Assume this is a combination of 0x30 (direct) and 0xc0 (pullups),
+         * with bit 0 retaining its previous output value.
          * So change inputs.
          */
 
@@ -104,48 +110,45 @@ static void reg_read(struct avr_irq_t *irq, uint32_t value, void *param)
 /* This string should be sent by the firmware. */
 
 static const char *expected =
-    "P<2A P<70 F<01 I<E0 P<E0 J<03 J<00 P<E8 | K | ";
+    "P<2A P<F0 F<03 I<E0 P<E0 J<03 J<00 P<E8 | K | P<B8 ";
 
 /* This string is expected in variable log. */
 
 static const char *log_expected =
     "BD-01 d-0F P-00 o-0A P-0A I-0A 5-01 o-09 P-29 d-3C 5-00 P-09 o-F0 5-01 "
-    "P-F0 I-70 "                                // Interrupts off testing.
+    "P-F0 I-F0 "                                // Interrupts off testing.
     "o-E0 P-E0 I-E0 I-E0 "                      // External interrupt test.
     "d-03 o-01 P-E1 o-03 P-E3 o-00 P-E8 I-E8 "  // Pin change interrupt test.
-    "BD-FF ";                                   // iomem IRQ test.
-
+    "BD-FF "                                    // iomem IRQ test.
+    "BD-02 5-00 P-98 I-98 5-01 ";				// IOPORT_IRQ_PIN_ALL_IN.
 
 int main(int argc, char **argv) {
 	avr_t             *avr;
 
 	tests_init(argc, argv);
-        avr = tests_init_avr("atmega168_ioport.axf");
-        base_irq = avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 0);
+	avr = tests_init_avr("atmega168_ioport.axf");
+	base_irq = avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 0);
 
-        avr_irq_register_notify(base_irq + IOPORT_IRQ_PIN5,
-                                monitor_5, NULL);
-        avr_irq_register_notify(base_irq + IOPORT_IRQ_PIN_ALL,
-                                monitor, NULL);
-        avr_irq_register_notify(avr_iomem_getirq(avr, DDRB_ADDR, NULL, 8),
-                                monitor_ddrb, NULL);
-        avr_irq_register_notify(base_irq + IOPORT_IRQ_DIRECTION_ALL,
-                                reg_write, NULL);
-        avr_irq_register_notify(base_irq + IOPORT_IRQ_REG_PORT,
-                                reg_write, NULL);
-        avr_irq_register_notify(base_irq + IOPORT_IRQ_REG_PIN,
-                                reg_read, NULL);
+	avr_irq_register_notify(base_irq + IOPORT_IRQ_PIN5,
+							monitor_5, NULL);
+	avr_irq_register_notify(base_irq + IOPORT_IRQ_PIN_ALL, monitor, NULL);
+	avr_irq_register_notify(avr_iomem_getirq(avr, DDRB_ADDR, NULL, 8),
+							monitor_ddrb, NULL);
+	avr_irq_register_notify(base_irq + IOPORT_IRQ_DIRECTION_ALL,
+							reg_write, NULL);
+	avr_irq_register_notify(base_irq + IOPORT_IRQ_REG_PORT, reg_write, NULL);
+	avr_irq_register_notify(base_irq + IOPORT_IRQ_REG_PIN, reg_read, NULL);
 
-        /* Tweak DDRB to confirm IO-memory based IRQs are working. */
+	/* Tweak DDRB to confirm IO-memory based IRQs are working. */
 
-        avr_core_watch_write(avr, DDRB_ADDR, 1);
+	avr_core_watch_write(avr, DDRB_ADDR, 1);
 
-        /* Run ... */
+	/* Run ... */
 
-        tests_assert_uart_receive_avr(avr, 100000, expected, '0');
+	tests_assert_uart_receive_avr(avr, 100000, expected, '0');
 
-        if (strcmp(log, log_expected))
-            fail("Internal log: %s.\nExpected: %s.\n", log, log_expected);
+	if (strcmp(log, log_expected))
+		fail("Internal log: %s.\nExpected: %s.\n", log, log_expected);
 	tests_success();
 	return 0;
 }

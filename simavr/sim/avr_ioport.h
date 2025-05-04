@@ -113,6 +113,8 @@ typedef struct avr_ioport_t {
 	uint8_t 	mask;
 	int8_t 		shift;
 
+	uint8_t 	irqing;		// Suppress chatter during IRQ generation.
+
 	// This represent the default IRQ value when
 	// the port is set as input.
 	// If the mask is not set, no output value is sent

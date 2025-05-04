@@ -45,89 +45,101 @@ int main()
 {
 	stdout = &mystdout;
 
-        /* Enable output on Port D pins 0-3 and write to them. */
+	/* Enable output on Port D pins 0-3 and write to them. */
 
-        DDRD = 0xf;
-        PORTD = 0xa;
+	DDRD = 0xf;
+	PORTD = 0xa;
 
-        printf("P<%02X ", PIND); // Should say P<2A as caller sets bit 5.
+	printf("P<%02X ", PIND); // Should say P<2A as caller sets bit 5.
 
-        /* Toggle some outputs. */
+	/* Toggle some outputs and PORTD bits. */
 
-        PIND = 3;
+	PIND = 3;
 
-        /* Change directions. */
+	/* Change directions. */
 
-        DDRD = 0x3c;
+	DDRD = 0x3c;
 
-        /* Change output. */
+	/* Change output. */
 
-        PORTD = 0xf0;
+	PORTD = 0xf0;
 
-        /* This should say P<70 - pullups and direct output give 0xF0
-         * but the caller sees that and turns off bit 7 input,
-         * overriding that pullup.
+	/* This should say P<F0 - pullups and direct output give 0xF1
+	 * but the caller sees that and turns off bits 0 and 7 input,
+	 * but 7 is pulled-up.
+	 */
+
+	printf("P<%02X ", PIND);
+
+	/* Set-up rising edge interrupt on pin 2 (INT 0). */
+
+	EICRA = 3;
+	EIMSK = 1;
+
+#ifdef NOTYET
+        /* Clear external interrupt flags, but INT0 (PD3) will
+         * immediately reset, as the pin is low.
          */
 
-        printf("P<%02X ", PIND);
+        EIFR = 0xff;
+#endif
+	/* Turn off pin 4, signal the controlling program to raise pin 2. */
 
-        /* Set-up rising edge interrupt on pin 2 (INT 0). */
+	PORTD = 0xe0;
 
-        EICRA = 3;
-        EIMSK = 1;
+	/* Verify the interrupt flag is set. Result should be 3. */
 
-        /* Turn off pin 4, signal the caller to raise pin 2. */
+	printf("F<%02X ", EIFR);
 
-        PORTD = 0xe0;
+	sei();
 
-        /* Verify the interrupt flag is set. */
+	/* This duplicates the value in the INT0 handler, but it
+	 * takes sufficient time to be sure that there is only one
+	 * interrupt.  There was a bug that caused continuous interrupts
+	 * when this was first tried.
+	 */
 
-        printf("F<%02X ", EIFR);
+	printf("P<%02X ", PIND);
 
-        sei();
+	/* TODO: Test the level-triggered interupt.  It can be started
+	 * by a pin-value change or by writing to either of EICRA and EIMSK.
+	 */
 
-        /* This duplicates the value in the INT0 handler, but it
-         * takes sufficient time to be sure that there is only one
-         * interrupt.  There was a bug that caused continuous interrupts
-         * when this was first tried.
-         */
+	/* Try pin change interrupt. */
 
-        printf("P<%02X ", PIND);
+	PCICR = (1 << PCIE2); /* Interrupt enable. */
+	PCMSK2 = 0x0a;        /* Pins 1 and 3. */
+	DDRD = 3;
+	PORTD = 1;            /* No interrupt. */
+	PORTD = 3;            /* Interrupt. */
 
-        /* TODO: Test the level-triggered interupt.  It can be started
-         * by a pin-value change or by writing to either of EICRA and EIMSK.
-         */
+	/* Allow time for second interrupt. */
 
-        /* Try pin change interrupt. */
+	printf("P<%02X ", PIND);
 
-        PCICR = (1 << PCIE2); /* Interrupt enable. */
-        PCMSK2 = 0x0a;        /* Pins 1 and 3. */
-        DDRD = 3;
-        PORTD = 1;            /* No interrupt. */
-        PORTD = 3;            /* Interrupt. */
+	// Test "write 1 to clear" on PORT B.
 
-        /* Allow time for second interrupt. */
+	DDRB = 0xff;
+	PCICR = (1 << PCIE0); /* Interrupt enable. */
+	PCMSK0 = 3;           /* Pins 0 and 1. */
+	cli();
+	PORTB = 1;
+	PCIFR = 1;            /* Clear interrupt. */
+	sei();
+	printf("| ");
+	cli();
+	PORTB = 3;
+	PCIFR = 6;
+	sei();                /* Interrupt. */
+	printf("| ");
 
-        printf("P<%02X ", PIND);
+	/* Prompt for input with IOPORT_IRQ_PIN_ALL_IN. */
 
-        // Test "write 1 to clear" on PORT B.
-
-        DDRB = 0xff;
-        PCICR = (1 << PCIE0); /* Interrupt enable. */
-        PCMSK0 = 3;           /* Pins 0 and 1. */
-        cli();
-        PORTB = 1;
-        PCIFR = 1;            /* Clear interrupt. */
-        sei();
-        printf("| ");
-        cli();
-        PORTB = 3;
-        PCIFR = 6;
-        sei();                /* Interrupt. */
-        printf("| ");
+	DDRB = 2;
+	printf("P<%02X ", PIND); // Should get 98, not 99 because DDRD == 3.
 
 	// this quits the simulator, since interupts are off
 	// this is a "feature" that allows running tests cases and exit
-        cli();
+	cli();
 	sleep_cpu();
 }
