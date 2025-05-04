@@ -71,7 +71,7 @@ int dont_trace(const char * name)
 
 static int donttrace;
 
-static const char *where(avr_t *avr)
+const char *avr_where(avr_t *avr)
 {
 	avr_flashaddr_t  pc;
 	const char      *s;
@@ -100,8 +100,8 @@ static const char *where(avr_t *avr)
 	return "";
 }
 
-#define STATE(_f, argsf ...)	if (avr->trace) {				\
-	const char *symn = where(avr);							\
+#define STATE(_f, argsf ...)	if (avr->trace) {			\
+	const char *symn = avr_where(avr);						\
 	if (symn)												\
 		printf("%04x: %-25s " _f, avr->pc, symn, ## argsf);	\
 }
@@ -161,6 +161,8 @@ void crash(avr_t* avr)
 	avr_sadly_crashed(avr, 0);
 
 }
+
+const char *avr_where(avr_t *avr) { return ""; }
 #endif
 
 static inline uint16_t

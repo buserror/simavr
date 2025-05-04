@@ -503,6 +503,12 @@ uint64_t
 avr_get_time_stamp(
 		avr_t * avr );
 
+/* This function returns a text string describing where in flash the AVR's
+ * PC is pointing.  It requires the CONFIG_SIMAVR_TRACE option.
+ */
+
+const char *avr_where(avr_t *avr);
+
 #ifdef __cplusplus
 };
 #endif

@@ -306,6 +306,7 @@ int avr_read_dwarf(avr_t *avr, const char *filename)
         CHECK("dwarf_siblingof_b");
 
 #if CONFIG_SIMAVR_TRACE
+        Dwarf_Addr  prev_addr = -1;
         const char *last_symbol = NULL;
         int         i, prev_line;
 
@@ -322,9 +323,10 @@ int avr_read_dwarf(avr_t *avr, const char *filename)
             CHECK("dwarf_lineno");
             rv = dwarf_lineaddr(ctx.lines[i], &addr, &err);
             CHECK("dwarf_lineaddr");
-            if (prev_line == lineno)
+            if (prev_line == lineno || prev_addr == addr)
                 continue;	// Ignore duplicates
             prev_line = lineno;
+            prev_addr = addr;
             if (addr == 0) // Inlined?
                 continue;
             ep = avr->trace_data->codeline + (addr >> 1);
