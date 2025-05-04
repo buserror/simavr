@@ -138,26 +138,43 @@ static void avr_extint_irq_notify(struct avr_irq_t * irq, uint32_t value, void *
 			{
 				/**
 				  Datasheet excerpt:
-					>When the external interrupt is enabled and is configured as level triggered (only INT0/INT1),
-					>the interrupt will trigger as long as the pin is held low.
-					Thus we have to query the pin value continiously while it's held low and try to trigger the interrupt.
-					This can be expensive, so avr_extint_set_strict_lvl_trig function provisioned to allow the user
-					to turn this feature off. In this case bahaviour will be similar to the falling edge interrupt.
+					> When the external interrupt is enabled and is configured
+					> as level triggered (only INT0/INT1), the interrupt
+					> will trigger as long as the pin is held low.
+					Thus we have to query the pin value continuously while
+					it's held low and try to trigger the interrupt.
+					This can be expensive, so avr_extint_set_strict_lvl_trig()
+					function provisioned to allow the user to turn
+					this feature off. In this case behaviour will be similar
+					to the falling edge interrupt.
 				 */
 				if (!value) {
-					if (avr->sreg[S_I]) {
-						uint8_t raised = avr_regbit_get(avr, p->eint[irq->irq].vector.raised) || p->eint[irq->irq].vector.pending;
-						if (!raised)
-							avr_raise_interrupt(avr, &p->eint[irq->irq].vector);
-					}
-					if (p->eint[irq->irq].strict_lvl_trig) {
-						avr_extint_poll_context_t *poll = malloc(sizeof(avr_extint_poll_context_t));
+					uint8_t raised;
+
+					raised = (avr_regbit_get(
+								 avr,
+								 p->eint[irq->irq].vector.raised) ||
+							  p->eint[irq->irq].vector.pending);
+					if (!raised)
+						avr_raise_interrupt(avr, &p->eint[irq->irq].vector);
+					if (!raised && p->eint[irq->irq].vector.pending) {
+						avr_extint_poll_context_t *poll;
+
+						/* Interrupt pending, so start fast timer to re-enable
+						 * it if the pin level does not change in the handler.
+						 */
+
+						poll = malloc(sizeof(avr_extint_poll_context_t));
 						if (poll) {
 							poll->eint_no = irq->irq;
 							poll->extint = p;
-							avr_cycle_timer_register(avr, 1, avr_extint_poll_level_trig, poll);
+							avr_cycle_timer_register(
+								 avr, 1, avr_extint_poll_level_trig, poll);
 						}
 					}
+				} else {
+					avr_clear_interrupt(avr, &p->eint[irq->irq].vector);
+					// If running, timer will clear on next call.
 				}
 			}
 			break;
