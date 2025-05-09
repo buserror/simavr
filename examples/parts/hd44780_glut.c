@@ -28,6 +28,7 @@
 #include <GL/glut.h>
 #endif
 #include <pthread.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #include "lcd_font.h"	// generated with gimp
