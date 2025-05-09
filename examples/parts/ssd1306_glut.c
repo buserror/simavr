@@ -95,7 +95,7 @@ ssd1306_gl_put_pixel_column (uint8_t block_pixel_column, float pixel_opacity,
 
 	for (int i = 0; i < 8; ++i)
 	{
-		if (block_pixel_column & (1 << i))
+		if (block_pixel_column & (1 << (7 - i)))
 		{
 			glVertex2f (pix_size_g, pix_size_g * (i + 1));
 			glVertex2f (0, pix_size_g * (i + 1));
@@ -123,7 +123,7 @@ ssd1306_gl_draw_pixels (ssd1306_t *part, float opacity, uint8_t invert)
 		glPushMatrix ();
 		for (int c = 0; c < part->columns; c++)
 		{
-			uint8_t vram_byte = ssd1306_gl_get_vram_byte (part, p, c);
+			uint8_t vram_byte = ssd1306_gl_get_vram_byte (part, part->pages - p - 1, part->columns - c - 1);
 			ssd1306_gl_put_pixel_column (vram_byte, opacity, invert);
 			// Next column
 			glTranslatef (pix_size_g + pix_gap_g, 0, 0);
