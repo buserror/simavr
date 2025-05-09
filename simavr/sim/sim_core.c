@@ -173,13 +173,12 @@ _avr_flash_read16le(
 	return(avr->flash[addr] | (avr->flash[addr + 1] << 8));
 }
 
-static inline void _call_register_irqs(avr_t * avr, uint16_t addr)
+static inline void _call_register_irqs(avr_t * avr, uint16_t addr, uint8_t v)
 {
 	if (addr > 31 && addr < 31 + MAX_IOs) {
 		avr_io_addr_t io = AVR_DATA_TO_IO(addr);
 
 		if (avr->io[io].irq) {
-			uint8_t v = avr->data[addr];
 			avr_raise_irq(avr->io[io].irq + AVR_IOMEM_IRQ_ALL, v);
 			for (int i = 0; i < 8; i++)
 				avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);
@@ -243,7 +242,7 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 	}
 
 	avr->data[addr] = v;
-	_call_register_irqs(avr, addr);
+	_call_register_irqs(avr, addr, v);
 	_call_sram_irqs(avr, addr);
 }
 
@@ -263,7 +262,7 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 		avr_gdb_handle_watchpoints(avr, addr, AVR_GDB_WATCH_READ);
 	}
 
-//	_call_register_irqs(avr, addr);
+//	_call_register_irqs(avr, addr, avr->data[addr]);
 	return avr->data[addr];
 }
 
@@ -288,13 +287,8 @@ static inline void _avr_set_r(avr_t * avr, uint16_t r, uint8_t v)
 			avr->io[io].w.c(avr, r, v, avr->io[io].w.param);
 		} else {
 			avr->data[r] = v;
-			if (avr->io[io].irq) {
-				avr_raise_irq(avr->io[io].irq + AVR_IOMEM_IRQ_ALL, v);
-				for (int i = 0; i < 8; i++)
-					avr_raise_irq(avr->io[io].irq + i, (v >> i) & 1);
-			}
 		}
-        // _call_register_irqs(avr, r); // else section above could then be removed ?
+        _call_register_irqs(avr, r, v);
 		_call_sram_irqs(avr, r); // Only for io region
 	} else
 		avr->data[r] = v;
