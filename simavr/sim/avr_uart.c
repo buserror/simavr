@@ -256,9 +256,7 @@ avr_uart_udr_write(
 {
 	avr_uart_t * p = (avr_uart_t *)param;
 
-	// The byte to be sent should NOT be written there,
-	// the value written could never be read back.
-	//avr_core_watch_write(avr, addr, v);
+	avr_core_watch_write(avr, addr, v);
 	if (avr->gdb) {
 		avr_gdb_handle_watchpoints(avr, addr, AVR_GDB_WATCH_WRITE);
 	}
