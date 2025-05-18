@@ -21,16 +21,17 @@
 AVR_MCU(F_CPU, "atmega88");
 
 /*
- * This small section tells simavr to generate a VCD trace dump with changes to these
- * registers.
- * Opening it with gtkwave will show you the data being pumped out into the data register
- * UDR0, and the UDRE0 bit being set, then cleared
+ * This small section tells simavr to generate a VCD trace dump.
+ * Opening it with gtkwave will show you the data being pumped out into
+ * the data register UDR0, and the UDRE0 ("empty") bit being set, then cleared
+ *
+ * The output bytes are logged as the value of an IRQ, because the special
+ * nature of UDRE0 (separate read and write buffers) means that logging
+ * the register UDRE0 would return any data received by the UART.
  */
-const struct avr_mmcu_vcd_trace_t _mytrace[]  _MMCU_ = {
-	{ AVR_MCU_VCD_SYMBOL("UDR0"), .what = (void*)&UDR0, },	
-	{ AVR_MCU_VCD_SYMBOL("UDRE0"), .mask = (1 << UDRE0), .what = (void*)&UCSR0A, },	
-};
 
+AVR_MCU_VCD_REGISTER_BIT(UCSR0A, UDRE0);
+AVR_MCU_VCD_IO_IRQ(uar0, 1 /* UART_IRQ_OUTPUT */, "UART_output");
 
 /* declare this in a .eeprom ELF section */
 uint32_t value EEMEM = 0xdeadbeef;

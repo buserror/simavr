@@ -330,6 +330,10 @@ avr_load_firmware(
 						&bit[firmware->trace[ti].addr],
 						firmware->trace[ti].mask == 0xff ? 8 : 1,
 						firmware->trace[ti].name);
+		} else if (firmware->trace[ti].kind == AVR_MMCU_TAG_VCD_IO_IRQ) {
+			avr_irq_t * irq = avr_io_getirq(avr, firmware->trace[ti].addr, firmware->trace[ti].mask);
+			if (irq)
+				avr_vcd_add_signal(avr->vcd, irq, 8, firmware->trace[ti].name);
 		} else if ( (firmware->trace[ti].kind == AVR_MMCU_TAG_VCD_SRAM_8) ||
 		    (firmware->trace[ti].kind == AVR_MMCU_TAG_VCD_SRAM_16) ) {
 			if ((firmware->trace[ti].addr <= 31) || (firmware->trace[ti].addr > avr->ramend)) {
@@ -462,7 +466,6 @@ elf_parse_mmcu_section(
 				uint8_t mask = src[0];
 				uint16_t addr = src[1] | (src[2] << 8);
 				char * name = (char*)src + 3;
-
 #if 0
 				AVR_LOG(NULL, LOG_DEBUG,
 						"VCD_TRACE %d %04x:%02x - %s\n", tag,
@@ -471,6 +474,20 @@ elf_parse_mmcu_section(
 				firmware->trace[firmware->tracecount].kind = tag;
 				firmware->trace[firmware->tracecount].mask = mask;
 				firmware->trace[firmware->tracecount].addr = addr;
+				strncpy(firmware->trace[firmware->tracecount].name, name,
+					sizeof(firmware->trace[firmware->tracecount].name));
+				firmware->tracecount++;
+			}	break;
+			case AVR_MMCU_TAG_VCD_IO_IRQ: {
+				uint8_t   mask = src[0];
+				uint32_t  ioctl;
+				char     *name;
+
+				ioctl = AVR_IOCTL_DEF(src[1], src[2], src[3], src[4]);
+				name = (char*)src + 6;
+				firmware->trace[firmware->tracecount].kind = tag;
+				firmware->trace[firmware->tracecount].mask = mask;
+				firmware->trace[firmware->tracecount].addr = ioctl;
 				strncpy(firmware->trace[firmware->tracecount].name, name,
 					sizeof(firmware->trace[firmware->tracecount].name));
 				firmware->tracecount++;

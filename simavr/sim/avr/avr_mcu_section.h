@@ -64,6 +64,7 @@ enum {
 	AVR_MMCU_TAG_VCD_IRQ,
 	AVR_MMCU_TAG_VCD_SRAM_8,
 	AVR_MMCU_TAG_VCD_SRAM_16,
+	AVR_MMCU_TAG_VCD_IO_IRQ,
 	AVR_MMCU_TAG_PORT_EXTERNAL_PULL,
 };
 
@@ -109,6 +110,14 @@ struct avr_mmcu_vcd_trace_t {
 	char name[32];
 } __attribute__((__packed__));
 
+struct avr_mmcu_vcd_ioirq_t {
+	uint8_t tag;
+	uint8_t len;
+	uint8_t irqno;
+	char ioctl[5];	// Allow for null in string initialiser.
+	char name[32];
+} __attribute__((__packed__));
+
 #define AVR_MCU_STRING(_tag, _str) \
 	const struct avr_mmcu_string_t _##_tag _MMCU_ = {\
 		.tag = _tag,\
@@ -122,6 +131,7 @@ struct avr_mmcu_vcd_trace_t {
  */
 #define DO_CONCAT2(_a, _b) _a##_b
 #define DO_CONCAT(_a, _b) DO_CONCAT2(_a,_b)
+#define STRINGIFY(_a) #_a
 
 #define AVR_MCU_LONG(_tag, _val) \
 	const struct avr_mmcu_long_t DO_CONCAT(DO_CONCAT(_, _tag), __LINE__) _MMCU_ = {\
@@ -150,6 +160,25 @@ struct avr_mmcu_vcd_trace_t {
 	.tag = AVR_MMCU_TAG_VCD_TRACE, \
 	.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
 	.name = _name
+
+/*!
+ * Independent macro to trace a bit in an I/O register.
+ */
+
+#define AVR_MCU_VCD_REGISTER_BIT(_register, _bit) \
+	const struct avr_mmcu_vcd_trace_t \
+	  DO_CONCAT(_REGBIT_##_register##_##_bit##_, __LINE__) _MMCU_ = {	\
+		.tag = AVR_MMCU_TAG_VCD_TRACE, \
+		.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2, \
+		.mask = (1 << _bit), \
+		.what = (void*)&_register, \
+		.name = STRINGIFY(_register##_##_bit),	\
+	}
+/*DO_CONCAT(DO_CONCAT(DO_CONCAT(_REGBIT, _register), DO_CONCAT(_, _bit)), \ */
+
+/*!
+ * Set traces on a RAM location, 8 or 15-bit.
+ */
 
 #define AVR_MCU_VCD_SRAM_8(_name) \
 	.tag = AVR_MMCU_TAG_VCD_SRAM_8, \
@@ -213,7 +242,7 @@ struct avr_mmcu_vcd_trace_t {
 /*!
  * Add this port/pin to the VCD file. The syntax uses the name of the
  * port as a character, and not a pointer to a register.
- * AVR_MCU_VCD_PORT_PIN('B', 5);
+ * AVR_MCU_VCD_PORT_PIN('B', 5, "trace_name");
  */
 #define AVR_MCU_VCD_PORT_PIN(_port, _pin, _name) \
 	const struct avr_mmcu_vcd_trace_t DO_CONCAT(DO_CONCAT(_, _tag), __LINE__) _MMCU_ = {\
@@ -246,6 +275,21 @@ struct avr_mmcu_vcd_trace_t {
 	AVR_MCU_VCD_IRQ_TRACE(0xff, 1, "IRQ")
 #define AVR_MCU_VCD_ALL_IRQ_PENDING() \
 	AVR_MCU_VCD_IRQ_TRACE(0xff, 0, "IRQ_PENDING")
+
+/*!
+ * Above, "IRQ" refers to the IRQs associated with interrupts,
+ * but calls to any of Simavr's peripheral IRQs may be logged to a VCD file.
+ */
+
+#define AVR_MCU_VCD_IO_IRQ(_ioctl, _select, _trace_name) \
+	const struct avr_mmcu_vcd_ioirq_t \
+	  DO_CONCAT(_IO_IRQ_##_ioctl##_##_select##_, __LINE__) _MMCU_ = {	\
+		.tag = AVR_MMCU_TAG_VCD_IO_IRQ, \
+		.len = sizeof(struct avr_mmcu_vcd_ioirq_t) - 2,\
+		.irqno = _select, \
+		.ioctl = #_ioctl, \
+		.name = _trace_name, \
+	};
 
 /*!
  * This tag allows you to specify the voltages used by your board
