@@ -162,6 +162,20 @@ struct avr_mmcu_vcd_ioirq_t {
 	.name = _name
 
 /*!
+ * Independent macro to trace a complete I/O register.
+ */
+
+#define AVR_MCU_VCD_REGISTER(_register) \
+	const struct avr_mmcu_vcd_trace_t \
+	  DO_CONCAT(_REG_##_register##_, __LINE__) _MMCU_ = {	\
+		.tag = AVR_MMCU_TAG_VCD_TRACE, \
+		.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2, \
+		.mask = 0xff, \
+		.what = (void*)&_register, \
+		.name = #_register, \
+	}
+
+/*!
  * Independent macro to trace a bit in an I/O register.
  */
 
@@ -174,7 +188,6 @@ struct avr_mmcu_vcd_ioirq_t {
 		.what = (void*)&_register, \
 		.name = STRINGIFY(_register##_##_bit),	\
 	}
-/*DO_CONCAT(DO_CONCAT(DO_CONCAT(_REGBIT, _register), DO_CONCAT(_, _bit)), \ */
 
 /*!
  * Set traces on a RAM location, 8 or 15-bit.
@@ -245,7 +258,8 @@ struct avr_mmcu_vcd_ioirq_t {
  * AVR_MCU_VCD_PORT_PIN('B', 5, "trace_name");
  */
 #define AVR_MCU_VCD_PORT_PIN(_port, _pin, _name) \
-	const struct avr_mmcu_vcd_trace_t DO_CONCAT(DO_CONCAT(_, _tag), __LINE__) _MMCU_ = {\
+	const struct avr_mmcu_vcd_trace_t \
+	  DO_CONCAT(_PORTPIN_##_##_pin, __LINE__) _MMCU_ = {	\
 		.tag = AVR_MMCU_TAG_VCD_PORTPIN, \
 		.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
 		.mask = _port, \
@@ -260,7 +274,8 @@ struct avr_mmcu_vcd_ioirq_t {
  */
 
 #define AVR_MCU_VCD_IRQ_TRACE(_vect_number, __what, _trace_name) \
-	const struct avr_mmcu_vcd_trace_t DO_CONCAT(DO_CONCAT(_, _tag), __LINE__) _MMCU_ = {\
+	const struct avr_mmcu_vcd_trace_t \
+	  DO_CONCAT(_IRQ_##__what##_##_vect_number##_, __LINE__) _MMCU_ = {	\
 		.tag = AVR_MMCU_TAG_VCD_IRQ, \
 		.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
 		.mask = _vect_number, \

@@ -33,19 +33,17 @@
 AVR_MCU(F_CPU, "atmega88");
 
 /*
- * This small section tells simavr to generate a VCD trace dump with changes to these
- * registers.
- * Opening it with gtkwave will show you the data being read & written to these
- * It also demonstrate how you can use unused pins to generate your own traces, with
- * your own events to be displayed.
+ * This small section tells simavr to generate a VCD trace dump with changes
+ * to these registers.  Opening it with gtkwave will show you the data.
+ * It also demonstrate how you can use unused pins to generate your own traces,
+ * with your own events to be displayed.
  *
- * Here the port B first 2 bits are used to display when a tick occurs, and when a
- * TCNT reset occurs.
+ * Here the port B first 2 bits are used to display when a tick occurs,
+ * and when a TCNT reset occurs.
  */
-const struct avr_mmcu_vcd_trace_t _mytrace[]  _MMCU_ = {
-	{ AVR_MCU_VCD_SYMBOL("TCNT1L"), .what = (void*)&TCNT1L, },
-	{ AVR_MCU_VCD_SYMBOL("TCNT1H"), .what = (void*)&TCNT1H, },
-};
+
+AVR_MCU_VCD_REGISTER(TCNT1L);
+AVR_MCU_VCD_REGISTER(TCNT1H);
 AVR_MCU_VCD_PORT_PIN('B', 3, "OC2A");
 AVR_MCU_VCD_PORT_PIN('B', 1, "reset_timer");
 AVR_MCU_VCD_PORT_PIN('B', 0, "tick");

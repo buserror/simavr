@@ -27,16 +27,16 @@ AVR_MCU_SIMAVR_COMMAND(&GPIOR0);
 AVR_MCU_SIMAVR_CONSOLE(&GPIOR1);
 
 /*
- * This small section tells simavr to generate a VCD trace dump with changes to these
- * registers.
- * Opening it with gtkwave will show you the data being pumped out into the data register
- * UDR0, and the UDRE0 bit being set, then cleared
+ * This small section tells simavr to generate a VCD trace dump with changes
+ * to these registers.  Opening it with gtkwave will show you the data
+ * being pumped out into the data register UDR0, and the UDRE0 bit being set,
+ * then cleared. "Console" output is also logged.
  */
-const struct avr_mmcu_vcd_trace_t _mytrace[]  _MMCU_ = {
-	{ AVR_MCU_VCD_SYMBOL("UDR3"), .what = (void*)&UDR3, },
-	{ AVR_MCU_VCD_SYMBOL("UDRE3"), .mask = (1 << UDRE3), .what = (void*)&UCSR3A, },
-	{ AVR_MCU_VCD_SYMBOL("GPIOR1"), .what = (void*)&GPIOR1, },
-};
+
+AVR_MCU_VCD_IO_IRQ(uar3, 0 /* UART_IRQ_INPUT */, "UART3_input");
+AVR_MCU_VCD_REGISTER_BIT(UCSR3A, UDRE3);
+AVR_MCU_VCD_REGISTER(GPIOR1);
+
 #ifdef USART3_RX_vect_num	// stupid ubuntu has antique avr-libc
 AVR_MCU_VCD_IRQ(USART3_RX);	// single bit trace
 #endif
