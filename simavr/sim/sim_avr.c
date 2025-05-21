@@ -97,6 +97,8 @@ int
 avr_init(
 		avr_t * avr)
 {
+	static const char *names[] = { ">avr.core.bad_opcode", }; // IRQs
+
 	avr->flash = malloc(avr->flashend + 4);
 	memset(avr->flash, 0xff, avr->flashend + 1);
 	*((uint16_t*)&avr->flash[avr->flashend + 1]) = AVR_OVERFLOW_OPCODE;
@@ -126,6 +128,7 @@ avr_init(
 	avr->state = cpu_Limbo;
 	avr->frequency = 1000000;	// can be overridden via avr_mcu_section
 	avr->irq_pool.avr = avr;
+	avr->irq = avr_alloc_irq(&avr->irq_pool, 0, AVR_CORE_IRQ_COUNT, names);
 	avr_cmd_init(avr);
 	avr_interrupt_init(avr);
 	if (avr->custom.init)
@@ -212,6 +215,47 @@ avr_sadly_crashed(
 	}
 	if (!avr->gdb)
 		avr->state = cpu_Crashed;
+}
+
+/* Get a pointer to a core IRQ. */
+
+avr_irq_t *
+avr_get_core_irq(
+		avr_t * avr,
+		int     irq_no)
+{
+	return avr->irq + irq_no;
+}
+
+/* Get a pointer to a memory IRQ. */
+
+avr_irq_t *avr_get_memory_irq(avr_t * avr, uint16_t addr, int is16)
+{
+	avr_irq_t  *irq;
+	int			width;
+	char        name[32];
+	const char *names[1] = {name};
+
+	if (addr <= 31 || addr > avr->ramend) {
+		AVR_LOG(avr, LOG_ERROR,
+				"Address %#04x out of range for SRAM trace.\n", addr);
+		return NULL;
+	}
+	if (avr->sram_tracepoint_count >= ARRAY_SIZE(avr->sram_tracepoint)) {
+		AVR_LOG(avr, LOG_ERROR, "Too many SRAM traces (limit = %d)\n",
+				ARRAY_SIZE(avr->sram_tracepoint));
+		return NULL;
+	}
+
+	width = is16 ? 16 : 8;
+	sprintf(name, ">%dSRAM_tracepoint_%d", width, avr->sram_tracepoint_count);
+	irq = avr_alloc_irq(&avr->irq_pool, 0, 1, names);
+	if (!irq)
+		return NULL;
+	avr->sram_tracepoint[avr->sram_tracepoint_count].irq = irq;
+	avr->sram_tracepoint[avr->sram_tracepoint_count].width = width;
+	avr->sram_tracepoint[avr->sram_tracepoint_count++].addr = addr;
+	return irq;
 }
 
 void
