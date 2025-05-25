@@ -72,7 +72,8 @@ const struct mcu_t SIM_CORENAME = {
         .reset = tx4_reset,
     },
     AVR_EEPROM_DECLARE(EE_RDY_vect),
-        .selfprog = {
+    AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
+    .selfprog = {
 		.flags = 0,
 		.r_spm = SPMCSR,
 		.spm_pagesize = SPM_PAGESIZE,
@@ -81,7 +82,6 @@ const struct mcu_t SIM_CORENAME = {
 		.pgwrt = AVR_IO_REGBIT(SPMCSR, PGWRT),
 		.blbset = AVR_IO_REGBIT(SPMCSR, RFLB),
 	},
-    AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
     .extint = {
         AVR_EXTINT_TINY_DECLARE(0, 'B', PB2, GIFR),
     },

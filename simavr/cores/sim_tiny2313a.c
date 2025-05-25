@@ -62,7 +62,7 @@ static const struct mcu_t {
 	},
 	AVR_EEPROM_DECLARE_8BIT(EEPROM_Ready_vect),
 	AVR_WATCHDOG_DECLARE(WDTCR, WDT_OVERFLOW_vect),
-		 .selfprog = {
+	.selfprog = {
 		.flags = 0,
 		.r_spm = SPMCSR,
 		.spm_pagesize = SPM_PAGESIZE,
