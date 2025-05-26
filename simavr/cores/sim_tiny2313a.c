@@ -22,6 +22,7 @@
 #include "avr_eeprom.h"
 #include "avr_watchdog.h"
 #include "avr_extint.h"
+#include "avr_flash.h"
 #include "avr_ioport.h"
 #include "avr_uart.h"
 #include "avr_timer.h"
@@ -44,6 +45,7 @@ static const struct mcu_t {
 	avr_t core;
 	avr_eeprom_t 	eeprom;
 	avr_watchdog_t	watchdog;
+	avr_flash_t 	selfprog;
 	avr_extint_t	extint;
 	avr_ioport_t	porta, portb, portd;
 	avr_uart_t		uart;
@@ -60,6 +62,15 @@ static const struct mcu_t {
 	},
 	AVR_EEPROM_DECLARE_8BIT(EEPROM_Ready_vect),
 	AVR_WATCHDOG_DECLARE(WDTCR, WDT_OVERFLOW_vect),
+	.selfprog = {
+		.flags = 0,
+		.r_spm = SPMCSR,
+		.spm_pagesize = SPM_PAGESIZE,
+		.selfprgen = AVR_IO_REGBIT(SPMCSR, SPMEN),
+		.pgers = AVR_IO_REGBIT(SPMCSR, PGERS),
+		.pgwrt = AVR_IO_REGBIT(SPMCSR, PGWRT),
+		.blbset = AVR_IO_REGBIT(SPMCSR, RFLB),
+	},
 	.extint = {
 		AVR_EXTINT_TINY_DECLARE(0, 'D', 2, GIFR),
 		AVR_EXTINT_TINY_DECLARE(1, 'D', 3, GIFR),
@@ -237,6 +248,7 @@ static void init(struct avr_t * avr)
 
 	avr_eeprom_init(avr, &mcu->eeprom);
 	avr_watchdog_init(avr, &mcu->watchdog);
+	avr_flash_init(avr, &mcu->selfprog);
 	avr_extint_init(avr, &mcu->extint);
 	avr_ioport_init(avr, &mcu->porta);
 	avr_ioport_init(avr, &mcu->portb);
