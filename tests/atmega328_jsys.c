@@ -1,5 +1,5 @@
 /*
- * atmega328pb_jsys.c: a small demonstaration of using an illegal
+ * atmega328_jsys.c: a small demonstaration of using an illegal
  * instruction code to raise an IRQ and invoke a service from the
  * surrounding application.  In this case a simple sleep/wake.
  * The technique allows low-overhead simulation of busy-waiting.
@@ -12,7 +12,7 @@
 #include <avr/sleep.h>
 
 #include "avr_mcu_section.h"
-AVR_MCU(F_CPU, "atmega328pb");
+AVR_MCU(F_CPU, "atmega328");
 
 uint8_t count, ext_count;
 

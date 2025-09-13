@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
 	uint8_t  inner, outer;
 
 	tests_init(argc, argv);
-	avr = tests_init_avr("atmega328pb_jsys.axf");
+	avr = tests_init_avr("atmega328_jsys.axf");
 
 	avr_irq_register_notify(avr_get_core_irq(avr, AVR_CORE_BAD_OPCODE),
 							jsys_handler, avr);
