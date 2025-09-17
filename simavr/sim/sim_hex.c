@@ -84,6 +84,7 @@ read_ihex_chunks(
 		fw_chunk_t ** chunks_p )
 {
 	fw_chunk_t *chunk = *chunks_p;
+	fw_chunk_t *backlink_p = chunk;
 	int         len, allocation = 0;
 	uint8_t     chk = 0;
 	uint8_t     bline[272];
@@ -150,7 +151,7 @@ read_ihex_chunks(
 		}
 		if (!chunk || (chunk->size && addr != chunk->addr + chunk->size)) {
 			/* New chunk. */
-
+			backlink_p = chunk;
 			allocation = ALLOCATION - sizeof *chunk + 1;
 			chunk = (fw_chunk_t *)malloc(ALLOCATION);
 			*chunks_p = chunk;
@@ -170,6 +171,12 @@ read_ihex_chunks(
 
 			allocation += INCREMENT;
 			chunk = realloc(chunk, allocation + (sizeof *chunk - 1));
+
+			/* Update the pointer in the previous list element */
+			if ( backlink_p ) backlink_p->next = chunk;
+
+			/* Refresh the pointer to the future chunk */
+			chunks_p = &chunk->next;
 		}
 		memcpy(chunk->data + chunk->size, bline + 4, bline[0]);
 		chunk->size += bline[0];
@@ -177,7 +184,6 @@ read_ihex_chunks(
 	}
 	fclose(f);
 }
-
 
 uint8_t *
 read_ihex_file(
@@ -255,10 +261,10 @@ sim_setup_firmware(const char * filename, uint32_t loadBase,
 }
 
 #ifdef IHEX_TEST
-// gcc -std=gnu99 -Isimavr/sim simavr/sim/sim_hex.c -o sim_hex -DIHEX_TEST -Dtest_main=main
+// gcc -std=gnu99 -Isimavr/sim simavr/sim/sim_hex.c -o sim_hex -DIHEX_TEST -Dtest_main=main -fsanitize=address -fno-omit-frame-pointer -O1 -g
 int test_main(int argc, char * argv[])
 {
-	fw_chunk_t *chunks;
+	fw_chunk_t *chunks, *next_chunk;
 	int         fi;
 
 	for (fi = 1; fi < argc; fi++) {
@@ -274,7 +280,9 @@ int test_main(int argc, char * argv[])
 			snprintf(n, sizeof n, "%s[%d] = %08x",
 					  argv[fi], ci, chunks->addr);
 			hdump(n, chunks->data, chunks->size);
-			chunks = chunks->next;
+			next_chunk = chunks->next;
+			free(chunks);
+			chunks = next_chunk;
 		}
 	}
 	return 0;
