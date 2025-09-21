@@ -136,7 +136,7 @@ void crash(avr_t* avr)
 
 	for (int i = OLD_PC_SIZE-1; i > 0; i--) {
 		int pci = (avr->trace_data->old_pci + i) & 0xf;
-		printf(FONT_RED "*** %04x: %-25s RESET -%d; sp %04x\n" FONT_DEFAULT,
+		printf(FONT_RED "*** %04x: %-25s RESET -%d; sp %04x" FONT_DEFAULT "\n",
                        avr->trace_data->old[pci].pc,
                        avr->trace_data->codeline ?
                            avr->trace_data->codeline[avr->trace_data->old[pci].pc>>1] :
@@ -220,8 +220,7 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 	}
 	if (addr < 32) {
 		AVR_LOG(avr, LOG_ERROR, FONT_RED
-				"CORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x low registers\n"
-				FONT_DEFAULT,
+				"CORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x low registers" FONT_DEFAULT "\n",
 				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), addr, v);
 		crash(avr);
 	}
@@ -233,7 +232,7 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 	 */
 	if (avr->trace_data->stack_frame_index > 1 && addr > avr->trace_data->stack_frame[avr->trace_data->stack_frame_index-2].sp) {
 		printf( FONT_RED "%04x : munching stack "
-				"SP %04x, A=%04x <= %02x\n" FONT_DEFAULT,
+				"SP %04x, A=%04x <= %02x" FONT_DEFAULT "\n",
 				avr->pc, _avr_sp_get(avr), addr, v);
 	}
 #endif
@@ -252,8 +251,7 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 	if (addr > avr->ramend) {
 		AVR_LOG(avr, LOG_WARNING,
 				"CORE: *** Wrapping read address "
-				"PC=%04x SP=%04x O=%04x Address %04x %% %04x --> %04x\n"
-				FONT_DEFAULT,
+				"PC=%04x SP=%04x O=%04x Address %04x %% %04x --> %04x\n",
 				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc),
 				addr, (avr->ramend + 1), addr % (avr->ramend + 1));
 		addr = addr % (avr->ramend + 1);
@@ -464,13 +462,13 @@ static void _avr_invalid_opcode(avr_t * avr)
 	}
 	avr->pc += 2;	// Step over.
 #if CONFIG_SIMAVR_TRACE
-	printf( FONT_RED "*** %04x: %-25s Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
+	printf( FONT_RED "*** %04x: %-25s Invalid Opcode SP=%04x O=%04x" FONT_DEFAULT "\n",
                 avr->pc,
                 avr->trace_data->codeline[avr->pc>>1],
                 _avr_sp_get(avr),
                 _avr_flash_read16le(avr, avr->pc));
 #else
-	AVR_LOG(avr, LOG_ERROR, FONT_RED "CORE: *** %04x: Invalid Opcode SP=%04x O=%04x \n" FONT_DEFAULT,
+	AVR_LOG(avr, LOG_ERROR, FONT_RED "CORE: *** %04x: Invalid Opcode SP=%04x O=%04x" FONT_DEFAULT "\n",
 			avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc));
 #endif
 }

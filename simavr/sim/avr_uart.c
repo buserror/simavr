@@ -277,7 +277,7 @@ avr_uart_udr_write(
 		if (v == '\n' || p->stdio_len == maxsize) {
 			p->stdio_len = 0;
 			AVR_LOG(avr, LOG_OUTPUT,
-					FONT_GREEN "%s\n" FONT_DEFAULT, p->stdio_out);
+					FONT_GREEN "%s" FONT_DEFAULT "\n", p->stdio_out);
 		}
 	}
 	TRACE(printf("UDR%c(%02x) = %02x\n", p->name, addr, v);)
