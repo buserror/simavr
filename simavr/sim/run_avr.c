@@ -33,6 +33,15 @@
 
 #include "sim_core_decl.h"
 
+#ifndef NO_COLOR
+/* Replacements for ANSI escape codes if color is disabled. */
+static const struct text_colors font_no_color = {
+       .green  = "",
+       .red    = "",
+       .normal = ""
+};
+#endif
+
 static void
 display_usage(
 	const char * app)
@@ -110,6 +119,12 @@ main(
 	int trace_vectors[8] = {0};
 	int trace_vectors_count = 0;
 	const char *vcd_input = NULL;
+
+#ifndef NO_COLOR
+	const char *no_color = getenv("NO_COLOR");
+	if (no_color && no_color[0])
+		simavr_font = font_no_color;
+#endif
 
 	if (argc == 1)
 		display_usage(basename(argv[0]));
