@@ -23,19 +23,12 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef NO_COLOR
-	#define FONT_GREEN		
-	#define FONT_DEFAULT	
-#else
-	#define FONT_GREEN		"\e[32m"
-	#define FONT_DEFAULT	"\e[0m"
-#endif
-
 #include <stdio.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include "avr_uart.h"
+#include "sim_core.h"
 #include "sim_hex.h"
 #include "sim_time.h"
 #include "sim_gdb.h"
@@ -277,7 +270,7 @@ avr_uart_udr_write(
 		if (v == '\n' || p->stdio_len == maxsize) {
 			p->stdio_len = 0;
 			AVR_LOG(avr, LOG_OUTPUT,
-					FONT_GREEN "%s" FONT_DEFAULT "\n", p->stdio_out);
+					"%s%s%s\n", simavr_font.green, p->stdio_out, simavr_font.normal);
 		}
 	}
 	TRACE(printf("UDR%c(%02x) = %02x\n", p->name, addr, v);)
