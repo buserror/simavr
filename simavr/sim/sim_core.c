@@ -29,6 +29,19 @@
 #include "avr_flash.h"
 #include "avr_watchdog.h"
 
+/* ANSI escape codes for colored output. */
+struct text_colors simavr_font = {
+#ifdef NO_COLOR
+	.green  = "",
+	.red    = "",
+	.normal = ""
+#else
+	.green  = "\e[32m",
+	.red    = "\e[31m",
+	.normal = "\e[0m"
+#endif
+};
+
 // SREG bit names
 const char * _sreg_bit_name = "cznvshti";
 
@@ -136,13 +149,15 @@ void crash(avr_t* avr)
 
 	for (int i = OLD_PC_SIZE-1; i > 0; i--) {
 		int pci = (avr->trace_data->old_pci + i) & 0xf;
-		printf(FONT_RED "*** %04x: %-25s RESET -%d; sp %04x" FONT_DEFAULT "\n",
+		printf("%s*** %04x: %-25s RESET -%d; sp %04x%s\n",
+                       simavr_font.red,
                        avr->trace_data->old[pci].pc,
                        avr->trace_data->codeline ?
                            avr->trace_data->codeline[avr->trace_data->old[pci].pc>>1] :
                            "unknown",
                        OLD_PC_SIZE-i,
-                       avr->trace_data->old[pci].sp);
+                       avr->trace_data->old[pci].sp,
+                       simavr_font.normal);
 	}
 
 	printf("Stack Ptr %04x/%04x = %d \n", _avr_sp_get(avr), avr->ramend, avr->ramend - _avr_sp_get(avr));
@@ -219,9 +234,9 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 		addr = addr % (avr->ramend + 1);
 	}
 	if (addr < 32) {
-		AVR_LOG(avr, LOG_ERROR, FONT_RED
-				"CORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x low registers" FONT_DEFAULT "\n",
-				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), addr, v);
+		AVR_LOG(avr, LOG_ERROR,
+				"%sCORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x low registers%s\n",
+				simavr_font.red, avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), addr, v, simavr_font.normal);
 		crash(avr);
 	}
 #if AVR_STACK_WATCH
@@ -231,9 +246,9 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 	 * frame and is munching on it's own return address.
 	 */
 	if (avr->trace_data->stack_frame_index > 1 && addr > avr->trace_data->stack_frame[avr->trace_data->stack_frame_index-2].sp) {
-		printf( FONT_RED "%04x : munching stack "
-				"SP %04x, A=%04x <= %02x" FONT_DEFAULT "\n",
-				avr->pc, _avr_sp_get(avr), addr, v);
+		printf("%s%04x : munching stack "
+				"SP %04x, A=%04x <= %02x%s\n",
+				simavr_font.red, avr->pc, _avr_sp_get(avr), addr, v, simavr_font.normal);
 	}
 #endif
 
@@ -462,14 +477,16 @@ static void _avr_invalid_opcode(avr_t * avr)
 	}
 	avr->pc += 2;	// Step over.
 #if CONFIG_SIMAVR_TRACE
-	printf( FONT_RED "*** %04x: %-25s Invalid Opcode SP=%04x O=%04x" FONT_DEFAULT "\n",
+	printf("%s*** %04x: %-25s Invalid Opcode SP=%04x O=%04x%s\n",
+                simavr_font.red,
                 avr->pc,
                 avr->trace_data->codeline[avr->pc>>1],
                 _avr_sp_get(avr),
-                _avr_flash_read16le(avr, avr->pc));
+                _avr_flash_read16le(avr, avr->pc),
+                simavr_font.normal);
 #else
-	AVR_LOG(avr, LOG_ERROR, FONT_RED "CORE: *** %04x: Invalid Opcode SP=%04x O=%04x" FONT_DEFAULT "\n",
-			avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc));
+	AVR_LOG(avr, LOG_ERROR, "%sCORE: *** %04x: Invalid Opcode SP=%04x O=%04x%s\n",
+			simavr_font.red, avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), simavr_font.normal);
 #endif
 }
 

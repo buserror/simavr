@@ -26,15 +26,16 @@
 extern "C" {
 #endif
 
-#ifdef NO_COLOR
-	#define FONT_GREEN
-	#define FONT_RED
-	#define FONT_DEFAULT
-#else
-	#define FONT_GREEN		"\e[32m"
-	#define FONT_RED		"\e[31m"
-	#define FONT_DEFAULT	"\e[0m"
-#endif
+/*
+ * ANSI escape codes for colored output
+ */
+struct text_colors {
+	const char *green;
+	const char *red;
+	const char *normal;
+};
+
+extern struct text_colors simavr_font;
 
 /*
  * Instruction decoder, run ONE instruction
@@ -80,10 +81,12 @@ void avr_dump_state(avr_t * avr);
 #define DUMP_STACK() \
 		for (int i = avr->trace_data->stack_frame_index; i; i--) {\
 			int pci = i-1;\
-			printf(FONT_RED "*** %04x: %-25s sp %04x" FONT_DEFAULT "\n",\
+			printf("%s*** %04x: %-25s sp %04x%s\n",\
+					simavr_font.red, \
 					avr->trace_data->stack_frame[pci].pc, \
 					avr->trace_data->codeline ? avr->trace_data->codeline[avr->trace_data->stack_frame[pci].pc>>1]->symbol : "unknown", \
-							avr->trace_data->stack_frame[pci].sp);\
+					avr->trace_data->stack_frame[pci].sp, \
+					simavr_font.normal);\
 		}
 #else
 #define DUMP_STACK()
