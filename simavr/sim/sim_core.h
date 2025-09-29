@@ -80,7 +80,7 @@ void avr_dump_state(avr_t * avr);
 #define DUMP_STACK() \
 		for (int i = avr->trace_data->stack_frame_index; i; i--) {\
 			int pci = i-1;\
-			printf(FONT_RED "*** %04x: %-25s sp %04x\n" FONT_DEFAULT,\
+			printf(FONT_RED "*** %04x: %-25s sp %04x" FONT_DEFAULT "\n",\
 					avr->trace_data->stack_frame[pci].pc, \
 					avr->trace_data->codeline ? avr->trace_data->codeline[avr->trace_data->stack_frame[pci].pc>>1]->symbol : "unknown", \
 							avr->trace_data->stack_frame[pci].sp);\
