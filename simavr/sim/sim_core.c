@@ -227,17 +227,15 @@ void _call_sram_irqs(avr_t *avr, uint16_t addr) {
 void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 {
 	if (addr > avr->ramend) {
+		uint16_t ramstart = avr->ioend + 1;
+		uint16_t ramsize = avr->ramend - ramstart + 1;
+		uint16_t wrapped_addr = ramstart + ((addr - ramstart) % ramsize);
 		AVR_LOG(avr, LOG_WARNING,
 				"CORE: *** Wrapping write address "
-				"PC=%04x SP=%04x O=%04x v=%02x Address %04x %% %04x --> %04x\n",
-				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), v, addr, (avr->ramend + 1), addr % (avr->ramend + 1));
-		addr = addr % (avr->ramend + 1);
-	}
-	if (addr < 32) {
-		AVR_LOG(avr, LOG_ERROR,
-				"%sCORE: *** Invalid write address PC=%04x SP=%04x O=%04x Address %04x=%02x low registers%s\n",
-				simavr_font.red, avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc), addr, v, simavr_font.normal);
-		crash(avr);
+				"PC=%04x SP=%04x O=%04x Address %04x --> %04x (ramstart=%04x, ramend=%04x)\n",
+				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc),
+				addr, wrapped_addr, ramstart, avr->ramend);
+		addr = wrapped_addr;
 	}
 #if AVR_STACK_WATCH
 	/*
@@ -264,12 +262,15 @@ void avr_core_watch_write(avr_t *avr, uint16_t addr, uint8_t v)
 uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
 {
 	if (addr > avr->ramend) {
+		uint16_t ramstart = avr->ioend + 1;
+		uint16_t ramsize = avr->ramend - ramstart + 1;
+		uint16_t wrapped_addr = ramstart + ((addr - ramstart) % ramsize);
 		AVR_LOG(avr, LOG_WARNING,
 				"CORE: *** Wrapping read address "
-				"PC=%04x SP=%04x O=%04x Address %04x %% %04x --> %04x\n",
+				"PC=%04x SP=%04x O=%04x Address %04x --> %04x (ramstart=%04x, ramend=%04x)\n",
 				avr->pc, _avr_sp_get(avr), _avr_flash_read16le(avr, avr->pc),
-				addr, (avr->ramend + 1), addr % (avr->ramend + 1));
-		addr = addr % (avr->ramend + 1);
+				addr, wrapped_addr, ramstart, avr->ramend);
+		addr = wrapped_addr;
 	}
 
 	if (avr->gdb) {
