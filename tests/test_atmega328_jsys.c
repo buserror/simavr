@@ -66,7 +66,7 @@ static void jsys_handler(struct avr_irq_t *irq, uint32_t value, void *param)
 			/* Print a string embedded in the flash. */
 
 			++pc;
-			printf((const char *)pc);	/* Can not use return value!. */
+			printf("%s", (const char *)pc);	/* Can not use return value!. */
 			pc += strlen((const char *)pc);
 			break;
 		}
