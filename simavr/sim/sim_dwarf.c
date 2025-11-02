@@ -94,10 +94,12 @@ static void process(struct ctx *ctxp, Dwarf_Die die)
     CHECK("dwarf_tag");
     if (tag == DW_TAG_variable) {
         Dwarf_Attribute  attr;
+        Dwarf_Addr       c_addr, c_addr2;
         Dwarf_Unsigned   count, op_count, symv, op2, op3, off1, off2;
         Dwarf_Loc_Head_c head;
         Dwarf_Locdesc_c  loc;
-        Dwarf_Small      op, value, list_type;
+        Dwarf_Small      op, lle_value, kind;
+        Dwarf_Bool       addr_unavailable;
 
         /* Get the location (address) information for this variable.
          * Only static allocations are of interest.
@@ -111,13 +113,14 @@ static void process(struct ctx *ctxp, Dwarf_Die die)
         rv = dwarf_get_loclist_c(attr, &head, &count, &err);
         CHECK("dwarf_get_loclist_c");
         if (rv ==  DW_DLV_NO_ENTRY)
-            goto clean;
-        rv = dwarf_get_locdesc_entry_c(head, 0, &value, &addr, &addr2,
-                                       &op_count, &loc, &list_type,
-                                       &off1, &off2, &err);
-        CHECK("dwarf_get_locdesc_entry_c");
+			goto clean;
+		rv = dwarf_get_locdesc_entry_d(head, 0, &lle_value, &addr, &addr2,
+									   &addr_unavailable, &c_addr, &c_addr2,
+									   &op_count, &loc, &kind,
+									   &off1, &off2, &err);
+		CHECK("dwarf_get_locdesc_entry_d");
 
-        if (list_type == 0 && count == 1) {
+		if (kind == DW_LKIND_expression && count == 1) {
             /* Probably statically-allocated. */
 
             rv = dwarf_get_location_op_value_c(loc, 0, &op, &symv, &op2, &op3,
@@ -135,7 +138,6 @@ static void process(struct ctx *ctxp, Dwarf_Die die)
 #endif
                 if (symv > DATA_OFFSET) {
                     symv -= DATA_OFFSET;
-
 
                     /* Is it an I/O register or RAM? */
 
@@ -158,7 +160,7 @@ static void process(struct ctx *ctxp, Dwarf_Die die)
 #endif
             }
         }
-        dwarf_loc_head_c_dealloc(head);
+        dwarf_dealloc_loc_head_c(head);
 #if CONFIG_SIMAVR_TRACE
     } else if (tag == DW_TAG_subprogram) {
         rv = dwarf_lowpc(die, &addr, &err);
@@ -206,7 +208,7 @@ static void traverse_tree(struct ctx *ctxp, Dwarf_Die start)
     if (rv == DW_DLV_OK)
         traverse_tree(ctxp, die);
     else 
-        CHECK("dwarf_child");
+		CHECK("dwarf_child");
 
     /* Examine siblings. */
 
@@ -274,7 +276,7 @@ int avr_read_dwarf(avr_t *avr, const char *filename)
     }
 
     ctx.avr = avr;
-    rv = dwarf_init_b(fd, DW_DLC_READ, 0, NULL, NULL, &ctx.db, &err);
+    rv = dwarf_init_b(fd, DW_GROUPNUMBER_ANY, NULL, NULL, &ctx.db, &err);
     if (rv != DW_DLV_OK) {
         if (rv == DW_DLV_NO_ENTRY)
             return 1;
@@ -283,7 +285,7 @@ int avr_read_dwarf(avr_t *avr, const char *filename)
     }
 
     if (sigsetjmp(ctx.err_jmp, 0)) {
-        dwarf_finish(ctx.db, &err);
+        dwarf_finish(ctx.db);
         close(fd);
         return -1;
     }
@@ -303,6 +305,8 @@ int avr_read_dwarf(avr_t *avr, const char *filename)
         /* Sibling of NULL is Compiliation Unit's Debug Information Element. */
 
         rv = dwarf_siblingof_b(ctx.db, NULL, 1, &die, &err);
+        if (rv == DW_DLV_NO_ENTRY)
+            continue;
         CHECK("dwarf_siblingof_b");
 
 #if CONFIG_SIMAVR_TRACE
@@ -344,14 +348,13 @@ int avr_read_dwarf(avr_t *avr, const char *filename)
             *ep = strdup(buff);
         }
         dwarf_dealloc(ctx.db, ctx.cu_name, DW_DLA_STRING);
-        dwarf_srclines_dealloc_b(ctx.lc);
+        if (ctx.lc)
+            dwarf_srclines_dealloc_b(ctx.lc);
 #else
         traverse_tree(&ctx, die);
 #endif
     }
-    dwarf_finish(ctx.db, &err);
-    if (rv == DW_DLV_ERROR)
-        error("dwarf_finish", err);
+    dwarf_finish(ctx.db);
     close(fd);
     return 0;
 }
