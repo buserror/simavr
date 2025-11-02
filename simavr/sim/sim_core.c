@@ -149,15 +149,17 @@ void crash(avr_t* avr)
 
 	for (int i = OLD_PC_SIZE-1; i > 0; i--) {
 		int pci = (avr->trace_data->old_pci + i) & 0xf;
+		uint32_t oldpc = avr->trace_data->old[pci].pc >> 1;
 		printf("%s*** %04x: %-25s RESET -%d; sp %04x%s\n",
-                       simavr_font.red,
-                       avr->trace_data->old[pci].pc,
-                       avr->trace_data->codeline ?
-                           avr->trace_data->codeline[avr->trace_data->old[pci].pc>>1] :
-                           "unknown",
-                       OLD_PC_SIZE-i,
-                       avr->trace_data->old[pci].sp,
-                       simavr_font.normal);
+			   simavr_font.red,
+			   avr->trace_data->old[pci].pc,
+			   (avr->trace_data->codeline &&
+			     oldpc < avr->trace_data->codeline_size) ?
+				  avr->trace_data->codeline[oldpc] :
+				  "unknown",
+			   OLD_PC_SIZE-i,
+			   avr->trace_data->old[pci].sp,
+			   simavr_font.normal);
 	}
 
 	printf("Stack Ptr %04x/%04x = %d \n", _avr_sp_get(avr), avr->ramend, avr->ramend - _avr_sp_get(avr));
