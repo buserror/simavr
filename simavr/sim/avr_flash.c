@@ -59,7 +59,7 @@ avr_flash_clear_temppage(
 		avr_flash_t *p)
 {
 	for (int i = 0; i < p->spm_pagesize / 2; i++) {
-		p->tmppage[i] = 0xff;
+		p->tmppage[i] = 0xffff;
 		p->tmppage_used[i] = 0;
 	}
 }
