@@ -1,5 +1,5 @@
 name: Build Binaries
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   build-win64:
@@ -199,8 +199,8 @@ jobs:
           name: Linux AArch64
           path: simavr.tar.gz
   build-darwin-x64:
-    # this is currently macos-11, Big Sur
-    runs-on: macos-latest
+    # macos-latest is an ARM architecture runner, you need to use the suffix -intel
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - name: Install Dependenncies
@@ -225,4 +225,31 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Mac OS Intel 64-bit
+          path: simavr.tar.gz
+  build-darwin-arm64:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Dependenncies
+        run: | 
+          HOMEBREW_NO_INSTALL_FROM_API=1 brew install make libelf freeglut patchelf 
+          HOMEBREW_NO_INSTALL_FROM_API=1 brew tap osx-cross/avr
+          HOMEBREW_NO_INSTALL_FROM_API=1 brew install avr-gcc@9 avr-binutils
+          export PATH="/usr/local/opt/avr-gcc@9/bin:$PATH"
+      - name: CI-Build
+        run: |
+          avr-gcc --version || true
+          clang --version
+          export CFLAGS="-DGL_SILENCE_DEPRECATION"
+          make -j4 build-simavr V=1 RELEASE=1
+          mkdir simavr_installed
+          make -k -j4 install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/ || true
+          file simavr_installed/bin/*
+          otool -L simavr_installed/bin/*
+          simavr_installed/bin/simavr --list-cores || true
+      - name: Tar files
+        run: tar -cvf simavr.tar.gz -C simavr_installed .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mac OS ARM 64-bit
           path: simavr.tar.gz
