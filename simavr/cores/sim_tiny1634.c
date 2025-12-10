@@ -21,7 +21,7 @@
 
 #include "sim_avr.h"
 
-#define SIM_VECTOR_SIZE    2
+#define SIM_VECTOR_SIZE    4  // 4-byte vectors for 16KB flash (needs JMP, not RJMP)
 #define SIM_MMCU           "attiny1634"
 #define SIM_CORENAME       mcu_tiny1634
 
