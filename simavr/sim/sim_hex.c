@@ -172,8 +172,12 @@ read_ihex_chunks(
 			allocation += INCREMENT;
 			chunk = realloc(chunk, allocation + (sizeof *chunk - 1));
 
-			/* Update the pointer in the previous list element */
-			if ( backlink_p ) backlink_p->next = chunk;
+			/* Update the pointer in the previous list element or root */
+			if ( backlink_p ) {
+				backlink_p->next = chunk;
+			} else {
+				*chunks_p = chunk;
+			}
 
 			/* Refresh the pointer to the future chunk */
 			chunks_p = &chunk->next;
