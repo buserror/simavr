@@ -263,8 +263,14 @@ main(
 
 			++f.tracecount;
 		} else if (!strcmp(argv[pi], "-ti")) {
-			if (pi < argc-1)
+			if (trace_vectors_count >= ARRAY_SIZE(trace_vectors)) {
+				fprintf(stderr,
+						"%s: too many '--ti' arguments, max is %zu.\n",
+						argv[0], ARRAY_SIZE(trace_vectors));
+				exit(1);
+			} else if (pi < argc-1) {
 				trace_vectors[trace_vectors_count++] = atoi(argv[++pi]);
+			}
 		} else if (!strcmp(argv[pi], "-g") ||
 				   !strcmp(argv[pi], "--gdb")) {
 			gdb++;
