@@ -118,6 +118,7 @@ main(
 	uint32_t loadBase = AVR_SEGMENT_OFFSET_FLASH;
 	int trace_vectors[8] = {0};
 	int trace_vectors_count = 0;
+	const size_t max_num_irq_traces = sizeof(trace_vectors) / sizeof(trace_vectors[0]);
 	const char *vcd_input = NULL;
 
 #ifndef NO_COLOR
@@ -263,8 +264,17 @@ main(
 
 			++f.tracecount;
 		} else if (!strcmp(argv[pi], "-ti")) {
-			if (pi < argc-1)
+			if (trace_vectors_count >= max_num_irq_traces) {
+				fprintf(
+					stderr,
+					"%s: too many '--ti' arguments, max is '%lu'.\n",
+					argv[0],
+					max_num_irq_traces
+				);
+				exit(1);
+			} else if (pi < argc-1) {
 				trace_vectors[trace_vectors_count++] = atoi(argv[++pi]);
+			}
 		} else if (!strcmp(argv[pi], "-g") ||
 				   !strcmp(argv[pi], "--gdb")) {
 			gdb++;
