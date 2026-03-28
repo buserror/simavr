@@ -26,6 +26,16 @@
 extern "C" {
 #endif
 
+/* Windows: ensure ssize_t is defined (MSYS2 UCRT64 provides sys/types.h but
+ * the _SSIZE_T_DEFINED guard may not be active in all MinGW compilation modes). */
+#ifdef __MINGW32__
+#  include <sys/types.h>
+#  ifndef _SSIZE_T_DEFINED
+#    define _SSIZE_T_DEFINED
+     typedef long ssize_t;
+#  endif
+#endif
+
 #ifndef __has_attribute
 	#define __has_attribute(x) 0
 #endif
