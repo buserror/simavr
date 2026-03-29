@@ -31,7 +31,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <setjmp.h>
-#include <dwarf.h>
+#include <libdwarf/dwarf.h>
 #include <libdwarf/libdwarf.h>
 
 #include "sim_avr.h"
@@ -65,6 +65,8 @@ static void error(char *fn, Dwarf_Error err)
 }
 
 #if CONFIG_SIMAVR_TRACE
+static char    *dummy_name = "";
+
 static void set_flash_name(avr_t *avr, Dwarf_Addr symv, const char *name)
 {
     const char **ep;
@@ -206,8 +208,8 @@ static void traverse_tree(struct ctx *ctxp, Dwarf_Die start)
     process(ctxp, start);
     rv = dwarf_child(start, &die, &err);
     if (rv == DW_DLV_OK)
-        traverse_tree(ctxp, die);
-    else 
+		traverse_tree(ctxp, die);
+    else
 		CHECK("dwarf_child");
 
     /* Examine siblings. */
@@ -229,6 +231,7 @@ static void get_lines(struct ctx *ctxp, Dwarf_Die die)
     Dwarf_Small         single;
     int                 rv;
 
+    ctxp->cu_name = dummy_name;
     rv = dwarf_srclines_b(die, &version, &single, &ctxp->lc, &err);
     CHECK("dwarf_srclines_b");
     rv = dwarf_srclines_from_linecontext(ctxp->lc, &ctxp->lines,
@@ -239,7 +242,7 @@ static void get_lines(struct ctx *ctxp, Dwarf_Die die)
 
     rv = dwarf_diename(die, &ctxp->cu_name, &err);
     if (rv == DW_DLV_NO_ENTRY)
-        ctxp->cu_name = "";
+        ctxp->cu_name = dummy_name;
     else
         CHECK("dwarf_diename");
 #ifdef VERBOSE
@@ -347,7 +350,8 @@ int avr_read_dwarf(avr_t *avr, const char *filename)
             }
             *ep = strdup(buff);
         }
-        dwarf_dealloc(ctx.db, ctx.cu_name, DW_DLA_STRING);
+        if (ctx.cu_name != dummy_name)
+            dwarf_dealloc(ctx.db, ctx.cu_name, DW_DLA_STRING);
         if (ctx.lc)
             dwarf_srclines_dealloc_b(ctx.lc);
 #else
