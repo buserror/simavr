@@ -152,7 +152,7 @@ struct avr_trace_data_t {
 	// DEBUG ONLY
 	// keeps track of which registers gets touched by instructions
 	// reset before each new instructions. Allows meaningful traces
-	uint32_t	touched[256 / 32];	// debug
+	uint32_t	touched[512 / 32];	// debug
 };
 
 typedef void (*avr_run_t)(
