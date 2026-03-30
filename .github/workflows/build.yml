@@ -8,7 +8,7 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
@@ -22,7 +22,7 @@ jobs:
           make -k install DESTDIR=$(pwd)/simavr_installed/ || true
           mv simavr_installed/bin/simavr simavr_installed/bin/simavr.exe
           file simavr_installed/bin/*
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Windows 64-bit
           path: simavr_installed
@@ -32,7 +32,7 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW32
@@ -52,15 +52,15 @@ jobs:
           make -k install DESTDIR=$(pwd)/simavr_installed/ || true
           mv simavr_installed/bin/simavr simavr_installed/bin/simavr.exe
           file simavr_installed/bin/*
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Windows 32-bit
           path: simavr_installed
   build-lin64:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Dependenncies
+      - uses: actions/checkout@v6
+      - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential make gcc-avr avr-libc libelf-dev freeglut3-dev patchelf
@@ -77,15 +77,15 @@ jobs:
           simavr_installed/bin/simavr --list-cores || true
       - name: Tar files
         run: tar -cvf simavr.tar.gz -C simavr_installed .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Linux 64-bit
           path: simavr.tar.gz
   build-lin32:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Dependenncies
+      - uses: actions/checkout@v6
+      - name: Install Dependencies
         run: | 
           sudo dpkg --add-architecture i386
           sudo apt-get update
@@ -108,14 +108,14 @@ jobs:
           simavr_installed/bin/simavr --list-cores || true
       - name: Tar files
         run: tar -cvf simavr.tar.gz -C simavr_installed .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Linux 32-bit
           path: simavr.tar.gz
   build-armv7l:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pguyot/arm-runner-action@v2
         id: build_image
         with:
@@ -137,14 +137,14 @@ jobs:
             ldd simavr_installed/bin/*
             simavr_installed/bin/simavr --list-cores || true
             tar -cvf simavr.tar.gz -C simavr_installed .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Linux ARMv7l
           path: simavr.tar.gz
   build-armv6l:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pguyot/arm-runner-action@v2
         id: build_image
         with:
@@ -166,14 +166,14 @@ jobs:
             ldd simavr_installed/bin/*
             simavr_installed/bin/simavr --list-cores || true
             tar -cvf simavr.tar.gz -C simavr_installed .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Linux ARMv6l
           path: simavr.tar.gz
   build-aarch64:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pguyot/arm-runner-action@v2
         id: build_image
         with:
@@ -194,7 +194,7 @@ jobs:
             ldd simavr_installed/bin/*
             simavr_installed/bin/simavr --list-cores || true
             tar -cvf simavr.tar.gz -C simavr_installed .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Linux AArch64
           path: simavr.tar.gz
@@ -202,8 +202,8 @@ jobs:
     # macos-latest is an ARM architecture runner, you need to use the suffix -intel
     runs-on: macos-15-intel
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Dependenncies
+      - uses: actions/checkout@v6
+      - name: Install Dependencies
         run: | 
           HOMEBREW_NO_INSTALL_FROM_API=1 brew install make libelf freeglut patchelf 
           HOMEBREW_NO_INSTALL_FROM_API=1 brew tap osx-cross/avr
@@ -222,20 +222,18 @@ jobs:
           simavr_installed/bin/simavr --list-cores || true
       - name: Tar files
         run: tar -cvf simavr.tar.gz -C simavr_installed .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Mac OS Intel 64-bit
           path: simavr.tar.gz
   build-darwin-arm64:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Dependenncies
+      - uses: actions/checkout@v6
+      - name: Install Dependencies
         run: | 
           HOMEBREW_NO_INSTALL_FROM_API=1 brew install make libelf freeglut patchelf 
           HOMEBREW_NO_INSTALL_FROM_API=1 brew tap osx-cross/avr
-          HOMEBREW_NO_INSTALL_FROM_API=1 brew install avr-gcc@9 avr-binutils
-          export PATH="/usr/local/opt/avr-gcc@9/bin:$PATH"
       - name: CI-Build
         run: |
           avr-gcc --version || true
@@ -249,7 +247,7 @@ jobs:
           simavr_installed/bin/simavr --list-cores || true
       - name: Tar files
         run: tar -cvf simavr.tar.gz -C simavr_installed .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Mac OS ARM 64-bit
           path: simavr.tar.gz
