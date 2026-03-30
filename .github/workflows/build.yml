@@ -207,8 +207,6 @@ jobs:
         run: | 
           HOMEBREW_NO_INSTALL_FROM_API=1 brew install make libelf freeglut patchelf 
           HOMEBREW_NO_INSTALL_FROM_API=1 brew tap osx-cross/avr
-          HOMEBREW_NO_INSTALL_FROM_API=1 brew install avr-gcc@9 avr-binutils
-          export PATH="/usr/local/opt/avr-gcc@9/bin:$PATH"
       - name: CI-Build
         run: |
           avr-gcc --version || true
@@ -234,6 +232,8 @@ jobs:
         run: | 
           HOMEBREW_NO_INSTALL_FROM_API=1 brew install make libelf freeglut patchelf 
           HOMEBREW_NO_INSTALL_FROM_API=1 brew tap osx-cross/avr
+          HOMEBREW_NO_INSTALL_FROM_API=1 brew install avr-gcc@9 avr-binutils
+          export PATH="/usr/local/opt/avr-gcc@9/bin:$PATH"
       - name: CI-Build
         run: |
           avr-gcc --version || true
