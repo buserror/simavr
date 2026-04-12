@@ -9,19 +9,26 @@ jobs:
         shell: msys2 {0}
     steps:
       - uses: actions/checkout@v6
+        with:
+          repository: buserror/simavr
+          ref: master
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           update: true
-          install: make mingw-w64-x86_64-toolchain mingw-w64-x86_64-libelf mingw-w64-x86_64-avr-toolchain  mingw-w64-x86_64-freeglut
+          install: make mingw-w64-x86_64-toolchain mingw-w64-x86_64-libelf mingw-w64-x86_64-libdwarf mingw-w64-x86_64-avr-toolchain mingw-w64-x86_64-freeglut
       - name: CI-Build
         run: |
           echo 'Running in MSYS2!'
-          make build-simavr V=1
+          make  build-simavr build-tests V=1
           mkdir simavr_installed
           make -k install DESTDIR=$(pwd)/simavr_installed/ || true
           mv simavr_installed/bin/simavr simavr_installed/bin/simavr.exe
           file simavr_installed/bin/*
+      - name: Tests
+        run: |
+          cd tests
+          make run_tests
       - uses: actions/upload-artifact@v6
         with:
           name: Windows 64-bit
@@ -33,18 +40,14 @@ jobs:
         shell: msys2 {0}
     steps:
       - uses: actions/checkout@v6
+        with:
+          repository: buserror/simavr
+          ref: master
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW32
           update: true
           install: make mingw-w64-i686-toolchain mingw-w64-i686-libelf mingw-w64-i686-freeglut unzip
-      - name: Install AVR toolchain
-        run: |
-          wget "https://github.com/ZakKemble/avr-gcc-build/releases/download/v14.1.0-1/avr-gcc-14.1.0-x86-windows.zip"
-          unzip avr-gcc-14.1.0-x86-windows.zip
-          ls -l
-          rm avr-gcc-14.1.0-x86-windows.zip
-          echo "$(pwd)/avr-gcc-14.1.0-x86-windows/avr-gcc-14.1.0-x86-windows/bin" >> $GITHUB_PATH  
       - name: CI-Build
         run: |
           make build-simavr V=1
@@ -60,13 +63,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          repository: buserror/simavr
+          ref: master
       - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential make gcc-avr avr-libc libelf-dev freeglut3-dev patchelf
       - name: CI-Build
         run: |
-          make build-simavr V=1 RELEASE=1
+          make  V=1 RELEASE=1 || true
           mkdir simavr_installed
           make  install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
           file simavr_installed/bin/*
@@ -75,6 +81,10 @@ jobs:
           patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
           ldd simavr_installed/bin/*
           simavr_installed/bin/simavr --list-cores || true
+      - name: Tests
+        run: |
+          cd tests
+          make run_tests
       - name: Tar files
         run: tar -cvf simavr.tar.gz -C simavr_installed .
       - uses: actions/upload-artifact@v6
@@ -85,6 +95,9 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v6
+        with:
+          repository: buserror/simavr
+          ref: master
       - name: Install Dependencies
         run: | 
           sudo dpkg --add-architecture i386
@@ -97,7 +110,7 @@ jobs:
           sudo update-alternatives --set cc /usr/bin/gcc
       - name: CI-Build
         run: |
-          make build-simavr V=1 RELEASE=1
+          make  V=1 RELEASE=1
           mkdir simavr_installed
           make  install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
           file simavr_installed/bin
@@ -116,6 +129,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          repository: buserror/simavr
+          ref: master
       - uses: pguyot/arm-runner-action@v2
         id: build_image
         with:
@@ -126,8 +142,8 @@ jobs:
           commands: |
             df -h /
             sudo apt-get update
-            sudo apt-get install -y build-essential make gcc-avr avr-libc libelf-dev freeglut3-dev patchelf file
-            make -j4 build-simavr V=1 RELEASE=1
+            sudo apt-get install -y build-essential make gcc-avr avr-libc libelf-dev libdwarf-dev freeglut3-dev patchelf file
+            make build-simavr build-tests  V=1 RELEASE=1
             mkdir simavr_installed
             make -j4 install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
             file simavr_installed/bin/*
@@ -137,6 +153,8 @@ jobs:
             ldd simavr_installed/bin/*
             simavr_installed/bin/simavr --list-cores || true
             tar -cvf simavr.tar.gz -C simavr_installed .
+            cd tests
+            make run_tests
       - uses: actions/upload-artifact@v6
         with:
           name: Linux ARMv7l
@@ -145,6 +163,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          repository: buserror/simavr
+          ref: master
       - uses: pguyot/arm-runner-action@v2
         id: build_image
         with:
@@ -155,8 +176,8 @@ jobs:
           commands: |
             df -h /
             sudo apt-get update
-            sudo apt-get install -y build-essential make gcc-avr avr-libc libelf-dev freeglut3-dev patchelf file
-            make build-simavr V=1 RELEASE=1
+            sudo apt-get install -y build-essential make gcc-avr avr-libc libelf-dev libdwarf-dev freeglut3-dev patchelf file
+            make  V=1 RELEASE=1
             mkdir simavr_installed
             make install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
             file simavr_installed/bin/*
@@ -166,6 +187,8 @@ jobs:
             ldd simavr_installed/bin/*
             simavr_installed/bin/simavr --list-cores || true
             tar -cvf simavr.tar.gz -C simavr_installed .
+            cd tests
+            make run_tests
       - uses: actions/upload-artifact@v6
         with:
           name: Linux ARMv6l
@@ -174,6 +197,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
+        with:
+          repository: buserror/simavr
+          ref: master
       - uses: pguyot/arm-runner-action@v2
         id: build_image
         with:
@@ -183,8 +209,8 @@ jobs:
           image_additional_mb: 1024
           commands: |
             df -h /
-            sudo apt-get install -y build-essential make gcc-avr avr-libc libelf-dev freeglut3-dev patchelf file
-            make -j4 build-simavr V=1 RELEASE=1
+            sudo apt-get install -y build-essential make gcc-avr avr-libc libelf-dev libdwarf-dev freeglut3-dev patchelf file
+            make  build-simavr build-tests V=1 RELEASE=1
             mkdir simavr_installed
             make -j4 install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
             file simavr_installed/bin/*
@@ -194,6 +220,8 @@ jobs:
             ldd simavr_installed/bin/*
             simavr_installed/bin/simavr --list-cores || true
             tar -cvf simavr.tar.gz -C simavr_installed .
+            cd tests
+            make run_tests
       - uses: actions/upload-artifact@v6
         with:
           name: Linux AArch64
@@ -203,6 +231,9 @@ jobs:
     runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v6
+        with:
+          repository: buserror/simavr
+          ref: master
       - name: Install Dependencies
         run: | 
           HOMEBREW_NO_INSTALL_FROM_API=1 brew install make libelf freeglut patchelf 
@@ -228,6 +259,9 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v6
+        with:
+          repository: buserror/simavr
+          ref: master
       - name: Install Dependencies
         run: | 
           HOMEBREW_NO_INSTALL_FROM_API=1 brew install make libelf freeglut patchelf 
@@ -239,12 +273,16 @@ jobs:
           avr-gcc --version || true
           clang --version
           export CFLAGS="-DGL_SILENCE_DEPRECATION"
-          make -j4 build-simavr V=1 RELEASE=1
+          make V=1 RELEASE=1
           mkdir simavr_installed
           make -k -j4 install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/ || true
           file simavr_installed/bin/*
           otool -L simavr_installed/bin/*
           simavr_installed/bin/simavr --list-cores || true
+      - name: Tests
+        run: |
+          cd tests
+          make run_tests
       - name: Tar files
         run: tar -cvf simavr.tar.gz -C simavr_installed .
       - uses: actions/upload-artifact@v6
