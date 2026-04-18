@@ -40,6 +40,7 @@
 #include "avr_ioport.h"
 #include "avr_timer.h"
 #include "avr_adc.h"
+#include "avr_uart.h"
 
 void tn1634_init(struct avr_t * avr);
 void tn1634_reset(struct avr_t * avr);
@@ -57,6 +58,7 @@ struct mcu_t {
 	avr_ioport_t porta, portb, portc;
 	avr_timer_t timer0, timer1;
 	avr_adc_t adc;
+    avr_uart_t uart0, uart1;
 };
 
 #ifdef SIM_CORENAME
@@ -261,7 +263,8 @@ const struct mcu_t SIM_CORENAME = {
 		.ref = { AVR_IO_REGBIT(ADMUX, REFS0), AVR_IO_REGBIT(ADMUX, REFS1) },
 		.ref_values = {
 			[0] = ADC_VREF_VCC,
-			[1] = ADC_VREF_V110,
+			[1] = ADC_VREF_AREF,
+			[2] = ADC_VREF_V110,
 		},
 
 		.adlar = AVR_IO_REGBIT(ADCSRB, ADLAR),
@@ -306,6 +309,8 @@ const struct mcu_t SIM_CORENAME = {
 			.vector = ADC_vect,
 		},
 	},
+	AVR_UARTX_DECLARE(0, PRR, PRUSART0),
+	AVR_UARTX_DECLARE(1, PRR, PRUSART1),
 };
 
 #endif /* SIM_CORENAME */

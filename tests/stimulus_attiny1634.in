@@ -1,0 +1,12 @@
+$timescale 1ms $end
+$var real 32 a adc0_0 $end
+$var wire 1 p iogA_2 $end
+$enddefinitions $end
+#1
+r660 a
+1p
+#2
+r2200 a
+0p
+#3000
+1p

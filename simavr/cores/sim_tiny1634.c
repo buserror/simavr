@@ -55,6 +55,8 @@ void tn1634_init(struct avr_t * avr)
 	avr_adc_init(avr, &mcu->adc);
 	avr_timer_init(avr, &mcu->timer0);
 	avr_timer_init(avr, &mcu->timer1);
+	avr_uart_init(avr, &mcu->uart0);
+	avr_uart_init(avr, &mcu->uart1);
 }
 
 void tn1634_reset(struct avr_t * avr)
