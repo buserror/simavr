@@ -139,6 +139,21 @@ static void _avr_usi_connect_irqs(struct avr_t * avr, avr_usi_t * p, uint8_t new
 	}
 }
 
+static void _avr_usi_set_scl_hold(struct avr_t * avr, avr_usi_t * p, bool enable)
+{
+	avr_ioport_getirq_t req_ck = { .bit = p->pin_usck };
+	if (avr_ioctl(avr, AVR_IOCTL_IOPORT_GETIRQ_REGBIT, &req_ck) > 0) {
+		if (enable)
+			req_ck.irq[0]->flags |= IRQ_FLAG_STRONG;
+		else
+			req_ck.irq[0]->flags &= ~IRQ_FLAG_STRONG;
+	}
+	if (enable)
+		p->io.irq[USI_IRQ_USCK].flags |= IRQ_FLAG_STRONG;
+	else
+		p->io.irq[USI_IRQ_USCK].flags &= ~IRQ_FLAG_STRONG;
+}
+
 // -------------------------------------------------------------------------------------------------
 // USISR - status register
 // -------------------------------------------------------------------------------------------------
@@ -166,7 +181,7 @@ static void avr_usi_write_usisr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 		v &= ~(1 << p->usi_start.raised.bit);
 		avr_clear_interrupt(avr, &p->usi_start);
 		if (avr_regbit_get(avr, p->usi_start.raised)) {
-			p->io.irq[USI_IRQ_USCK].flags &= ~IRQ_FLAG_USER;
+			_avr_usi_set_scl_hold(avr, p, false);
 		}
 	}
 
@@ -175,7 +190,7 @@ static void avr_usi_write_usisr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 		v &= ~(1 << p->usi_ovf.raised.bit);
 		avr_clear_interrupt(avr, &p->usi_ovf);
 		if (avr_regbit_get(avr, p->usi_ovf.raised)) {
-			p->io.irq[USI_IRQ_USCK].flags &= ~IRQ_FLAG_USER;
+			_avr_usi_set_scl_hold(avr, p, false);
 		}
 	}
 
@@ -356,7 +371,7 @@ static void _avr_usi_usck_changed(struct avr_irq_t * irq, uint32_t value, void *
 
 	cs = avr_regbit_get(avr, p->usics);
 	if (cs < USI_CS_EXT_POS)
-		return;					// Clocked elsewhere.
+		return;	// Clocked elsewhere.
 
 	wm = avr_regbit_get(avr, p->usiwm);
 
@@ -375,10 +390,10 @@ static void _avr_usi_usck_changed(struct avr_irq_t * irq, uint32_t value, void *
 
 	if (wm >= USI_WM_TWOWIRE) {
 		/* Clock Stretching after Start Condition: Hold SCL low after
-			*  master pulls it low (till interrupt flag is cleared)
-			*/
+		 *  master pulls it low (till interrupt flag is cleared)
+		 */
 		if (down && avr_regbit_get(avr, p->usi_start.raised)) {
-			p->io.irq[USI_IRQ_USCK].flags |= IRQ_FLAG_USER;
+			_avr_usi_set_scl_hold(avr, p, true);
 		}
 	}
 
@@ -400,10 +415,10 @@ static void _avr_usi_usck_changed(struct avr_irq_t * irq, uint32_t value, void *
 
 	if (wm == USI_WM_TWOWIRE_HOLD) {
 		/* Clock Stretching after Overflow (start of ACK): Hold SCL low
-			*  after master pulls it low (till interrupt flag is cleared)
-			*/
+		 *  after master pulls it low (till interrupt flag is cleared)
+		 */
 		if (down && avr_regbit_get(avr, p->usi_ovf.raised)) {
-			p->io.irq[USI_IRQ_USCK].flags |= IRQ_FLAG_USER;
+			_avr_usi_set_scl_hold(avr, p, true);
 		}
 	}
 }

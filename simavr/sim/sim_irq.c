@@ -200,7 +200,9 @@ avr_raise_irq_float(
 		int floating)
 {
 	if (!irq)
-		return ;
+		return;
+	if (irq->flags & IRQ_FLAG_STRONG)
+		return;
 	uint32_t output = (irq->flags & IRQ_FLAG_NOT) ? !value : value;
 	// if value is the same but it's the first time, raise it anyway
 	if (irq->value == output &&
