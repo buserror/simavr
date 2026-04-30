@@ -38,6 +38,7 @@
 static const struct text_colors font_no_color = {
        .green  = "",
        .red    = "",
+       .blue    = "",
        .normal = ""
 };
 #endif

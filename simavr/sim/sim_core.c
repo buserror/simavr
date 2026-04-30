@@ -34,10 +34,12 @@ struct text_colors simavr_font = {
 #ifdef NO_COLOR
 	.green  = "",
 	.red    = "",
+	.blue    = "",
 	.normal = ""
 #else
 	.green  = "\e[32m",
 	.red    = "\e[31m",
+	.blue    = "\e[34m",
 	.normal = "\e[0m"
 #endif
 };

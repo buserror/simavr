@@ -32,6 +32,7 @@ extern "C" {
 struct text_colors {
 	const char *green;
 	const char *red;
+	const char *blue;
 	const char *normal;
 };
 

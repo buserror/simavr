@@ -275,8 +275,8 @@ _avr_io_console_write(
 {
 	if (v == '\r' && avr->io_console_buffer.buf) {
 		avr->io_console_buffer.buf[avr->io_console_buffer.len] = 0;
-		AVR_LOG(avr, LOG_OUTPUT, "O:" "%s" "" "\n",
-			avr->io_console_buffer.buf);
+		AVR_LOG(avr, LOG_OUTPUT, "%s%s%s\n",
+			simavr_font.blue, avr->io_console_buffer.buf, simavr_font.normal);
 		avr->io_console_buffer.len = 0;
 		return;
 	}
