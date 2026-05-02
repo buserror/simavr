@@ -95,13 +95,13 @@ static void _avr_usi_disconnect_irqs(struct avr_t * avr, avr_usi_t * p, uint8_t 
 			break;
 		}
 		case USI_WM_TWOWIRE:
-		case USI_WM_TWOWIRE_HOLD:
+		case USI_WM_TWOWIRE_HOLD: {
 			avr_ioport_getirq_t req_di = { .bit = p->pin_di };
 			if (avr_ioctl(avr, AVR_IOCTL_IOPORT_GETIRQ_REGBIT, &req_di) > 0) {
 				avr_unconnect_irq(&p->io.irq[USI_IRQ_DO], req_di.irq[0]);
 			}
 			break;
-
+		}
 		default:
 			break;
 	}
@@ -123,13 +123,13 @@ static void _avr_usi_connect_irqs(struct avr_t * avr, avr_usi_t * p, uint8_t new
 			break;
 		}
 		case USI_WM_TWOWIRE:
-		case USI_WM_TWOWIRE_HOLD:
+		case USI_WM_TWOWIRE_HOLD: {
 			avr_ioport_getirq_t req_di = { .bit = p->pin_di };
 			if (avr_ioctl(avr, AVR_IOCTL_IOPORT_GETIRQ_REGBIT, &req_di) > 0) {
 				avr_connect_irq(&p->io.irq[USI_IRQ_DO], req_di.irq[0]);
 			}
 			break;
-
+		}
 		default:
 			break;
 	}
@@ -158,7 +158,7 @@ static avr_cycle_count_t _avr_usi_start_det_di_dly(struct avr_t * avr,	avr_cycle
 		return 0; // SCL must be high at SDA change
 
 	DBG(printf("USI ------------------- DI start condition detected\n"));
-	
+
 	avr_raise_interrupt(avr, &p->usi_start);
 	return 0;
 }
@@ -171,7 +171,7 @@ static avr_cycle_count_t _avr_usi_stop_det_di_dly(struct avr_t * avr,	avr_cycle_
 		return 0; // SCL must be high at SDA change
 
 	DBG(printf("USI ------------------- DI stop condition detected\n"));
-	
+
 	avr_core_watch_write(avr, p->r_usisr, avr->data[p->r_usisr] | (1 << p->usipf.bit));
 	return 0;
 }
