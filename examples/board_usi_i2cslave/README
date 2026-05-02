@@ -1,0 +1,5 @@
+
+This example is similar to board_i2cslave, treating the AVR (ATtiny)
+as a bus slave, rather than bus master. It hooks directly to the
+AVR usi (i2c mode) pins, and bit bangs the I2C protocol as a master,
+and then runs a firmware that behaves as a TWI slave to talk to it.
