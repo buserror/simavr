@@ -217,8 +217,17 @@ avr_raise_irq_float(
 			// prevents reentrance / endless calling loops
 		if (hook->busy == 0) {
 			hook->busy++;
-			if (hook->notify)
+			if (hook->notify) {
 				hook->notify(irq, output,  hook->param);
+				if (irq->flags & IRQ_FLAG_NTF_XHOOK) {
+					irq->flags &= ~IRQ_FLAG_NTF_XHOOK;
+					hook->busy--;
+					//To revert already changed hooks eg VCD
+					output = irq->value;
+					hook = irq->hook;
+					continue;
+				}
+			}
 			if (hook->chain)
 				avr_raise_irq_float(hook->chain, output, floating);
 			hook->busy--;

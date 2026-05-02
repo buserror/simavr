@@ -181,7 +181,8 @@ avr_ioport_irq_notify(
 			 */
 
 			avr->data[p->r_port] = new_out;
-			return;	   // TODO: stop further processing of IRQ.
+			irq->flags |= IRQ_FLAG_NTF_XHOOK; // Stop further processing of IRQ.
+			return;
 		}
 	} else {
 		// Set the real PIN bit.
