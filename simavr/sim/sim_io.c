@@ -48,9 +48,16 @@ avr_register_io(
 		avr_t *avr,
 		avr_io_t * io)
 {
-	io->next = avr->io_port;
 	io->avr = avr;
-	avr->io_port = io;
+	io->next = NULL;
+	if (!avr->io_port) {
+		avr->io_port = io;
+	} else {
+		avr_io_t * port = avr->io_port;
+		while (port->next)
+			port = port->next;
+		port->next = io;
+	}
 }
 
 void

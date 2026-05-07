@@ -215,7 +215,7 @@ static inline void SET_USI_TO_RECEIVE_ACK()
 	i2cStatus = USII2CSLV_RECEIVING_ACK_FOR_TX;
 	DDR_USI	&= ~(1 << PORT_USI_SDA);
 	PORT_USI|=	_BV(PORT_USI_SDA);
-	USIDR	=	0x80;
+	USIDR	=	0;
 	USISR	=	(0 << USISIF)   | (1 << USIOIF) | (1 << USIPF) |
 				(1 << USIDC) | (0x0E << USICNT0);
 }

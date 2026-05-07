@@ -105,12 +105,14 @@ avr_alloc_irq(
 
 static avr_irq_hook_t *
 _avr_alloc_irq_hook(
-		avr_irq_t * irq)
+		avr_irq_hook_t ** parent)
 {
 	avr_irq_hook_t *hook = malloc(sizeof(avr_irq_hook_t));
 	memset(hook, 0, sizeof(avr_irq_hook_t));
-	hook->next = irq->hook;
-	irq->hook = hook;
+	if (*parent)
+		(*parent)->next = hook;
+	else
+		(*parent) = hook;
 	return hook;
 }
 
@@ -152,17 +154,23 @@ avr_irq_register_notify(
 		return;
 
 	avr_irq_hook_t *hook = irq->hook;
-	while (hook) {
-		if (hook->notify == notify && hook->param == param) {
-			if (irq->pool->avr->resetting) {
-				irq->value = 0;
-				irq->flags |= IRQ_FLAG_INIT;
+	if (!hook) {
+		hook = _avr_alloc_irq_hook(&(irq->hook));
+	} else {
+		do {
+			if (hook->notify == notify && hook->param == param) {
+				if (irq->pool->avr->resetting) {
+					irq->value = 0;
+					irq->flags |= IRQ_FLAG_INIT;
+				}
+				return;	// already there
 			}
-			return;	// already there
-		}
-		hook = hook->next;
+			if (!hook->next)
+				break;
+			hook = hook->next;
+		} while (1);
+		hook = _avr_alloc_irq_hook(&hook);
 	}
-	hook = _avr_alloc_irq_hook(irq);
 	hook->notify = notify;
 	hook->param = param;
 }
@@ -217,8 +225,14 @@ avr_raise_irq_float(
 			// prevents reentrance / endless calling loops
 		if (hook->busy == 0) {
 			hook->busy++;
-			if (hook->notify)
+			if (hook->notify) {
 				hook->notify(irq, output,  hook->param);
+				if (irq->flags & IRQ_FLAG_NTF_STOP) {
+					irq->flags &= ~IRQ_FLAG_NTF_STOP;
+					hook->busy--;
+					return; //Stop immediately, leaving irq->value untouched
+				}
+			}
 			if (hook->chain)
 				avr_raise_irq_float(hook->chain, output, floating);
 			hook->busy--;
@@ -249,12 +263,18 @@ avr_connect_irq(
 		return;
 	}
 	avr_irq_hook_t *hook = src->hook;
-	while (hook) {
-		if (hook->chain == dst)
-			return;	// already there
-		hook = hook->next;
+	if (!hook) {
+		hook = _avr_alloc_irq_hook(&(src->hook));
+	} else {
+		do {
+			if (hook->chain == dst)
+				return;	// already there
+			if (!hook->next)
+				break;
+			hook = hook->next;
+		} while (1);
+		hook = _avr_alloc_irq_hook(&hook);
 	}
-	hook = _avr_alloc_irq_hook(src);
 	hook->chain = dst;
 }
 

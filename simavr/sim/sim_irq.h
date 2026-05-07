@@ -56,6 +56,7 @@ enum {
 	IRQ_FLAG_FILTERED	= (1 << 1),	//!< do not "notify" if "value" is the same as previous raise
 	IRQ_FLAG_ALLOC		= (1 << 2), //!< this irq structure was malloced via avr_alloc_irq
 	IRQ_FLAG_INIT		= (1 << 3), //!< this irq hasn't been used yet
+	IRQ_FLAG_NTF_STOP	= (1 << 3), //!< only for notify functions - stop processing hooks after current notify
 	IRQ_FLAG_FLOATING	= (1 << 4), //!< this 'pin'/signal is floating
 	IRQ_FLAG_STRONG		= (1 << 5), //!< this 'pin'/signal is held at current state, do not "notify"
 	IRQ_FLAG_USER		= (1 << 6), //!< Can be used by irq users
