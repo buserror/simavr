@@ -101,6 +101,7 @@ AVR		:= avr-
 IPATH		+= ${PREFIX}/include
 CFLAGS		+= -I${PREFIX}/include
 LDFLAGS		+= -L/lib -L/local/lib
+LDFLAGS		+= -lpthread
 CFLAGS 		+= -DNO_COLOR
 else
 CFLAGS 		+= -fPIC
