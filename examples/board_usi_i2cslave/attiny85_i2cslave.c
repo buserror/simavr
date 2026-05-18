@@ -54,7 +54,7 @@ static inline void printLoopBuf(void)
 	for (int i = 0; i < loopBufDatLen; i++) {
 		v_putchar('|'); v_putchar(loopBuf[i]);
 	}
-	v_putchar('|'); v_putchar('\r');
+	v_putchar('|'); v_putchar('\n');
 	loopBufDatLen = 0;
 }
 
@@ -65,7 +65,7 @@ static inline uint8_t loadTxCallback(void)
 		v_puts("Tx needs > ");
 		v_putchar('0' + ((txCount / 10) % 10));
 		v_putchar('0' + (txCount % 10));
-		v_putchar('\r');
+		v_putchar('\n');
 		offset += txCount;
 	}
 	for (uint8_t i = 0; i < 4; i++) { //Do not load more than BUF_SIZE
@@ -82,7 +82,7 @@ static inline void txDoneCallback(void) {
 		v_puts("Tx done ");
 		v_putchar('0' + ((txCount / 10) % 10));
 		v_putchar('0' + (txCount % 10));
-		v_putchar('\r');
+		v_putchar('\n');
 		txCount = 0; //Reset counter
 	}
 }
@@ -342,10 +342,10 @@ int main(void)
     // Set PB1 as output (Toggled on data reception)
     DDRB |= (1 << PB1);
 
-	v_puts("Initializing...\r");
+	v_puts("Initializing...\n");
 	UsiI2cSlv_Init();
 
-	v_puts("sei\r");
+	v_puts("sei\n");
 	sei();
 
     while (1) {
