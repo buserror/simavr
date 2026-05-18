@@ -66,10 +66,63 @@
 #define TWI_SRX_STOP_RESTART       0xA0  // A STOP condition or repeated START condition has been received while still addressed as Slave
 
 // TWI Miscellaneous status codes
-#define TWI_NO_STATE               0xF8  // No relevant state information available; TWINT = �0�
+#define TWI_NO_STATE               0xF8  // No relevant state information available;
 #define TWI_BUS_ERROR              0x00  // Bus error due to an illegal START or STOP condition
 
 #define AVR_TWI_DEBUG 1
+
+#if AVR_TWI_DEBUG
+static uint32_t trace_irq(avr_t *avr, int in, uint32_t v)
+{
+	avr_twi_msg_irq_t  msg;
+	char               buf[32];
+	char              *cp;
+
+	msg.u.v = v;
+	cp = buf;
+	if (msg.u.twi.msg & TWI_COND_START)
+		cp += sprintf(cp, "START|");
+	if (msg.u.twi.msg & TWI_COND_STOP)
+		cp += sprintf(cp, "STOP|");
+	if (msg.u.twi.msg & TWI_COND_ADDR)
+		cp += sprintf(cp, "ADDR|");
+	if (msg.u.twi.msg & TWI_COND_ACK)
+		cp += sprintf(cp, "ACK|");
+	if (msg.u.twi.msg & TWI_COND_WRITE)
+		cp += sprintf(cp, "WRITE|");
+	if (msg.u.twi.msg & TWI_COND_READ)
+		cp += sprintf(cp, "READ|");
+	if (cp > buf)
+		--cp;
+	*cp = 0;
+	AVR_TRACE(avr, "%s IRQ state %#02x (%s) addr %#02x data %#02x\n",
+			  in ? "Sending" : "Received", msg.u.twi.msg, buf,
+			  msg.u.twi.addr, msg.u.twi.data);
+	return v;
+}
+#endif
+
+uint32_t
+avr_twi_irq_msg(
+		uint8_t msg,
+		uint8_t addr,
+		uint8_t data)
+{
+	avr_twi_msg_irq_t _msg = {
+			.u.twi.msg = msg,
+			.u.twi.addr = addr,
+			.u.twi.data = data,
+	};
+	return _msg.u.v;
+}
+
+/* Call avr_twi_irq_msg() through a macro, when debugging. */
+
+#if AVR_TWI_DEBUG
+#define AVR_TWI_IRQ_MSG(a, b, c) trace_irq(avr, 1, avr_twi_irq_msg(a, b, c))
+#else
+#define AVR_TWI_IRQ_MSG(a, b, c) avr_twi_irq_msg(a, b, c))
+#endif
 
 static inline void
 _avr_twi_status_set(
@@ -149,7 +202,6 @@ avr_twi_write(
 	uint8_t twen = avr_regbit_get(avr, p->twen);
 	uint8_t twsta = avr_regbit_get(avr, p->twsta);
 	uint8_t twsto = avr_regbit_get(avr, p->twsto);
-	uint8_t twint = avr_regbit_get(avr, p->twi.raised);
 
 	avr_core_watch_write(avr, addr, v);
 #if AVR_TWI_DEBUG
@@ -184,17 +236,16 @@ avr_twi_write(
 
 	uint8_t cleared = avr_regbit_get(avr, p->twi.raised);
 
-	/*int cleared = */
-	avr_clear_interrupt_if(avr, &p->twi, twint);
 	/**
 	 * ATMega328p Capt. 21.9.2 TWCR Control-Register
 	 * "The TWINT flag must be cleared by software by writing a logic one to it."
 	 */
-	if ((addr == p->twi.raised.reg) && (v & ( p->twi.raised.mask << p->twi.raised.bit )) && twint) {
-		twint = !twint;
-		avr_regbit_clear( avr, p->twi.raised );
+	if (addr == p->twi.raised.reg &&
+		(v & (p->twi.raised.mask << p->twi.raised.bit))) {
+
+		avr_regbit_clear(avr, p->twi.raised);
+		AVR_TRACE(avr, "cleared %d\n", cleared);
 	}
-//	AVR_TRACE(avr, "cleared %d\n", cleared);
 
 	if (!twsto && avr_regbit_get(avr, p->twsto)) {
 		// generate a stop condition
@@ -204,7 +255,7 @@ avr_twi_write(
 		if (p->state) { // doing stuff
 			if (p->state & TWI_COND_START) {
 				avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
-						avr_twi_irq_msg(TWI_COND_STOP, p->peer_addr, 1));
+						AVR_TWI_IRQ_MSG(TWI_COND_STOP, p->peer_addr, 1));
 			}
 		}
 		/* clear stop condition regardless of status */
@@ -247,7 +298,7 @@ avr_twi_write(
 			if (do_read) {
 				if (p->state & TWI_COND_WRITE)	{
 					avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
-						avr_twi_irq_msg(TWI_COND_READ | TWI_COND_ACK, p->peer_addr, avr->data[p->r_twdr]));
+						AVR_TWI_IRQ_MSG(TWI_COND_READ | TWI_COND_ACK, p->peer_addr, avr->data[p->r_twdr]));
 				}
 #if AVR_TWI_DEBUG
 				else
@@ -255,18 +306,21 @@ avr_twi_write(
 #endif
 			} else {
 				avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
-					avr_twi_irq_msg(TWI_COND_ACK, p->peer_addr, 0));
+					AVR_TWI_IRQ_MSG(TWI_COND_ACK, p->peer_addr, 0));
 			}
 			avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
-					avr_twi_irq_msg(TWI_COND_ADDR + (do_ack ? TWI_COND_ACK : 0), p->peer_addr, avr->data[p->r_twdr]));
+						  AVR_TWI_IRQ_MSG(TWI_COND_ADDR +
+											(do_ack ? TWI_COND_ACK : 0),
+										  p->peer_addr, avr->data[p->r_twdr]));
 		} else {	// address, acknowledge it
 			p->state |= TWI_COND_ADDR;
 			avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
-					avr_twi_irq_msg(
-						TWI_COND_ADDR |
-							(do_ack ? TWI_COND_ACK : 0) |
-							(p->state & TWI_COND_WRITE ? TWI_COND_READ : 0),
-						p->peer_addr, avr->data[p->r_twdr]));
+						  AVR_TWI_IRQ_MSG(TWI_COND_ADDR |
+										  (do_ack ? TWI_COND_ACK : 0) |
+										  (p->state & TWI_COND_WRITE ?
+										   TWI_COND_READ : 0),
+										  p->peer_addr,
+										  avr->data[p->r_twdr]));
 		}
 	} else {
 
@@ -294,7 +348,7 @@ avr_twi_write(
 				// immediately via an IRQ to set the COND_ACK bit
 				// otherwise it's assumed it's been nacked...
 				avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
-						avr_twi_irq_msg(msgv, p->peer_addr, avr->data[p->r_twdr]));
+						AVR_TWI_IRQ_MSG(msgv, p->peer_addr, avr->data[p->r_twdr]));
 
 				if (do_read) { // read ?
 					_avr_twi_delay_state(p, 9,
@@ -312,7 +366,8 @@ avr_twi_write(
 #endif
 		} else if (p->state) {
 #if AVR_TWI_DEBUG
-			AVR_TRACE(avr, "I2C Master address %02x\n", avr->data[p->r_twdr]);
+			AVR_TRACE(avr, "I2C Master address %#02x, state %#02x\n",
+					  avr->data[p->r_twdr], p->state);
 #endif
 			// send the address
 			p->state |= TWI_COND_ADDR;
@@ -323,7 +378,7 @@ avr_twi_write(
 			// immediately via an IRQ tp set the COND_ACK bit
 			// otherwise it's assumed it's been nacked...
 			avr_raise_irq(p->io.irq + TWI_IRQ_OUTPUT,
-					avr_twi_irq_msg(TWI_COND_START, p->peer_addr, 0));
+					AVR_TWI_IRQ_MSG(TWI_COND_START, p->peer_addr, 0));
 
 			if (p->peer_addr & 1) { // read ?
 				p->state |= TWI_COND_READ;	// always allow read to start with
@@ -417,7 +472,10 @@ avr_twi_irq_input(
 	avr_twi_msg_irq_t msg;
 	msg.u.v = value;
 
-	AVR_TRACE(avr, "%s %08x\n", __func__, value);
+#if AVR_TWI_DEBUG
+	trace_irq(avr, 0, value);
+	AVR_TRACE(avr, "In state %#02x\n", p->state);
+#endif
 
 	if (p->state & TWI_COND_SLAVE) {
 		if (msg.u.twi.msg & TWI_COND_WRITE) {
@@ -518,18 +576,4 @@ void avr_twi_init(avr_t * avr, avr_twi_t * p)
 	avr_register_io_write(avr, p->r_twdr, avr_twi_write_data, p);
 	avr_register_io_read(avr, p->r_twdr, avr_twi_read_data, p);
 	avr_register_io_write(avr, p->twsr.reg, avr_twi_write_status, p);
-}
-
-uint32_t
-avr_twi_irq_msg(
-		uint8_t msg,
-		uint8_t addr,
-		uint8_t data)
-{
-	avr_twi_msg_irq_t _msg = {
-			.u.twi.msg = msg,
-			.u.twi.addr = addr,
-			.u.twi.data = data,
-	};
-	return _msg.u.v;
 }

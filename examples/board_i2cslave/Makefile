@@ -36,14 +36,9 @@ all: obj ${firmware} ${target}
 
 include ${simavr}/Makefile.common
 
-atmega1280_${target}.axf: atmega1280_${target}.c twimaster.c
-atmega1280_${target}.axf: ${simavr}/examples/shared/avr_twi_master.c
-atmega1280_${target}.axf: ${simavr}/examples/shared/avr_twi_master.h
-
 board = ${OBJ}/${target}.elf
 
 ${board} : ${OBJ}/${target}.o
-${board} : ${OBJ}/i2c_eeprom.o
 
 ${target}: ${board}
 	@echo $@ done
