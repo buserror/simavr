@@ -80,6 +80,7 @@ typedef struct avr_vcd_t {
 	FILE * 			output;
 	FILE * 			input;
 	struct argv_t	* input_line;
+	int             stop;           // At end of input.
 
 	int 				signal_count;
 	avr_vcd_signal_t	signal[AVR_VCD_MAX_SIGNALS];
@@ -119,6 +120,10 @@ avr_vcd_add_signal(
 int
 avr_vcd_start(
 		avr_vcd_t * vcd);
+int
+avr_vcd_start_with_comment(
+	   avr_vcd_t * vcd,
+	   const char *comment);
 // stops recording signal values into the file
 int
 avr_vcd_stop(

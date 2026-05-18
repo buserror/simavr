@@ -211,7 +211,7 @@ main(int argc, char *argv[])
 		"INT0");
 	avr_vcd_add_signal(&vcd_file, rotenc.irq + IRQ_ROTENC_OUT_A_PIN, 1, "A");
 	avr_vcd_add_signal(&vcd_file, rotenc.irq + IRQ_ROTENC_OUT_B_PIN, 1, "B");
-	avr_vcd_start(&vcd_file);
+	avr_vcd_start_with_comment(&vcd_file, fname);
 
 	// Connect all the pins on port C to our callback. This is the 'LED bar'.
 	for (int i = 0; i < 8; i++) {

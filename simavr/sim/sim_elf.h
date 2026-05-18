@@ -90,6 +90,7 @@ typedef struct elf_firmware_t {
 	uint32_t	highest_data_symbol;
 	char *		dwarf_file;	// Must be dynamically allocated.
 #endif
+	char *		file_name;	// Internal use.
 } elf_firmware_t ;
 
 /* The structure *firmware must be pre-initialised to zero, then optionally

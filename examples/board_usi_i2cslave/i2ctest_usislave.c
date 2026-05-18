@@ -437,7 +437,7 @@ int main(int argc, char *argv[]) {
 	avr_vcd_add_signal(&vcd_file, usi_ov_vect_irq, 1 /* bits */, "USIOV_vect" );
 
 	printf("\nDemo launching:\n");
-	avr_vcd_start(&vcd_file);
+	avr_vcd_start_with_comment(&vcd_file, fname);
 
 	await_avr_usec(avr, 1000);
 	twi_sendSomething(&master, 0x42);

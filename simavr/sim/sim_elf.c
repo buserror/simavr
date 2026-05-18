@@ -150,7 +150,7 @@ avr_load_firmware(
 
 	// Allocate table of Flash address strings.
 
-        table = calloc(scount, sizeof (char *));
+	table = calloc(scount, sizeof (char *));
 	avr->trace_data->codeline = table;
 	avr->trace_data->codeline_size = scount;
 
@@ -406,8 +406,14 @@ avr_load_firmware(
 	}
 	// if the firmware has specified a command register, do NOT start the trace here
 	// the firmware probably knows best when to start/stop it
-	if (!firmware->command_register_addr)
-		avr_vcd_start(avr->vcd);
+	if (!firmware->command_register_addr) {
+		char buf[128];
+
+		snprintf(buf, sizeof buf, "Firmware: %s MCU: %s",
+				 firmware->file_name, firmware->mmcu);
+		avr_vcd_start_with_comment(avr->vcd, buf);
+	}
+	free(firmware->file_name);
 }
 
 #ifdef HAVE_LIBELF
@@ -778,6 +784,8 @@ elf_read_firmware(
 	}
 	elf_end(elf);
 	close(fd);
+	if (!firmware->file_name)
+		firmware->file_name = strdup(file);
 	return 0;
 }
 #else //  HAVE_LIBELF not defined.

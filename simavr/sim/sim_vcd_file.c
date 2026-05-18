@@ -223,9 +223,10 @@ again:
 
 	if (avr_vcd_fifo_isempty(&vcd->log)) {
 		AVR_LOG(vcd->avr, LOG_TRACE,
-				"%s Finished reading, ending simavr\n",
-				vcd->filename);
-		avr->state = cpu_Done;
+				"%s Finished reading%s\n",
+				vcd->filename, vcd->stop ? " , ending simavr" : "");
+		if (vcd->stop)
+			avr->state = cpu_Done;
 		return 0;
 	}
 	log = avr_vcd_fifo_read_at(&vcd->log, 0);
@@ -329,6 +330,10 @@ avr_vcd_init_input(
 					sizeof(vcd->signal[0].name));
 
 			vcd->signal_count++;
+		} else if (!strcmp(keyword, "$comment") &&
+				   !strcmp(v->argv[1], "simavr") &&
+				   !strcmp(v->argv[2], "exit_at_eof")) {
+			vcd->stop = 1;
 		}
 	}
 	// reuse this one
@@ -445,8 +450,8 @@ avr_vcd_flush_log(
 
 	while (!avr_vcd_fifo_isempty(&vcd->log)) {
 		avr_vcd_log_t l = avr_vcd_fifo_read(&vcd->log);
-		// 10ns base -- 100MHz should be enough
-		uint64_t base = avr_cycles_to_nsec(vcd->avr, l.when - vcd->start) / 10;
+		// 1ns base -- 1GHz should be enough
+		uint64_t base = avr_cycles_to_nsec(vcd->avr, l.when - vcd->start);
 
 		/*
 		 * if that trace was seen in this nsec already, we fudge the
@@ -568,9 +573,15 @@ avr_vcd_add_signal(
 
 /* Open the VCD output file and write header.  Does nothing for input. */
 
+int avr_vcd_start(avr_vcd_t * vcd)
+{
+	return avr_vcd_start_with_comment(vcd, NULL);
+}
+
 int
-avr_vcd_start(
-		avr_vcd_t * vcd)
+avr_vcd_start_with_comment(
+	   avr_vcd_t * vcd,
+	   const char *comment)
 {
 	time_t now;
 
@@ -592,11 +603,13 @@ avr_vcd_start(
 		return -1;
 	}
 
+    if (comment)
+		fprintf(vcd->output, "$comment %s $end\n", comment);
 	time(&now);
 	fprintf(vcd->output, "$date %s$end\n", ctime(&now));
 	fprintf(vcd->output,
 		"$version Simavr " CONFIG_SIMAVR_VERSION " $end\n");
-	fprintf(vcd->output, "$timescale 10ns $end\n");	// 10ns base, aka 100MHz
+	fprintf(vcd->output, "$timescale 1ns $end\n");	// 10ns base, aka 100MHz
 	fprintf(vcd->output, "$scope module logic $end\n");
 
 	for (int i = 0; i < vcd->signal_count; i++) {

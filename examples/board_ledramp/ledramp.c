@@ -37,6 +37,8 @@
 
 #include "button.h"
 
+static const char * fname =  "atmega48_ledramp.axf";
+
 button_t button;
 int do_button_press = 0;
 avr_t * avr = NULL;
@@ -101,7 +103,7 @@ void keyCB(unsigned char key, int x, int y)	/* called on key press */
 			break;
 		case 'r':
 			printf("Starting VCD trace\n");
-			avr_vcd_start(&vcd_file);
+			avr_vcd_start_with_comment(&vcd_file, fname);
 			break;
 		case 's':
 			printf("Stopping VCD trace\n");
@@ -142,7 +144,6 @@ static void * avr_run_thread(void * oaram)
 int main(int argc, char *argv[])
 {
 	elf_firmware_t f = {{0}};;
-	const char * fname =  "atmega48_ledramp.axf";
 	//char path[256];
 
 //	sprintf(path, "%s/%s", dirname(argv[0]), fname);

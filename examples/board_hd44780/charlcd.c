@@ -40,6 +40,7 @@
 #include "ac_input.h"
 #include "hd44780_glut.h"
 
+static const char *fname;
 
 //float pixsize = 16;
 int window;
@@ -75,7 +76,7 @@ void keyCB(
 			break;
 		case 'r':
 			printf("Starting VCD trace; press 's' to stop\n");
-			avr_vcd_start(&vcd_file);
+			avr_vcd_start_with_comment(&vcd_file, fname);
 			break;
 		case 's':
 			printf("Stopping VCD trace\n");
@@ -146,7 +147,8 @@ main(
 		char *argv[])
 {
 	elf_firmware_t f = {{0}};
-	const char *fname = argc > 1 ? argv[1] : "atmega48_charlcd.axf";
+
+	fname = argc > 1 ? argv[1] : "atmega48_charlcd.axf";
 //	char path[256];
 //	sprintf(path, "%s/%s", dirname(argv[0]), fname);
 //	printf("Firmware pathname is %s\n", path);

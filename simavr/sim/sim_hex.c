@@ -223,6 +223,7 @@ sim_setup_firmware(const char * filename, uint32_t loadBase,
 	fw_chunk_t * chunks = NULL, *cp;
 	char       * suffix = strrchr(filename, '.');
 
+	fp->file_name = strdup(filename); // For VCD file comment,
 	if (!suffix || strcasecmp(suffix, ".hex")) {
 		/* Not suffix .hex, try reading as an ELF file. */
 

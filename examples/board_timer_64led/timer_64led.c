@@ -40,6 +40,8 @@
 #include "button.h"
 #include "hc595.h"
 
+static const char * fname =  "atmega168_timer_64led.axf";
+
 enum {
 	B_START = 0, B_STOP, B_RESET,
 	B_MAX
@@ -168,7 +170,7 @@ void keyCB(unsigned char key, int x, int y)	/* called on key press */
 			break;
 		case 'r':
 			printf("Starting VCD trace\n");
-			avr_vcd_start(&vcd_file);
+			avr_vcd_start_with_comment(&vcd_file, fname);
 			break;
 		case 's':
 			printf("Stopping VCD trace\n");
@@ -212,8 +214,6 @@ static void * avr_run_thread(void * ignore)
 int main(int argc, char *argv[])
 {
 	elf_firmware_t f = {{0}};
-	const char * fname =  "atmega168_timer_64led.axf";
-	//char path[256];
 
 //	sprintf(path, "%s/%s", dirname(argv[0]), fname);
 	//printf("Firmware pathname is %s\n", path);
