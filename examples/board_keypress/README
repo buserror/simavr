@@ -1,0 +1,24 @@
+
+This contains a sample program to demonstrate the use of simavr
+using 'custom' code, and own "peripherals". It shows how it is
+possible to "hook" code to the AVR pins, and also how to make
+"peripherals" and also hook them up to AVR pins.
+
+The demo will display two LEDs, one connected to the PORTB5 pin
+and second to the PORTD7 pin of the mega48.
+Two other pins, PORTD0 and PORTD1, are configured as internally
+pulled-up inputs and push buttons are hooked-up to them.
+
+Firmware transfers the state of every input pin to corresponding
+output pin in a loop. The state of PORTD0 pin is copied to the PORTB5
+and PORTD1 is copied to PORTD7.
+
+On startup, both LEDs should lit, this demonstrates a wark of internall pull-ups.
+If you hit '1' key on the keyboard, PORTD0 and PORTB5 should go into LOW state 
+and the LED will be turned off.
+On '2' key hit the same will happen with the second LED.
+
+
+The display uses opengl and "glut" so it should be very portable.
+On most linux you will need "freeglut-dev" package.
+
