@@ -107,6 +107,14 @@ avr_load_firmware(
 	avr_t * avr,
 	elf_firmware_t * firmware);
 
+// Set MCU name from filename.
+
+void sim_default_mcu(elf_firmware_t * fp, const char * filename);
+
+/* Simplied setup. */
+
+avr_t *make_avr_from_file(const char *filename);
+
 // DWARF, not ELF, but a separate header for this would be silly.
 
 int avr_read_dwarf(avr_t *avr, const char *filename);

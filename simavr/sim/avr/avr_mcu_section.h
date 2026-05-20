@@ -76,14 +76,24 @@ enum {
 };
 
 #if __AVR__
-/*
+
+#define _MMCU_ __attribute__((section(".mmcu"))) __attribute__((used))
+
+/* This variable serves as an anchor to prevent the linker
+ * from discarding the .mmcu ELF section.  An option in the default
+ * compilation rule (Makefile.common) generates a reference to it.
+ */
+
+const uint8_t _MMCU_ __attribute__((weak)) _mmcu[] = { AVR_MMCU_TAG, 0 };
+
+ /*
  * WARNING. Due to newer GCC being stupid, they introduced a bug that
  * prevents us introducing variable length strings in the declaration
  * of structs. Worked for a million years, and no longer.
  * So the new method declares the string as fixed size, and the parser
  * is forced to skip the zeroes in padding. Dumbo.
  */
-#define _MMCU_ __attribute__((section(".mmcu"))) __attribute__((used))
+
 struct avr_mmcu_long_t {
 	uint8_t tag;
 	uint8_t len;
@@ -239,6 +249,7 @@ struct avr_mmcu_vcd_ioirq_t {
 		.len = sizeof(void *),\
 		.what = (void*)_register, \
 	}
+
 /*!
  * Allows the firmware to hint simavr as to wether there are external
  * pullups/down on PORT pins. It helps if the firmware uses "open drain"
@@ -252,6 +263,7 @@ struct avr_mmcu_vcd_ioirq_t {
 		(((unsigned long)((_port)&0xff) << 16) | \
 		((unsigned long)((_mask)&0xff) << 8) | \
 		((_val)&0xff)));
+
 /*!
  * Add this port/pin to the VCD file. The syntax uses the name of the
  * port as a character, and not a pointer to a register.
@@ -319,13 +331,11 @@ struct avr_mmcu_vcd_ioirq_t {
 	AVR_MCU_LONG(AVR_MMCU_TAG_AREF, (_aref));
 
 /*!
- * This the has to be used if you want to add other tags to the .mmcu section
- * the _mmcu symbol is used as an anchor to make sure it stays linked in.
+ * Sets the MCU type and speed.
  */
 #define AVR_MCU(_speed, _name) \
 	AVR_MCU_STRING(AVR_MMCU_TAG_NAME, _name);\
-	AVR_MCU_LONG(AVR_MMCU_TAG_FREQUENCY, _speed);\
-	const uint8_t _mmcu[2] _MMCU_ = { AVR_MMCU_TAG, 0 }
+	AVR_MCU_LONG(AVR_MMCU_TAG_FREQUENCY, _speed);
 
 /*
  * The following MAP macros where copied from

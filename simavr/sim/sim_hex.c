@@ -235,6 +235,7 @@ sim_setup_firmware(const char * filename, uint32_t loadBase,
 		return;
 	}
 
+	sim_default_mcu(fp, filename);
 	if (!(fp->mmcu[0] && fp->frequency > 0))
 		printf("MCU type and frequency are not set when loading .hex file\n");
 

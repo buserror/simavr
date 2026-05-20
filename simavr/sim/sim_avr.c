@@ -126,7 +126,8 @@ avr_init(
 
 	// cpu is in limbo before init is finished.
 	avr->state = cpu_Limbo;
-	avr->frequency = 1000000;	// can be overridden via avr_mcu_section
+	if (!avr->frequency)            // Core may set default, but ...
+		avr->frequency = 1000000;	// can be overridden via avr_mcu_section.
 	avr->irq_pool.avr = avr;
 	avr->irq = avr_alloc_irq(&avr->irq_pool, 0, AVR_CORE_IRQ_COUNT, names);
 	avr_cmd_init(avr);

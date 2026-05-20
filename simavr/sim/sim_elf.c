@@ -28,8 +28,12 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <libgen.h>
 #include <string.h>
 #include <errno.h>
+
+#include "sim_elf.h"
+#include "sim_hex.h"
 
 #ifdef HAVE_LIBELF
 #include <libelf.h>
@@ -39,7 +43,6 @@
 #define ELF_SYMBOLS 0
 #endif
 
-#include "sim_elf.h"
 #include "sim_vcd_file.h"
 #include "avr_eeprom.h"
 #include "avr_ioport.h"
@@ -786,6 +789,9 @@ elf_read_firmware(
 	close(fd);
 	if (!firmware->file_name)
 		firmware->file_name = strdup(file);
+
+	sim_default_mcu(firmware, file); // Default MCU name from filename.
+
 	return 0;
 }
 #else //  HAVE_LIBELF not defined.
@@ -796,3 +802,44 @@ elf_read_firmware(const char * file, elf_firmware_t * firmware)
 	return -1;
 }
 #endif
+
+/* Be friendly: if we do not know the right MCU to run firmware, take it
+ * from the filename as the default compilation command does (Makefile.common);
+ */
+
+void sim_default_mcu(elf_firmware_t * fp, const char * filename)
+{
+	const char *sp, *ep;
+
+	if (fp->mmcu[0])
+		return;
+	sp = basename((char *)filename);
+	ep = strchr(sp, '_');
+	if (!ep || (ep - sp) >= sizeof fp->mmcu)
+		return;
+
+	if (strncmp(sp, "attiny", 6) && strncmp(sp, "atmega", 6))
+		return;
+	strncpy(fp->mmcu, sp, (ep - sp));
+	fp->mmcu[ep - sp] = 0;
+}
+
+/* Simplied setup. */
+
+avr_t *make_avr_from_file(const char *filename)
+{
+	avr_t           *avr;
+	elf_firmware_t   fw = {};
+
+	sim_setup_firmware(filename, 0, &fw, "AVR loader");
+	if (!fw.mmcu[0]) {
+		fprintf(stderr, "Unknown MCU\n");
+		exit(1);
+	}
+	avr = avr_make_mcu_by_name(fw.mmcu);
+	if (avr) {
+		avr_init(avr);
+		avr_load_firmware(avr, &fw);
+	}
+	return avr;
+}
