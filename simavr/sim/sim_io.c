@@ -156,6 +156,36 @@ avr_register_io_write(
 	avr->io[a].w.c = writep;
 }
 
+void
+avr_register_io_bit_write(
+		avr_t              *avr,
+		avr_io_addr_t       addr,
+		avr_io_write_bit_t  writep,
+		void               *param)
+{
+	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
+
+	if (a >= 32) {
+		AVR_LOG(avr, LOG_ERROR,
+				"IO: %s(): IO address 0x%04x out of range (max 32).\n",
+				__func__, a);
+		abort();
+	}
+
+	/* Verify that some other piece of code is not installed to watch writes.
+	 */
+
+	if (avr->bit_io[a].param || avr->bit_io[a].c) {
+		AVR_LOG(avr, LOG_ERROR,
+				"IO: %s(): IO address 0x%04x is"
+				" already registered for bit writes.\n",
+				__func__, a);
+		abort();
+	}
+	avr->bit_io[a].c = writep;
+	avr->bit_io[a].param = param;
+}
+
 avr_irq_t *
 avr_io_getirq(
 		avr_t * avr,

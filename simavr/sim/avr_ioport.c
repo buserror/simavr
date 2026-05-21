@@ -107,9 +107,11 @@ avr_ioport_write(
 }
 
 /*
- * This is a reasonably new behaviour for the io-ports. Writing 1's to the PIN register
- * toggles the PORT equivalent bit (regardless of direction
+ * This is a reasonably new behaviour for the io-ports.
+ * Writing 1's to the PIN register toggles the PORT equivalent bit
+ * (regardless of direction).  Single bit writes need special treatment.
  */
+
 static void
 avr_ioport_pin_write(
 		struct avr_t * avr,
@@ -120,6 +122,20 @@ avr_ioport_pin_write(
 	avr_ioport_t * p = (avr_ioport_t *)param;
 
 	avr_ioport_write(avr, p->r_port, avr->data[p->r_port] ^ v, param);
+}
+
+static int
+avr_ioport_pin_bit_write(struct avr_t *avr,
+						 uint8_t       bit,
+						 uint8_t	   v,
+						 void         *param)
+{
+	avr_ioport_t * p = (avr_ioport_t *)param;
+
+	if (v)
+		avr_ioport_write(avr, p->r_port,
+						 avr->data[p->r_port] ^ (1 << bit), param);
+	return 1; // Done it.
 }
 
 /*
@@ -359,6 +375,8 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 	avr_register_io_write(avr, p->r_port, avr_ioport_write, p);
 	avr_register_io_read(avr, p->r_pin, avr_ioport_read, p);
 	avr_register_io_write(avr, p->r_pin, avr_ioport_pin_write, p);
+	if (p->r_pin < 64) // FIX ME
+		avr_register_io_bit_write(avr, p->r_pin, avr_ioport_pin_bit_write, p);
 	avr_register_io_write(avr, p->r_ddr, avr_ioport_ddr_write, p);
 	if (p->pcint.raised.reg) {
 		avr_register_io_write(avr, p->pcint.raised.reg,

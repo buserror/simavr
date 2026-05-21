@@ -92,6 +92,13 @@ avr_register_io_write(
 		avr_io_addr_t addr,
 		avr_io_write_t write,
 		void * param);
+// Register a callback for single-bit writes. to an I/O register.
+void
+avr_register_io_bit_write(
+		avr_t              *avr,
+		avr_io_addr_t       addr,
+		avr_io_write_bit_t  writep,
+		void               *param);
 // call every IO modules until one responds to this
 int
 avr_ioctl(

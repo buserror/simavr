@@ -44,16 +44,25 @@ extern "C" {
 
 typedef uint32_t avr_flashaddr_t;
 
+/* Functions called when I/O registers are modified. */
+
 struct avr_t;
 typedef uint8_t (*avr_io_read_t)(
-		struct avr_t * avr,
-		avr_io_addr_t addr,
-		void * param);
+	struct avr_t * avr,
+	avr_io_addr_t addr,
+	void * param);
+
 typedef void (*avr_io_write_t)(
-		struct avr_t * avr,
-		avr_io_addr_t addr,
-		uint8_t v,
-		void * param);
+	struct avr_t * avr,
+	avr_io_addr_t addr,
+	uint8_t v,
+	void * param);
+
+typedef int (*avr_io_write_bit_t)(
+	struct avr_t * avr,
+	uint8_t bit,
+	uint8_t v,
+	void * param);
 
 enum {
 	// SREG bit indexes
@@ -278,6 +287,16 @@ typedef struct avr_t {
 	 * allow support for bootloaders
 	 */
 	avr_flashaddr_t	reset_pc;
+
+	/* Callback for single-bit instructions (SBI, CBI) on the low 32
+	 * I/O registers.  If not set, or the function returns zero, a normal
+	 * 8-bit read-modify-write is done.
+	 */
+
+	struct {
+		avr_io_write_bit_t  c;
+		void               *param;
+	} bit_io[32];
 
 	/*
 	 * callback when specific IO registers are read/written.

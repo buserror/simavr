@@ -578,9 +578,17 @@ void avr_dump_state(avr_t * avr)
 		get_io5(o); \
 		const uint8_t b = o & 0x7;
 
+// Register address and bit mask.
+
 #define get_io5_b3mask(o) \
 		get_io5(o); \
 		const uint8_t mask = 1 << (o & 0x7);
+
+// Register index and bit number.
+
+#define get_io5_b3bit(o) \
+		uint8_t io = ((o >> 3) & 0x1f); \
+		const uint8_t bit = (o & 0x7);
 
 //	const int16_t o = ((int16_t)(op << 4)) >> 3; // CLANG BUG!
 #define get_o12(op) \
@@ -1446,12 +1454,22 @@ run_one_again:
 									cycle++;
 								}	break;
 								case 0x9800: {	// CBI -- Clear Bit in I/O Register -- 1001 1000 AAAA Abbb
-									get_io5_b3mask(opcode);
-									uint8_t res = _avr_get_ram(avr, io) & ~mask;
-									STATE("cbi %s[%04x], 0x%02x = %02x\n", AVR_REGNAME(io), avr->data[io], mask, res);
-									_avr_set_ram(avr, io, res);
+												// Not read-modify-write, but magic! Also SBI.
+									get_io5_b3bit(opcode);
+									if (avr->bit_io[io].c &&
+										avr->bit_io[io].c(avr, bit, 0, avr->bit_io[io].param)) {
+										STATE("cbi %s[%04x], bit %d special\n", AVR_REGNAME(io), avr->data[io], bit);
+									} else {
+										uint8_t res;
+
+										io += 32;
+										res = _avr_get_ram(avr, io) & ~(1 << bit);
+										STATE("cbi %s[%04x], 0x%02x = %02x\n", AVR_REGNAME(io), avr->data[io], 1 << bit, res);
+										_avr_set_ram(avr, io, res);
+									}
+									}
 									cycle++;
-								}	break;
+									break;
 								case 0x9900: {	// SBIC -- Skip if Bit in I/O Register is Cleared -- 1001 1001 AAAA Abbb
 									get_io5_b3mask(opcode);
 									uint8_t res = _avr_get_ram(avr, io) & mask;
@@ -1465,12 +1483,21 @@ run_one_again:
 									}
 								}	break;
 								case 0x9a00: {	// SBI -- Set Bit in I/O Register -- 1001 1010 AAAA Abbb
-									get_io5_b3mask(opcode);
-									uint8_t res = _avr_get_ram(avr, io) | mask;
-									STATE("sbi %s[%04x], 0x%02x = %02x\n", AVR_REGNAME(io), avr->data[io], mask, res);
-									_avr_set_ram(avr, io, res);
+									get_io5_b3bit(opcode);
+									if (avr->bit_io[io].c &&
+										avr->bit_io[io].c(avr, bit, 1, avr->bit_io[io].param)) {
+										STATE("sbi %s[%04x], bit %d special\n", AVR_REGNAME(io), avr->data[io], bit);
+									} else {
+										uint8_t res;
+
+										io += 32;
+										res = _avr_get_ram(avr, io) | (1 << bit);
+										STATE("sbi %s[%04x], 0x%02x = %02x\n", AVR_REGNAME(io), avr->data[io], 1 << bit, res);
+										_avr_set_ram(avr, io, res);
+									}
+									}
 									cycle++;
-								}	break;
+									break;
 								case 0x9b00: {	// SBIS -- Skip if Bit in I/O Register is Set -- 1001 1011 AAAA Abbb
 									get_io5_b3mask(opcode);
 									uint8_t res = _avr_get_ram(avr, io) & mask;
