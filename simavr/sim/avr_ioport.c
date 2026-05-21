@@ -39,6 +39,22 @@ avr_ioport_flag_write(
 		avr_clear_interrupt(avr, &p->pcint);
 }
 
+static int
+avr_ioport_flag_bit_write(
+		struct avr_t  * avr,
+		uint8_t			bit,
+		uint8_t			v,
+		void		  * param)
+{
+	avr_ioport_t * p = (avr_ioport_t *)param;
+
+	// Clear interrupt if 1 is written to flag.
+
+	if (v)
+		avr_clear_interrupt(avr, &p->pcint);
+	return 1;
+}
+
 static uint8_t
 avr_ioport_read(
 		struct avr_t * avr,
@@ -357,11 +373,6 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 		return;
 	}
 	p->io = _io;
-//	printf("%s PIN%c 0x%02x DDR%c 0x%02x PORT%c 0x%02x\n", __FUNCTION__,
-//		p->name, p->r_pin,
-//		p->name, p->r_ddr,
-//		p->name, p->r_port);
-
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->pcint);
 	// allocate this module's IRQ
@@ -379,7 +390,12 @@ void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 		avr_register_io_bit_write(avr, p->r_pin, avr_ioport_pin_bit_write, p);
 	avr_register_io_write(avr, p->r_ddr, avr_ioport_ddr_write, p);
 	if (p->pcint.raised.reg) {
+		if (p->pcint.raised.reg < 64) {
+			avr_register_single_io_bit_write(avr, p->pcint.raised.reg,
+											 p->pcint.raised.bit,
+											 avr_ioport_flag_bit_write, p);
+		}
 		avr_register_io_write(avr, p->pcint.raised.reg,
-				      avr_ioport_flag_write, p);
+							  avr_ioport_flag_write, p);
 	}
 }

@@ -26,7 +26,8 @@
 
 /* Writes to PORTA are reported here. */
 
-static uint8_t  expected[] = { 0xff, 0xfe, 0xde, 0xda, 0 };
+static uint8_t  expected[] = { 0xff, 0xfe, 0xde, 0xda, 0,
+							   0x80, 0x30, 0x20, 0x80, 0x30, 0x10 };
 static uint8_t *ep = expected;
 
 static void reg_write(struct avr_irq_t *irq, uint32_t value, void *param)

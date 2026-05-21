@@ -186,6 +186,58 @@ avr_register_io_bit_write(
 	avr->bit_io[a].param = param;
 }
 
+/* Register for single-bit write in a shared register. */
+
+static int
+_avr_io_sbs_write(struct avr_t *avr,
+				  uint8_t       bit,
+				  uint8_t	    v,
+				  void         *param)
+{
+	struct bit_cb *cp = (struct bit_cb *)param + bit;
+
+	if (cp)
+		cp->c(avr, bit, v, cp->param);
+	return 1; // 0 would cause a read-modify-write, known to be unsafe.
+}
+
+void
+avr_register_single_io_bit_write(
+		avr_t              *avr,
+		avr_io_addr_t       addr,
+		uint8_t				bit,
+		avr_io_write_bit_t  writep,
+		void               *param)
+{
+	avr_io_addr_t  a;
+	struct bit_cb *list;
+
+	printf("Registering %#04x bit %u\n", addr, bit);
+	a = AVR_DATA_TO_IO(addr);
+	list = (struct bit_cb *)avr->bit_io[a].param;
+	if (!list) {
+		list = calloc(8, sizeof *list);
+		if (list) {
+			avr->bit_io[a].c = _avr_io_sbs_write;
+			avr->bit_io[a].param = list;
+		}
+	}
+	if (list && list[bit].c == writep) {
+		/* Double registration of a function.  The atmega2560 ioports
+		 * do this as two ports share a bit.  Ugly, but let it through.
+		 */
+		return;
+	}
+	if (!list || avr->bit_io[a].c != _avr_io_sbs_write || list[bit].c) {
+		AVR_LOG(avr, LOG_ERROR,
+				"IO: %s(): Failed to allocate IO address 0x%04x bit %d.\n",
+				__func__, a, bit);
+		abort();
+	}
+	list[bit].c = writep;
+	list[bit].param = param;
+}
+
 avr_irq_t *
 avr_io_getirq(
 		avr_t * avr,
@@ -326,10 +378,19 @@ avr_deallocate_ios(
 		avr_t * avr)
 {
 	avr_io_t * port = avr->io_port;
+    int		   i;
+
 	while (port) {
 		avr_io_t * next = port->next;
 		avr_deallocate_io(port);
 		port = next;
 	}
 	avr->io_port = NULL;
+
+	/* Also free shared tables for single-bit writes. */
+
+	for (i = 0; i < ARRAY_SIZE(avr->bit_io); ++i) {
+		if (avr->bit_io[i].c == _avr_io_sbs_write)
+			free(avr->bit_io[i].param);
+	}
 }

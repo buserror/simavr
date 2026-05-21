@@ -93,7 +93,7 @@ int main()
     PORTK = 0xC0;                  // Interrupt;
 
     PCMSK1 = 0x7e;
-    PORTJ = 0x3F;                  // No interrupt;
+    PORTJ = 0x3f;                  // No interrupt;
     PORTK = 0;                     // Interrupt;
     PORTE = 0;                     // No interrupt;
     PORTJ = 0xe0;                  // Interrupt;
@@ -104,6 +104,21 @@ int main()
     PORTA = 1;                     // Triggers input to PORTB/4
 
     cli();
+
+    /* Show that SBI can clear single bits. */
+
+    buffer[interrupts++] = ' ';
+    PORTB = 0x20;                  // Two pending interrupts.
+    PORTJ = 0x3f;
+    buffer[interrupts++] = '@' + PCIFR;
+    PCIFR |= 1;                    // Clear PCIE0 with SBI.
+    buffer[interrupts++] = '@' + PCIFR;
+    sei();                         // One interrupt.
+    DDRA = 0;                      // Idle
+    DDRB = 0;                      // Idle
+    DDRA = 0;                      // Idle
+    cli();
+
     buffer[interrupts] = '\0';
     fputs((const char *)buffer, stdout);
     putchar('\n');

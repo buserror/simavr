@@ -34,7 +34,7 @@ int main(void)
 {
 	volatile uint8_t a;
 
-    DDRA = 0xff;	// Output
+	DDRA = 0xff;	// Output
 	PORTA = 0xff;   // Ones
 	PINA |= 1;      // PORTA == 0xfe
 	PINA |= 0x20;   // PORTA == 0xde
@@ -49,9 +49,10 @@ int main(void)
 	a = PINA;
 	PINA = a | 2;
 
-#if 0 // This needs sharing between ports.
 	// Repeat the exercise with the pin change interrupt flags,
 	// reporting results in the low bits of PORTA.
+	// This does not test SBI behaviour because GIFR is outside
+	// the usable range, but still checks flage clearing.
 
 	DDRB = 0xff;	// Output
 
@@ -62,13 +63,12 @@ int main(void)
 	PORTA = 0x80;	// Raise interrupts.
 	PORTB = 0x80;
 	PORTA = GIFR;   // PORTA == 0x30
-	GIFR |= 0x10;
+	GIFR = 0x10;
 	PORTA = GIFR;   // PORTA == 0x20
 	PORTA = 0x80;	// Re-raise interrupt.
 	PORTA = GIFR;   // PORTA == 0x30
-	a = GIFR;
-	GIFR = a | 0x10;
-	PORTA = GIFR;   // PORTA == 0
-#endif
+	GIFR = 0x20;
+	PORTA = GIFR;   // PORTA == 0x10
+
     sleep_cpu();
 }

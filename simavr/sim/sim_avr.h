@@ -64,6 +64,13 @@ typedef int (*avr_io_write_bit_t)(
 	uint8_t v,
 	void * param);
 
+/* Structure for storing bit-write callbacks. */
+
+struct bit_cb {
+    avr_io_write_bit_t  c;
+    void               *param;
+};
+
 enum {
 	// SREG bit indexes
 	S_C = 0,S_Z,S_N,S_V,S_S,S_H,S_T,S_I,
@@ -293,10 +300,7 @@ typedef struct avr_t {
 	 * 8-bit read-modify-write is done.
 	 */
 
-	struct {
-		avr_io_write_bit_t  c;
-		void               *param;
-	} bit_io[32];
+	struct bit_cb bit_io[32];
 
 	/*
 	 * callback when specific IO registers are read/written.

@@ -18,7 +18,7 @@ static void reg_write(struct avr_irq_t *irq, uint32_t value, void *param)
 }
 
 int main(int argc, char **argv) {
-    static const char *expected = " 0 0 1021 102210\r\n";
+    static const char *expected = " 0 0 1021 102210 CB1\r\n";
     avr_t             *avr;
 
     tests_init(argc, argv);
