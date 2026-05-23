@@ -212,7 +212,6 @@ avr_register_single_io_bit_write(
 	avr_io_addr_t  a;
 	struct bit_cb *list;
 
-	printf("Registering %#04x bit %u\n", addr, bit);
 	a = AVR_DATA_TO_IO(addr);
 	list = (struct bit_cb *)avr->bit_io[a].param;
 	if (!list) {
