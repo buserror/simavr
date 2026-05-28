@@ -299,6 +299,7 @@ avr_load_firmware(
 	}
 	avr_set_command_register(avr, firmware->command_register_addr);
 	avr_set_console_register(avr, firmware->console_register_addr);
+	avr->options = firmware->options;
 
 	// rest is initialization of the VCD file
 	if (firmware->tracecount == 0)
@@ -515,6 +516,9 @@ elf_parse_mmcu_section(
 			}	break;
 			case AVR_MMCU_TAG_SIMAVR_CONSOLE: {
 				firmware->console_register_addr = src[0] | (src[1] << 8);
+			}	break;
+			case AVR_MMCU_TAG_PORT_NO_PULL: {
+				firmware->options.no_pullups = 1;
 			}	break;
 		}
 		size -= next;

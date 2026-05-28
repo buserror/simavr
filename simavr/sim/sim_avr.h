@@ -90,6 +90,15 @@ enum {
 #define AVR_IO_TO_DATA(v) ((v) + 32)
 
 /**
+ * Structure to hold simulator options.
+ * The current set is kept in avr->options.
+ */
+
+struct simavr_options {
+	unsigned int no_pullups : 1;	// Disable all ioport pull-up behaviours.
+};
+
+/**
  * Logging macros and associated log levels.
  * The current log level is kept in avr->log.
  */
@@ -233,6 +242,8 @@ typedef struct avr_t {
 	 */
 	uint32_t 			sleep_usec;
 	uint64_t			time_base;	// for avr_get_time_stamp()
+
+	struct simavr_options options;	// Simulation options.
 
 	// called at init time
 	void (*init)(struct avr_t * avr);

@@ -64,6 +64,7 @@ avr_ioport_read(
 	avr_ioport_t * p = (avr_ioport_t *)param;
 	uint8_t ddr = avr->data[p->r_ddr];
 	uint8_t v = (avr->data[p->r_pin] & ~ddr) | (avr->data[p->r_port] & ddr);
+
 	avr->data[addr] = v;
 	avr_raise_irq(p->io.irq + IOPORT_IRQ_REG_PIN, v);
 	D(if (avr->data[addr] != v) printf("** PIN%c(%02x) = %02x\r\n", p->name, addr, v);)
@@ -88,10 +89,15 @@ avr_ioport_update_irqs(
 	for (int i = 0; i < 8; i++) {
 		if (ddr & (1 << i))
 			avr_raise_irq(p->io.irq + i, (avr->data[p->r_port] >> i) & 1);
-		else if (p->external.pull_mask & (1 << i))
-			avr_raise_irq(p->io.irq + i, (p->external.pull_value >> i) & 1);
-		else if ((avr->data[p->r_port] >> i) & 1)
-			avr_raise_irq(p->io.irq + i, 1);
+		else if (!avr->options.no_pullups) {
+			if (p->external.pull_mask & (1 << i))
+				avr_raise_irq(p->io.irq + i,
+							  (p->external.pull_value >> i) & 1);
+			else if (((avr->data[p->r_port] >> i) & 1) &&
+					 (!p->pud.reg || avr_regbit_get(avr, p->pud) == 0)) {
+				avr_raise_irq(p->io.irq + i, 1);
+			}
+		}
 	}
 	uint8_t pin = (avr->data[p->r_pin] & ~ddr) | (avr->data[p->r_port] & ddr);
 	pin = (pin & ~p->external.pull_mask) | p->external.pull_value;
@@ -199,6 +205,7 @@ avr_ioport_irq_notify(
 	if (value && irq->irq != IOPORT_IRQ_PIN_ALL_IN)
 		value = mask;
 	new_pin = (avr->data[p->r_pin] & ~mask) | (value & mask);
+	new_pin = (avr->data[p->r_port] & ddr) | (new_pin & ~ddr);
 	old_value = irq->value;
 
 	if (output) {
@@ -224,7 +231,6 @@ avr_ioport_irq_notify(
 		// Set the real PIN bit.
 
 		if (irq->irq == IOPORT_IRQ_PIN_ALL_IN) {
-			new_pin = (avr->data[p->r_port] & ddr) | (new_pin & ~ddr);
 			p->irqing = 1;
 			for (int i = 0; i < 8; ++i)
 				avr_raise_irq(p->io.irq + i, (new_pin >> i) & 1);
@@ -331,7 +337,8 @@ avr_ioport_ioctl(
 			/*
 			 * Set the default IRQ values when pin is set as input
 			 */
-			if (ctl == AVR_IOCTL_IOPORT_SET_EXTERNAL(p->name)) {
+			if (ctl == AVR_IOCTL_IOPORT_SET_EXTERNAL(p->name) &&
+				!avr->options.no_pullups) {
 				avr_ioport_external_t * m = (avr_ioport_external_t*)io_param;
 				p->external.pull_mask = m->mask;
 				p->external.pull_value = m->value;

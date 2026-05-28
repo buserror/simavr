@@ -91,6 +91,7 @@ typedef struct elf_firmware_t {
 	char *		dwarf_file;	// Must be dynamically allocated.
 #endif
 	char *		file_name;	// Internal use.
+	struct simavr_options options;
 } elf_firmware_t ;
 
 /* The structure *firmware must be pre-initialised to zero, then optionally

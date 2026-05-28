@@ -66,6 +66,7 @@ enum {
 	AVR_MMCU_TAG_VCD_SRAM_16,
 	AVR_MMCU_TAG_VCD_IO_IRQ,
 	AVR_MMCU_TAG_PORT_EXTERNAL_PULL,
+	AVR_MMCU_TAG_PORT_NO_PULL,
 };
 
 enum {
@@ -153,7 +154,7 @@ struct avr_mmcu_vcd_ioirq_t {
 	}
 
 #define AVR_MCU_BYTE(_tag, _val) \
-	const uint8_t _##_tag _MMCU_ = { _tag, 1, _val }
+	const uint8_t _##_tag[] _MMCU_ = { _tag, 1, _val }
 
 /*!
  * This Macro allows you to specify traces for the VCD file output
@@ -331,6 +332,13 @@ struct avr_mmcu_vcd_ioirq_t {
 	AVR_MCU_LONG(AVR_MMCU_TAG_VCC, (_vcc));\
 	AVR_MCU_LONG(AVR_MMCU_TAG_AVCC, (_avcc));\
 	AVR_MCU_LONG(AVR_MMCU_TAG_AREF, (_aref));
+
+/*!
+ * This tag stops the simulator from guessing the state of pins with
+ * pull-ups enabled.
+ */
+
+#define AVR_MCU_PORT_NO_PULL AVR_MCU_BYTE(AVR_MMCU_TAG_PORT_NO_PULL, 0)
 
 /*!
  * Sets the MCU type and speed.

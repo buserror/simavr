@@ -44,11 +44,11 @@ void mx8_reset(struct avr_t * avr);
  */
 struct mcu_t {
 	avr_t core;
+	avr_ioport_t	portb,portc,portd;
 	avr_eeprom_t 	eeprom;
 	avr_watchdog_t	watchdog;
 	avr_flash_t 	selfprog;
 	avr_extint_t	extint;
-	avr_ioport_t	portb,portc,portd;
 	avr_uart_t		uart;
 	avr_acomp_t		acomp;
 	avr_adc_t		adc;
@@ -79,6 +79,7 @@ const struct mcu_t SIM_CORENAME = {
 
 		.init = mx8_init,
 		.reset = mx8_reset,
+		.frequency = 1000000, // Default CKDIV8 fuse.
 	},
 	AVR_EEPROM_DECLARE(EE_READY_vect),
 #ifdef RWWSRE
@@ -93,6 +94,7 @@ const struct mcu_t SIM_CORENAME = {
 	},
 	.portb = {
 		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
+		.pud = AVR_IO_REGBIT(MCUCR, PUD),
 		.pcint = {
 			.enable = AVR_IO_REGBIT(PCICR, PCIE0),
 			.raised = AVR_IO_REGBIT(PCIFR, PCIF0),
@@ -102,6 +104,7 @@ const struct mcu_t SIM_CORENAME = {
 	},
 	.portc = {
 		.name = 'C', .r_port = PORTC, .r_ddr = DDRC, .r_pin = PINC,
+		.pud = AVR_IO_REGBIT(MCUCR, PUD),
 		.pcint = {
 			.enable = AVR_IO_REGBIT(PCICR, PCIE1),
 			.raised = AVR_IO_REGBIT(PCIFR, PCIF1),
@@ -111,6 +114,7 @@ const struct mcu_t SIM_CORENAME = {
 	},
 	.portd = {
 		.name = 'D', .r_port = PORTD, .r_ddr = DDRD, .r_pin = PIND,
+		.pud = AVR_IO_REGBIT(MCUCR, PUD),
 		.pcint = {
 			.enable = AVR_IO_REGBIT(PCICR, PCIE2),
 			.raised = AVR_IO_REGBIT(PCIFR, PCIF2),

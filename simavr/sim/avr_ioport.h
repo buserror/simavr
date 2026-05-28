@@ -103,6 +103,7 @@ typedef struct avr_ioport_t {
 	avr_io_addr_t r_port;
 	avr_io_addr_t r_ddr;
 	avr_io_addr_t r_pin;
+	avr_regbit_t  pud;		// Pull-up disable bit.
 
 	avr_int_vector_t pcint;	// PCINT vector
 	avr_io_addr_t r_pcint;	// pcint 8 pins mask
