@@ -290,5 +290,7 @@ void _fail(const char *filename, int linenum, const char *fmt, ...) {
 	putc('\n', stderr);
 
 	finished = 1;
+	fflush(stdout);
+	fflush(stderr);
 	_exit(1);
 }
