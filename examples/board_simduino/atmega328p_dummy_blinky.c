@@ -28,8 +28,7 @@
 
 #include <avr/io.h>
 #include <stdio.h>
-#include <avr/interrupt.h>
-#include <avr/eeprom.h>
+#include <util/delay.h>
 #include <avr/sleep.h>
 
 /*
@@ -51,12 +50,12 @@ static int uart_putchar(char c, FILE *stream) {
 static FILE mystdout = FDEV_SETUP_STREAM(uart_putchar, NULL,
                                          _FDEV_SETUP_WRITE);
 
-
 int main()
 {
 	stdout = &mystdout;
 
 	printf("Bootloader properly programmed, and ran me! Huzzah!\n");
+	_delay_ms(1000);
 
 	// this quits the simulator, since interrupts are off
 	// this is a "feature" that allows running tests cases and exit

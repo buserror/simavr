@@ -1,0 +1,5 @@
+# Script to run Simduino, showing the output from the bootloaded firmware.
+
+./obj-*/simduino.elf &
+avrdude -p m328p -c arduino -P /tmp/simavr-uart0 -U flash:w:atmega328p_dummy_blinky.hex
+cat /tmp/simavr-uart0 2>/dev/null

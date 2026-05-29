@@ -1,10 +1,11 @@
 
-This will emulate an arduino. Right now it loads the bootloader, then wait on it's "serial port"
-(a pseudo tty) until someone programs it... eventualy it timesout and run the previous
-app that was programmed.
+This will emulate an arduino. Right now it loads the bootloader, that waits
+on it's "serial port" (a pseudo tty) until someone programs it or it eventualy\times out and runs the previous app that was programmed.
 
+For a quick demo a script, "run" is provided.  The last line of output should
+show that firmware was loaded by the Arduino bootloader and is running.
 
-Once that bridge is setup, launch simduino:
+To run without a script, launch simduino:
 
 % ./simduino
 	Starting atmega328 - flashend 7fff ramend 08ff e2end 03ff
@@ -51,18 +52,7 @@ What that is done, you have a few seconds to program it:
 	
 	avrdude done.  Thank you.
 
-simduino will display that:
-
-	Erasing page 0000 (128)
-	Writing page 0000 (128)
-	Erasing page 0001 (128)
-	Writing page 0001 (128)
-	Erasing page 0002 (128)
-	Writing page 0002 (128)
-	Erasing page 0003 (128)
-	Writing page 0003 (128)
-
-And then jump to the program that was programmed. The example doesn't do anything useful, it's
-a placeholder...
+And then jump to the program that was programmed. The example doesn't do
+anything useful, it's a placeholder...
 
 Michel Pollet <buserror@gmail.com>
