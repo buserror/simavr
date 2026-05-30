@@ -223,7 +223,7 @@ gdb_send_stop_status(
 
 	n = sprintf(cmd, "T%02x20:%02x;21:%02x%02x;22:%02x%02x%02x00;",
 				signal, sreg,
-				avr->data[R_SPL], avr->data[R_SPH],
+				avr->data[avr->arch.sp_addr], avr->data[avr->arch.sp_addr + 1],
 				avr->pc & 0xff, (avr->pc >> 8) & 0xff,
 				(avr->pc >> 16) & 0xff);
 	if (reason) {
@@ -273,12 +273,12 @@ gdb_write_register(
 			g->avr->data[regi] = *src;
 			return 1;
 		case 32:
-			g->avr->data[R_SREG] = *src;
+			g->avr->data[g->avr->arch.sreg_addr] = *src;
 			SET_SREG_FROM(g->avr, *src);
 			return 1;
 		case 33:
-			g->avr->data[R_SPL] = src[0];
-			g->avr->data[R_SPH] = src[1];
+			g->avr->data[g->avr->arch.sp_addr] = src[0];
+			g->avr->data[g->avr->arch.sp_addr + 1] = src[1];
 			return 2;
 		case 34:
 			g->avr->pc = src[0] | (src[1] << 8) | (src[2] << 16) | (src[3] << 24);
@@ -304,7 +304,7 @@ gdb_read_register(
 			}
 			break;
 		case 33:
-			sprintf(rep, "%02x%02x", g->avr->data[R_SPL], g->avr->data[R_SPH]);
+			sprintf(rep, "%02x%02x", g->avr->data[g->avr->arch.sp_addr], g->avr->data[g->avr->arch.sp_addr + 1]);
 			break;
 		case 34:
 			sprintf(rep, "%02x%02x%02x00",
@@ -385,7 +385,7 @@ handle_monitor(avr_t * avr, avr_gdb_t * g, char * cmd)
 			} else if (m != 2) {
 				return 1;
 			} else {
-				if (count <= 0 || base + count + 32 > avr->ioend) {
+				if (count <= 0 || base + count + avr->arch.io_offset > avr->ioend) {
 					return 4;	// bad value
 				}
 				g->ior_base = base;
@@ -432,7 +432,7 @@ handle_io_registers(avr_t * avr, avr_gdb_t * g, char * cmd)
 			int i;
 
 			// Send names and values.
-			addr += 32 + g->ior_base;
+			addr += avr->arch.io_offset + g->ior_base;
 
 			if (addr + count > avr->ioend)
 				count = avr->ioend + 1 - addr;
@@ -449,7 +449,7 @@ handle_io_registers(avr_t * avr, avr_gdb_t * g, char * cmd)
 		} else {
 			// Send register count.
 
-			count = g->ior_count ? g->ior_count : avr->ioend - 32 + 1;
+			count = g->ior_count ? g->ior_count : avr->ioend - avr->arch.io_offset + 1;
 			sprintf(buff, "%x", count);
 		}
 		reply = buff;

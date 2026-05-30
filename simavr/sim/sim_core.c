@@ -194,7 +194,7 @@ _avr_flash_read16le(
 
 static inline void _call_register_irqs(avr_t * avr, uint16_t addr)
 {
-	if (addr > 31 && addr < 31 + MAX_IOs) {
+	if (addr > 31 && AVR_DATA_TO_IO(addr) < avr->io_count) {
 		avr_io_addr_t io = AVR_DATA_TO_IO(addr);
 
 		if (avr->io[io].irq) {
@@ -294,8 +294,8 @@ static inline void _avr_set_r(avr_t * avr, uint16_t r, uint8_t v)
 {
 	REG_TOUCH(avr, r);
 
-	if (r == R_SREG) {
-		avr->data[R_SREG] = v;
+	if (r == avr->arch.sreg_addr) {
+		avr->data[avr->arch.sreg_addr] = v;
 		// unsplit the SREG
 		SET_SREG_FROM(avr, v);
 		SREG();
@@ -343,12 +343,12 @@ _avr_set_r16le_hl(
  */
 inline uint16_t _avr_sp_get(avr_t * avr)
 {
-	return avr->data[R_SPL] | (avr->data[R_SPH] << 8);
+	return avr->data[avr->arch.sp_addr] | (avr->data[avr->arch.sp_addr + 1] << 8);
 }
 
 inline void _avr_sp_set(avr_t * avr, uint16_t sp)
 {
-	_avr_set_r16le(avr, R_SPL, sp);
+	_avr_set_r16le(avr, avr->arch.sp_addr, sp);
 }
 
 /*
@@ -358,6 +358,11 @@ static inline void _avr_set_ram(avr_t * avr, uint16_t addr, uint8_t v)
 {
 	if (addr <= avr->ioend)
 		_avr_set_r(avr, addr, v);
+	else if (unlikely(avr->arch.flashmap_start) &&
+				addr >= avr->arch.flashmap_start)
+		// Writes to the flash mapped into data space are ignored here;
+		// self-programming goes through the NVM controller instead.
+		return;
 	else
 		avr_core_watch_write(avr, addr, v);
 }
@@ -367,14 +372,21 @@ static inline void _avr_set_ram(avr_t * avr, uint16_t addr, uint8_t v)
  */
 static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 {
-	if (addr == R_SREG) {
+	if (addr == avr->arch.sreg_addr) {
 		/*
 		 * SREG is special it's reconstructed when read
 		 * while the core itself uses the "shortcut" array
 		 */
-		READ_SREG_INTO(avr, avr->data[R_SREG]);
+		READ_SREG_INTO(avr, avr->data[avr->arch.sreg_addr]);
 
-	} else if (addr > 31 && addr < 31 + MAX_IOs) {
+	} else if (unlikely(avr->arch.flashmap_start) &&
+				addr >= avr->arch.flashmap_start) {
+		/*
+		 * Modern AVR maps the flash into the data space so constants can be
+		 * read with ordinary LD/LDD/LDS. Redirect to the flash array.
+		 */
+		return avr->flash[(addr - avr->arch.flashmap_start) & avr->flashend];
+	} else if (addr > 31 && AVR_DATA_TO_IO(addr) < avr->io_count) {
 		avr_io_addr_t io = AVR_DATA_TO_IO(addr);
 
 		if (avr->io[io].r.c)
@@ -446,9 +458,9 @@ const char * avr_regname(avr_t * avr, unsigned int reg)
 				sprintf(tt, "%c%c",
 					pairs[(reg - 26) >> 1],
 					(reg & 1) ? 'H' : 'L');
-			else if (((reg + 1) & ~1) == R_SPH)
-				sprintf(tt, "SP%c", (reg & 1) ? 'L' : 'H');
-			else if (reg == R_SREG)
+			else if (reg == avr->arch.sp_addr || reg == avr->arch.sp_addr + 1)
+				sprintf(tt, "SP%c", (reg == avr->arch.sp_addr) ? 'L' : 'H');
+			else if (reg == avr->arch.sreg_addr)
 				sprintf(tt, "SREG");
 			else
 				sprintf(tt, "io:%02x", reg);
@@ -512,7 +524,7 @@ void avr_dump_state(avr_t * avr)
 	if (!doit)
 		return;
 	printf("                                       ->> ");
-	const int r16[] = { R_SPL, R_XL, R_YL, R_ZL };
+	const int r16[] = { avr->arch.sp_addr, R_XL, R_YL, R_ZL };
 	for (int i = 0; i < 4; i++)
 		if (REG_ISTOUCHED(avr, r16[i]) || REG_ISTOUCHED(avr, r16[i]+1)) {
 			REG_TOUCH(avr, r16[i]);
@@ -539,7 +551,7 @@ void avr_dump_state(avr_t * avr)
 
 #define get_d5_a6(o) \
 		get_d5(o); \
-		const uint8_t A = ((((o >> 9) & 3) << 4) | ((o) & 0xf)) + 32;
+		const uint8_t A = ((((o >> 9) & 3) << 4) | ((o) & 0xf)) + avr->arch.io_offset;
 
 #define get_vd5_s3(o) \
 		get_vd5(o); \
@@ -572,7 +584,7 @@ void avr_dump_state(avr_t * avr)
 		const uint8_t q = ((o & 0x2000) >> 8) | ((o & 0x0c00) >> 7) | (o & 0x7);
 
 #define get_io5(o) \
-		const uint8_t io = ((o >> 3) & 0x1f) + 32;
+		const uint8_t io = ((o >> 3) & 0x1f) + avr->arch.io_offset;
 
 #define get_io5_b3(o) \
 		get_io5(o); \
@@ -601,6 +613,15 @@ void avr_dump_state(avr_t * avr)
 
 #define get_sreg_bit(o) \
 		const uint8_t b = (o >> 4) & 7;
+
+/*
+ * True when the core uses AVRxt instruction timing (modern tinyAVR/megaAVR-0/
+ * AVR Dx). A handful of data-transfer and call instructions take a different
+ * number of cycles than on the classic AVRe+ cores; see the per-instruction
+ * adjustments below. The reference is the "Instruction Set Summary" cycle
+ * tables of the AVR Instruction Set Manual (DS40002198), AVRe vs AVRxt columns.
+ */
+#define AVR_XT(avr)	unlikely((avr)->arch.flags & AVR_ARCH_F_XT_TIMING)
 
 /*
  * Add a "jump" address to the jump trace buffer
@@ -1054,7 +1075,8 @@ run_one_again:
 						      AVR_REGNAME(d), q, v+q, avr->data[v+q], DAS(v + q));
 						_avr_set_r(avr, d, _avr_get_ram(avr, v+q));
 					}
-					cycle += 1; // 2 cycles, 3 for tinyavr
+					// LDD: 2 cycles. STD: 2 on AVRe, 1 on AVRxt.
+					if (!(AVR_XT(avr) && (opcode & 0x0200))) cycle += 1;
 				}	break;
 				case 0xa008:
 				case 0x8008: {	// LD (LDD) -- Load Indirect using Y -- 10q0 qqsd dddd yqqq
@@ -1069,7 +1091,8 @@ run_one_again:
 						      AVR_REGNAME(d), q, v+q, avr->data[d+q], DAS(v + q));
 						_avr_set_r(avr, d, _avr_get_ram(avr, v+q));
 					}
-					cycle += 1; // 2 cycles, 3 for tinyavr
+					// LDD: 2 cycles. STD: 2 on AVRe, 1 on AVRxt.
+					if (!(AVR_XT(avr) && (opcode & 0x0200))) cycle += 1;
 				}	break;
 				default: _avr_invalid_opcode(avr); new_pc = avr->pc;
 			}
@@ -1124,13 +1147,18 @@ run_one_again:
 						z |= avr->data[avr->eind] << 16;
 					STATE("%si%s Z[%04x]\n", e?"e":"", p?"call":"jmp", z << 1);
 					if (p)
-						cycle += _avr_push_addr(avr, new_pc) - 1;
+						// ICALL/EICALL: AVRe 3/4, AVRxt 2/3 (one less).
+						cycle += _avr_push_addr(avr, new_pc) - 1 - (AVR_XT(avr) ? 1 : 0);
 					new_pc = z << 1;
 					cycle++;
 					TRACE_JUMP();
 				}	break;
 				case 0x9518: 	// RETI -- Return from Interrupt -- 1001 0101 0001 1000
-					avr_sreg_set(avr, S_I, 1);
+					// Classic AVR: RETI re-enables interrupts. Modern CPUINT:
+					// RETI leaves the I bit untouched and instead clears the
+					// active execution-level flag (done in avr_interrupt_reti).
+					if (!(avr->arch.flags & AVR_ARCH_F_CPUINT))
+						avr_sreg_set(avr, S_I, 1);
 					avr_interrupt_reti(avr);
 					FALLTHROUGH
 				case 0x9508: {	// RET -- Return -- 1001 0101 0000 1000
@@ -1175,7 +1203,8 @@ run_one_again:
 							STATE("lds %s[%02x], 0x%04x\t\t%s\n",
 							      AVR_REGNAME(d), avr->data[d], x, DAS(x));
 							_avr_set_r(avr, d, _avr_get_ram(avr, x));
-							cycle++; // 2 cycles
+							cycle++; // 2 cycles (AVRe)
+							if (AVR_XT(avr)) cycle++; // 3 cycles on AVRxt
 						}	break;
 						case 0x9005:
 						case 0x9004: {	// LPM -- Load Program Memory -- 1001 000d dddd 01oo
@@ -1250,7 +1279,7 @@ run_one_again:
 							STATE("st %sX[%04x]%s, %s[%02x] \t\t%s\n",
 							      op == 2 ? "--" : "", x, op == 1 ? "++" : "",
 							      AVR_REGNAME(d), vd, DAS(x));
-							cycle++; // 2 cycles, except tinyavr
+							if (!AVR_XT(avr)) cycle++; // 2 cycles (AVRe), 1 on AVRxt
 							if (op == 2) x--;
 							_avr_set_ram(avr, x, vd);
 							if (op == 1) x++;
@@ -1280,7 +1309,7 @@ run_one_again:
 							STATE("st %sY[%04x]%s, %s[%02x] \t\t%s\n",
 							      op == 2 ? "--" : "", y, op == 1 ? "++" : "",
 							      AVR_REGNAME(d), vd, DAS(y));
-							cycle++;
+							if (!AVR_XT(avr)) cycle++; // 2 cycles (AVRe), 1 on AVRxt
 							if (op == 2) y--;
 							_avr_set_ram(avr, y, vd);
 							if (op == 1) y++;
@@ -1317,7 +1346,7 @@ run_one_again:
 							STATE("st %sZ[%04x]%s, %s[%02x] \t\t%s\n",
 							      op == 2 ? "--" : "", z, op == 1 ? "++" : "",
 							      AVR_REGNAME(d), vd, DAS(z));
-							cycle++; // 2 cycles, except tinyavr
+							if (!AVR_XT(avr)) cycle++; // 2 cycles (AVRe), 1 on AVRxt
 							if (op == 2) z--;
 							_avr_set_ram(avr, z, vd);
 							if (op == 1) z++;
@@ -1335,7 +1364,7 @@ run_one_again:
 							_avr_push8(avr, vd);
 							T(uint16_t sp = _avr_sp_get(avr);)
 							STATE("push %s[%02x] (@%04x)\n", AVR_REGNAME(d), vd, sp);
-							cycle++;
+							if (!AVR_XT(avr)) cycle++; // 2 cycles (AVRe), 1 on AVRxt
 						}	break;
 						case 0x9400: {	// COM -- One's Complement -- 1001 010d dddd 0000
 							get_vd5(opcode);
@@ -1423,7 +1452,8 @@ run_one_again:
 							a = (a << 16) | x;
 							STATE("call 0x%06x\n", a);
 							new_pc += 2;
-							cycle += 1 + _avr_push_addr(avr, new_pc);
+							// AVRe: 4/5 cycles, AVRxt: 3/4 (one less).
+							cycle += (AVR_XT(avr) ? 0 : 1) + _avr_push_addr(avr, new_pc);
 							new_pc = a << 1;
 							TRACE_JUMP();
 							STACK_FRAME_PUSH();
@@ -1462,13 +1492,13 @@ run_one_again:
 									} else {
 										uint8_t res;
 
-										io += 32;
+										io += avr->arch.io_offset;
 										res = _avr_get_ram(avr, io) & ~(1 << bit);
 										STATE("cbi %s[%04x], 0x%02x = %02x\n", AVR_REGNAME(io), avr->data[io], 1 << bit, res);
 										_avr_set_ram(avr, io, res);
 									}
 									}
-									cycle++;
+									if (!AVR_XT(avr)) cycle++; // 2 cycles (AVRe), 1 on AVRxt
 									break;
 								case 0x9900: {	// SBIC -- Skip if Bit in I/O Register is Cleared -- 1001 1001 AAAA Abbb
 									get_io5_b3mask(opcode);
@@ -1490,13 +1520,13 @@ run_one_again:
 									} else {
 										uint8_t res;
 
-										io += 32;
+										io += avr->arch.io_offset;
 										res = _avr_get_ram(avr, io) | (1 << bit);
 										STATE("sbi %s[%04x], 0x%02x = %02x\n", AVR_REGNAME(io), avr->data[io], 1 << bit, res);
 										_avr_set_ram(avr, io, res);
 									}
 									}
-									cycle++;
+									if (!AVR_XT(avr)) cycle++; // 2 cycles (AVRe), 1 on AVRxt
 									break;
 								case 0x9b00: {	// SBIS -- Skip if Bit in I/O Register is Set -- 1001 1011 AAAA Abbb
 									get_io5_b3mask(opcode);
@@ -1560,7 +1590,8 @@ run_one_again:
 		case 0xd000: {	// RCALL -- 1101 kkkk kkkk kkkk
 			get_o12(opcode);
 			STATE("rcall .%d [%04x]\n", o >> 1, new_pc + o);
-			cycle += _avr_push_addr(avr, new_pc);
+			// AVRe: 3/4 cycles, AVRxt: 2/3 (one less).
+			cycle += _avr_push_addr(avr, new_pc) - (AVR_XT(avr) ? 1 : 0);
 			new_pc = (new_pc + o) % (avr->flashend+1);
 			// 'rcall .1' is used as a cheap "push 16 bits of room on the stack"
 			if (o != 0) {
@@ -1642,6 +1673,12 @@ run_one_again:
 
 	}
 	avr->cycle += cycle;
+
+	// Modern AVR: the CCP protected-write window closes after a few
+	// instructions. ccp_window is only ever non-zero on modern cores, so
+	// classic cores just see a predictable not-taken branch here.
+	if (unlikely(avr->arch.ccp_window))
+		avr->arch.ccp_window--;
 
 	if ((avr->state == cpu_Running) &&
 		(avr->run_cycle_count > cycle) &&

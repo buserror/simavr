@@ -68,6 +68,13 @@ avr_register_io_read(
 		void * param)
 {
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
+
+	if (a >= avr->io_count) {
+		AVR_LOG(avr, LOG_ERROR,
+				"IO: %s(): IO address 0x%04x out of range (max 0x%04x).\n",
+				__func__, a, avr->io_count);
+		abort();
+	}
 	if (avr->io[a].r.param || avr->io[a].r.c) {
 		if (avr->io[a].r.param != param || avr->io[a].r.c != readp) {
 			AVR_LOG(avr, LOG_ERROR,
@@ -108,10 +115,10 @@ avr_register_io_write(
 {
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
 
-	if (a >= MAX_IOs) {
+	if (a >= avr->io_count) {
 		AVR_LOG(avr, LOG_ERROR,
 				"IO: %s(): IO address 0x%04x out of range (max 0x%04x).\n",
-				__func__, a, MAX_IOs);
+				__func__, a, avr->io_count);
 		abort();
 	}
 	/*
@@ -262,6 +269,8 @@ avr_iomem_getirq(
 	if (index > 8)
 		return NULL;
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
+	if (a >= avr->io_count)
+		return NULL;
 	if (avr->io[a].irq == NULL) {
 		/*
 		 * Prepare an array of names for the io IRQs. Ideally we'd love to have

@@ -49,12 +49,18 @@ typedef struct avr_int_vector_t {
 	avr_irq_t		irq[AVR_INT_IRQ_COUNT];
 	uint8_t			pending : 1,	// 1 while scheduled in the fifo
 					trace : 1,		// only for debug of a vector
-					raise_sticky : 1;	// 1 if the interrupt flag (= the raised regbit) is not cleared
+					raise_sticky : 1,	// 1 if the interrupt flag (= the raised regbit) is not cleared
 										// by the hardware when executing the interrupt routine (see TWINT)
+					nmi : 1;		// modern CPUINT: this vector is non-maskable (e.g. CRCSCAN)
 } avr_int_vector_t, *avr_int_vector_p;
 
 // Size needs to be >= max number of vectors, and a power of two
 DECLARE_FIFO(avr_int_vector_p, avr_int_pending, 64);
+
+// CPUINT.STATUS execution-level flags (modern interrupt controller)
+#define AVR_CPUINT_LVL0EX	(1 << 0)
+#define AVR_CPUINT_LVL1EX	(1 << 1)
+#define AVR_CPUINT_NMIEX	(1 << 7)
 
 // interrupt vectors, and their enable/clear registers
 typedef struct  avr_int_table_t {
@@ -65,6 +71,14 @@ typedef struct  avr_int_table_t {
 	avr_int_vector_t *running[64]; // stack of nested interrupts
 	// global status for pending + running in interrupt context
 	avr_irq_t		irq[AVR_INT_IRQ_COUNT];
+
+	// Modern CPUINT controller state (used when AVR_ARCH_F_CPUINT is set).
+	// These are driven by the CPUINT register block (wired up by the core).
+	uint8_t			cpuint_status;	// STATUS: NMIEX/LVL1EX/LVL0EX (see masks above)
+	uint8_t			cpuint_lvl1vec;	// LVL1VEC: vector elevated to level 1 (0 = none)
+	uint8_t			cpuint_lvl0pri;	// LVL0PRI: LVL0 scheduling base / last-acked vector
+	uint8_t			cpuint_lvl0rr;	// LVL0RR: round-robin scheduling enabled
+	uint8_t			max_vector;		// highest registered vector number (LVL0 wrap)
 } avr_int_table_t, *avr_int_table_p;
 
 /*
@@ -116,6 +130,16 @@ avr_irq_t *
 avr_get_interrupt_irq(
 		struct avr_t * avr,
 		uint8_t v);
+
+/*
+ * Modern CPUINT controller configuration. These are called by the CPUINT
+ * register model (set by the core) to mirror the CPUINT.CTRLA / LVL0PRI /
+ * LVL1VEC registers into the interrupt engine.
+ */
+void avr_cpuint_set_lvl1vec(struct avr_t *avr, uint8_t vector);
+void avr_cpuint_set_lvl0pri(struct avr_t *avr, uint8_t pri);
+void avr_cpuint_set_lvl0rr(struct avr_t *avr, uint8_t enabled);
+uint8_t avr_cpuint_get_status(struct avr_t *avr);
 
 // Initializes the interrupt table
 void

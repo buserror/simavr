@@ -1,6 +1,31 @@
 simavr - a lean and mean Atmel AVR simulator for linux
 ======
 
+> ### Fork note (garyPenhook)
+>
+> This is a fork of [buserror/simavr](https://github.com/buserror/simavr). The
+> goal of this fork is to add support for **modern AVR** devices (the AVRxt core:
+> tinyAVR 0/1-series, megaAVR 0-series, AVR Dx), starting with the
+> **ATtiny3217** (tinyAVR 1-series). Upstream simavr targets the classic AVR
+> (AVRe/AVRe+) cores only; modern AVRs use a different data/IO memory map,
+> instruction timing, the CCP protected-write mechanism, flash-in-data-space,
+> and the CPUINT interrupt controller.
+>
+> The work is staged in phases; engine support so far (all gated behind
+> per-core architecture flags so classic cores are byte-for-byte unchanged):
+>
+> - **Phase 1 – addressing model:** per-core data/IO offset, SP/SREG locations,
+>   and a dynamically-sized IO callback table.
+> - **Phase 2 – AVRxt timing + CCP + flash-in-data-space.**
+> - **Phase 3 – CPUINT interrupt controller** (NMI / LVL1 / LVL0 scheduling,
+>   modern I-bit & RETI semantics).
+>
+> See [`doc/attiny3217_design.md`](doc/attiny3217_design.md) for the full design
+> plan and per-phase status. Engine changes are exercised by
+> [`tests/test_avrxt_engine.c`](tests/test_avrxt_engine.c). Remaining work:
+> the peripheral models (PORT/TCA/TCB/USART/...) and the `attiny3217` core
+> descriptor.
+
 _simavr_ is an AVR simulator for linux, or any platform that uses avr-gcc. It uses 
 avr-gcc's own register definition to simplify creating new targets for supported AVR
 devices. The core was made to be small and compact, and hackable so allow quick 

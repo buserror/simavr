@@ -93,6 +93,41 @@ avr_get_time_stamp(
 	return stamp - avr->time_base;
 }
 
+void
+avr_ccp_write(
+		avr_t * avr,
+		uint8_t signature)
+{
+	// Either signature opens the protected-write window; the distinction
+	// between IO-register and SPM protection is left to the consumer.
+	// The datasheet allows the protected write "within four instructions"
+	// *following* the CCP write. The +1 compensates for the window countdown
+	// that runs at the end of this (the CCP-writing) instruction, so that a
+	// full AVR_CCP_WINDOW subsequent instructions still see the window open.
+	if (signature == AVR_CCP_IOREG || signature == AVR_CCP_SPM)
+		avr->arch.ccp_window = AVR_CCP_WINDOW + 1;
+}
+
+int
+avr_ccp_io_write_enabled(
+		avr_t * avr)
+{
+	return avr->arch.ccp_window > 0;
+}
+
+// Internal IO write handler installed on the CCP register of modern cores.
+static void
+_avr_ccp_write_hook(
+		avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
+{
+	avr_ccp_write(avr, v);
+	// The CCP register itself does not store the written signature.
+	avr->data[addr] = 0;
+}
+
 int
 avr_init(
 		avr_t * avr)
@@ -110,6 +145,25 @@ avr_init(
         avr->trace_data->data_names_size = avr->ioend + 1;
 #endif
 	avr->data_names = calloc(avr->ioend + 1, sizeof (char *));
+
+	// Apply classic-AVR architecture defaults unless the core opted into the
+	// modern (AVRxt) model and supplied its own values.
+	if (!(avr->arch.flags & AVR_ARCH_F_MODERN)) {
+		avr->arch.io_offset = 32;
+		avr->arch.sp_addr = R_SPL;
+		avr->arch.sreg_addr = R_SREG;
+	}
+	// Allocate the IO callback dispatch table, sized to cover the whole IO
+	// register region (data 32 .. ioend). At least MAX_IOs for safety.
+	avr->io_count = AVR_DATA_TO_IO(avr->ioend) + 1;
+	if (avr->io_count < MAX_IOs)
+		avr->io_count = MAX_IOs;
+	avr->io = calloc(avr->io_count, sizeof(*avr->io));
+
+	// Modern cores: install the CCP register handler so protected-write
+	// unlock sequences are honoured by the engine.
+	if ((avr->arch.flags & AVR_ARCH_F_CCP) && avr->arch.ccp_addr)
+		avr_register_io_write(avr, avr->arch.ccp_addr, _avr_ccp_write_hook, NULL);
 	/* put "something" in the serial number */
 #ifdef _WIN32
 	uint32_t r = getpid() + (uint32_t) rand();
@@ -165,6 +219,7 @@ avr_terminate(
 
 	if (avr->flash) free(avr->flash);
 	if (avr->data) free(avr->data);
+	if (avr->io) { free(avr->io); avr->io = NULL; }
 	if (avr->io_console_buffer.buf) {
 		avr->io_console_buffer.len = 0;
 		avr->io_console_buffer.size = 0;

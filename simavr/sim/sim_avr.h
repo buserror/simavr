@@ -89,6 +89,22 @@ enum {
 #define AVR_DATA_TO_IO(v) ((v) - 32)
 #define AVR_IO_TO_DATA(v) ((v) + 32)
 
+/*
+ * Architecture-variant flags, stored in avr->arch.flags.
+ * Classic AVRs (AVRe/AVRe+) leave these clear and get classic defaults
+ * applied in avr_init(). Modern AVRs (AVRxt: tinyAVR 0/1-series, megaAVR-0,
+ * AVR Dx ...) set AVR_ARCH_F_MODERN and provide their own io_offset/sp/sreg.
+ */
+#define AVR_ARCH_F_MODERN	(1 << 0)	// modern (AVRxt) addressing model
+#define AVR_ARCH_F_CCP		(1 << 1)	// has Configuration Change Protection
+#define AVR_ARCH_F_XT_TIMING	(1 << 2)	// AVRxt instruction timing
+#define AVR_ARCH_F_CPUINT	(1 << 3)	// modern CPUINT interrupt controller
+
+// CCP register signatures (modern AVR), and the protected-write window length.
+#define AVR_CCP_IOREG		0xD8	// unlock IO-register protected writes
+#define AVR_CCP_SPM		0x9D	// unlock self-programming (SPM)
+#define AVR_CCP_WINDOW		4	// instructions the window stays open
+
 /**
  * Structure to hold simulator options.
  * The current set is kept in avr->options.
@@ -322,7 +338,7 @@ typedef struct avr_t {
 	 * If you wanted to emulate the BIG AVRs, and XMegas, this would need
 	 * work.
 	 */
-	struct {
+	struct avr_io_cb_t {
 		struct avr_irq_t * irq;	// optional, used only if asked for with avr_iomem_getirq()
 		struct {
 			void * param;
@@ -332,7 +348,32 @@ typedef struct avr_t {
 			void * param;
 			avr_io_write_t c;
 		} w;
-	} io[MAX_IOs];
+	} * io;
+	// number of entries allocated in io[]; covers the whole IO register
+	// region (AVR_DATA_TO_IO(ioend)+1, at least MAX_IOs). Set in avr_init().
+	uint32_t			io_count;
+
+	/*
+	 * Architecture-variant parameters. These abstract the differences between
+	 * the classic AVR data/IO memory model and the modern (AVRxt) one.
+	 * Defaults for classic AVRs are filled in by avr_init() when .flags has
+	 * no AVR_ARCH_F_MODERN bit; modern cores set them explicitly.
+	 */
+	struct {
+		uint8_t		flags;		// AVR_ARCH_F_* bits
+		uint8_t		io_offset;	// IN/OUT/SBI/CBI IO addr -> data addr (32 classic, 0 modern)
+		uint16_t	sp_addr;	// data address of SPL (SPH = sp_addr + 1)
+		uint16_t	sreg_addr;	// data address of SREG
+		// Configuration Change Protection (modern AVR). ccp_addr is the data
+		// address of the CCP register (0 = none). ccp_window counts down the
+		// remaining instructions during which protected writes are allowed.
+		uint16_t	ccp_addr;
+		uint8_t		ccp_window;
+		// Modern AVR maps the flash into the data space (for unified LD access
+		// to constants). flashmap_start is the data address where flash byte 0
+		// appears (0 = no mapping).
+		uint16_t	flashmap_start;
+	} arch;
 
 	/*
 	 * This block allows sharing of the IO write/read on addresses between
@@ -513,6 +554,22 @@ void
 avr_sadly_crashed(
 		avr_t *avr,
 		uint8_t signal);
+
+/*
+ * Configuration Change Protection (modern/AVRxt cores).
+ * avr_ccp_write() is called with the value written to the CCP register; the
+ * correct signature (CCP_IOREG 0xD8 or CCP_SPM 0x9D) opens a short window
+ * during which writes to protected registers are accepted.
+ * avr_ccp_io_write_enabled() is queried by peripherals modelling protected
+ * registers to decide whether to honour a write.
+ */
+void
+avr_ccp_write(
+		avr_t *avr,
+		uint8_t signature);
+int
+avr_ccp_io_write_enabled(
+		avr_t *avr);
 
 /*
  * Logs a message using the current logger
