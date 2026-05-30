@@ -1,4 +1,6 @@
 This will bridge the usb avr to the vhci-usb virtual usb host.
+Unfortunately it depends on VHCI, a Linux kernel module that
+has not been maintained recently.
 
 You'll need vhci-usb and vhci-usb-lib to build and use it.
 (http://sourceforge.net/projects/usb-vhci/)

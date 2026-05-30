@@ -33,7 +33,6 @@
 #endif
 
 #include <pthread.h>
-#include <curses.h>
 
 #include "sim_avr.h"
 #include "sim_gdb.h"
