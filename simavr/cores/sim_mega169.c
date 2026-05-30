@@ -226,20 +226,7 @@ const struct mcu_t {
 		.disabled = AVR_IO_REGBIT(PRR,PRTIM1),
 		.wgm = { AVR_IO_REGBIT(TCCR1A, WGM10), AVR_IO_REGBIT(TCCR1A, WGM11),
 					AVR_IO_REGBIT(TCCR1B, WGM12), AVR_IO_REGBIT(TCCR1B, WGM13) },
-		.wgm_op = {
-			[0] = AVR_TIMER_WGM_NORMAL16(),
-			// TODO: 1 PWM phase correct 8bit
-			// 		 2 PWM phase correct 9bit
-			//       3 PWM phase correct 10bit
-			[4] = AVR_TIMER_WGM_CTC(),
-			[5] = AVR_TIMER_WGM_FASTPWM8(),
-			[6] = AVR_TIMER_WGM_FASTPWM9(),
-			[7] = AVR_TIMER_WGM_FASTPWM10(),
-			// TODO: 8, 9 PWM phase and freq correct ICR & 10, 11
-			[12] = AVR_TIMER_WGM_ICCTC(),
-			[14] = AVR_TIMER_WGM_ICPWM(),
-			[15] = AVR_TIMER_WGM_OCPWM(),
-		},
+		WGM_OPS_16,
 		.cs = { AVR_IO_REGBIT(TCCR1B, CS10), AVR_IO_REGBIT(TCCR1B, CS11), AVR_IO_REGBIT(TCCR1B, CS12) },
 		.cs_div = { 0, 0, 3 /* 8 */, 6 /* 64 */, 8 /* 256 */, 10 /* 1024 */, AVR_TIMER_EXTCLK_CHOOSE, AVR_TIMER_EXTCLK_CHOOSE },
 		.ext_clock_pin = AVR_IO_REGBIT(PORTG, 3), /* External clock pin */

@@ -106,6 +106,27 @@ typedef struct avr_timer_wgm_t {
 #define AVR_TIMER_WGM_OCPWM() { .kind = avr_timer_wgm_pwm, .top = avr_timer_wgm_reg_ocra }
 #define AVR_TIMER_WGM_ICPWM() { .kind = avr_timer_wgm_pwm, .top = avr_timer_wgm_reg_icr }
 #define AVR_TIMER_WGM_ICFASTPWM() { .kind = avr_timer_wgm_fast_pwm, .top = avr_timer_wgm_reg_icr }
+#define AVR_TIMER_WGM_OCFASTPWM() { .kind = avr_timer_wgm_fast_pwm, .top = avr_timer_wgm_reg_ocra }
+
+/* The 16-bit times in the classic AVRs all have the same PWM modes. */
+
+#define WGM_OPS_16 \
+	.wgm_op = { \
+		[0] = AVR_TIMER_WGM_NORMAL16(),	\
+		[1] = AVR_TIMER_WGM_FCPWM8(),	\
+		[2] = AVR_TIMER_WGM_FCPWM9(),	\
+		[3] = AVR_TIMER_WGM_FCPWM10(),	\
+		[4] = AVR_TIMER_WGM_CTC(),	\
+		[5] = AVR_TIMER_WGM_FASTPWM8(),	\
+		[6] = AVR_TIMER_WGM_FASTPWM9(),	\
+		[7] = AVR_TIMER_WGM_FASTPWM10(),\
+		[8] = AVR_TIMER_WGM_ICPWM(),	\
+		[9] = AVR_TIMER_WGM_OCPWM(),	\
+		/* TODO: 8, 9 PWM phase and freq correct ICR and OCRA1. */  \
+		[12] = AVR_TIMER_WGM_ICCTC(),	\
+		[14] = AVR_TIMER_WGM_ICFASTPWM(),\
+		[15] = AVR_TIMER_WGM_OCFASTPWM(),\
+	    }
 
 typedef struct avr_timer_comp_t {
 		avr_int_vector_t	interrupt;		// interrupt vector
