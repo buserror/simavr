@@ -1,0 +1,771 @@
+<HTML>
+<TITLE>
+Introduction to simavr.
+</TITLE>
+<BODY style="max-width:700px; margin:auto;">
+
+<H3>Introduction to simavr.</H3>
+This is a guide to getting started with
+<A href="https://github.com/buserror/simavr">
+<I>simavr,</I>
+</A>
+"a lean and mean Atmel AVR simulator".
+It describes how to load and run AVR firmware in the simulator
+and how to begin writing code that simulates the rest of your circuit.
+<P>
+Before using
+<I>simavr,</I>
+you will need an AVR toolchain (programs for building AVR programs).
+The preferred toolchain is
+<I>gcc-avr</I>
+but anything that can produce Intel HEX files should work.
+If using <I>gcc-avr</I> with C or C++,
+you will also probably need the C library,
+<I>avr-libc.</I>
+The the <I>libelf</I> and <I>libdwarf</I> libraries are recommended
+when using <I>gcc-avr</I> but are not essential.
+If another language is used,
+<A href="#mmcu">some features</A>
+will be unavailable, or require extra work.
+<P>
+The GNU version of Make and GCC are required for building from source.
+On Windows, the MINGW64 flavour of the MSYS2 environment is currently
+preferred for building, but other tools may work.  Install these packages:
+<CODE>
+  make mingw-w64-x86_64-toolchain mingw-w64-x86_64-libelf
+  mingw-w64-x86_64-libdwarf mingw-w64-x86_64-avr-toolchain
+  mingw-w64-x86_64-freeglut
+</CODE>
+On a Macintosh, use Homebrew and install:
+<CODE>
+  make libelf freeglut patchelf osx-cross/avr avr-gcc@9 avr-binutils
+</CODE>
+With the right tools installed building is then just "make" in the top-level
+source directory.
+<P>
+More information on building
+from source can be found in the PDF manual or
+the Bulid Guide page of the github Wiki.
+<P>
+Suppose you have downloaded and (if necessary) built simavr.
+Now what?
+<P>
+You have a program called <I>run_avr</I>, or possibly <I>simavr</I>
+that can load and run AVR programs (firmware).
+You also have the simulator built as a library
+that can be combined with your own software
+in a more complete circuit simulation.
+The source tree contains some examples of using the library
+and some tests to verify that simavr is working properly.
+The directory
+<I>examples/parts</I>
+contains a small collection of reusable simulations of parts used with
+microcontrollers,
+including LCD display panels.
+This guide is mostly an introduction to the library.
+
+<H4 id="using">Using <I>run-avr</I>.</H4>
+An easy way to get your firmware compiled and running
+with <I>gcc-avr</I> is to create a new sub-directory of
+<I>simavr/examples</I>
+containing your firmware source and a short Makefile
+<A href="https://raw.githubusercontent.com/buserror/simavr/refs/heads/master/examples/board_ds1338/Makefile">
+(example).
+</A>
+The simavr convention is that C source files with names beginning
+"attiny_" or "atmega_" are firmware:
+the first component of the name identifies the target AVR part
+and is used to select the appropriate compiler options.
+If your new directory has a name beginning "board_",
+the Makefile will be called by those higher in the directory tree.
+<P>
+If compiling outside the tree, the ability to set simulator options within
+the source code (described
+<A href="#mmcu">below</A>)
+depends on using the gcc option,
+"-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000".
+To execute your firmware, invoke
+<I>run-avr</I>
+with the compiled firmware as the only non-option argument.
+<P>
+Now the firmware is running, but what is it doing?
+There are two ways to monitor outputs, one to send inputs.
+The simple output method is that the firmware sends back messages:
+by default bytes written by a UART peripheral are copied into
+run_avr's output (stdout).
+If there is no free UART and firmware is in ELF format, any otherwise
+unused I/O register may become an output device that is treated the same way.
+Use the AVR_MCU_SIMAVR_CONSOLE macro from the set described
+<A href="#mmcu">below</A>.
+<P>
+Otherwise, the interface from your firmware program to the world is
+a simulation of the interface of real AVR microcontrollers:
+voltages input and output on the device's pins.
+The simulator can emulate these voltages by reading and writing
+Value Change Dump (VCD) files,
+controlled by command line options and data in the firmware file.
+VCD files are formatted text files
+and it is fairly easy to create test input with a text editor,
+but they are not really intended to be read directly.
+There are tools, for example
+<A href="http://gtkwave.sourceforge.net/">
+<I>gtkwave</I>
+</A>
+for displaying VCD files as graphical waveforms but, as far as I know,
+few dedicated software tools for creating them.
+Two programs that may help are
+<A href="https://github.com/lcgamboa/picsimlab">
+<I>PICSimLab</I>
+</A>
+and
+<A href="https://sourceforge.net/projects/simutron/">
+<I>simutron</I>
+</A>
+They are both larger graphical circuit designer/emulator that include simavr
+as a component and have various input devices whose actions can be captured
+as VCD files.
+<P>
+The filename and included items for VCD output may be specified
+<A href="#mmcu">in the firmware,</A>
+by function calls in a controlling program
+(<I><A href="https://raw.githubusercontent.com/buserror/simavr/refs/heads/master/simavr/sim/sim_vcd_file.h">
+    sim_vcd_file.h
+</A></I>)
+or by the
+<I>--output</I> and <I>--add_trace</I>
+options of
+<I>run_avr.</I>
+The
+<I>--add_trace</I>
+option value contains a name for the traced item, a keyword
+and two hexadecimal numbers in the form
+<I>name=kind@addr/mask</I> or <I>name=mem_kind@addr/mask</I>.
+For example,
+<PRE>
+  --add-trace ucsr0a=trace@0xc0/0xff
+</PRE>
+will add a trace named "ucsr0a" on the register at address 0xc0.
+There are four keywords that may substitute for "kind":
+for
+<I>trace</I>
+the parameters are an I/O register address and a mask to set which bits will be traced;
+for
+<I>portpin</I>
+a GPIO port pin number and the ASCII value for the capital letter that identifies the port;
+for
+<I>ioirq</I>
+the addr value is reinterpreted as four ASCII characters and the mask as a
+number to select any of the
+<A href="#irqs">"output IRQs"</A>
+described below;
+and for
+<I>irq</I>
+an interrupt event index and an interrupt vector number.
+The event index is 0 for interrupt pending events
+(the interrupt is enabled and raised)
+or 1 for interrupt handler execution.
+<P>
+For
+<I>ioirq</I>
+a more friendly format may also be used:
+the addr field can be any four characters and the mask is a decimal number.
+They provide the
+<A href="#ioctls">IOCTL key</A>
+and IRQ number that select the traced
+<A href="#irqs">IRQ</A>.
+<P>
+For the form of the option without the mask, the keywords are
+<I>sram8</I> and <I>sram16</I>
+to select byte or 16-bit word locations in the AVR's RAM.
+<P>
+So
+<PRE>
+  --add-trace pwm=portpin@0x2/0x42 --add-trace interrupt=irq@0x1/0x3
+</PRE>
+will trace the state of pin 2 on port B, and execution of the
+interrupt handler for vector 3.
+<P>
+VCD files for input must follow a convention for variable names
+so that they match the
+<I>printf()</I>
+format
+<I>"%c%c%c%c_%d"</I>, for example "iogD_3" represents pin PD3.
+The inserted values correspond to the last two arguments to
+<I><A href="#irqs">avr_io_getirq()</A>,</I>
+described below.
+An example VCD file for input,
+<I>tests/stimulus_attiny1634.in</I>,
+can be found in the source code.
+<P>
+If input files require translation,
+another program,
+<A href="http://vcdmaker.org/">
+<I>vcdmaker,</I>
+</A>
+may be useful.
+It is a utility for extracting information from various log files
+and generating VCD data.
+<P>
+While your firmware is running,
+<I>run-avr</I>
+can show the instructions being executed, using the
+<I>"--trace"</I>
+option.
+This tracing option is normally disabled for best preformance
+and is enabled by modifying
+<I>simavr/Makefile</I> to turn on CONFIG_SIMAVR_TRACE and recompiling.
+
+<H4>Debugging with run-avr.</H4>
+The simulator has support for debugging firmware with the AVR version
+of the GNU debugger,
+<I>avr-gdb.</I>
+Start
+<I>run_avr</I>
+as usual, with the extra option
+<I>--gdb</I>
+and put the process in the background.
+Then start
+<I>avr-gdb</I>
+with your firmware binary (ELF format with debugging symbols is best)
+as argument.
+The first gdb command should be:
+<PRE>
+  target remote :1234
+</PRE>
+That connects the debugger to the simulated AVR.
+Following that there is little difference from ordinary debugging
+with the standard
+<I>gdb.</I>
+An initial gdb command can be included in the shell command:
+<PRE>
+   avr-gdb -ex 'target remote :1234' firmware.elf
+</PRE>
+Gdb has a command,
+<I>monitor,</I>
+for sending device-specific commands to the device being debugged.
+With
+<I>simavr</I>
+the subcommands
+<I>halt</I>
+and
+<I>reset</I>
+are supported.
+<P>
+There is support for the standard avr-gdb commands
+<PRE>
+  load
+  info io_registers
+</PRE>
+for loading flash memory from a file and for
+displaying I/O register names and values. Also
+<PRE>
+  monitor ior hex-base-address register-count
+</PRE>
+to specify a sub-range of I/O registers to be shown.
+Without arguments,
+<I>monitor ior</I>
+returns to displaying all the I/O registers.
+Several 
+<I>monitor</I>
+sub-commands can be combined on one line.
+
+<H4 id="mmcu">Options in firmware.</H4>
+A slightly unusual feature of
+<I>simavr</I>
+is that options for the simulator can be specified by macro calls
+included in the firmware (ELF compilation only).
+In some cases there is no other way to set them.
+Most common is the AVR_MCU macro, to set the clock speed and AVR variant.
+Other options include VCD file tracing details,
+initial analogue voltage inputs and others.
+Details are in the file
+<I><A href="https://raw.githubusercontent.com/buserror/simavr/refs/heads/master/simavr/sim/avr/avr_mcu_section.h">
+    avr_mcu_section.h
+</A></I>
+and various included example firmware programs show how the macros can be used.
+<P>
+One important macro, AVR_MCU_SIMAVR_COMMAND,
+lets the firmware send messages to the simulator.
+In test firmware, VCD output may be turned on and off, and
+the exit status for the host simulation program may be set.
+
+<H4>Using <I>libsimavr</I>.</H4>
+If you are developing new code to work with <I>libsimavr</I>,
+it is likely that you will need to examine or change the source code,
+if only for debugging.
+So it is probably better to use the library and headers from the build tree,
+rather than installed version.
+After building from source, the library can be found in a directory
+<I>simavr/simavr/obj*'</I> with the full name depending on your hardware
+and OS, and the headers are in <I>simavr/simavr/sim.</I>
+
+<H5>Initialisation.</H5>
+The first step in developing a program that uses <I>libsimavr</I>
+is to create an instance of a simulated MCU and load the firmware.
+Then it needs to be connected to some kind of external circuit simulation
+and code to start and possibly control execution.
+It may be worth considering adding new functions to <I>run_avr</I>
+rather than writing a new program,
+as the initialisation and some control code is already there.
+<P>
+In most cases, the AVR instance can be created directly from the
+compiled firmware.
+An ELF file is assumed, unless the file name ends ".hex".
+<PRE>
+	avr_t  *avr;      // Simulated AVR.
+	char   *firmware; // File name for firmware
+
+	avr = make_avr_from_file(firmware);
+</PRE>
+That can succeed when the type of AVR is either encoded in an ELF file
+or taken from the first part of the file name.
+The clock frequency is either taken from the ELF firmware or defaulted.
+<P>
+There is an alternative procedure if more control is needed.
+Because an ELF firmware file can contain parameters for the simulator,
+the first step is to read the file:
+<PRE>
+	elf_firmware_t  fw = {};  //  Must be initialised,
+	char           *firmware; //  File name for firmware
+
+	sim_setup_firmware(firmware, 0, &fw, argv[0]);
+</PRE>
+When using ihex format, the
+<I>elf_firmware_t</I>
+structure should be be further initialiased with the name and clock frequency
+of the specific AVR part before the function call:
+<PRE>
+	strcpy(fw.mmcu, name);
+	fw.frequency = f_cpu;
+	sim_setup_firmware(firmware, 0, &fw, argv[0]);
+</PRE>
+With the firmware prepared for loading, the next step is to create
+the simulated microcontroller and load the firmware:
+<PRE>
+	avr_t *avr;
+
+	avr = avr_make_mcu_by_name(f.mmcu);
+	if (!avr) {
+		fprintf(stderr, "%s: AVR '%s' not known\n", argv[0], f.mmcu);
+		exit(1);
+	}
+	avr_init(avr);
+	avr_load_firmware(avr, &f);
+</PRE>
+The simulator is now ready to run.
+The simplest option:
+<PRE>
+	for (;;) {
+		int state = avr_run(avr);
+		if (state == cpu_Done || state == cpu_Crashed)
+			break;
+	}
+</PRE>
+By default, the loop executes one instruction at a time.
+To make simulation faster, a burst size can be set as
+<I>avr->run_cycle_limit.</I>
+
+<H5>Connecting the external circuit.</H5>
+If the firmware is to do anything,
+there needs to be a connection to a simulated external circuit.
+In many cases this will use the digital input and output functions
+of the AVR general-purpose I/O ports (GPIOs).
+Some internal peripheral simulations route through the GPIO simulation,
+so external code does not need to consider what goes on inside,
+while others are handled through their own interfaces.
+<P id=irqs>
+External code interacts with simavr through function calls labelled "IRQ",
+described in
+<I><A href="https://raw.githubusercontent.com/buserror/simavr/refs/heads/master/simavr/sim/sim_irq.h">
+    sim_irq.h.
+</A></I>)
+Pointers to structures
+(<I>struct avr_irq_t</I>)
+serve as "handles" to events and operations within the simulator.
+Each peripheral, including the 8-bit GPIO ports,
+has a list of IRQs that it publishes and
+the first step in connecting code to the simulation is to obtain an
+IRQ pointer.
+This is how to get access to the state of the 8 PORTB pins of an AVR:
+<PRE>
+	avr_irq_t *pins_handle;
+        uint32_t   ioctl;
+
+        ioctl = (uint32_t)AVR_IOCTL_IOPORT_GETIRQ('B');
+	pins_handle = avr_io_getirq(avr, ioctl, IOPORT_IRQ_PIN_ALL);
+</PRE>
+The second argument (an
+<A href="#ioctls">IOCTL key</A>)
+selects the peripheral and the third the specific IRQ
+supported by the peripheral.
+IOCTLs and IRQ numbers are defined in each peripheral's header file,
+for example
+<I><A href="https://raw.githubusercontent.com/buserror/simavr/refs/heads/master/simavr/sim/avr_spi.h">
+    avr_spi.h
+</A></I>.
+<P>
+There are two basic actions on an IRQ: pass a value into the simulator,
+or request that the simulator calls an external function when an event
+associated with the IRQ,
+such as a pin state change, occurs.
+Most IRQs support only one of these methods, some support both.
+The direction is given in the IRQ's name, which can be found in the
+structure or seen near the end of the peripheral's source code file.
+In
+<I><A href="https://raw.githubusercontent.com/buserror/simavr/refs/heads/master/simavr/sim/avr_ioport.c">
+    avr_ioport.c
+</A></I>
+that IRQ's name is shown as "8>port".
+That means it is associated with 8 bits of data and the transfer direction
+is from the MCU to the outside.
+An external function must be connected to this IRQ to see the output value
+that has been set for the port.
+<PRE>
+// This function will be called when the pin state changes.
+
+static void d_out_notify(avr_irq_t *irq, uint32_t value, void *param)
+{
+	// Do something with param and value ...
+}
+
+        // ... back in main program initialisation.
+
+	avr_irq_register_notify(pins_handle, d_out_notify, param);
+</PRE>
+The third argument is a void pointer that is passed through to the
+called function.
+Usually it will be a pointer to a program structure representing the
+connections to the port.
+If the pin assignments to input or output are not fixed for the duration
+of execution it is also necessary to track the port direction register.
+Here the code is connected to the
+IOPORT_IRQ_REG_PORT and IOPORT_IRQ_DIRECTION_ALL IRQS,
+which give access to the data direction and output registers for the port.
+<PRE>
+/* Notification of output to a port. This is called whenever the output
+ * or data direction registers are written.  Writing to the input register
+ * to toggle output register bits is handled internally by simavr
+ * and appears as an output register change.
+ *
+ * New pin values are calculated ignoring pullups, including simavr's
+ * external pullup feature - the panel provides "strong" inputs.
+ */
+
+static void d_out_notify(avr_irq_t *irq, uint32_t value, void *param)
+{
+    struct port *pp;
+    uint8_t      ddr, out;
+
+    pp = (struct port *)param;
+    if (irq->irq == IOPORT_IRQ_DIRECTION_ALL) {
+        ddr = pp->ddr = (uint8_t)value;
+        out = pp->output;
+    } else {
+        ddr = pp->ddr;
+        out = pp->output = (uint8_t)value;
+    }
+    pp->actual = (out & ddr) | (pp->actual & ~ddr);
+    Bfp->new_value(PORT_HANDLE(pp, 0), pp->actual);
+}
+
+...
+
+        ioctl = (uint32_t)AVR_IOCTL_IOPORT_GETIRQ(port_letter);
+        base_irq = avr_io_getirq(avr, ioctl, 0);
+
+...
+
+	if (base_irq != NULL) {
+            /* Some port letters are skipped. */
+
+...
+
+            avr_irq_register_notify(base_irq + IOPORT_IRQ_REG_PORT,
+                                    d_out_notify, pp);
+            avr_irq_register_notify(base_irq + IOPORT_IRQ_DIRECTION_ALL,
+                                    d_out_notify, pp);
+
+</PRE>
+The handler combines input and output values to produce a single byte value
+for the circuit.
+Working directly with the direction and output registers is one way
+to ensure that
+<A href="#pullups">pull-up simulation</A>
+does not alter the result (more below).
+That code takes advantage of two additional features of IRQs:
+each peripheral IRQ includes its own selector value
+(<I>irq->irq;</I>)
+and the IRQs for any one peripheral form an array
+(there are some exceptions),
+so it is really only necessary to call
+<I>avr_io_getirq()</I>
+once for each peripheral used.
+(Another useful feature is that the IRQ structure contains the value passed
+on the previous call, so it easy to detect changes.)
+<P>
+The first 8 GPIO IRQ's are assigned to individual pins and are bi-directional.
+(There is an infinite recursion hazard!)
+These IRQ's are the way to do bitwise digital input and
+<I>avr_raise_irq()</I>
+is the usual way to pass values into the simulation.
+A simplified example:
+<PRE>
+    unsigned int             changed, mask, dirty, i;
+
+    changed = value ^ pp->actual;
+    if (changed) {
+        /* Scan for changed bits. */
+
+        for (i = 0, mask = 1; i < 8; ++i, mask <<= 1) {
+            if (mask & changed) {
+                    int bit;
+
+...
+
+                    bit = ((value & mask) != 0);
+
+                    /* Push changed bit into simavr.
+                     * The first 8 IRQs set individual bits.
+                     */
+
+                    avr_raise_irq(pp->base_irq + i, bit);
+
+</PRE>
+If pin-change interrupts on a port and other digital peripherals are not used,
+it is possible to delay setting new input values until the firmware reads them.
+A handler for the IOPORT_IRQ_REG_PIN IRQ will be called when the port is read.
+New pin values can be set in the handler.
+<P id="pullups">
+The port simulation includes the pull-up resistors that are included
+in the AVR hardware or may be part of the external circuit.
+That may be sometimes be useful, but can also lead to unexpected results,
+as the interface does not represent the strength of inputs.
+If unwanted, the pull-up simulation may disabled by
+the AVR_MCU_PORT_NO_PULL macro, or in code:
+<PRE>
+  avr->options.no_pullups = 1;
+</PRE>
+
+<H5>Connecting IRQs.</H5>
+One other option for IRQs is to connect two together as
+part of the simulation.
+When an event occurs on one, the appropriate handlers for the other
+are called.
+This method is used by the included code for simulating external devices.
+For example a device controlled through SPI will have its own input and output
+IRQs that may be cross-connected to the AVR's SPI IRQs.
+The functions
+<I>avr_connect_irq</I> and <I>avr_unconnect_irq</I>
+are declared in
+<I><A href="https://raw.githubusercontent.com/buserror/simavr/refs/heads/master/simavr/sim/sim_irq.h">
+    sim_irq.h
+</A></I>.
+
+<H5>Analogue input peripherals</H5>
+The analogue input peripherals are the ADC and the comparator.
+<P>
+For these peripherals, the external code needs to set a voltage
+(in millivolts) on an input pin.
+Simavr treats analogue input as completely separate from digital I/O,
+even though in reality they share pins.
+There is nothing in Simavr that connects the two, so it would allow you
+to do digital output on a pin that you are simultaneously using for
+analogue input.
+<P>
+This fragment shows the IRQs used for analogue input to the ADC.
+<PRE>
+	avr_irq_t *ADC_base_irq;
+
+	ADC_base_irq = avr_io_getirq(avr, AVR_IOCTL_ADC_GETIRQ, 0);
+
+...
+
+	avr_raise_irq(ADC_base_irq + n, millivolts); // Set ADCn
+
+</PRE>
+As with the GPIO ports, there is an outbound IRQ, ADC_IRQ_OUT_TRIGGER,
+whose handler will be called when analogue input is sampled,
+and a new value can be set in the handler.
+The 32-bit value passed to the handler is a structure (not a pointer)
+with bit fields indicating the type of input
+(single source, differential or special-purpose) and the source(s).
+New values for the conventional ADC channels can be set in the handler.
+<P>
+The analogue comparator can share the physical ADC inputs on some variants
+and has its own inputs.
+Simavr treats all of these as independent of both GPIO and ADC inputs.
+Although ADC_IRQ_ADC1 and ACOMP_IRQ_ADC1 may represent the same pin,
+those are different entities and simavr would allow you to set
+different voltages.
+Providing input values for the comparator is similar to the ADC,
+except that monitoring is continuous,
+so there is no IRQ to intercept reads.
+ACOMP_IRQ_OUT offers notification of changes to the comparator's output bit.
+<PRE>
+	avr_irq_t *AC_base_irq;
+
+	AC_base_irq = avr_io_getirq(avr, AVR_IOCTL_ACOMP_GETIRQ, 0);
+
+...
+
+	avr_raise_irq(AC_base_irq + channel, millivolts);
+
+</PRE>
+
+<H5>Other peripherals.</H5>
+It might seem that the IRQs mentioned above are all that are needed,
+as all the chip functions visible to external circuits use an I/O pin.
+That is true for the timers and USI; their externally-visible functions
+are routed through the GPIO ports.
+<P>
+The other serial communication peripherals (UART, SPI, TWI) are different,
+as transmissions do not modify pin state and reception does not examine it.
+Instead, each peripheral has its own IRQs to send and receive bytes.
+That simplifies both the simulator and external code,
+and the omission should only be visible if the pins used
+are also linked to unrelated external circuitry.
+
+<H5>Simavr Timers.</H5>
+The implementation of peripherals such as serial communications and the ADC
+(and the AVR's own timers!) requires timed events that are independent
+of the firmware but must be synchronised with its execution.
+The same interface can be used when simulating external circuitry.
+Like IRQs, this is a callback interface.
+This example from device simulation
+<I>simavr/examples/parts/hd44780.c</I>
+also shows how external simulation code can also create and use its own IRQs.
+<PRE>
+static avr_cycle_count_t
+_hd44780_busy_timer(
+		struct avr_t * avr,
+        avr_cycle_count_t when, void * param)
+{
+	hd44780_t *b = (hd44780_t *) param;
+	hd44780_set_flag(b, HD44780_FLAG_BUSY, 0);
+	avr_raise_irq(b->irq + IRQ_HD44780_BUSY, 0);
+	return 0;
+}
+
+...
+
+	if (delay) {
+		hd44780_set_flag(b, HD44780_FLAG_BUSY, 1);
+		avr_raise_irq(b->irq + IRQ_HD44780_BUSY, 1);
+		avr_cycle_timer_register_usec(b->avr, delay,
+			_hd44780_busy_timer, b);
+	}
+</PRE>
+The return value from a timer function specifies when and if it will be
+called again.
+The
+<I>avr_cycle_timer_register()</I>
+function specifies the delay in clock cycles rather than time.
+There are also functions to cancel a timer or query its status
+(<I><A href="https://raw.githubusercontent.com/buserror/simavr/refs/heads/master/simavr/sim/sim_cycle_timers.h">
+    sim_cycle_timers.h
+</A></I>).
+<P>
+
+<H5 id="ioctls">IOCTLs.</H5>
+Various peripheral-specific queries and commands are supported by the
+<I>avr_ioctl()</I>
+function.
+It takes an AVR pointer, key value (IOCTL) and a void pointer to do
+a variety of operations,
+similar to the Unix
+<I>ioctl</I>
+system call.
+The IOCTL values are defined in each peripheral's header file.
+One example is the AVR_IOCTL_IOPORT_SET_EXTERNAL() macro
+that returns the IOCTL for setting
+<A href="#pullups">external pullup</A>
+values on a GPIO port.
+
+<H5>Other features.</H5>
+For many applications, the few function calls shown above are
+all that is needed.
+Something an application may need to do is to take full control
+of execution.
+That is done with a dedicated
+<I>run()</I>
+function.
+It is required to call the simulator core to execute a burst
+of instructions (usually one),
+then check for and handle pending interrupts, timer events
+and the sleep states.
+The standard version handles sleep with delays,
+so that execution occurs in approximately real time.
+A different run function is needed to run at full speed,
+as in this example.
+As before, it needs to be called in a loop until simulation ends.
+<PRE>
+static int my_avr_run(avr_t *avr)
+{
+    avr_cycle_count_t sleep;
+    uint16_t          new_pc;
+
+    if (avr->state == cpu_Stopped)
+        return avr->state;
+
+    new_pc = avr->pc;
+    if (avr->state == cpu_Running)
+        new_pc = avr_run_one(avr);
+
+    // Run the cycle timers, get the suggested sleep time
+    // until the next timer is due.
+
+    sleep = avr_cycle_timer_process(avr);
+    avr->pc = new_pc;
+
+    if (avr->state == cpu_Sleeping) {
+        if (!avr->sreg[S_I]) {
+            printf("simavr: sleeping with interrupts off, quitting.\n");
+            avr_terminate(avr);
+            return cpu_Done;
+        }
+        avr->cycle += 1 + sleep;
+    }
+
+    // Interrupt service.
+
+    if (avr->state == cpu_Running || avr->state == cpu_Sleeping)
+        avr_service_interrupts(avr);
+    return avr->state;
+}
+</PRE>
+Interactive debugging also uses a variant run loop.
+The normal procedure is to copy
+<I>run_avr:</I>
+<PRE>
+	if (gdb) {
+		avr->state = cpu_Stopped;
+		avr_gdb_init(avr);
+	}
+
+        ...
+
+                for (;;) {
+                        int state = avr_run(avr);
+                        if (state == cpu_Done || state == cpu_Crashed)
+                                break;
+                }
+</PRE>
+If needed, the debugging run function
+<I>avr_callback_run_gdb()</I>
+can be called directly.
+<P>
+An application might also need to implement an additional AVR peripheral,
+real or virtual.
+For that, there are functions to monitor reads and writes
+to memory and I/O register space, such as
+<I>avr_register_io_write()</I>
+and
+<I>avr_core_watch_read().</I>
+Interrupts can be raised with
+<I>avr_raise_interrupt()</I>
+and controlled using other functions defined in
+<I><A href="https://raw.githubusercontent.com/buserror/simavr/refs/heads/master/simavr/sim/sim_interrupts.h">
+    sim_interrupts.h.
+</A></I>
+</BODY>
+</HTML>  

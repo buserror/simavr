@@ -77,10 +77,11 @@ graphically as “waveforms” with tools like _gtkwave_ (see below).
 Documentation And Further Information
 -------------------------------------
 
+* [Introduction](https://htmlpreview.github.io/?https://raw.githubusercontent.com/buserror/simavr/refs/heads/master/doc/Intro.html)
 * [Manual / Developer Guide](doc/manual/manual.pdf?raw=true)
 * [Examples](examples)
 * [Mailing List](https://groups.google.com/g/simavr)
-* IRC: _#simavr_ on Freenode
+* IRC: _#simavr_ on Libera Chat
 
 Contributing
 ------------
