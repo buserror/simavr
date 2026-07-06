@@ -624,6 +624,12 @@ avr_usb_ioctl(
 	switch (ctl) {
 		case AVR_IOCTL_USB_READ:
 			ep = d->pipe & 0x7f;
+                        if (ep >= ARRAY_SIZE(p->state->ep_state)) {
+                            AVR_LOG(io->avr, LOG_ERROR,
+                                    "USB: endpoint out of range (%d/ >= %d\n",
+                                    ep, ARRAY_SIZE(p->state->ep_state));
+                            return -1;
+                        }
 			epstate = get_epstate(p, ep);
 
 			if (epstate->ueconx.stallrq) {
@@ -645,10 +651,9 @@ avr_usb_ioctl(
 					return ret;
 			}
 			d->sz = ret;
-			ret = 0;
 			epstate->ueintx.fifocon = 1;
 			raise_ep_interrupt(io->avr, p, ep, txini);
-			return ret;
+			return 0;
 		case AVR_IOCTL_USB_WRITE:
 			ep = d->pipe & 0x7f;
 			epstate = get_epstate(p, ep);

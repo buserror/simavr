@@ -8,57 +8,48 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           repository: buserror/simavr
           ref: master
-      - uses: msys2/setup-msys2@v2
+
+      - name: Set up MSYS2 (UCRT64)
+        uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: UCRT64
           update: true
-          install: make mingw-w64-x86_64-toolchain mingw-w64-x86_64-libelf mingw-w64-x86_64-libdwarf mingw-w64-x86_64-avr-toolchain mingw-w64-x86_64-freeglut
-      - name: CI-Build
+          install: >
+            base-devel
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-make
+            mingw-w64-ucrt-x86_64-libelf
+            mingw-w64-ucrt-x86_64-libdwarf
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-avr-toolchain
+            mingw-w64-ucrt-x86_64-freeglut
+
+      - name: Build libsimavr
         run: |
-          echo 'Running in MSYS2!'
-          make  build-simavr build-tests V=1
+          make
           mkdir simavr_installed
-          make -k install DESTDIR=$(pwd)/simavr_installed/ || true
+          make -k install-all DESTDIR=$(pwd)/simavr_installed/ || true
           mv simavr_installed/bin/simavr simavr_installed/bin/simavr.exe
           file simavr_installed/bin/*
+          ldd simavr_installed/bin/simavr.exe
+          ldd simavr_installed/examples/charlcd.elf
+          cp /ucrt64/bin/libwinpthread-1.dll simavr_installed/examples
+          cp /ucrt64/bin/libfreeglut.dll simavr_installed/examples
       - name: Tests
         run: |
+          which avr-gcc | true
           cd tests
           make run_tests
       - uses: actions/upload-artifact@v6
         with:
           name: Windows 64-bit
           path: simavr_installed
-  build-win32:
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: msys2 {0}
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          repository: buserror/simavr
-          ref: master
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW32
-          update: true
-          install: make mingw-w64-i686-toolchain mingw-w64-i686-libelf mingw-w64-i686-freeglut unzip
-      - name: CI-Build
-        run: |
-          make build-simavr V=1
-          mkdir simavr_installed
-          make -k install DESTDIR=$(pwd)/simavr_installed/ || true
-          mv simavr_installed/bin/simavr simavr_installed/bin/simavr.exe
-          file simavr_installed/bin/*
-      - uses: actions/upload-artifact@v6
-        with:
-          name: Windows 32-bit
-          path: simavr_installed
+
   build-lin64:
     runs-on: ubuntu-latest
     steps:
@@ -265,6 +256,7 @@ jobs:
       - name: Install Dependencies
         run: | 
           HOMEBREW_NO_INSTALL_FROM_API=1 brew install make libelf freeglut patchelf 
+          brew trust osx-cross/avr
           HOMEBREW_NO_INSTALL_FROM_API=1 brew tap osx-cross/avr
           HOMEBREW_NO_INSTALL_FROM_API=1 brew install avr-gcc@9 avr-binutils
           export PATH="/usr/local/opt/avr-gcc@9/bin:$PATH"
