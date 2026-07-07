@@ -386,9 +386,14 @@ hd44780_pin_changed_hook(
 			hd44780_pin_changed_hook(b->irq + IRQ_HD44780_RW, (value >> 6), param);
 			return; // job already done!
 		case IRQ_HD44780_D0 ... IRQ_HD44780_D7:
-			// don't update these pins in read mode
-			if (hd44780_get_private_flag(b, HD44780_PRIV_FLAG_REENTRANT))
-				return;
+			/*
+			 * Do track the data pins while we drive them ourselves
+			 * (REENTRANT set): the connected ioport pin IRQs are
+			 * FILTERED and now cache the value we drove, so a later
+			 * firmware write of the same logic level produces no edge
+			 * notification. If b->pinstate were left stale here, that
+			 * filtered-away write would be sampled with old data bits.
+			 */
 			break;
 	}
 	b->pinstate = (b->pinstate & ~(1 << irq->irq)) | (value << irq->irq);
