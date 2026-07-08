@@ -177,7 +177,6 @@ ssd1306_update_command_register (ssd1306_t *part)
 		case SSD1306_VIRT_MULTIPLEX:
 		case SSD1306_VIRT_SET_OFFSET:
 		case SSD1306_VIRT_MEM_ADDRESSING:
-		case SSD1306_VIRT_SET_LINE:
 		case SSD1306_VIRT_SET_PADS:
 		case SSD1306_VIRT_SET_CHARGE:
 		case SSD1306_VIRT_SET_VCOM:
@@ -192,6 +191,7 @@ ssd1306_update_command_register (ssd1306_t *part)
 		case SSD1306_VIRT_SCROLL_ON:
 		case SSD1306_VIRT_SCROLL_OFF:
 		case SSD1306_VIRT_RESUME_TO_RAM_CONTENT:
+		case SSD1306_VIRT_SET_LINE:
 			SSD1306_CLEAR_COMMAND_REG(part);
 			return;
 		default:
@@ -304,7 +304,8 @@ ssd1306_twi_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 
 	if (v.u.twi.msg & TWI_COND_START) {
 		p->twi_selected = 0;
-		p->twi_index = 0;
+		p->twi_control = 0;
+		p->twi_continue = 0;
 		if (((v.u.twi.addr>>1) & SSD1306_I2C_ADDRESS_MASK) == SSD1306_I2C_ADDRESS) {
 			p->twi_selected = v.u.twi.addr;
 			avr_raise_irq(p->irq + IRQ_SSD1306_TWI_IN,
@@ -317,13 +318,12 @@ ssd1306_twi_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 			avr_raise_irq(p->irq + IRQ_SSD1306_TWI_IN,
 					avr_twi_irq_msg(TWI_COND_ACK, p->twi_selected, 1));
 
-			if (p->twi_index == 0) { // control byte
+			if (!p->twi_control) { // control byte
 				if ((v.u.twi.data & (~(1<<6))) != 0) {
-					printf("%s COND_WRITE %x\n", __FUNCTION__, v.u.twi.data);
-					printf("%s ALERT: unhandled Co bit\n", __FUNCTION__);
-					abort();
+					p->twi_continue=1;
 				}
 				p->di_pin = v.u.twi.data ? SSD1306_VIRT_DATA : SSD1306_VIRT_INSTRUCTION;
+				p->twi_control=1;
 			} else {
 				p->spi_data = v.u.twi.data;
 
@@ -331,16 +331,19 @@ ssd1306_twi_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 				{
 					case SSD1306_VIRT_DATA:
 						ssd1306_write_data (p);
+						if (!p->twi_continue)
+						  p->twi_control=0;
 						break;
 					case SSD1306_VIRT_INSTRUCTION:
 						ssd1306_write_command (p);
+						if (!p->command_register && !p->twi_continue)
+						  p->twi_control=0;
 						break;
 					default:
 						// Invalid value
 						break;
 				}
 			}
-			p->twi_index++;
 		}
 
 		// SSD1306 doesn't support read on serial interfaces
@@ -349,7 +352,6 @@ ssd1306_twi_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 			uint8_t data = 0;
 			avr_raise_irq(p->irq + IRQ_SSD1306_TWI_IN,
 					avr_twi_irq_msg(TWI_COND_READ, p->twi_selected, data));
-			p->twi_index++;
 		}
 	}
 }
