@@ -43,6 +43,15 @@ ifneq ($(E),)
 endif
 	${E}$(CC) -MMD ${CPPFLAGS} ${CFLAGS} ${LFLAGS} -o $@ ${patsubst %.h,, ${^}} $(LDFLAGS)
 
+# the hd44780 read-back test additionally links the part it exercises
+parts	= ${simavr}/examples/parts
+
+${OBJ}/test_atmega644_hd44780.tst: tests.c test_atmega644_hd44780.c ${parts}/hd44780.c
+ifneq ($(E),)
+	@echo TST $@
+endif
+	${E}$(CC) -MMD ${CPPFLAGS} ${CFLAGS} -I${parts} ${LFLAGS} -o $@ ${patsubst %.h,, ${^}} $(LDFLAGS)
+
 run_tests: all
 	@export LD_LIBRARY_PATH=${simavr}/simavr/${OBJ} ;\
 	num_failed=0 ;\
