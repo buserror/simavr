@@ -75,6 +75,8 @@ const struct mcu_t {
 	},
 	AVR_EEPROM_DECLARE(EE_READY_vect),
 	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
+	// Boot loader section start (BOOTSZ=00, 8 KB): SPM below this is a no-op
+	.selfprog.bls_start = 0x3E000,
 	AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
 	.extint = {
 		AVR_EXTINT_MEGA_DECLARE(0, 'D', PD0, A),
