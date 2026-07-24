@@ -159,7 +159,7 @@ avr_irq_register_notify(
 	} else {
 		do {
 			if (hook->notify == notify && hook->param == param) {
-				if (irq->pool->avr->resetting) {
+				if (irq->pool && irq->pool->avr->resetting) {
 					irq->value = 0;
 					irq->flags |= IRQ_FLAG_INIT;
 				}
