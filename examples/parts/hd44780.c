@@ -368,6 +368,10 @@ hd44780_pin_changed_hook(
 		 * This is a shortcut for firmware that respects the conventions
 		 */
 		case IRQ_HD44780_ALL:
+			// a read raises this with the nibble we drive back;
+			// don't decode our own readback as RS/RW/E
+			if (hd44780_get_private_flag(b, HD44780_PRIV_FLAG_REENTRANT))
+				return;
 			for (int i = 0; i < 4; i++)
 				hd44780_pin_changed_hook(b->irq + IRQ_HD44780_D4 + i,
 						((value >> i) & 1), param);
@@ -376,9 +380,8 @@ hd44780_pin_changed_hook(
 			hd44780_pin_changed_hook(b->irq + IRQ_HD44780_RW, (value >> 6), param);
 			return; // job already done!
 		case IRQ_HD44780_D0 ... IRQ_HD44780_D7:
-			// don't update these pins in read mode
-			if (hd44780_get_private_flag(b, HD44780_PRIV_FLAG_REENTRANT))
-				return;
+			// keep tracking these while driving a read back, the
+			// filtered ioport IRQs swallow same-level writes later
 			break;
 	}
 	b->pinstate = (b->pinstate & ~(1 << irq->irq)) | (value << irq->irq);
