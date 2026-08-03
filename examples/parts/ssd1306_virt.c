@@ -139,6 +139,14 @@ ssd1306_update_command_register (ssd1306_t *part)
 			//printf ("SSD1306: SET COLUMN HIGH NIBBLE: 0x%02x\n", part->spi_data);
 			SSD1306_CLEAR_COMMAND_REG(part);
 			return;
+		case SSD1306_VIRT_SET_LINE
+						... SSD1306_VIRT_SET_LINE + 0x3F:
+			/*
+			* Set Display Start Line is a single-byte command.
+			* The line number is encoded in the lower six bits.
+			*/
+			SSD1306_CLEAR_COMMAND_REG(part);
+			return;
 		case SSD1306_VIRT_SET_SEG_REMAP_0:
 			ssd1306_set_flag (part, SSD1306_FLAG_SEGMENT_REMAP_0,
 			                  1);
@@ -177,7 +185,6 @@ ssd1306_update_command_register (ssd1306_t *part)
 		case SSD1306_VIRT_MULTIPLEX:
 		case SSD1306_VIRT_SET_OFFSET:
 		case SSD1306_VIRT_MEM_ADDRESSING:
-		case SSD1306_VIRT_SET_LINE:
 		case SSD1306_VIRT_SET_PADS:
 		case SSD1306_VIRT_SET_CHARGE:
 		case SSD1306_VIRT_SET_VCOM:
@@ -245,7 +252,6 @@ ssd1306_update_setting (ssd1306_t *part)
 			//printf ("SSD1306: ADDRESSING MODE: 0x%02x\n", part->addr_mode);
 			SSD1306_CLEAR_COMMAND_REG(part);
 			return;
-		case SSD1306_VIRT_SET_LINE:
 		case SSD1306_VIRT_SET_RATIO_OSC:
 		case SSD1306_VIRT_MULTIPLEX:
 		case SSD1306_VIRT_SET_OFFSET:
@@ -416,7 +422,7 @@ ssd1306_reset_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 	if (irq->value && !value)
 	{
 		// Falling edge
-		memset (part->vram, 0, part->rows * part->pages);
+		memset (part->vram, 0, sizeof(part->vram));
 		part->cursor.column = 0;
 		part->cursor.page = 0;
 		part->flags = 0;
