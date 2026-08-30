@@ -27,6 +27,7 @@
 #include "sim_interrupts.h"
 #include "sim_avr.h"
 #include "sim_core.h"
+#include "sim_core_declare.h"
 
 DEFINE_FIFO(avr_int_vector_p, avr_int_pending);
 
@@ -226,6 +227,37 @@ avr_interrupt_reti(
 					table->running[table->running_ptr-1]->vector : 0);
 }
 
+static int bootloader_size_avr328(avr_t *avr)
+{
+	const char efuse = avr->fuse[2];
+	const char bootsz = (efuse >> 1) & 0x3;
+
+	switch (bootsz)
+	{
+	case 0:
+		return 256 * 2;
+	case 1:
+		return 512 * 2;
+	case 2:
+		return 1024 * 2;
+	default:
+		return 2048 * 2;
+	}
+}
+
+static int interrupt_table_offset(avr_t *avr)
+{
+	const int mcucr = _SFR_IO8(0x35);
+	const int ivsel = 1;
+	const char interrupt_sector_moved_to_bootloader = avr->data[mcucr] & (1 << ivsel);
+
+	const int flash_size = avr->flashend + 1;
+	if (interrupt_sector_moved_to_bootloader)
+		return flash_size - bootloader_size_avr328(avr);
+
+	return 0;
+}
+
 /*
  * check whether interrupts are pending. If so, check if the interrupt "latency" is reached,
  * and if so triggers the handlers and jump to the vector.
@@ -281,7 +313,7 @@ avr_service_interrupts(
 			printf("IRQ%d calling\n", vector->vector);
 		_avr_push_addr(avr, avr->pc);
 		avr_sreg_set(avr, S_I, 0);
-		avr->pc = vector->vector * avr->vector_size;
+		avr->pc = vector->vector * avr->vector_size + interrupt_table_offset(avr);
 
 		avr_raise_irq(vector->irq + AVR_INT_IRQ_RUNNING, 1);
 		avr_raise_irq(table->irq + AVR_INT_IRQ_RUNNING, vector->vector);
