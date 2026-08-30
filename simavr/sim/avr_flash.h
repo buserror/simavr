@@ -40,6 +40,10 @@ typedef struct avr_flash_t {
 	uint16_t	*tmppage;
 	uint8_t	*tmppage_used;
 	uint16_t	spm_pagesize;
+	// First byte address of the boot loader section. When non-zero, SPM
+	// executed with PC below this address is ignored, matching real
+	// hardware where SPM only works from the boot loader section.
+	avr_flashaddr_t	bls_start;
 	uint8_t r_spm;
 	avr_regbit_t selfprgen;
 	avr_regbit_t pgers;		// page erase

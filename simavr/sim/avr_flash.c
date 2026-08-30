@@ -126,7 +126,12 @@ avr_flash_ioctl(
 			if (avr_regbit_get(avr, p->selfprgen)) {
 				avr_cycle_timer_cancel(avr, avr_progen_clear, p);
 
-				if (avr_regbit_get(avr, p->pgers)) {
+				if (p->bls_start && avr->pc < p->bls_start) {
+					// real hardware executes SPM only from the boot loader section
+					AVR_LOG(avr, LOG_WARNING,
+							"FLASH: SPM at PC=%06x ignored — outside the boot loader section (0x%06x+)\n",
+							avr->pc, p->bls_start);
+				} else if (avr_regbit_get(avr, p->pgers)) {
 					z &= ~(p->spm_pagesize - 1);
 					AVR_LOG(avr, LOG_TRACE, "FLASH: Erasing page %04x (%d)\n", (z / p->spm_pagesize), p->spm_pagesize);
 					for (int i = 0; i < p->spm_pagesize; i++)
