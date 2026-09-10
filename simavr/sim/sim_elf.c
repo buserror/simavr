@@ -371,6 +371,8 @@ avr_load_firmware(
 					firmware->trace[ti].addr,
 					firmware->trace[ti].name,
 					AVR_IOMEM_IRQ_ALL);
+			if (!all) // Try for an 8-bit memory IRQ.
+				all = avr_get_memory_irq(avr, firmware->trace[ti].addr, 0);
 			if (!all) {
 				AVR_LOG(avr, LOG_ERROR,
 					"ELF: %s: unable to attach trace to address %04x\n",

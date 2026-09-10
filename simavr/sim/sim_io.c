@@ -259,9 +259,10 @@ avr_iomem_getirq(
 		const char * name,
 		int index)
 {
-	if (index > 8)
-		return NULL;
 	avr_io_addr_t a = AVR_DATA_TO_IO(addr);
+
+	if (a >= MAX_IOs || index > 8)
+		return NULL;
 	if (avr->io[a].irq == NULL) {
 		/*
 		 * Prepare an array of names for the io IRQs. Ideally we'd love to have
