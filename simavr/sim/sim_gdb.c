@@ -20,6 +20,15 @@
  */
 
 #include "sim_network.h"
+
+/* Windows: Winsock sockets must be closed with closesocket(), not close().
+ * sim_network.h already pulled in <winsock2.h> for __MINGW32__, so we only
+ * need a thin dispatch macro here. */
+#ifdef __MINGW32__
+#  define CLOSE_SOCKET(fd) closesocket((SOCKET)(uintptr_t)(unsigned int)(fd))
+#else
+#  define CLOSE_SOCKET(fd) close(fd)
+#endif
 #include <sys/time.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -765,7 +774,7 @@ gdb_handle_command(
 			if (avr->state = cpu_Stopped)
 				avr->state = cpu_Running;
 			gdb_send_reply(g, "OK");
-			close(g->s);
+			CLOSE_SOCKET(g->s);
 			g->s = -1;
 			break;
 #endif
@@ -826,7 +835,7 @@ gdb_network_handler(
 
 		if (r == 0) {
 			DBG(printf("%s connection closed\n", __FUNCTION__);)
-			close(g->s);
+			CLOSE_SOCKET(g->s);
 			gdb_watch_clear(&g->breakpoints);
 			gdb_watch_clear(&g->watchpoints);
 			g->avr->state = cpu_Running;	// resume
@@ -996,7 +1005,7 @@ avr_gdb_init(
 
 error:
 	if (g->listen >= 0)
-		close(g->listen);
+		CLOSE_SOCKET(g->listen);
 	free(g);
 
 	return -1;
@@ -1011,10 +1020,10 @@ avr_deinit_gdb(
 	avr->run = avr_callback_run_raw; // restore normal callbacks
 	avr->sleep = avr_callback_sleep_raw;
 	if (avr->gdb->listen != -1)
-		close(avr->gdb->listen);
+		CLOSE_SOCKET(avr->gdb->listen);
 	avr->gdb->listen = -1;
 	if (avr->gdb->s != -1)
-		close(avr->gdb->s);
+		CLOSE_SOCKET(avr->gdb->s);
 	avr->gdb->s = -1;
 	free(avr->gdb);
 	avr->gdb = NULL;

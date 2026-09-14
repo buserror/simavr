@@ -1,0 +1,38 @@
+name: Windows Build (MSYS2 UCRT64)
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build-windows:
+    name: Build libsimavr on Windows (MSYS2 UCRT64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSYS2 (UCRT64)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-make
+            mingw-w64-ucrt-x86_64-libelf
+            mingw-w64-ucrt-x86_64-pkgconf
+
+      - name: Build libsimavr
+        shell: msys2 {0}
+        run: |
+          cd simavr
+          make
+
+      - name: Verify output artifact
+        shell: msys2 {0}
+        run: |
+          ls simavr/obj-*/libsimavr.a || (echo "Build artifact not found!" && exit 1)
