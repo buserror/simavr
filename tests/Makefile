@@ -52,7 +52,7 @@ ifneq ($(E),)
 endif
 	${E}$(CC) -MMD ${CPPFLAGS} ${CFLAGS} -I${parts} ${LFLAGS} -o $@ ${patsubst %.h,, ${^}} $(LDFLAGS)
 
-run_tests: all
+run_tests t: all
 	@export LD_LIBRARY_PATH=${simavr}/simavr/${OBJ} ;\
 	num_failed=0 ;\
 	num_run=0 ;\

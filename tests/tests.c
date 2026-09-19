@@ -45,7 +45,8 @@ void tests_success(void) {
 void tests_init(int argc, char **argv) {
 	test_name = strdup(argv[0]);
 	atexit(atexit_handler);
-	map_stderr();
+	if (argc == 1)
+		map_stderr();
 }
 
 static avr_cycle_count_t

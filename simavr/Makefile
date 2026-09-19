@@ -74,6 +74,11 @@ clean: clean-${OBJ}
 	rm -rf ${target} *.a *.so *.exe
 	rm -f sim_core_*.h
 
+# Convenient target: run the tests.
+
+run_tests t: libsimavr
+	$(MAKE) -C ../tests run_tests
+
 install : all
 	$(MKDIR) $(DESTDIR)/include/simavr/avr
 	$(INSTALL) -m644 sim/*.h $(DESTDIR)/include/simavr/

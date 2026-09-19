@@ -26,7 +26,7 @@ build-examples: build-simavr
 build-parts: build-examples
 	$(MAKE) -C examples/parts RELEASE=$(RELEASE)
 
-run_tests: build-simavr build-tests
+run_tests t: build-simavr build-tests
 	$(MAKE) -C tests run_tests
 
 install: install-simavr install-parts
