@@ -51,6 +51,8 @@ display_usage(
 	printf(
 	 "       [--help|-h|-?]      Display this usage message and exit\n"
 	 "       [--list-cores]      List all supported AVR cores and exit\n"
+	 "       [--list-irqs]       List all supported IRQs for given core "
+         "and exit\n"
 	 "       [-v]                Raise verbosity level\n"
 	 "                           (can be passed more than once)\n"
 	 "       [--freq|-f <freq>]  Sets the frequency (in Hz) for an .hex firmware\n"
@@ -77,6 +79,19 @@ display_usage(
 	exit(1);
 }
 
+static avr_t * avr = NULL;
+
+static void
+list_all_irqs(char *mcu)
+{
+	int i;
+
+	printf( "Supported IRQs for %s:\n", mcu);
+	for (i = 0; i < avr->irq_pool.count; ++i)
+		printf("\t%s\n", avr->irq_pool.irq[i]->name);
+	exit(1);
+}
+
 static void
 list_cores()
 {
@@ -89,8 +104,6 @@ list_cores()
 	}
 	exit(1);
 }
-
-static avr_t * avr = NULL;
 
 static void
 sig_int(
@@ -113,6 +126,7 @@ main(
 	elf_firmware_t f = {{0}};
 	uint32_t f_cpu = 0;
 	int gdb = 0;
+	int list_irqs = 0;
 	int log = LOG_ERROR;
 	int port = 1234;
 	char name[24] = "";
@@ -133,6 +147,8 @@ main(
 	for (int pi = 1; pi < argc; pi++) {
 		if (!strcmp(argv[pi], "--list-cores")) {
 			list_cores();
+		} else if (!strcmp(argv[pi], "--list-irqs")) {
+			list_irqs = 1;
 		} else if (!strcmp(argv[pi], "-h") || !strcmp(argv[pi], "--help")) {
 			display_usage(basename(argv[0]));
 		} else if (!strcmp(argv[pi], "-m") || !strcmp(argv[pi], "--mcu")) {
@@ -303,6 +319,8 @@ main(
 		exit(1);
 	}
 	avr_init(avr);
+	if (list_irqs)
+		list_all_irqs(f.mmcu);        // Does not return.
 	avr->log = (log > LOG_TRACE ? LOG_TRACE : log);
 #ifdef CONFIG_SIMAVR_TRACE
 	avr->trace = trace;
