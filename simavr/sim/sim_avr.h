@@ -125,6 +125,9 @@ enum {
 
 enum {
 	AVR_CORE_BAD_OPCODE = 0,	// Execution of unknown instruction.
+	AVR_CORE_IRQ_VCC,			// External voltages.
+	AVR_CORE_IRQ_AVCC,
+	AVR_CORE_IRQ_AREF,
 	AVR_CORE_IRQ_COUNT,
 };
 

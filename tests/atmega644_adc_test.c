@@ -85,7 +85,7 @@ int main(void)
 	while (ADCSRA & (1 << ADSC))
 		sleep_cpu();
 
-	printf("All done. Now reading the 1.1V value in pooling mode\n");
+	printf("All done. Now reading the 1.1V value in polling mode\n");
 	ADCSRA &= ~(1 << ADIE);	// remove interrupt
 
 	// 1.1 reference voltage, left aligned
@@ -96,6 +96,15 @@ int main(void)
 	uint16_t v = ADCL | (ADCH << 8);
 	uint16_t volts = (v * 3300L) >> 10; // div 1024
 	printf("Read ADC value %04x = %d mvolts -- ought to be 1098\n", v, volts);
+
+        // Measure the bandgap voltage with AREF as reference.
+
+	ADMUX = 0x1e;
+	ADCSRA |= (1 << ADSC) ;	// start conversion
+	while (ADCSRA & (1 << ADSC))
+		;
+	v = ADCL | (ADCH << 8);
+	printf("Read ADC value %#04x -- ought to be 0x1ff\n", v);
 
 	ADCSRA &= ~(1 << ADEN);	// disable ADC...
 

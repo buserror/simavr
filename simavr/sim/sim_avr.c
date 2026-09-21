@@ -93,11 +93,32 @@ avr_get_time_stamp(
 	return stamp - avr->time_base;
 }
 
+static void
+avr_adc_irq_notify(
+		struct avr_irq_t * irq, uint32_t value, void * param)
+{
+	avr_t * avr = (avr_t *)param;
+
+	switch (irq->irq) {
+	case AVR_CORE_IRQ_VCC:
+		avr->vcc = value;
+		break;
+	case AVR_CORE_IRQ_AVCC:
+		avr->avcc = value;
+		break;
+	case AVR_CORE_IRQ_AREF:
+		avr->aref = value;
+		break;
+	}
+}
+
 int
 avr_init(
 		avr_t * avr)
 {
-	static const char *names[] = { ">avr.core.bad_opcode", }; // IRQs
+	static const char *irq_names[] = {
+            ">avr.core.bad_opcode", "32<avr.VCC", "32<avr.AVCC", "32<avr.AREF"
+        };
 
 	avr->flash = malloc(avr->flashend + 4);
 	memset(avr->flash, 0xff, avr->flashend + 1);
@@ -129,7 +150,11 @@ avr_init(
 	if (!avr->frequency)            // Core may set default, but ...
 		avr->frequency = 1000000;	// can be overridden via avr_mcu_section.
 	avr->irq_pool.avr = avr;
-	avr->irq = avr_alloc_irq(&avr->irq_pool, 0, AVR_CORE_IRQ_COUNT, names);
+	avr->irq = avr_alloc_irq(&avr->irq_pool, 0, AVR_CORE_IRQ_COUNT, irq_names);
+	for (int i = AVR_CORE_IRQ_VCC; i <= AVR_CORE_IRQ_AREF; ++i) {
+		avr->irq[i].flags |= IRQ_FLAG_FILTERED;
+		avr_irq_register_notify(avr->irq + i, avr_adc_irq_notify, avr);
+	}
 	avr_cmd_init(avr);
 	avr_interrupt_init(avr);
 	if (avr->custom.init)
