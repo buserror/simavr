@@ -43,12 +43,12 @@ void mx_reset(struct avr_t * avr);
  * This is a template for all of the 8/16/32 devices, hopefully
  */
 struct mcu_t {
-	avr_t          core;
+	avr_t			core;
+	avr_ioport_t	portb, portc, portd;
 	avr_eeprom_t 	eeprom;
 	avr_flash_t 	selfprog;
 	avr_watchdog_t	watchdog;
 	avr_extint_t	extint;
-	avr_ioport_t	portb, portc, portd;
 	avr_uart_t		uart;
 	avr_acomp_t		acomp;
 	avr_adc_t		adc;
@@ -85,6 +85,13 @@ const struct mcu_t SIM_CORENAME = {
 		.init = mx_init,
 		.reset = mx_reset,
 	},
+#ifdef PORTA
+	AVR_IOPORT_DECLARE(a, 'A', A),
+#endif
+	AVR_IOPORT_DECLARE(b, 'B', B),
+	AVR_IOPORT_DECLARE(c, 'C', C),
+	AVR_IOPORT_DECLARE(d, 'D', D),
+
 	AVR_EEPROM_DECLARE_NOEEPM(EE_RDY_vect),
 	AVR_SELFPROG_DECLARE(SPMCR, SPMEN, SPM_RDY_vect),
 	AVR_WATCHDOG_DECLARE_128(WDTCR, _VECTOR(0)),
@@ -95,13 +102,6 @@ const struct mcu_t SIM_CORENAME = {
 		AVR_ASYNC_EXTINT_DECLARE(2, 'B', PB2),
 #endif
 	},
-#ifdef PORTA
-	AVR_IOPORT_DECLARE(a, 'A', A),
-#endif
-	AVR_IOPORT_DECLARE(b, 'B', B),
-	AVR_IOPORT_DECLARE(c, 'C', C),
-	AVR_IOPORT_DECLARE(d, 'D', D),
-
 	//no PRUSART, upe=PE, no reg/bit name index, 'C' in RX/TX vector names
 	AVR_UART_DECLARE(0, 0, PE, , C),
 

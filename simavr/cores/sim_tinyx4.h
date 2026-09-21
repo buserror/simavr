@@ -43,15 +43,15 @@ void tx4_reset(struct avr_t * avr);
  */
 struct mcu_t {
     avr_t core;
-    avr_eeprom_t     eeprom;
-    avr_watchdog_t    watchdog;
+    avr_ioport_t    porta, portb;
+    avr_eeprom_t	eeprom;
+    avr_watchdog_t	watchdog;
     avr_flash_t 	selfprog;
     avr_extint_t    extint;
-    avr_ioport_t    porta, portb;
     avr_acomp_t		acomp;
-    avr_adc_t        adc;
-    avr_timer_t    timer0, timer1;
-	avr_usi_t	   usi;
+    avr_adc_t		adc;
+    avr_timer_t		timer0, timer1;
+	avr_usi_t		usi;
 };
 
 #ifdef SIM_CORENAME
@@ -71,20 +71,6 @@ const struct mcu_t SIM_CORENAME = {
         .init = tx4_init,
         .reset = tx4_reset,
     },
-    AVR_EEPROM_DECLARE(EE_RDY_vect),
-    AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
-    .selfprog = {
-		.flags = 0,
-		.r_spm = SPMCSR,
-		.spm_pagesize = SPM_PAGESIZE,
-		.selfprgen = AVR_IO_REGBIT(SPMCSR, SPMEN),
-		.pgers = AVR_IO_REGBIT(SPMCSR, PGERS),
-		.pgwrt = AVR_IO_REGBIT(SPMCSR, PGWRT),
-		.blbset = AVR_IO_REGBIT(SPMCSR, RFLB),
-	},
-    .extint = {
-        AVR_EXTINT_TINY_DECLARE(0, 'B', PB2, GIFR),
-    },
     .porta = {
         .name = 'A',  .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
         .pcint = {
@@ -102,6 +88,20 @@ const struct mcu_t SIM_CORENAME = {
             .vector = PCINT1_vect,
         },
         .r_pcint = PCMSK1,
+    },
+    AVR_EEPROM_DECLARE(EE_RDY_vect),
+    AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
+    .selfprog = {
+		.flags = 0,
+		.r_spm = SPMCSR,
+		.spm_pagesize = SPM_PAGESIZE,
+		.selfprgen = AVR_IO_REGBIT(SPMCSR, SPMEN),
+		.pgers = AVR_IO_REGBIT(SPMCSR, PGERS),
+		.pgwrt = AVR_IO_REGBIT(SPMCSR, PGWRT),
+		.blbset = AVR_IO_REGBIT(SPMCSR, RFLB),
+	},
+    .extint = {
+        AVR_EXTINT_TINY_DECLARE(0, 'B', PB2, GIFR),
     },
 	.acomp = {
 		.mux_inputs = 8,

@@ -66,11 +66,11 @@ void m32u4_reset(struct avr_t * avr);
  */
 const struct mcu_t {
 	avr_t			core;
+	avr_ioport_t	portb, portc, portd, porte, portf;
 	avr_eeprom_t	eeprom;
 	avr_flash_t		selfprog;
 	avr_watchdog_t	watchdog;
 	avr_extint_t	extint;
-	avr_ioport_t	portb, portc, portd, porte, portf;
 	avr_uart_t		uart1;
 	avr_acomp_t		acomp;
 	avr_adc_t		adc;
@@ -88,16 +88,6 @@ const struct mcu_t {
 
 	.rampz = RAMPZ,
 	},
-	AVR_EEPROM_DECLARE(EE_READY_vect),
-	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
-	AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
-	.extint = {
-	AVR_EXTINT_MEGA_DECLARE(0, 'D', PD0, A),
-	AVR_EXTINT_MEGA_DECLARE(1, 'D', PD1, A),
-	AVR_EXTINT_MEGA_DECLARE(2, 'D', PD2, A),
-	AVR_EXTINT_MEGA_DECLARE(3, 'D', PD3, A),
-	AVR_EXTINT_MEGA_DECLARE(6, 'E', PE6, B),
-	},
 	.portb = {
 		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
 		.pcint = {
@@ -112,6 +102,16 @@ const struct mcu_t {
 	AVR_IOPORT_DECLARE(e, 'E', E),
 	AVR_IOPORT_DECLARE(f, 'F', F),
 
+	AVR_EEPROM_DECLARE(EE_READY_vect),
+	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
+	AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
+	.extint = {
+	AVR_EXTINT_MEGA_DECLARE(0, 'D', PD0, A),
+	AVR_EXTINT_MEGA_DECLARE(1, 'D', PD1, A),
+	AVR_EXTINT_MEGA_DECLARE(2, 'D', PD2, A),
+	AVR_EXTINT_MEGA_DECLARE(3, 'D', PD3, A),
+	AVR_EXTINT_MEGA_DECLARE(6, 'E', PE6, B),
+	},
 	AVR_UARTX_DECLARE(1, PRR1, PRUSART1),
 
 	.acomp = {

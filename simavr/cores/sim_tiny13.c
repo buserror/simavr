@@ -40,11 +40,11 @@ static void reset(struct avr_t * avr);
 
 
 static const struct mcu_t {
-	avr_t core;
+	avr_t			core;
+	avr_ioport_t	portb;
 	avr_eeprom_t 	eeprom;
 	avr_watchdog_t	watchdog;
 	avr_extint_t	extint;
-	avr_ioport_t	portb;
 	avr_timer_t		timer0;
 	avr_acomp_t		acomp;
 	avr_adc_t       adc;
@@ -74,14 +74,6 @@ static const struct mcu_t {
 		.init = init,
 		.reset = reset,
 	},
-	AVR_EEPROM_DECLARE_8BIT(EE_RDY_vect),
-	// tiny13 has different names for these...
-	#define WDIF WDTIF
-	#define WDIE WDTIE
-	AVR_WATCHDOG_DECLARE(WDTCR, WDT_vect),
-	.extint = {
-		AVR_EXTINT_TINY_DECLARE(0, 'B', 1, GIFR),
-	},
 	.portb = {
 		.name = 'B',  .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
 		.pcint = {
@@ -90,6 +82,14 @@ static const struct mcu_t {
 			.vector = PCINT0_vect,
 		},
 		.r_pcint = PCMSK,
+	},
+	AVR_EEPROM_DECLARE_8BIT(EE_RDY_vect),
+	// tiny13 has different names for these...
+	#define WDIF WDTIF
+	#define WDIE WDTIE
+	AVR_WATCHDOG_DECLARE(WDTCR, WDT_vect),
+	.extint = {
+		AVR_EXTINT_TINY_DECLARE(0, 'B', 1, GIFR),
 	},
 	.timer0 = {
 		.name = '0',

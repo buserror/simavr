@@ -44,11 +44,11 @@ void mx4_reset(struct avr_t * avr);
  */
 struct mcu_t {
 	avr_t core;
+	avr_ioport_t	porta, portb, portc, portd;
 	avr_eeprom_t 	eeprom;
 	avr_flash_t 	selfprog;
 	avr_watchdog_t	watchdog;
 	avr_extint_t	extint;
-	avr_ioport_t	porta, portb, portc, portd;
 	avr_uart_t		uart0,uart1;
 	avr_acomp_t		acomp;
 	avr_adc_t		adc;
@@ -84,14 +84,6 @@ const struct mcu_t SIM_CORENAME = {
 #ifdef RAMPZ	/* for 1284p */
 		.rampz = RAMPZ,	// extended program memory access
 #endif
-	},
-	AVR_EEPROM_DECLARE(EE_READY_vect),
-	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
-	AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
-	.extint = {
-		AVR_EXTINT_DECLARE(0, 'D', PD2),
-		AVR_EXTINT_DECLARE(1, 'D', PD3),
-		AVR_EXTINT_DECLARE(2, 'B', PB2),
 	},
 	.porta = {
 		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
@@ -130,6 +122,14 @@ const struct mcu_t SIM_CORENAME = {
 		.r_pcint = PCMSK3,
 	},
 
+	AVR_EEPROM_DECLARE(EE_READY_vect),
+	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
+	AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
+	.extint = {
+		AVR_EXTINT_DECLARE(0, 'D', PD2),
+		AVR_EXTINT_DECLARE(1, 'D', PD3),
+		AVR_EXTINT_DECLARE(2, 'B', PB2),
+	},
 	AVR_UARTX_DECLARE(0, PRR0, PRUSART0),
 	AVR_UARTX_DECLARE(1, PRR0, PRUSART1),
 

@@ -42,12 +42,12 @@ static void reset(struct avr_t * avr);
  * This is a template for all of the tinyx5 devices, hopefully
  */
 static const struct mcu_t {
-	avr_t core;
+	avr_t			core;
+	avr_ioport_t	porta, portb, portd;
 	avr_eeprom_t 	eeprom;
 	avr_watchdog_t	watchdog;
 	avr_flash_t 	selfprog;
 	avr_extint_t	extint;
-	avr_ioport_t	porta, portb, portd;
 	avr_uart_t		uart;
 	avr_timer_t		timer0,timer1;
 	avr_acomp_t		acomp;
@@ -60,6 +60,18 @@ static const struct mcu_t {
 		.init = init,
 		.reset = reset,
 	},
+	AVR_IOPORT_DECLARE(a, 'A', A), // port A has no PCInts..
+	.portb = {
+		.name = 'B',  .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
+		.pcint = {
+			.enable = AVR_IO_REGBIT(GIMSK, PCIE),
+			.raised = AVR_IO_REGBIT(EIFR, PCIF),
+			.vector = PCINT_vect,
+		},
+		.r_pcint = PCMSK,
+	},
+	AVR_IOPORT_DECLARE(d, 'D', D), // port D has no PCInts..
+
 	AVR_EEPROM_DECLARE_8BIT(EEPROM_READY_vect),
 	AVR_WATCHDOG_DECLARE(WDTCSR, WDT_OVERFLOW_vect),
 	 .selfprog = {
@@ -75,18 +87,6 @@ static const struct mcu_t {
 		AVR_EXTINT_TINY_DECLARE(0, 'D', 2, EIFR),
 		AVR_EXTINT_TINY_DECLARE(1, 'D', 3, EIFR),
 	},
-	AVR_IOPORT_DECLARE(a, 'A', A), // port A has no PCInts..
-	.portb = {
-		.name = 'B',  .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
-		.pcint = {
-			.enable = AVR_IO_REGBIT(GIMSK, PCIE),
-			.raised = AVR_IO_REGBIT(EIFR, PCIF),
-			.vector = PCINT_vect,
-		},
-		.r_pcint = PCMSK,
-	},
-	AVR_IOPORT_DECLARE(d, 'D', D), // port D has no PCInts..
-
 	//no PRUSART, upe=UPE, no reg/bit name index, no 'C' in RX/TX vector names
 	AVR_UART_DECLARE(0, 0, UPE, , ),
 

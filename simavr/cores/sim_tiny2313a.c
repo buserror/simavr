@@ -42,12 +42,12 @@ static void reset(struct avr_t * avr);
  * This is a template for all of the tinyx5 devices, hopefully
  */
 static const struct mcu_t {
-	avr_t core;
+	avr_t			core;
+	avr_ioport_t	porta, portb, portd;
 	avr_eeprom_t 	eeprom;
 	avr_watchdog_t	watchdog;
 	avr_flash_t 	selfprog;
 	avr_extint_t	extint;
-	avr_ioport_t	porta, portb, portd;
 	avr_uart_t		uart;
 	avr_timer_t		timer0,timer1;
 	avr_acomp_t		acomp;
@@ -60,22 +60,7 @@ static const struct mcu_t {
 		.init = init,
 		.reset = reset,
 	},
-	AVR_EEPROM_DECLARE_8BIT(EEPROM_Ready_vect),
-	AVR_WATCHDOG_DECLARE(WDTCR, WDT_OVERFLOW_vect),
-	.selfprog = {
-		.flags = 0,
-		.r_spm = SPMCSR,
-		.spm_pagesize = SPM_PAGESIZE,
-		.selfprgen = AVR_IO_REGBIT(SPMCSR, SPMEN),
-		.pgers = AVR_IO_REGBIT(SPMCSR, PGERS),
-		.pgwrt = AVR_IO_REGBIT(SPMCSR, PGWRT),
-		.blbset = AVR_IO_REGBIT(SPMCSR, RFLB),
-	},
-	.extint = {
-		AVR_EXTINT_TINY_DECLARE(0, 'D', 2, GIFR),
-		AVR_EXTINT_TINY_DECLARE(1, 'D', 3, GIFR),
-	},
-        .porta = {
+	.porta = {
 		.name = 'A',  .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
 		.pcint = {
 			.enable = AVR_IO_REGBIT(GIMSK, PCIE1),
@@ -83,7 +68,7 @@ static const struct mcu_t {
 			.vector = PCINT1_vect,
 		},
 		.r_pcint = PCMSK1,
-        },
+	},
 	.portb = {
 		.name = 'B',  .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
 		.pcint = {
@@ -103,6 +88,21 @@ static const struct mcu_t {
 		.r_pcint = PCMSK2,
 	},
 
+	AVR_EEPROM_DECLARE_8BIT(EEPROM_Ready_vect),
+	AVR_WATCHDOG_DECLARE(WDTCR, WDT_OVERFLOW_vect),
+	.selfprog = {
+		.flags = 0,
+		.r_spm = SPMCSR,
+		.spm_pagesize = SPM_PAGESIZE,
+		.selfprgen = AVR_IO_REGBIT(SPMCSR, SPMEN),
+		.pgers = AVR_IO_REGBIT(SPMCSR, PGERS),
+		.pgwrt = AVR_IO_REGBIT(SPMCSR, PGWRT),
+		.blbset = AVR_IO_REGBIT(SPMCSR, RFLB),
+	},
+	.extint = {
+		AVR_EXTINT_TINY_DECLARE(0, 'D', 2, GIFR),
+		AVR_EXTINT_TINY_DECLARE(1, 'D', 3, GIFR),
+	},
 	//PRUSART, upe=UPE, no reg/bit name index, no 'C' in RX/TX vector names
 	AVR_UART_DECLARE(PRR, PRUSART, UPE, , ),
 

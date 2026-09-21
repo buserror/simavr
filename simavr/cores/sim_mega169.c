@@ -32,12 +32,12 @@ void m169p_reset(struct avr_t * avr);
 #include "sim_core_declare.h"
 
 const struct mcu_t {
-	avr_t          core;
+	avr_t			core;
+	avr_ioport_t	porta, portb, portc, portd, porte, portf, portg;
 	avr_eeprom_t 	eeprom;
 	avr_flash_t 	selfprog;
 	avr_watchdog_t	watchdog;
 	avr_extint_t	extint;
-	avr_ioport_t	porta, portb, portc, portd, porte, portf, portg;
 	avr_uart_t		uart0;
 	avr_acomp_t		acomp;
 	avr_adc_t		adc;
@@ -52,15 +52,10 @@ const struct mcu_t {
 		.init = m169p_init,
 		.reset = m169p_reset,
 	},
-	AVR_EEPROM_DECLARE_NOEEPM(EE_READY_vect),
-	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
-	AVR_WATCHDOG_DECLARE_128(WDTCR, _VECTOR(0)),
-	.extint = {
-		AVR_EXTINT_DECLARE(0, 'D', PD1),
-	},
 	AVR_IOPORT_DECLARE(a, 'A', A),
 	.portb = {
-		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,  .r_pcint = PCMSK1,
+		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
+		.r_pcint = PCMSK1,
 		.pcint = {
 			.enable = AVR_IO_REGBIT(EIMSK, PCIE1),
 			.raised = AVR_IO_REGBIT(EIFR, PCIF1),
@@ -70,7 +65,8 @@ const struct mcu_t {
 	AVR_IOPORT_DECLARE(c, 'C', C),
 	AVR_IOPORT_DECLARE(d, 'D', D),
 	.porte = {
-		.name = 'E', .r_port = PORTE, .r_ddr = DDRE, .r_pin = PINE, .r_pcint = PCMSK0,
+		.name = 'E', .r_port = PORTE, .r_ddr = DDRE, .r_pin = PINE,
+		.r_pcint = PCMSK0,
 		.pcint = {
 			.enable = AVR_IO_REGBIT(EIMSK, PCIE0),
 			.raised = AVR_IO_REGBIT(EIFR, PCIF0),
@@ -80,6 +76,12 @@ const struct mcu_t {
 	AVR_IOPORT_DECLARE(f, 'F', F),
 	AVR_IOPORT_DECLARE(g, 'G', G),
 
+	AVR_EEPROM_DECLARE_NOEEPM(EE_READY_vect),
+	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
+	AVR_WATCHDOG_DECLARE_128(WDTCR, _VECTOR(0)),
+	.extint = {
+		AVR_EXTINT_DECLARE(0, 'D', PD1),
+	},
 	AVR_UARTX_DECLARE(0, PRR, PRUSART0),
 
 	.acomp = {

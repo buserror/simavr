@@ -43,11 +43,11 @@ void tx5_reset(struct avr_t * avr);
  */
 struct mcu_t {
 	avr_t core;
+	avr_ioport_t	portb;
 	avr_eeprom_t 	eeprom;
 	avr_watchdog_t	watchdog;
 	avr_flash_t 	selfprog;
 	avr_extint_t	extint;
-	avr_ioport_t	portb;
 	avr_acomp_t		acomp;
 	avr_adc_t		adc;
 	avr_timer_t	timer0, timer1;
@@ -71,6 +71,15 @@ const struct mcu_t SIM_CORENAME = {
 		.init = tx5_init,
 		.reset = tx5_reset,
 	},
+	.portb = {
+		.name = 'B',  .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
+		.pcint = {
+			.enable = AVR_IO_REGBIT(GIMSK, PCIE),
+			.raised = AVR_IO_REGBIT(GIFR, PCIF),
+			.vector = PCINT0_vect,
+		},
+		.r_pcint = PCMSK,
+	},
 	.selfprog = {
 		.flags = 0,
 		.r_spm = SPMCSR,
@@ -84,15 +93,6 @@ const struct mcu_t SIM_CORENAME = {
 	AVR_WATCHDOG_DECLARE(WDTCR, WDT_vect),
 	.extint = {
 		AVR_EXTINT_TINY_DECLARE(0, 'B', PB2, GIFR),
-	},
-	.portb = {
-		.name = 'B',  .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
-		.pcint = {
-			.enable = AVR_IO_REGBIT(GIMSK, PCIE),
-			.raised = AVR_IO_REGBIT(GIFR, PCIF),
-			.vector = PCINT0_vect,
-		},
-		.r_pcint = PCMSK,
 	},
 	.acomp = {
 		.mux_inputs = 4,

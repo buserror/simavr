@@ -43,11 +43,11 @@ void mxm1_reset(struct avr_t * avr);
  */
 struct mcu_t {
 	avr_t core;
+	avr_ioport_t	portb,portc,portd,porte;
 	avr_eeprom_t 	eeprom;
 	avr_watchdog_t	watchdog;
 	avr_flash_t 	selfprog;
 	avr_extint_t	extint;
-	avr_ioport_t	portb,portc,portd,porte;
 	avr_lin_t		lin;
 	avr_adc_t		adc;
 	avr_timer_t		timer0,timer1;
@@ -70,15 +70,6 @@ const struct mcu_t SIM_CORENAME = {
 
 		.init = mxm1_init,
 		.reset = mxm1_reset,
-	},
-	AVR_EEPROM_DECLARE_NOEEPM(EE_READY_vect),
-	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
-	AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
-	.extint = {
-		AVR_EXTINT_DECLARE(0, 'D', 6),
-		AVR_EXTINT_DECLARE(1, 'B', 2),
-		AVR_EXTINT_DECLARE(2, 'B', 5),
-		AVR_EXTINT_DECLARE(3, 'C', 0),
 	},
 	.portb = {
 		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
@@ -117,6 +108,15 @@ const struct mcu_t SIM_CORENAME = {
 		.r_pcint = PCMSK3,
 	},
 
+	AVR_EEPROM_DECLARE_NOEEPM(EE_READY_vect),
+	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
+	AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
+	.extint = {
+		AVR_EXTINT_DECLARE(0, 'D', 6),
+		AVR_EXTINT_DECLARE(1, 'B', 2),
+		AVR_EXTINT_DECLARE(2, 'B', 5),
+		AVR_EXTINT_DECLARE(3, 'C', 0),
+	},
 	.lin = {
 		.r_linbtr = LINBTR,
 		.r_linbrrh = LINBRRH,

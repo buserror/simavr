@@ -46,11 +46,11 @@ void m128_reset(struct avr_t * avr);
  */
 const struct mcu_t {
 	avr_t          core;
+	avr_ioport_t	porta, portb, portc, portd, porte, portf, portg;
 	avr_eeprom_t 	eeprom;
 	avr_flash_t 	selfprog;
 	avr_watchdog_t	watchdog;
 	avr_extint_t	extint;
-	avr_ioport_t	porta, portb, portc, portd, porte, portf, portg;
 	avr_uart_t		uart0,uart1;
 	avr_acomp_t		acomp;
 	avr_adc_t		adc;
@@ -67,6 +67,14 @@ const struct mcu_t {
 
 		.rampz = RAMPZ,	// extended program memory access
 	},
+	AVR_IOPORT_DECLARE(a, 'A', A), // no PCINTs in atmega128
+	AVR_IOPORT_DECLARE(b, 'B', B),
+	AVR_IOPORT_DECLARE(c, 'C', C),
+	AVR_IOPORT_DECLARE(d, 'D', D),
+	AVR_IOPORT_DECLARE(e, 'E', E),
+	AVR_IOPORT_DECLARE(f, 'F', F),
+	AVR_IOPORT_DECLARE(g, 'G', G),
+
 	AVR_EEPROM_DECLARE_NOEEPM(EE_READY_vect),
 	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
 	AVR_WATCHDOG_DECLARE_128(WDTCR, _VECTOR(0)),
@@ -80,14 +88,6 @@ const struct mcu_t {
 		AVR_EXTINT_MEGA_DECLARE(6, 'E', PE6, B),
 		AVR_EXTINT_MEGA_DECLARE(7, 'E', PE7, B),
 	},
-	AVR_IOPORT_DECLARE(a, 'A', A), // no PCINTs in atmega128
-	AVR_IOPORT_DECLARE(b, 'B', B),
-	AVR_IOPORT_DECLARE(c, 'C', C),
-	AVR_IOPORT_DECLARE(d, 'D', D),
-	AVR_IOPORT_DECLARE(e, 'E', E),
-	AVR_IOPORT_DECLARE(f, 'F', F),
-	AVR_IOPORT_DECLARE(g, 'G', G),
-
 	// no PRUSART
 	AVR_UARTX_DECLARE(0, 0, 0),
 	AVR_UARTX_DECLARE(1, 0, 0),

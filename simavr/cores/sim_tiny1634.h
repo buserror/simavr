@@ -51,11 +51,11 @@ void tn1634_reset(struct avr_t * avr);
  */
 struct mcu_t {
 	avr_t core;
+	avr_ioport_t porta, portb, portc;
 	avr_eeprom_t eeprom;
 	avr_flash_t selfprog;
 	avr_watchdog_t watchdog;
 	avr_extint_t extint;
-	avr_ioport_t porta, portb, portc;
 	avr_timer_t timer0, timer1;
 	avr_adc_t adc;
     avr_uart_t uart0, uart1;
@@ -77,33 +77,6 @@ const struct mcu_t SIM_CORENAME = {
 
 		.init = tn1634_init,
 		.reset = tn1634_reset,
-	},
-	AVR_EEPROM_DECLARE(EE_RDY_vect),
-	// ATtiny1634 has no WDCE bit - simavr still needs a valid register for wdce
-	// Point wdce to WDTCSR bit 4 (unused) to satisfy simavr's init
-	.watchdog = {
-		.wdrf = AVR_IO_REGBIT(MCUSR, WDRF),
-		.wdce = AVR_IO_REGBIT(WDTCSR, 4),  // Dummy - bit 4 is unused in ATtiny1634
-		.wde = AVR_IO_REGBIT(WDTCSR, WDE),
-		.wdp = { AVR_IO_REGBIT(WDTCSR, WDP0), AVR_IO_REGBIT(WDTCSR, WDP1),
-				 AVR_IO_REGBIT(WDTCSR, WDP2), AVR_IO_REGBIT(WDTCSR, WDP3) },
-		.watchdog = {
-			.enable = AVR_IO_REGBIT(WDTCSR, WDIE),
-			.raised = AVR_IO_REGBIT(WDTCSR, WDIF),
-			.vector = WDT_vect,
-		},
-	},
-	.selfprog = {
-		.flags = 0,
-		.r_spm = SPMCSR,
-		.spm_pagesize = SPM_PAGESIZE,
-		.selfprgen = AVR_IO_REGBIT(SPMCSR, SPMEN),
-		.pgers = AVR_IO_REGBIT(SPMCSR, PGERS),
-		.pgwrt = AVR_IO_REGBIT(SPMCSR, PGWRT),
-		.blbset = AVR_IO_REGBIT(SPMCSR, RFLB),
-	},
-	.extint = {
-		AVR_EXTINT_TINY_DECLARE(0, 'A', 2, GIFR),
 	},
 	.porta = {
 		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
@@ -133,6 +106,33 @@ const struct mcu_t SIM_CORENAME = {
 		.r_pcint = PCMSK2,
 	},
 
+	AVR_EEPROM_DECLARE(EE_RDY_vect),
+	// ATtiny1634 has no WDCE bit - simavr still needs a valid register for wdce
+	// Point wdce to WDTCSR bit 4 (unused) to satisfy simavr's init
+	.watchdog = {
+		.wdrf = AVR_IO_REGBIT(MCUSR, WDRF),
+		.wdce = AVR_IO_REGBIT(WDTCSR, 4),  // Dummy - bit 4 is unused in ATtiny1634
+		.wde = AVR_IO_REGBIT(WDTCSR, WDE),
+		.wdp = { AVR_IO_REGBIT(WDTCSR, WDP0), AVR_IO_REGBIT(WDTCSR, WDP1),
+				 AVR_IO_REGBIT(WDTCSR, WDP2), AVR_IO_REGBIT(WDTCSR, WDP3) },
+		.watchdog = {
+			.enable = AVR_IO_REGBIT(WDTCSR, WDIE),
+			.raised = AVR_IO_REGBIT(WDTCSR, WDIF),
+			.vector = WDT_vect,
+		},
+	},
+	.selfprog = {
+		.flags = 0,
+		.r_spm = SPMCSR,
+		.spm_pagesize = SPM_PAGESIZE,
+		.selfprgen = AVR_IO_REGBIT(SPMCSR, SPMEN),
+		.pgers = AVR_IO_REGBIT(SPMCSR, PGERS),
+		.pgwrt = AVR_IO_REGBIT(SPMCSR, PGWRT),
+		.blbset = AVR_IO_REGBIT(SPMCSR, RFLB),
+	},
+	.extint = {
+		AVR_EXTINT_TINY_DECLARE(0, 'A', 2, GIFR),
+	},
 	// Timer0 - 8-bit with PWM on OC0A (PC0) and OC0B (PA5)
 	.timer0 = {
 		.name = '0',

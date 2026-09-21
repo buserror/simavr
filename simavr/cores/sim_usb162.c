@@ -42,12 +42,12 @@ void usb162_reset(struct avr_t * avr);
 #include "sim_core_declare.h"
 
 const struct mcu_t {
-	avr_t			 core;
+	avr_t			core;
+	avr_ioport_t	portb, portc, portd;
 	avr_eeprom_t 	eeprom;
 	avr_flash_t 	selfprog;
 	avr_watchdog_t	watchdog;
 	avr_extint_t	extint;
-	avr_ioport_t	portb, portc, portd;
 	avr_uart_t		uart1;
 	avr_timer_t		timer0,timer1;
 	avr_spi_t		spi;
@@ -60,19 +60,6 @@ const struct mcu_t {
 
 		.init = usb162_init,
 		.reset = usb162_reset,
-	},
-	AVR_EEPROM_DECLARE(EE_READY_vect),
-	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
-	AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
-	.extint = {
-		AVR_EXTINT_MEGA_DECLARE(0, 'D', PD0, A),
-		AVR_EXTINT_MEGA_DECLARE(1, 'D', PD1, A),
-		AVR_EXTINT_MEGA_DECLARE(2, 'D', PD2, A),
-		AVR_EXTINT_MEGA_DECLARE(3, 'D', PD3, A),
-		AVR_EXTINT_MEGA_DECLARE(4, 'C', PC7, B),
-		AVR_EXTINT_MEGA_DECLARE(5, 'D', PD4, B),
-		AVR_EXTINT_MEGA_DECLARE(6, 'D', PD6, B),
-		AVR_EXTINT_MEGA_DECLARE(7, 'D', PD7, B),
 	},
 	.portb = {
 		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
@@ -94,6 +81,19 @@ const struct mcu_t {
 	},
 	AVR_IOPORT_DECLARE(d, 'D', D),
 
+	AVR_EEPROM_DECLARE(EE_READY_vect),
+	AVR_SELFPROG_DECLARE(SPMCSR, SPMEN, SPM_READY_vect),
+	AVR_WATCHDOG_DECLARE(WDTCSR, WDT_vect),
+	.extint = {
+		AVR_EXTINT_MEGA_DECLARE(0, 'D', PD0, A),
+		AVR_EXTINT_MEGA_DECLARE(1, 'D', PD1, A),
+		AVR_EXTINT_MEGA_DECLARE(2, 'D', PD2, A),
+		AVR_EXTINT_MEGA_DECLARE(3, 'D', PD3, A),
+		AVR_EXTINT_MEGA_DECLARE(4, 'C', PC7, B),
+		AVR_EXTINT_MEGA_DECLARE(5, 'D', PD4, B),
+		AVR_EXTINT_MEGA_DECLARE(6, 'D', PD6, B),
+		AVR_EXTINT_MEGA_DECLARE(7, 'D', PD7, B),
+	},
 	AVR_UARTX_DECLARE(1, PRR1, PRUSART1),
 
 	.timer0 = {
