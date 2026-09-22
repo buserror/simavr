@@ -26,6 +26,13 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/time.h>
+/* Windows: CLOCK_MONOTONIC_RAW is Linux-specific. Suppress it so
+ * avr_get_time_stamp() uses the gettimeofday() path that works on MinGW. */
+#ifdef __MINGW32__
+#  ifdef CLOCK_MONOTONIC_RAW
+#    undef CLOCK_MONOTONIC_RAW
+#  endif
+#endif
 #include "sim_avr.h"
 #include "sim_core.h"
 #include "sim_time.h"
