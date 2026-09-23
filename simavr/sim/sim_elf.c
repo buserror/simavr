@@ -255,10 +255,10 @@ avr_load_firmware(
 
 		switch (chunk->type) {
 		case FLASH:
-			do_chunk(chunk, avr->flash, avr->flashend, &avr->codeend);
+			do_chunk(chunk, avr->flash, avr->flashend + 1, &avr->codeend);
 			break;
 		case DATA:
-			do_chunk(chunk, avr->data + avr->ioend, avr->ramend - avr->ioend,
+			do_chunk(chunk, avr->data + avr->ioend, avr->ramend + 1 - avr->ioend,
 					 NULL);
 			break;
 		case EEPROM:
