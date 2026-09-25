@@ -148,6 +148,11 @@ static inline void avr_sreg_set(avr_t * avr, uint8_t flag, uint8_t ival)
  */
 #define AVR_OVERFLOW_OPCODE 0xf1f1
 
+/*
+ * Executing "RJMP .-2", which is how avr-libc's exit() hangs the CPU.
+ */
+#define JMP_TO_SELF(avr) (*(uint16_t *)(avr->flash + avr->pc) == 0xcfff)
+
 #ifdef __cplusplus
 };
 #endif

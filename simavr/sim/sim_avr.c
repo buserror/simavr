@@ -392,6 +392,16 @@ avr_callback_sleep_gdb(
 		;
 }
 
+static void
+gracefully_quit(
+		avr_t * avr,
+		const char * reason)
+{
+	if (avr->log)
+		AVR_LOG(avr, LOG_TRACE, "simavr: %s, quitting gracefully\n", reason);
+	avr->state = cpu_Done;
+}
+
 void
 avr_callback_run_gdb(
 		avr_t * avr)
@@ -417,11 +427,15 @@ avr_callback_run_gdb(
 	// until the next timer is due
 
 	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
+
+	if (avr->state == cpu_Running && JMP_TO_SELF(avr) && !avr->sreg[S_I]) {
+		gracefully_quit(avr, "rjmp .-2 with interrupts off");
+		return;
+	}
+
 	if (avr->state == cpu_Sleeping) {
 		if (!avr->sreg[S_I]) {
-			if (avr->log)
-				AVR_LOG(avr, LOG_TRACE, "simavr: sleeping with interrupts off, quitting gracefully\n");
-			avr->state = cpu_Done;
+			gracefully_quit(avr, "sleeping with interrupts off");
 			return;
 		}
 		/*
@@ -475,11 +489,14 @@ avr_callback_run_raw(
 	// until the next timer is due
 	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
 
+	if (avr->state == cpu_Running && JMP_TO_SELF(avr) && !avr->sreg[S_I]) {
+		gracefully_quit(avr, "rjmp .-2 with interrupts off");
+		return;
+	}
+
 	if (avr->state == cpu_Sleeping) {
 		if (!avr->sreg[S_I]) {
-			if (avr->log)
-				AVR_LOG(avr, LOG_TRACE, "simavr: sleeping with interrupts off, quitting gracefully\n");
-			avr->state = cpu_Done;
+			gracefully_quit(avr, "sleeping with interrupts off");
 			return;
 		}
 		/*
