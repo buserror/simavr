@@ -356,10 +356,17 @@ inline void _avr_sp_set(avr_t * avr, uint16_t sp)
  */
 static inline void _avr_set_ram(avr_t * avr, uint16_t addr, uint8_t v)
 {
-	if (addr <= avr->ioend)
-		_avr_set_r(avr, addr, v);
-	else
-		avr_core_watch_write(avr, addr, v);
+	if (addr <= avr->ioend) {
+		if (addr < MAX_IOs + 32) {
+			_avr_set_r(avr, addr, v);
+			return;
+		} else {
+			AVR_LOG(avr, LOG_ERROR,
+					"%sCORE: *** %04x: Write to undefined IO address %04x.%s\n",
+					simavr_font.red, avr->pc, addr, simavr_font.normal);
+		}
+	}
+	avr_core_watch_write(avr, addr, v);
 }
 
 /*
