@@ -98,8 +98,6 @@ avr_get_time_stamp(
 	clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
 	stamp = (tp.tv_sec * 1E9) + tp.tv_nsec;
 #endif
-	if (!avr->time_base)
-		avr->time_base = stamp;
 	return stamp - avr->time_base;
 }
 
@@ -173,13 +171,14 @@ avr_init(
 	}
 	avr_cmd_init(avr);
 	avr_interrupt_init(avr);
+	avr->time_base = avr_get_time_stamp(avr);
 	if (avr->custom.init)
 		avr->custom.init(avr, avr->custom.data);
 	if (avr->init)
 		avr->init(avr);
 	// set default (non gdb) fast callbacks
 	avr->run = avr_callback_run_raw;
-	avr->sleep = avr_callback_sleep_raw;
+	avr->sleep = avr_callback_sleep_raw; // Real-time running
 	// number of address bytes to push/pull on/off the stack
 	avr->address_size = avr->eind ? 3 : 2;
 	avr_regbit_set(avr, avr->reset_flags.porf);  // Power-on reset flag.
@@ -514,13 +513,13 @@ avr_callback_run_raw(
 			gracefully_quit(avr, "sleeping with interrupts off");
 			return;
 		}
-		/*
-		 * try to sleep for as long as we can (?)
-		 */
-		avr->sleep(avr, sleep);
+		if (avr->sleep) // Do something, possibly simulated real-time sleep.
+			avr->sleep(avr, sleep);
 		avr->cycle += 1 + sleep;
 	}
+
 	// Interrupt servicing might change the PC too, during 'sleep'
+
 	if (avr->state == cpu_Running || avr->state == cpu_Sleeping) {
 		/* Note: checking interrupt_state here is completely superfluous, however
 			as interrupt_state tells us all we really need to know, here
