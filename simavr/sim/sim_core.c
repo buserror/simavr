@@ -194,7 +194,7 @@ _avr_flash_read16le(
 
 static inline void _call_register_irqs(avr_t * avr, uint16_t addr)
 {
-	if (addr > 31 && addr < 31 + MAX_IOs) {
+	if (addr >= 32 && addr < MAX_IOs + 32) {
 		avr_io_addr_t io = AVR_DATA_TO_IO(addr);
 
 		if (avr->io[io].irq) {
@@ -381,7 +381,7 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 		 */
 		READ_SREG_INTO(avr, avr->data[R_SREG]);
 
-	} else if (addr > 31 && addr < 31 + MAX_IOs) {
+	} else if (addr >= 32 && addr < MAX_IOs + 32) {
 		avr_io_addr_t io = AVR_DATA_TO_IO(addr);
 
 		if (avr->io[io].r.c)
