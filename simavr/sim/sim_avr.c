@@ -37,6 +37,16 @@
 #define AVR_KIND_DECL
 #include "sim_core_decl.h"
 
+#ifndef NO_COLOR
+/* Replacements for ANSI escape codes if color is disabled. */
+static const struct text_colors font_no_color = {
+       .green  = "",
+       .red    = "",
+       .blue    = "",
+       .normal = ""
+};
+#endif
+
 static void
 std_logger(
 		avr_t * avr,
@@ -119,6 +129,12 @@ avr_init(
 	static const char *irq_names[] = {
             ">avr.core.bad_opcode", "32<avr.VCC", "32<avr.AVCC", "32<avr.AREF"
         };
+
+#ifndef NO_COLOR
+	const char *no_color = getenv("NO_COLOR");
+	if (no_color && no_color[0])
+		simavr_font = font_no_color;
+#endif
 
 	avr->flash = malloc(avr->flashend + 4);
 	memset(avr->flash, 0xff, avr->flashend + 1);
