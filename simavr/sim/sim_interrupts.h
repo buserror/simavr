@@ -104,11 +104,10 @@ void
 avr_interrupt_reti(
 		struct avr_t * avr);
 // clear the interrupt (inc pending) if "raised" flag is 1
-int
-avr_clear_interrupt_if(
+void
+avr_clear_sticky_interrupt(
 		struct avr_t * avr,
-		avr_int_vector_t * vector,
-		uint8_t old);
+		avr_int_vector_t * vector);
 
 // return the IRQ that is raised when the vector is enabled and called/cleared
 // this allows tracing of pending interrupts

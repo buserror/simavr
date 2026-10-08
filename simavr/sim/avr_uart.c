@@ -40,20 +40,6 @@
 
 DEFINE_FIFO(uint16_t, uart_fifo);
 
-static inline void
-avr_uart_clear_interrupt(
-		avr_t * avr,
-		avr_int_vector_t * vector)
-{
-	if (!vector->vector)
-		return;
-	// clear the interrupt flag even it's 'sticky'
-	if (avr_regbit_get(avr, vector->raised))
-		avr_clear_interrupt_if(avr, vector, 0);
-	if (avr_regbit_get(avr, vector->raised))
-		avr_regbit_clear(avr, vector->raised);
-}
-
 static avr_cycle_count_t
 avr_uart_txc_raise(
 		struct avr_t * avr,
@@ -70,7 +56,7 @@ avr_uart_txc_raise(
 	if (p->udrc.vector) {// UDRE is disabled in the LIN mode
 		if (p->tx_cnt) {
 			if (avr_regbit_get(avr, p->udrc.raised)) {
-				avr_uart_clear_interrupt(avr, &p->udrc);
+				avr_clear_sticky_interrupt(avr, &p->udrc);
 			}
 		} else {
 			if (avr_regbit_get(avr, p->txen)) {
@@ -187,7 +173,7 @@ avr_uart_read(
 		if ((p->rx_cnt > 1) && // UART actually has 2-character rx buffer
 				((avr->cycle-p->rxc_raise_time)/p->rx_cnt < p->cycles_per_byte)) {
 			// prevent the firmware from reading input characters with non-realistic high speed
-			avr_uart_clear_interrupt(avr, &p->rxc);
+			avr_clear_sticky_interrupt(avr, &p->rxc);
 			p->rx_cnt = 0;
 		}
 	} else {
@@ -202,7 +188,7 @@ avr_uart_read(
 avr_uart_read_check:
 	if (uart_fifo_isempty(&p->input)) {
 		avr_cycle_timer_cancel(avr, avr_uart_rxc_raise, p);
-		avr_uart_clear_interrupt(avr, &p->rxc);
+		avr_clear_sticky_interrupt(avr, &p->rxc);
 		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XOFF, 0);
 		avr_raise_irq(p->io.irq + UART_IRQ_OUT_XON, 1);
 	}
@@ -257,9 +243,8 @@ avr_uart_udr_write(
 	}
 
 	//avr_cycle_timer_cancel(avr, avr_uart_txc_raise, p); // synchronize tx pump
-	if (p->udrc.vector && avr_regbit_get(avr, p->udrc.raised)) {
-		avr_uart_clear_interrupt(avr, &p->udrc);
-	}
+	if (p->udrc.vector && avr_regbit_get(avr, p->udrc.raised))
+		avr_clear_sticky_interrupt(avr, &p->udrc);
 
 	if (p->flags & AVR_UART_FLAG_STDIO) {
 		if (p->flags & AVR_UART_FLAG_RAW) {
@@ -369,9 +354,9 @@ avr_uart_write(
 			avr_raise_interrupt(avr, &p->udrc);
 	}
 	if (clear_txc)
-		avr_uart_clear_interrupt(avr, &p->txc);
+		avr_clear_sticky_interrupt(avr, &p->txc);
 	if (clear_rxc)
-		avr_uart_clear_interrupt(avr, &p->rxc);
+		avr_clear_sticky_interrupt(avr, &p->rxc);
 
 	///TODO: handle the RxD & TxD pins function override
 
@@ -388,12 +373,12 @@ avr_uart_write(
 			// flush the Receive Buffer
 			uart_fifo_reset(&p->input);
 			// clear the rxc interrupt flag
-			avr_uart_clear_interrupt(avr, &p->rxc);
+			avr_clear_sticky_interrupt(avr, &p->rxc);
 		}
 	}
 	if (new_txen != txen) {
 		if (p->udrc.vector && !new_txen) {
-			avr_uart_clear_interrupt(avr, &p->udrc);
+			avr_clear_sticky_interrupt(avr, &p->udrc);
 		} else {
 			avr_regbit_set(avr, p->udrc.raised);
 		}
@@ -451,8 +436,8 @@ avr_uart_reset(
 		avr_regbit_set(avr, p->udrc.raised);
 		avr_regbit_clear(avr, p->dor);
 	}
-	avr_uart_clear_interrupt(avr, &p->txc);
-	avr_uart_clear_interrupt(avr, &p->rxc);
+	avr_clear_sticky_interrupt(avr, &p->txc);
+	avr_clear_sticky_interrupt(avr, &p->rxc);
 	avr_irq_register_notify(p->io.irq + UART_IRQ_INPUT, avr_uart_irq_input, p);
 	avr_cycle_timer_cancel(avr, avr_uart_rxc_raise, p);
 	avr_cycle_timer_cancel(avr, avr_uart_txc_raise, p);

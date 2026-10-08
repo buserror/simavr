@@ -160,7 +160,7 @@ avr_raise_interrupt(
 }
 
 void
-avr_clear_interrupt(
+avr_clear_sticky_interrupt(
 		avr_t * avr,
 		avr_int_vector_t * vector)
 {
@@ -168,33 +168,27 @@ avr_clear_interrupt(
 		return;
 	if (vector->trace)
 		printf("IRQ%d cleared\n", vector->vector);
-	vector->pending = 0;
 
-	avr_raise_irq(vector->irq + AVR_INT_IRQ_PENDING, 0);
-	avr_raise_irq_float(avr->interrupts.irq + AVR_INT_IRQ_PENDING,
-			avr_has_pending_interrupts(avr) ?
-					avr_int_pending_read_at(
-							&avr->interrupts.pending, 0)->vector : 0,
+	if (vector->pending) {
+		vector->pending = 0;
+		avr_raise_irq(vector->irq + AVR_INT_IRQ_PENDING, 0);
+		avr_raise_irq_float(avr->interrupts.irq + AVR_INT_IRQ_PENDING,
+							avr_has_pending_interrupts(avr) ?
+								avr_int_pending_read_at(
+									&avr->interrupts.pending, 0)->vector : 0,
 							avr_has_pending_interrupts(avr));
-
-	if (vector->raised.reg && !vector->raise_sticky)
+	}
+	if (vector->raised.reg)
 		avr_regbit_clear(avr, vector->raised);
 }
 
-int
-avr_clear_interrupt_if(
+void
+avr_clear_interrupt(
 		avr_t * avr,
-		avr_int_vector_t * vector,
-		uint8_t old)
+		avr_int_vector_t * vector)
 {
-	avr_raise_irq(avr->interrupts.irq + AVR_INT_IRQ_PENDING,
-			avr_has_pending_interrupts(avr));
-	if (avr_regbit_get(avr, vector->raised)) {
-		avr_clear_interrupt(avr, vector);
-		return 1;
-	}
-	avr_regbit_setto(avr, vector->raised, old);
-	return 0;
+	if (vector && !vector->raise_sticky)
+		avr_clear_sticky_interrupt(avr, vector);
 }
 
 avr_irq_t *
@@ -246,6 +240,7 @@ avr_service_interrupts(
 
 	avr_int_table_p table = &avr->interrupts;
 
+another:
 	// how many are pending...
 	int cnt = avr_int_pending_get_read_size(&table->pending);
 	// locate the highest priority one
@@ -260,15 +255,27 @@ avr_service_interrupts(
 	}
 	avr_int_vector_t * vector = avr_int_pending_read_at(&table->pending, mini);
 
-	// it's possible that the vector being serviced is not at the front of the fifo, because we process interrupts based
-	// on vector priority rather than position in the fifo. if this is the case, we need to manually swap the vector
-	// being serviced with the vector at the front of the fifo so that the vector at the front of the fifo can be
-	// serviced in a following iteration.
-	avr_int_vector_p fifo_front = avr_int_pending_read(&table->pending);
-	if (fifo_front->vector != vector->vector) {
-		// the read into fifo_front above has incremented pending.read, so now mini points 1 beyond the desired
-		// destination for the swap.
-		table->pending.buffer[(table->pending.read + mini - 1) % avr_int_pending_fifo_size] = fifo_front;
+	if (!vector->raise_sticky || !vector->pending) {
+		/* Remove the vector from the pending list.  Exclude active stickies
+		 * as only peripheral or firmware action can stop them.
+		 * It's possible that the vector being serviced is not at the front
+		 * of the fifo, because we process interrupts based on vector priority
+		 * rather than position in the fifo. In this case, manually swap
+		 * the front vector to the active position so that it can be serviced
+		 * in a following iteration.
+		 */
+
+		 avr_int_vector_p fifo_front = avr_int_pending_read(&table->pending);
+		 if (fifo_front->vector != vector->vector) {
+			 uint32_t ix;
+
+			 /* The read into fifo_front above has incremented pending.read,
+			  * so now mini points 1 beyond the desired destination.
+			  */
+
+			 ix = (table->pending.read + mini - 1) % avr_int_pending_fifo_size;
+			 table->pending.buffer[ix] = fifo_front;
+		 }
 	}
 
 	// if that single interrupt is masked, ignore it and continue
@@ -276,6 +283,8 @@ avr_service_interrupts(
 	if (!avr_regbit_get(avr, vector->enable) || !vector->pending) {
 		vector->pending = 0;
 		avr->interrupt_state = avr_has_pending_interrupts(avr);
+		if (avr->interrupt_state)
+			goto another;
 	} else {
 		if (vector->trace)
 			printf("IRQ%d calling\n", vector->vector);

@@ -201,8 +201,8 @@ static void avr_usi_write_usisr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 	if (v & (1 << p->usi_start.raised.bit)) {
 		DBG(printf("USI ------------------- 	clearing USISIF\n"));
 		v &= ~(1 << p->usi_start.raised.bit);
-		avr_clear_interrupt(avr, &p->usi_start);
 		if (avr_regbit_get(avr, p->usi_start.raised)) {
+			avr_clear_sticky_interrupt(avr, &p->usi_start);
 			_avr_usi_set_scl_hold(avr, p, false);
 		}
 	}
@@ -210,8 +210,8 @@ static void avr_usi_write_usisr(struct avr_t * avr, avr_io_addr_t addr, uint8_t 
 	if (v & (1 << p->usi_ovf.raised.bit)) {
 		DBG(printf("USI ------------------- 	clearing USIOIF\n"));
 		v &= ~(1 << p->usi_ovf.raised.bit);
-		avr_clear_interrupt(avr, &p->usi_ovf);
 		if (avr_regbit_get(avr, p->usi_ovf.raised)) {
+			avr_clear_sticky_interrupt(avr, &p->usi_ovf);
 			_avr_usi_set_scl_hold(avr, p, false);
 		}
 	}

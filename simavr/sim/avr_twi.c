@@ -219,7 +219,7 @@ avr_twi_write(
 			avr_regbit_clear(avr, p->twea);
 			avr_regbit_clear(avr, p->twsta);
 			avr_regbit_clear(avr, p->twsto);
-			avr_clear_interrupt(avr, &p->twi);
+			avr_clear_sticky_interrupt(avr, &p->twi);
 			avr_core_watch_write(avr, p->r_twdr, 0xff);
 			_avr_twi_status_set(p, TWI_NO_STATE, 0);
 			p->state = 0;
@@ -243,8 +243,8 @@ avr_twi_write(
 	if (addr == p->twi.raised.reg &&
 		(v & (p->twi.raised.mask << p->twi.raised.bit))) {
 
-		avr_regbit_clear(avr, p->twi.raised);
-		AVR_TRACE(avr, "cleared %d\n", cleared);
+		avr_clear_sticky_interrupt(avr, &p->twi);
+		AVR_TRACE(avr, "TWI interrupt cleared.\n", cleared);
 	}
 
 	if (!twsto && avr_regbit_get(avr, p->twsto)) {
