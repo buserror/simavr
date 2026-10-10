@@ -140,8 +140,13 @@ jobs:
         # Both of them: libsimavr.so.1 ships as well and has glibc references of
         # its own, so the floor is the higher of the two.
         run: |
-          ./check-floor.sh simavr_installed/bin/simavr 2.34
-          ./check-floor.sh simavr_installed/lib/libsimavr.so.1 2.34
+          # Der Boden des Archivs ist das Maximum über alles, was darin liegt --
+          # also auch über die gebündelten libelf und libz, die wir bisher nicht
+          # gemessen haben. Symlinks überspringt find, ihr Ziel kommt ohnehin dran.
+          find simavr_installed/bin simavr_installed/lib -maxdepth 1 -type f \
+               \( -perm -u+x -o -name '*.so*' \) -print | sort | while read -r f; do
+            ./check-floor.sh "$f" 2.34
+          done
       - name: Pack
         run: tar -czf simavr-linux_x86_64.tar.gz -C simavr_installed .
       - uses: actions/upload-artifact@v6
@@ -222,8 +227,13 @@ jobs:
           fi
       - name: what it demands of the system
         run: |
-          ./check-floor.sh simavr_installed/bin/simavr 2.34
-          ./check-floor.sh simavr_installed/lib/libsimavr.so.1 2.34
+          # Der Boden des Archivs ist das Maximum über alles, was darin liegt --
+          # also auch über die gebündelten libelf und libz, die wir bisher nicht
+          # gemessen haben. Symlinks überspringt find, ihr Ziel kommt ohnehin dran.
+          find simavr_installed/bin simavr_installed/lib -maxdepth 1 -type f \
+               \( -perm -u+x -o -name '*.so*' \) -print | sort | while read -r f; do
+            ./check-floor.sh "$f" 2.34
+          done
       - name: Pack
         run: tar -czf simavr-linux_i686.tar.gz -C simavr_installed .
       - uses: actions/upload-artifact@v6
@@ -286,8 +296,10 @@ jobs:
         run: |
           mkdir -p unpacked
           tar xzf simavr-linux_armv7l.tar.gz -C unpacked
-          ./check-floor.sh unpacked/bin/simavr 2.31
-          ./check-floor.sh unpacked/lib/libsimavr.so.1 2.31
+          find unpacked/bin unpacked/lib -maxdepth 1 -type f \
+               \( -perm -u+x -o -name '*.so*' \) -print | sort | while read -r f; do
+            ./check-floor.sh "$f" 2.31
+          done
       - uses: actions/upload-artifact@v6
         with:
           name: linux_armv7l
@@ -343,8 +355,12 @@ jobs:
         run: |
           mkdir -p unpacked
           tar xzf simavr-linux_armv6l.tar.gz -C unpacked
+          # wie oben: alles, was im Archiv liegt, nicht nur zwei Dateien
+          find unpacked/bin unpacked/lib -maxdepth 1 -type f \
+               \( -perm -u+x -o -name '*.so*' \) -print | sort | while read -r f; do
+            ./check-floor.sh "$f" 2.31
+          done
           ./check-floor.sh unpacked/bin/simavr 2.31 --armv6-hardfloat
-          ./check-floor.sh unpacked/lib/libsimavr.so.1 2.31
       - uses: actions/upload-artifact@v6
         with:
           name: linux_armv6l
@@ -398,8 +414,10 @@ jobs:
         run: |
           mkdir -p unpacked
           tar xzf simavr-linux_aarch64.tar.gz -C unpacked
-          ./check-floor.sh unpacked/bin/simavr 2.31
-          ./check-floor.sh unpacked/lib/libsimavr.so.1 2.31
+          find unpacked/bin unpacked/lib -maxdepth 1 -type f \
+               \( -perm -u+x -o -name '*.so*' \) -print | sort | while read -r f; do
+            ./check-floor.sh "$f" 2.31
+          done
       - uses: actions/upload-artifact@v6
         with:
           name: linux_aarch64
