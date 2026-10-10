@@ -100,8 +100,22 @@ jobs:
             base-devel
             mingw-w64-i686-gcc
             mingw-w64-i686-make
-            mingw-w64-i686-libelf
             mingw-w64-i686-pkgconf
+      - name: libelf, which the mingw32 repository no longer carries
+        # MSYS2 has stopped building 32-bit packages, and libelf is one of the
+        # casualties: pacman answers "target not found" for
+        # mingw-w64-i686-libelf, while the last build -- 0.8.13-7 from January
+        # 2023 -- still sits on the mirror. Installing that file directly is
+        # enough; the package has no dependencies, it is a header and a library,
+        # and libelf itself has not changed since 2013. If the mirror ever drops
+        # the file, the fallback is to build libelf from source here, or to
+        # cross-compile the whole 32-bit client on Ubuntu the way avr-gdb does.
+        run: |
+          pacman -U --noconfirm https://mirror.msys2.org/mingw/mingw32/mingw-w64-i686-libelf-0.8.13-7-any.pkg.tar.zst
+          # The build decides by pkg-config whether it can read ELF files at
+          # all, so this has to answer -- otherwise simavr would come out
+          # without HAVE_LIBELF and only the smoke test would notice.
+          pkg-config --modversion libelf
       - name: Build
         # No build-tests and no run_tests here: both need an avr-gcc, and
         # mingw32 has no avr-toolchain package to rely on. The smoke test below
