@@ -75,6 +75,71 @@ jobs:
           name: windows_amd64
           path: simavr-windows_amd64.tar.gz
 
+  build-win32:
+    # The old Java Arduino IDE picks the 32-bit package when it downloads a
+    # tool, no matter what the machine underneath could run, so this archive is
+    # what every 1.8.x user ends up with -- not a courtesy for old hardware.
+    # MSYS2 has no 32-bit counterpart to UCRT64: MINGW32 is its only i686
+    # environment, so the runtime here is the old msvcrt.dll whether we want it
+    # or not. That costs little, because mingw-w64 replaces its weakest part
+    # (stdio) with its own and simavr asks little else of it. The mingw32
+    # repository is no longer actively rebuilt -- its libelf is from 2023 --
+    # but it is still served and has everything this job needs.
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up MSYS2 (MINGW32)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          update: true
+          install: >
+            base-devel
+            mingw-w64-i686-gcc
+            mingw-w64-i686-make
+            mingw-w64-i686-libelf
+            mingw-w64-i686-pkgconf
+      - name: Build
+        # No build-tests and no run_tests here: both need an avr-gcc, and
+        # mingw32 has no avr-toolchain package to rely on. The smoke test below
+        # uses the firmware committed in ci/ and needs no toolchain at all.
+        run: |
+          make build-simavr
+          mkdir simavr_installed
+          make install-simavr DESTDIR=$(pwd)/simavr_installed/
+          mv simavr_installed/bin/simavr simavr_installed/bin/simavr.exe
+          file simavr_installed/bin/*
+          ldd simavr_installed/bin/simavr.exe
+      - name: Bundle what the user would otherwise need
+        run: |
+          # As in the 64-bit job, only the prefix differs: MINGW32 keeps its
+          # DLLs in /mingw32 rather than /ucrt64.
+          for d in $(ldd simavr_installed/bin/simavr.exe | awk '/mingw32/ {print $3}'); do
+            cp -v "$d" simavr_installed/bin/
+          done
+          ldd simavr_installed/bin/simavr.exe
+      - name: does it actually simulate?
+        # Same assertion as everywhere else: loading an ELF file is what libelf
+        # is there for, and the firmware ends by itself, so a zero status says
+        # the build works. The timeout only catches a build that spins.
+        run: timeout 60 simavr_installed/bin/simavr.exe -m atmega328p -f 16000000 ci/smoke-atmega328p.elf
+      - name: what it demands of the system
+        # Deliberately without --ucrt-ok: a MINGW32 build has no business
+        # importing the UCRT, and if it does, that is a finding rather than
+        # something to wave through. If this step fails on kernelbase.dll
+        # instead, the floor is Windows 7 and the number above is what has to
+        # change, not the check.
+        run: ./check-floor.sh simavr_installed/bin/simavr.exe 6.0
+      - name: Pack
+        run: tar -czf simavr-windows_x86.tar.gz -C simavr_installed .
+      - uses: actions/upload-artifact@v6
+        with:
+          name: windows_x86
+          path: simavr-windows_x86.tar.gz
+
   build-lin64:
     # Not ubuntu-latest. The glibc of the build machine becomes the floor for
     # every user, and 24.04 would make that 2.39; 22.04 has 2.35.
@@ -557,6 +622,7 @@ jobs:
   make-release:
     needs:
       - build-win64
+      - build-win32
       - build-lin64
       - build-lin32
       - build-armv7l
