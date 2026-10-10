@@ -9,10 +9,13 @@
  * simavr/sim/sim_avr.c). So the test needs no timeout to come to an end, and the
  * exit status is the whole assertion.
  *
+ * Compiled with -g: a gdb session against simavr should be able to show a
+ * source line and read a variable, and without debug info it cannot.
+ *
  * Deliberately without simavr's own headers: the firmware should not have to be
  * rebuilt when those change.
  *
- *   avr-gcc -mmcu=atmega328p -Os -o smoke-atmega328p.elf smoke.c
+ *   avr-gcc -mmcu=atmega328p -Og -g -o smoke-atmega328p.elf smoke.c
  */
 #include <avr/io.h>
 #include <stdint.h>

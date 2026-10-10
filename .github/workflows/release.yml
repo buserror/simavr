@@ -314,7 +314,7 @@ jobs:
           find unpacked/bin unpacked/lib -maxdepth 1 -type f -print0 | sort -z |
           while IFS= read -r -d '' f; do
             case "$(file -b "$f")" in
-              ELF*) ./check-floor.sh "$f" 2.31 ;;
+              ELF*) ./check-floor.sh "$f" 2.28 ;;
               *)    echo "übersprungen (kein ELF): $f" ;;
             esac
           done
@@ -380,11 +380,11 @@ jobs:
           find unpacked/bin unpacked/lib -maxdepth 1 -type f -print0 | sort -z |
           while IFS= read -r -d '' f; do
             case "$(file -b "$f")" in
-              ELF*) ./check-floor.sh "$f" 2.31 ;;
+              ELF*) ./check-floor.sh "$f" 2.28 ;;
               *)    echo "übersprungen (kein ELF): $f" ;;
             esac
           done
-          ./check-floor.sh unpacked/bin/simavr 2.31 --armv6-hardfloat
+          ./check-floor.sh unpacked/bin/simavr 2.28 --armv6-hardfloat
       - uses: actions/upload-artifact@v6
         with:
           name: linux_armv6l
@@ -444,7 +444,7 @@ jobs:
           find unpacked/bin unpacked/lib -maxdepth 1 -type f -print0 | sort -z |
           while IFS= read -r -d '' f; do
             case "$(file -b "$f")" in
-              ELF*) ./check-floor.sh "$f" 2.31 ;;
+              ELF*) ./check-floor.sh "$f" 2.17 ;;
               *)    echo "übersprungen (kein ELF): $f" ;;
             esac
           done
