@@ -101,6 +101,11 @@ jobs:
           sudo update-alternatives --set cc /usr/bin/gcc
       - name: CI-Build
         run: |
+          # libelf-dev:i386 puts libelf.pc under /usr/lib/i386-linux-gnu,
+          # where pkg-config does not look by default. Without this,
+          # HAVE_LIBELF stays undefined and the 32 bit binary answers
+          # "ELF format is not supported by this build" for every firmware.
+          export PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
           make  V=1 RELEASE=1
           mkdir simavr_installed
           make  install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/

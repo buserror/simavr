@@ -22,3 +22,8 @@ perf.data
 .bash_history
 compile_commands.json
 .cache
+
+# Die Firmware für den Rauchtest in der CI gehört ins Repository, anders als
+# jedes andere .elf hier. Ohne diese Ausnahme nimmt git add sie nicht mit --
+# stillschweigend, was eine Weile kostet.
+!ci/*.elf
