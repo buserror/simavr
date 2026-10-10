@@ -99,8 +99,18 @@ jobs:
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 20
           sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc 30
           sudo update-alternatives --set cc /usr/bin/gcc
+          # Adding the i386 architecture above makes apt remove 206 amd64
+          # packages, pkgconf among them. Without pkg-config, Makefile.common
+          # does not find libelf, HAVE_LIBELF stays undefined, and the binary
+          # cannot load any firmware.
+          sudo apt-get install -y pkg-config
       - name: CI-Build
         run: |
+          # libelf-dev:i386 puts libelf.pc under /usr/lib/i386-linux-gnu,
+          # where pkg-config does not look by default. Without this,
+          # HAVE_LIBELF stays undefined and the 32 bit binary answers
+          # "ELF format is not supported by this build" for every firmware.
+          export PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
           make  V=1 RELEASE=1
           mkdir simavr_installed
           make  install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
