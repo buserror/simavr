@@ -73,6 +73,17 @@ then need the glibc it was linked against"
   *Mach-O*)
     echo "--- libraries it needs at start ---"
     otool -L "$BIN"
+    echo "--- outside the system? ---"
+    # Everything the binary names has to be a system library or relative to the
+    # binary itself. A Homebrew path means the archive only runs on a machine
+    # that has that formula installed at that prefix.
+    FOREIGN=$(otool -L "$BIN" | tail -n +2 | awk '{print $1}' \
+              | grep -vE '^(/usr/lib/|/System/|@rpath/|@executable_path/|@loader_path/)' || true)
+    if [ -n "$FOREIGN" ]; then
+      fail "references libraries outside the system: $(echo $FOREIGN) -- those would have to be bundled"
+    fi
+    echo "(nothing but system libraries and relative paths)"
+
     echo "--- deployment target ---"
     otool -l "$BIN" | grep -A4 LC_BUILD_VERSION || true
     MINOS=$(vtool -show-build "$BIN" 2>/dev/null | awk '/minos/ {print $2; exit}' || true)
