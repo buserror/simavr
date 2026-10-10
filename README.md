@@ -72,7 +72,15 @@ Extras:
 graphically as “waveforms” with tools like _gtkwave_ (see below).
 * You can even source your own VCD files (for example from your logic analyzer) and feed them into your simulation.
 * There are a few examples of real life firmwares running on simavr, including OpenGL rendering of the display…
-* There is support for _Arduino_, but no IDE integration
+* There is some support for _Arduino_
+
+## Integration:
+
+- Simavr is the default debugging tool for supported AVR MCUs in [*PlatformIO*](https://platformio.org). If you select a debug build without specifying the tool, simavr will be started.
+- There is basic support to use simavr inside the [*Arduino IDE 2*](https://docs.arduino.cc/software/ide-v2/tutorials/getting-started/ide-v2-downloading-and-installing/) as part of the debugging solution [PyAvrOCD](https://pyavrocd.io). Simply install a [debug-enabled Arduino board package](https://pyavrocd.io/supporting-packages/) and choose the programmer `simavr`. If you now start the debugger, the simulator will be started. There is some basic support for assembly-level debugging and the `PERIPHERAL` pane provides access to the I/O registers.
+- The [*Arduino Maker Workshop*](https://github.com/thelastoutpostworkshop/arduino-maker-workshop) VS Code extension integrates simavr as well, again via PyAvrOCD. Due to using a recent version of Cortex-Debug, instruction-level debugging, memory inspection, and peripheral register display, are  all supported.
+- Simavr is one of many simulators integrated into [PICSimLab](https://github.com/lcgamboa/picsimlab), a realtime emulator of diverse development boards with MPLABX/avr-gdb debugger integration.
+- [Simutron](https://sourceforge.net/projects/simutron/) is a GUI for simavr. However, the project does not appear to be active. 
 
 Documentation And Further Information
 -------------------------------------
