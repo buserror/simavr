@@ -129,7 +129,13 @@ jobs:
         # main lands in avr-libc's cli + rjmp .-2, and simavr treats that as a
         # reason to quit gracefully. A zero status is therefore the whole
         # assertion; the timeout only catches a build that spins.
-        run: timeout 60 simavr_installed/bin/simavr -m atmega328p -f 16000000 ci/smoke-atmega328p.elf
+        run: |
+          SMOKE="-m atmega328p -f 16000000 ci/smoke-atmega328p.elf"
+          if command -v timeout >/dev/null; then
+            timeout 60 simavr_installed/bin/simavr $SMOKE
+          else
+            simavr_installed/bin/simavr $SMOKE
+          fi
       - name: what it demands of the system
         # Both of them: libsimavr.so.1 ships as well and has glibc references of
         # its own, so the floor is the higher of the two.
@@ -158,6 +164,13 @@ jobs:
           sudo update-alternatives --set cc /usr/bin/gcc
       - name: Build
         run: |
+          # Makefile.common finds libelf through pkg-config, and libelf-dev:i386
+          # puts its .pc file where the amd64 pkg-config does not look. Without
+          # this line HAVE_LIBELF stays undefined and sim_elf.c becomes the stub
+          # that answers "ELF format is not supported by this build" -- a simavr
+          # that cannot load firmware. That is what the smoke test caught.
+          export PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
+          pkg-config --cflags --libs libelf
           make build-simavr V=1 RELEASE=1
           mkdir simavr_installed
           make install-simavr RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
@@ -196,7 +209,13 @@ jobs:
         # main lands in avr-libc's cli + rjmp .-2, and simavr treats that as a
         # reason to quit gracefully. A zero status is therefore the whole
         # assertion; the timeout only catches a build that spins.
-        run: timeout 60 simavr_installed/bin/simavr -m atmega328p -f 16000000 ci/smoke-atmega328p.elf
+        run: |
+          SMOKE="-m atmega328p -f 16000000 ci/smoke-atmega328p.elf"
+          if command -v timeout >/dev/null; then
+            timeout 60 simavr_installed/bin/simavr $SMOKE
+          else
+            simavr_installed/bin/simavr $SMOKE
+          fi
       - name: what it demands of the system
         run: |
           ./check-floor.sh simavr_installed/bin/simavr 2.34
@@ -413,7 +432,13 @@ jobs:
         # main lands in avr-libc's cli + rjmp .-2, and simavr treats that as a
         # reason to quit gracefully. A zero status is therefore the whole
         # assertion; the timeout only catches a build that spins.
-        run: timeout 60 simavr_installed/bin/simavr -m atmega328p -f 16000000 ci/smoke-atmega328p.elf
+        run: |
+          SMOKE="-m atmega328p -f 16000000 ci/smoke-atmega328p.elf"
+          if command -v timeout >/dev/null; then
+            timeout 60 simavr_installed/bin/simavr $SMOKE
+          else
+            simavr_installed/bin/simavr $SMOKE
+          fi
       - name: what it demands of the system
         # Nothing is bundled on macOS and nothing needs to be: libelf and
         # libsimavr are linked statically there, the binary names only
@@ -461,7 +486,13 @@ jobs:
         # main lands in avr-libc's cli + rjmp .-2, and simavr treats that as a
         # reason to quit gracefully. A zero status is therefore the whole
         # assertion; the timeout only catches a build that spins.
-        run: timeout 60 simavr_installed/bin/simavr -m atmega328p -f 16000000 ci/smoke-atmega328p.elf
+        run: |
+          SMOKE="-m atmega328p -f 16000000 ci/smoke-atmega328p.elf"
+          if command -v timeout >/dev/null; then
+            timeout 60 simavr_installed/bin/simavr $SMOKE
+          else
+            simavr_installed/bin/simavr $SMOKE
+          fi
       - name: what it demands of the system
         run: ./check-floor.sh simavr_installed/bin/simavr 11.0
       - name: Pack
