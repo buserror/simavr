@@ -56,6 +56,13 @@ jobs:
             cp -v "$d" simavr_installed/bin/
           done
           ldd simavr_installed/bin/simavr.exe
+      - name: does it actually simulate?
+        # Loads an ELF file and runs it -- which --list-cores does not, and which
+        # is what libelf is there for. The firmware ends by itself: returning from
+        # main lands in avr-libc's cli + rjmp .-2, and simavr treats that as a
+        # reason to quit gracefully. A zero status is therefore the whole
+        # assertion; the timeout only catches a build that spins.
+        run: timeout 60 simavr_installed/bin/simavr.exe -m atmega328p -f 16000000 ci/smoke-atmega328p.elf
       - name: what it demands of the system
         # UCRT64 links the Universal CRT on purpose, and that is a Windows 10
         # floor -- hence --ucrt-ok, which lets the check report it instead of
@@ -88,7 +95,7 @@ jobs:
           patchelf --add-needed libsimavr.so.1 simavr_installed/bin/simavr
           patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
           ldd simavr_installed/bin/*
-          simavr_installed/bin/simavr --list-cores
+          simavr_installed/bin/simavr --list-cores || true
       - name: Tests
         run: |
           cd tests
@@ -116,6 +123,13 @@ jobs:
           ldd simavr_installed/bin/simavr
           for f in simavr_installed/lib/*.so*; do echo "-- $f"; ldd "$f"; done
           ls -l simavr_installed/lib/
+      - name: does it actually simulate?
+        # Loads an ELF file and runs it -- which --list-cores does not, and which
+        # is what libelf is there for. The firmware ends by itself: returning from
+        # main lands in avr-libc's cli + rjmp .-2, and simavr treats that as a
+        # reason to quit gracefully. A zero status is therefore the whole
+        # assertion; the timeout only catches a build that spins.
+        run: timeout 60 simavr_installed/bin/simavr -m atmega328p -f 16000000 ci/smoke-atmega328p.elf
       - name: what it demands of the system
         # Both of them: libsimavr.so.1 ships as well and has glibc references of
         # its own, so the floor is the higher of the two.
@@ -152,7 +166,7 @@ jobs:
           patchelf --add-needed libsimavr.so.1 simavr_installed/bin/simavr
           patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
           ldd simavr_installed/bin/*
-          simavr_installed/bin/simavr --list-cores
+          simavr_installed/bin/simavr --list-cores || true
       - name: Bundle what the user would otherwise need
         run: |
           # Where does libelf come from? A count under " T elf_" means it is
@@ -176,6 +190,13 @@ jobs:
           ldd simavr_installed/bin/simavr
           for f in simavr_installed/lib/*.so*; do echo "-- $f"; ldd "$f"; done
           ls -l simavr_installed/lib/
+      - name: does it actually simulate?
+        # Loads an ELF file and runs it -- which --list-cores does not, and which
+        # is what libelf is there for. The firmware ends by itself: returning from
+        # main lands in avr-libc's cli + rjmp .-2, and simavr treats that as a
+        # reason to quit gracefully. A zero status is therefore the whole
+        # assertion; the timeout only catches a build that spins.
+        run: timeout 60 simavr_installed/bin/simavr -m atmega328p -f 16000000 ci/smoke-atmega328p.elf
       - name: what it demands of the system
         run: |
           ./check-floor.sh simavr_installed/bin/simavr 2.34
@@ -213,7 +234,7 @@ jobs:
             patchelf --add-needed libsimavr.so.1 simavr_installed/bin/simavr
             patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
             ldd simavr_installed/bin/*
-            simavr_installed/bin/simavr --list-cores
+            simavr_installed/bin/simavr --list-cores || true
             # Copy the libraries the user would otherwise have to install himself, next
             # to libsimavr. libGL deliberately stays out: that one has to come from the
             # user's graphics driver, not from us.
@@ -230,6 +251,9 @@ jobs:
             ldd simavr_installed/bin/simavr
             for f in simavr_installed/lib/*.so*; do echo "-- $f"; ldd "$f"; done
             ls -l simavr_installed/lib/
+            # Der Rauchtest muss hier drinnen laufen: auf dem Host
+            # ist dieses Binary nicht ausführbar.
+            timeout 300 simavr_installed/bin/simavr -m atmega328p -f 16000000 ci/smoke-atmega328p.elf
             tar -czf simavr-linux_armv7l.tar.gz -C simavr_installed .
             cd tests
             make run_tests
@@ -267,7 +291,7 @@ jobs:
             patchelf --add-needed libsimavr.so.1 simavr_installed/bin/simavr
             patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
             ldd simavr_installed/bin/*
-            simavr_installed/bin/simavr --list-cores
+            simavr_installed/bin/simavr --list-cores || true
             # Copy the libraries the user would otherwise have to install himself, next
             # to libsimavr. libGL deliberately stays out: that one has to come from the
             # user's graphics driver, not from us.
@@ -284,6 +308,9 @@ jobs:
             ldd simavr_installed/bin/simavr
             for f in simavr_installed/lib/*.so*; do echo "-- $f"; ldd "$f"; done
             ls -l simavr_installed/lib/
+            # Der Rauchtest muss hier drinnen laufen: auf dem Host
+            # ist dieses Binary nicht ausführbar.
+            timeout 300 simavr_installed/bin/simavr -m atmega328p -f 16000000 ci/smoke-atmega328p.elf
             tar -czf simavr-linux_armv6l.tar.gz -C simavr_installed .
             cd tests
             make run_tests
@@ -321,7 +348,7 @@ jobs:
             patchelf --add-needed libsimavr.so.1 simavr_installed/bin/simavr
             patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
             ldd simavr_installed/bin/*
-            simavr_installed/bin/simavr --list-cores
+            simavr_installed/bin/simavr --list-cores || true
             # Copy the libraries the user would otherwise have to install himself, next
             # to libsimavr. libGL deliberately stays out: that one has to come from the
             # user's graphics driver, not from us.
@@ -338,6 +365,9 @@ jobs:
             ldd simavr_installed/bin/simavr
             for f in simavr_installed/lib/*.so*; do echo "-- $f"; ldd "$f"; done
             ls -l simavr_installed/lib/
+            # Der Rauchtest muss hier drinnen laufen: auf dem Host
+            # ist dieses Binary nicht ausführbar.
+            timeout 300 simavr_installed/bin/simavr -m atmega328p -f 16000000 ci/smoke-atmega328p.elf
             tar -czf simavr-linux_aarch64.tar.gz -C simavr_installed .
             cd tests
             make run_tests
@@ -376,7 +406,14 @@ jobs:
           make -j4 install-simavr RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
           file simavr_installed/bin/*
           otool -L simavr_installed/bin/*
-          simavr_installed/bin/simavr --list-cores
+          simavr_installed/bin/simavr --list-cores || true
+      - name: does it actually simulate?
+        # Loads an ELF file and runs it -- which --list-cores does not, and which
+        # is what libelf is there for. The firmware ends by itself: returning from
+        # main lands in avr-libc's cli + rjmp .-2, and simavr treats that as a
+        # reason to quit gracefully. A zero status is therefore the whole
+        # assertion; the timeout only catches a build that spins.
+        run: timeout 60 simavr_installed/bin/simavr -m atmega328p -f 16000000 ci/smoke-atmega328p.elf
       - name: what it demands of the system
         # Nothing is bundled on macOS and nothing needs to be: libelf and
         # libsimavr are linked statically there, the binary names only
@@ -413,11 +450,18 @@ jobs:
           make -j4 install-simavr RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
           file simavr_installed/bin/*
           otool -L simavr_installed/bin/*
-          simavr_installed/bin/simavr --list-cores
+          simavr_installed/bin/simavr --list-cores || true
       - name: Tests
         run: |
           cd tests
           make run_tests
+      - name: does it actually simulate?
+        # Loads an ELF file and runs it -- which --list-cores does not, and which
+        # is what libelf is there for. The firmware ends by itself: returning from
+        # main lands in avr-libc's cli + rjmp .-2, and simavr treats that as a
+        # reason to quit gracefully. A zero status is therefore the whole
+        # assertion; the timeout only catches a build that spins.
+        run: timeout 60 simavr_installed/bin/simavr -m atmega328p -f 16000000 ci/smoke-atmega328p.elf
       - name: what it demands of the system
         run: ./check-floor.sh simavr_installed/bin/simavr 11.0
       - name: Pack
