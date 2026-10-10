@@ -1,0 +1,472 @@
+name: Release binaries
+
+# build.yml and this file have different jobs. build.yml checks out
+# buserror/simavr and asks whether upstream still builds everywhere. This one
+# builds THIS repository -- the commit that triggered the run -- and ships what
+# comes out. That is what makes a release reproducible: the state is the tag in
+# this fork, not a moving ref into somebody else's repository. It also means our
+# own files, check-floor.sh above all, are simply there.
+#
+# Started by hand, it builds all eight and attaches nothing: the upload at the
+# end only happens when a release triggered the run.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-win64:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up MSYS2 (UCRT64)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >
+            base-devel
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-make
+            mingw-w64-ucrt-x86_64-libelf
+            mingw-w64-ucrt-x86_64-libdwarf
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-avr-toolchain
+            mingw-w64-ucrt-x86_64-freeglut
+      - name: Build
+        run: |
+          make
+          mkdir simavr_installed
+          make -k install-all DESTDIR=$(pwd)/simavr_installed/ || true
+          mv simavr_installed/bin/simavr simavr_installed/bin/simavr.exe
+          file simavr_installed/bin/*
+          ldd simavr_installed/bin/simavr.exe
+          cp /ucrt64/bin/libwinpthread-1.dll simavr_installed/examples
+          cp /ucrt64/bin/libfreeglut.dll simavr_installed/examples
+      - name: Tests
+        run: |
+          cd tests
+          make run_tests
+      - name: Bundle what the user would otherwise need
+        run: |
+          # No rpath on Windows, but the loader looks in the directory of the
+          # exe first, so the MSYS2 DLLs go there. Without them the archive only
+          # runs on a machine that has MSYS2 installed.
+          for d in $(ldd simavr_installed/bin/simavr.exe | awk '/ucrt64/ {print $3}'); do
+            cp -v "$d" simavr_installed/bin/
+          done
+          ldd simavr_installed/bin/simavr.exe
+      - name: what it demands of the system
+        # UCRT64 links the Universal CRT on purpose, and that is a Windows 10
+        # floor -- hence --ucrt-ok, which lets the check report it instead of
+        # failing on it.
+        run: ./check-floor.sh simavr_installed/bin/simavr.exe 10.0 --ucrt-ok
+      - name: Pack
+        run: tar -czf simavr-windows_amd64.tar.gz -C simavr_installed .
+      - uses: actions/upload-artifact@v6
+        with:
+          name: windows_amd64
+          path: simavr-windows_amd64.tar.gz
+
+  build-lin64:
+    # Not ubuntu-latest. The glibc of the build machine becomes the floor for
+    # every user, and 24.04 would make that 2.39; 22.04 has 2.35.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential make gcc-avr avr-libc libelf-dev freeglut3-dev patchelf
+      - name: Build
+        run: |
+          make V=1 RELEASE=1 || true
+          mkdir simavr_installed
+          make install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
+          file simavr_installed/bin/*
+          patchelf --remove-needed ./libsimavr.so.1 simavr_installed/bin/simavr || true
+          patchelf --add-needed libsimavr.so.1 simavr_installed/bin/simavr
+          patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
+          ldd simavr_installed/bin/*
+          simavr_installed/bin/simavr --list-cores || true
+      - name: Tests
+        run: |
+          cd tests
+          make run_tests
+      - name: Bundle what the user would otherwise need
+        run: |
+          # Copy the libraries the user would otherwise have to install himself, next
+          # to libsimavr. libGL deliberately stays out: that one has to come from the
+          # user's graphics driver, not from us.
+          mkdir -p simavr_installed/lib
+          ldd simavr_installed/bin/simavr | awk '{print $1, $3}' | while read -r name path; do
+            case "$name" in
+              libelf.so*|libdwarf.so*|libglut.so*) [ -f "$path" ] && cp -Lv "$path" simavr_installed/lib/ ;;
+            esac
+          done
+          # A RUNPATH applies only to the object that carries it, not to what that object
+          # loads in turn. The one on the executable therefore does not help libsimavr
+          # find libelf, so every library gets its own.
+          for f in simavr_installed/lib/*.so*; do patchelf --set-rpath '$ORIGIN' "$f" || true; done
+          ldd simavr_installed/bin/simavr
+          for f in simavr_installed/lib/*.so*; do echo "-- $f"; ldd "$f"; done
+      - name: what it demands of the system
+        # Both of them: libsimavr.so.1 ships as well and has glibc references of
+        # its own, so the floor is the higher of the two.
+        run: |
+          ./check-floor.sh simavr_installed/bin/simavr 2.35
+          ./check-floor.sh simavr_installed/lib/libsimavr.so.1 2.35
+      - name: Pack
+        run: tar -czf simavr-linux_x86_64.tar.gz -C simavr_installed .
+      - uses: actions/upload-artifact@v6
+        with:
+          name: linux_x86_64
+          path: simavr-linux_x86_64.tar.gz
+
+  build-lin32:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install dependencies
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y libstdc++6:i386 libgcc1:i386 zlib1g:i386 libncurses5:i386 gcc-9:i386 binutils:i386 cpp-9:i386 libelf-dev:i386 freeglut3-dev:i386 gcc-avr avr-libc patchelf
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 10
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 20
+          sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc 30
+          sudo update-alternatives --set cc /usr/bin/gcc
+      - name: Build
+        run: |
+          make V=1 RELEASE=1
+          mkdir simavr_installed
+          make install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
+          file simavr_installed/bin/*
+          patchelf --remove-needed ./libsimavr.so.1 simavr_installed/bin/simavr || true
+          patchelf --add-needed libsimavr.so.1 simavr_installed/bin/simavr
+          patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
+          ldd simavr_installed/bin/*
+          simavr_installed/bin/simavr --list-cores || true
+      - name: Bundle what the user would otherwise need
+        run: |
+          # Copy the libraries the user would otherwise have to install himself, next
+          # to libsimavr. libGL deliberately stays out: that one has to come from the
+          # user's graphics driver, not from us.
+          mkdir -p simavr_installed/lib
+          ldd simavr_installed/bin/simavr | awk '{print $1, $3}' | while read -r name path; do
+            case "$name" in
+              libelf.so*|libdwarf.so*|libglut.so*) [ -f "$path" ] && cp -Lv "$path" simavr_installed/lib/ ;;
+            esac
+          done
+          # A RUNPATH applies only to the object that carries it, not to what that object
+          # loads in turn. The one on the executable therefore does not help libsimavr
+          # find libelf, so every library gets its own.
+          for f in simavr_installed/lib/*.so*; do patchelf --set-rpath '$ORIGIN' "$f" || true; done
+          ldd simavr_installed/bin/simavr
+          for f in simavr_installed/lib/*.so*; do echo "-- $f"; ldd "$f"; done
+      - name: what it demands of the system
+        run: |
+          ./check-floor.sh simavr_installed/bin/simavr 2.35
+          ./check-floor.sh simavr_installed/lib/libsimavr.so.1 2.35
+      - name: Pack
+        run: tar -czf simavr-linux_i686.tar.gz -C simavr_installed .
+      - uses: actions/upload-artifact@v6
+        with:
+          name: linux_i686
+          path: simavr-linux_i686.tar.gz
+
+  # The three arm jobs run emulated on a Raspberry Pi OS image. The image is
+  # pinned to a date, not to :latest -- otherwise the floor wanders with every
+  # image update and a release is not reproducible. 2023-05-03 is bullseye,
+  # glibc 2.31, and it stays that way. The names are the ones download_image.sh
+  # of the action accepts; guessing them has cost us a run before.
+  build-armv7l:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pguyot/arm-runner-action@v2
+        with:
+          cpu: cortex-a7
+          base_image: raspios_lite:2023-05-03
+          copy_artifact_path: simavr-linux_armv7l.tar.gz
+          image_additional_mb: 1024
+          commands: |
+            apt-get update
+            apt-get install -y build-essential make gcc-avr avr-libc libelf-dev libdwarf-dev freeglut3-dev patchelf file
+            make build-simavr build-tests V=1 RELEASE=1
+            mkdir simavr_installed
+            make -j4 install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
+            file simavr_installed/bin/*
+            patchelf --remove-needed ./libsimavr.so.1 simavr_installed/bin/simavr || true
+            patchelf --add-needed libsimavr.so.1 simavr_installed/bin/simavr
+            patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
+            ldd simavr_installed/bin/*
+            simavr_installed/bin/simavr --list-cores || true
+            # Copy the libraries the user would otherwise have to install himself, next
+            # to libsimavr. libGL deliberately stays out: that one has to come from the
+            # user's graphics driver, not from us.
+            mkdir -p simavr_installed/lib
+            ldd simavr_installed/bin/simavr | awk '{print $1, $3}' | while read -r name path; do
+              case "$name" in
+                libelf.so*|libdwarf.so*|libglut.so*) [ -f "$path" ] && cp -Lv "$path" simavr_installed/lib/ ;;
+              esac
+            done
+            # A RUNPATH applies only to the object that carries it, not to what that object
+            # loads in turn. The one on the executable therefore does not help libsimavr
+            # find libelf, so every library gets its own.
+            for f in simavr_installed/lib/*.so*; do patchelf --set-rpath '$ORIGIN' "$f" || true; done
+            ldd simavr_installed/bin/simavr
+            for f in simavr_installed/lib/*.so*; do echo "-- $f"; ldd "$f"; done
+            tar -czf simavr-linux_armv7l.tar.gz -C simavr_installed .
+            cd tests
+            make run_tests
+      - name: what it demands of the system
+        # On the host, not in the image: readelf reads ELF directly and does not
+        # care which architecture it is looking at.
+        run: |
+          mkdir -p unpacked
+          tar xzf simavr-linux_armv7l.tar.gz -C unpacked
+          ./check-floor.sh unpacked/bin/simavr 2.31
+          ./check-floor.sh unpacked/lib/libsimavr.so.1 2.31
+      - uses: actions/upload-artifact@v6
+        with:
+          name: linux_armv7l
+          path: simavr-linux_armv7l.tar.gz
+
+  build-armv6l:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pguyot/arm-runner-action@v2
+        with:
+          cpu: arm1176
+          base_image: raspios_lite:2023-05-03
+          copy_artifact_path: simavr-linux_armv6l.tar.gz
+          image_additional_mb: 1024
+          commands: |
+            apt-get update
+            apt-get install -y build-essential make gcc-avr avr-libc libelf-dev libdwarf-dev freeglut3-dev patchelf file
+            make V=1 RELEASE=1
+            mkdir simavr_installed
+            make install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
+            file simavr_installed/bin/*
+            patchelf --remove-needed ./libsimavr.so.1 simavr_installed/bin/simavr || true
+            patchelf --add-needed libsimavr.so.1 simavr_installed/bin/simavr
+            patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
+            ldd simavr_installed/bin/*
+            simavr_installed/bin/simavr --list-cores || true
+            # Copy the libraries the user would otherwise have to install himself, next
+            # to libsimavr. libGL deliberately stays out: that one has to come from the
+            # user's graphics driver, not from us.
+            mkdir -p simavr_installed/lib
+            ldd simavr_installed/bin/simavr | awk '{print $1, $3}' | while read -r name path; do
+              case "$name" in
+                libelf.so*|libdwarf.so*|libglut.so*) [ -f "$path" ] && cp -Lv "$path" simavr_installed/lib/ ;;
+              esac
+            done
+            # A RUNPATH applies only to the object that carries it, not to what that object
+            # loads in turn. The one on the executable therefore does not help libsimavr
+            # find libelf, so every library gets its own.
+            for f in simavr_installed/lib/*.so*; do patchelf --set-rpath '$ORIGIN' "$f" || true; done
+            ldd simavr_installed/bin/simavr
+            for f in simavr_installed/lib/*.so*; do echo "-- $f"; ldd "$f"; done
+            tar -czf simavr-linux_armv6l.tar.gz -C simavr_installed .
+            cd tests
+            make run_tests
+      - name: what it demands of the system
+        # --armv6-hardfloat is the assertion that keeps the Pi 1 and the Zero in:
+        # an armv7 build would run everywhere else and fail there, silently.
+        run: |
+          mkdir -p unpacked
+          tar xzf simavr-linux_armv6l.tar.gz -C unpacked
+          ./check-floor.sh unpacked/bin/simavr 2.31 --armv6-hardfloat
+          ./check-floor.sh unpacked/lib/libsimavr.so.1 2.31
+      - uses: actions/upload-artifact@v6
+        with:
+          name: linux_armv6l
+          path: simavr-linux_armv6l.tar.gz
+
+  build-aarch64:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pguyot/arm-runner-action@v2
+        with:
+          cpu: cortex-a53
+          base_image: raspios_lite_arm64:2023-05-03
+          copy_artifact_path: simavr-linux_aarch64.tar.gz
+          image_additional_mb: 1024
+          commands: |
+            apt-get update
+            apt-get install -y build-essential make gcc-avr avr-libc libelf-dev libdwarf-dev freeglut3-dev patchelf file
+            make build-simavr build-tests V=1 RELEASE=1
+            mkdir simavr_installed
+            make -j4 install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/
+            file simavr_installed/bin/*
+            patchelf --remove-needed ./libsimavr.so.1 simavr_installed/bin/simavr || true
+            patchelf --add-needed libsimavr.so.1 simavr_installed/bin/simavr
+            patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
+            ldd simavr_installed/bin/*
+            simavr_installed/bin/simavr --list-cores || true
+            # Copy the libraries the user would otherwise have to install himself, next
+            # to libsimavr. libGL deliberately stays out: that one has to come from the
+            # user's graphics driver, not from us.
+            mkdir -p simavr_installed/lib
+            ldd simavr_installed/bin/simavr | awk '{print $1, $3}' | while read -r name path; do
+              case "$name" in
+                libelf.so*|libdwarf.so*|libglut.so*) [ -f "$path" ] && cp -Lv "$path" simavr_installed/lib/ ;;
+              esac
+            done
+            # A RUNPATH applies only to the object that carries it, not to what that object
+            # loads in turn. The one on the executable therefore does not help libsimavr
+            # find libelf, so every library gets its own.
+            for f in simavr_installed/lib/*.so*; do patchelf --set-rpath '$ORIGIN' "$f" || true; done
+            ldd simavr_installed/bin/simavr
+            for f in simavr_installed/lib/*.so*; do echo "-- $f"; ldd "$f"; done
+            tar -czf simavr-linux_aarch64.tar.gz -C simavr_installed .
+            cd tests
+            make run_tests
+      - name: what it demands of the system
+        run: |
+          mkdir -p unpacked
+          tar xzf simavr-linux_aarch64.tar.gz -C unpacked
+          ./check-floor.sh unpacked/bin/simavr 2.31
+          ./check-floor.sh unpacked/lib/libsimavr.so.1 2.31
+      - uses: actions/upload-artifact@v6
+        with:
+          name: linux_aarch64
+          path: simavr-linux_aarch64.tar.gz
+
+  build-darwin-x64:
+    # macos-latest is arm64; the Intel runner carries the -intel suffix.
+    runs-on: macos-15-intel
+    env:
+      # Without this clang targets the build machine, and on macos-15 the binary
+      # then refuses to start on anything older than macOS 15. Set for the whole
+      # job, because libsimavr and the executable have to agree.
+      MACOSX_DEPLOYMENT_TARGET: "10.15"
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install dependencies
+        run: |
+          HOMEBREW_NO_INSTALL_FROM_API=1 brew install make libelf freeglut patchelf dylibbundler
+          HOMEBREW_NO_INSTALL_FROM_API=1 brew tap osx-cross/avr
+      - name: Build
+        run: |
+          avr-gcc --version || true
+          clang --version
+          export CFLAGS="-DGL_SILENCE_DEPRECATION"
+          make -j4 build-simavr V=1 RELEASE=1
+          mkdir simavr_installed
+          make -k -j4 install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/ || true
+          file simavr_installed/bin/*
+          otool -L simavr_installed/bin/*
+          simavr_installed/bin/simavr --list-cores || true
+      - name: Bundle what the user would otherwise need
+        run: |
+          # Copies every non-system dylib next to the binary and rewrites the
+          # paths to @executable_path/../lib. The GL and Cocoa frameworks stay
+          # where they are, they belong to the system.
+          dylibbundler -od -b -x simavr_installed/bin/simavr \
+                       -d simavr_installed/lib -p @executable_path/../lib
+          # install_name_tool invalidates the code signature, and on Apple
+          # Silicon an invalid signature means the binary does not start at all
+          # -- it is killed, which looks like anything but a signature problem.
+          codesign --force --sign - simavr_installed/bin/simavr
+          for f in simavr_installed/lib/*.dylib; do codesign --force --sign - "$f"; done
+          otool -L simavr_installed/bin/simavr
+      - name: what it demands of the system
+        # The otool output in this step is worth a look beyond the minos: libelf
+        # and freeglut come from Homebrew and are not bundled, so the client
+        # needs them at their Homebrew path. The deployment target alone does not
+        # make the archive self-contained.
+        run: ./check-floor.sh simavr_installed/bin/simavr 10.15
+      - name: Pack
+        run: tar -czf simavr-darwin_x86_64.tar.gz -C simavr_installed .
+      - uses: actions/upload-artifact@v6
+        with:
+          name: darwin_x86_64
+          path: simavr-darwin_x86_64.tar.gz
+
+  build-darwin-arm64:
+    runs-on: macos-15
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install dependencies
+        run: |
+          HOMEBREW_NO_INSTALL_FROM_API=1 brew install make libelf freeglut patchelf dylibbundler
+          brew trust osx-cross/avr
+          HOMEBREW_NO_INSTALL_FROM_API=1 brew tap osx-cross/avr
+          HOMEBREW_NO_INSTALL_FROM_API=1 brew install avr-gcc@9 avr-binutils
+      - name: Build
+        run: |
+          export PATH="/usr/local/opt/avr-gcc@9/bin:$PATH"
+          avr-gcc --version || true
+          clang --version
+          export CFLAGS="-DGL_SILENCE_DEPRECATION"
+          make V=1 RELEASE=1
+          mkdir simavr_installed
+          make -k -j4 install RELEASE=1 DESTDIR=$(pwd)/simavr_installed/ || true
+          file simavr_installed/bin/*
+          otool -L simavr_installed/bin/*
+          simavr_installed/bin/simavr --list-cores || true
+      - name: Tests
+        run: |
+          cd tests
+          make run_tests
+      - name: Bundle what the user would otherwise need
+        run: |
+          # Copies every non-system dylib next to the binary and rewrites the
+          # paths to @executable_path/../lib. The GL and Cocoa frameworks stay
+          # where they are, they belong to the system.
+          dylibbundler -od -b -x simavr_installed/bin/simavr \
+                       -d simavr_installed/lib -p @executable_path/../lib
+          # install_name_tool invalidates the code signature, and on Apple
+          # Silicon an invalid signature means the binary does not start at all
+          # -- it is killed, which looks like anything but a signature problem.
+          codesign --force --sign - simavr_installed/bin/simavr
+          for f in simavr_installed/lib/*.dylib; do codesign --force --sign - "$f"; done
+          otool -L simavr_installed/bin/simavr
+      - name: what it demands of the system
+        run: ./check-floor.sh simavr_installed/bin/simavr 11.0
+      - name: Pack
+        run: tar -czf simavr-darwin_arm64.tar.gz -C simavr_installed .
+      - uses: actions/upload-artifact@v6
+        with:
+          name: darwin_arm64
+          path: simavr-darwin_arm64.tar.gz
+
+  make-release:
+    needs:
+      - build-win64
+      - build-lin64
+      - build-lin32
+      - build-armv7l
+      - build-armv6l
+      - build-aarch64
+      - build-darwin-x64
+      - build-darwin-arm64
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write        # the upload below writes to the release
+    steps:
+      - name: Collect the archives
+        uses: actions/download-artifact@v6
+        with:
+          path: assets
+          merge-multiple: true
+      - name: What there is
+        run: ls -la assets/
+      - name: Asset upload
+        # Only on a real release. Started by hand, everything above still runs
+        # and nothing is published -- that is the dry run.
+        if: ${{ github.event.release.tag_name != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: assets/*
