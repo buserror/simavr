@@ -162,6 +162,10 @@ jobs:
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 20
           sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc 30
           sudo update-alternatives --set cc /usr/bin/gcc
+          # Der i386-Umbau oben entfernt 206 amd64-Pakete, pkgconf darunter.
+          # Ohne pkg-config findet Makefile.common libelf nicht, HAVE_LIBELF
+          # bleibt undefiniert, und das Binary kann keine Firmware laden.
+          sudo apt-get install -y pkg-config
       - name: Build
         run: |
           # Makefile.common finds libelf through pkg-config, and libelf-dev:i386
