@@ -540,7 +540,7 @@ avr_make_mcu_by_name(
 {
 	avr_kind_t * maker = NULL;
 	for (int i = 0; avr_kind[i] && !maker; i++) {
-		for (int j = 0; avr_kind[i]->names[j]; j++)
+		for (int j = 0; j < ARRAY_SIZE(avr_kind[i]->names) && avr_kind[i]->names[j]; j++)
 			if (!strcmp(avr_kind[i]->names[j], name)) {
 				maker = avr_kind[i];
 				break;

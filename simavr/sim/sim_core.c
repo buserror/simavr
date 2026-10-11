@@ -1604,13 +1604,13 @@ run_one_again:
 							{ "brcs", "breq", "brmi", "brvs", NULL, "brhs", "brts", "brie"},
 					};
 					if (names[set][s]) {
-						STATE("%s .%d [%04x]\t; Will%s branch\n", names[set][s], o, new_pc + (o << 1), branch ? "":" not");
+						STATE("%s .%d [%04x]\t; Will%s branch\n", names[set][s], o, new_pc + o * 2, branch ? "":" not");
 					} else {
-						STATE("%s%c .%d [%04x]\t; Will%s branch\n", set ? "brbs" : "brbc", _sreg_bit_name[s], o, new_pc + (o << 1), branch ? "":" not");
+						STATE("%s%c .%d [%04x]\t; Will%s branch\n", set ? "brbs" : "brbc", _sreg_bit_name[s], o, new_pc + o * 2, branch ? "":" not");
 					}
 					if (branch) {
 						cycle++; // 2 cycles if taken, 1 otherwise
-						new_pc = new_pc + (o << 1);
+						new_pc = new_pc + o * 2;
 					}
 				}	break;
 				case 0xf800:
