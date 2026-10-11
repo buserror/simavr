@@ -44,6 +44,9 @@ typedef struct avr_watchdog_t {
 
 /* takes no parameter */
 #define AVR_IOCTL_WATCHDOG_RESET	AVR_IOCTL_DEF('w','d','t','r')
+/* takes no parameter; returns 1 if the watchdog will reset the chip when it
+ * fires (WDE set), 0 if not */
+#define AVR_IOCTL_WATCHDOG_ARMED	AVR_IOCTL_DEF('w','d','t','a')
 
 void avr_watchdog_init(avr_t * avr, avr_watchdog_t * p);
 

@@ -28,6 +28,7 @@
 #include <sys/time.h>
 #include "sim_avr.h"
 #include "sim_core.h"
+#include "avr_watchdog.h"
 #include "sim_time.h"
 #include "sim_gdb.h"
 #include "avr_uart.h"
@@ -392,6 +393,18 @@ avr_callback_sleep_gdb(
 		;
 }
 
+/*
+ * With interrupts off, a jump to self or a sleep can still end: in a
+ * watchdog reset, which is how firmware commonly asks for one. Only when
+ * that is not armed is the firmware done.
+ */
+static int
+watchdog_armed(
+		avr_t * avr)
+{
+	return avr_ioctl(avr, AVR_IOCTL_WATCHDOG_ARMED, NULL) == 1;
+}
+
 static void
 gracefully_quit(
 		avr_t * avr,
@@ -428,13 +441,14 @@ avr_callback_run_gdb(
 
 	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
 
-	if (avr->state == cpu_Running && JMP_TO_SELF(avr) && !avr->sreg[S_I]) {
+	if (avr->state == cpu_Running && JMP_TO_SELF(avr) && !avr->sreg[S_I] &&
+			!watchdog_armed(avr)) {
 		gracefully_quit(avr, "rjmp .-2 with interrupts off");
 		return;
 	}
 
 	if (avr->state == cpu_Sleeping) {
-		if (!avr->sreg[S_I]) {
+		if (!avr->sreg[S_I] && !watchdog_armed(avr)) {
 			gracefully_quit(avr, "sleeping with interrupts off");
 			return;
 		}
@@ -489,13 +503,14 @@ avr_callback_run_raw(
 	// until the next timer is due
 	avr_cycle_count_t sleep = avr_cycle_timer_process(avr);
 
-	if (avr->state == cpu_Running && JMP_TO_SELF(avr) && !avr->sreg[S_I]) {
+	if (avr->state == cpu_Running && JMP_TO_SELF(avr) && !avr->sreg[S_I] &&
+			!watchdog_armed(avr)) {
 		gracefully_quit(avr, "rjmp .-2 with interrupts off");
 		return;
 	}
 
 	if (avr->state == cpu_Sleeping) {
-		if (!avr->sreg[S_I]) {
+		if (!avr->sreg[S_I] && !watchdog_armed(avr)) {
 			gracefully_quit(avr, "sleeping with interrupts off");
 			return;
 		}

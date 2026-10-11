@@ -155,6 +155,8 @@ static int avr_watchdog_ioctl(
 			avr_cycle_timer_register(p->io.avr, p->cycle_count,
 					avr_watchdog_timer, p);
 		res = 0;
+	} else if (ctl == AVR_IOCTL_WATCHDOG_ARMED) {
+		res = avr_regbit_get(p->io.avr, p->wde) ? 1 : 0;
 	}
 
 	return res;
