@@ -79,6 +79,7 @@ enum {
 	avr_timer_wgm_reg_constant = 0,
 	avr_timer_wgm_reg_ocra,
 	avr_timer_wgm_reg_icr,
+	avr_timer_wgm_reg_ocrc,	// ATtiny25/45/85 timer 1: CTC1 clears on OCR1C
 };
 
 typedef struct avr_timer_wgm_t {

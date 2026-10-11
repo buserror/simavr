@@ -316,7 +316,8 @@ avr_timer_tov(
 		}
 	}
 
-	if (!start)
+	// cleared on OCR1C, an ATtiny85's timer 1 never reaches $FF to overflow
+	if (!start && p->mode.top != avr_timer_wgm_reg_ocrc)
 		avr_raise_interrupt(avr, &p->overflow);
 	p->tov_base = when;
 
@@ -579,9 +580,11 @@ avr_timer_reconfigure(
 	avr_timer_cancel_all_cycle_timers(avr, p, 1);
 
 	switch (p->wgm_op_mode_kind) {
-		case avr_timer_wgm_normal:
-			avr_timer_configure(p, p->cs_div_value, p->wgm_op_mode_size, reset);
-			break;
+		case avr_timer_wgm_normal: {
+			uint16_t top = (p->mode.top == avr_timer_wgm_reg_ocrc) ?
+				_timer_get_ocr(p, AVR_TIMER_COMPC) : p->wgm_op_mode_size;
+			avr_timer_configure(p, p->cs_div_value, top, reset);
+		}	break;
 		case avr_timer_wgm_fc_pwm:
 			avr_timer_configure(p, p->cs_div_value, p->wgm_op_mode_size, reset);
 			break;
@@ -626,6 +629,8 @@ avr_timer_write_ocr(
 	avr_core_watch_write(avr, addr, v);
 
 	switch (timer->wgm_op_mode_kind) {
+		case avr_timer_wgm_none:	// not started yet: nothing to change
+			break;
 		case avr_timer_wgm_normal:
 			avr_timer_reconfigure(timer, 0);
 			break;
