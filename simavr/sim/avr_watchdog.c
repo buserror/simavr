@@ -104,6 +104,10 @@ static void avr_watchdog_write(
 	uint8_t old_wdce = avr_regbit_get(avr, p->wdce);
 	
 	uint8_t was_enabled = (old_wde || old_wdie);
+	/* WDIF, the interrupt flag, is cleared by writing a 1 to it and is
+	 * otherwise left alone, whichever path the write takes below */
+	uint8_t old_wdif = avr_regbit_get(avr, p->watchdog.raised);
+	uint8_t clear_wdif = avr_regbit_from_value(avr, p->watchdog.raised, v);
 
 	uint8_t old_v = avr->data[addr]; // allow gdb to see write...
 	avr_core_watch_write(avr, addr, v);
@@ -138,6 +142,10 @@ static void avr_watchdog_write(
 			avr_watchdog_set_cycle_count_and_timer(avr, p, was_enabled, -1);
 		}
 	}
+
+	avr_regbit_setto(avr, p->watchdog.raised, old_wdif);
+	if (old_wdif && clear_wdif)
+		avr_clear_interrupt(avr, &p->watchdog);
 }
 
 /*
