@@ -59,11 +59,12 @@ typedef struct fw_chunk {
 /* A parsed firmware file. */
 
 typedef struct elf_firmware_t {
-	char  mmcu[64];
+	char		mmcu[64];
 	uint32_t	frequency;
 	uint32_t	vcc,avcc,aref;
 
 	char		tracename[128];	// trace filename
+	int			text_trace;     // Tracing as test output.
 	uint32_t	traceperiod;
 	int			tracecount;
 	struct {

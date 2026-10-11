@@ -304,12 +304,14 @@ avr_load_firmware(
 	// rest is initialization of the VCD file
 	if (firmware->tracecount == 0)
 		return;
-	avr->vcd = malloc(sizeof(*avr->vcd));
-	memset(avr->vcd, 0, sizeof(*avr->vcd));
+	avr->vcd = calloc(1, sizeof(*avr->vcd));
 	avr_vcd_init(avr,
-		firmware->tracename[0] ? firmware->tracename: "gtkwave_trace.vcd",
+		firmware->tracename[0] ? firmware->tracename :
+			 firmware->text_trace ? NULL : "gtkwave_trace.vcd",
 		avr->vcd,
 		firmware->traceperiod >= 1000 ? firmware->traceperiod : 1000);
+	if (firmware->text_trace)
+		avr->vcd->text = 1;
 
 	AVR_LOG(avr, LOG_TRACE, "ELF: Creating VCD trace file '%s'\n",
 			avr->vcd->filename);

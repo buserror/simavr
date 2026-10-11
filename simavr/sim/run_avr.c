@@ -39,32 +39,33 @@ display_usage(
 {
 	printf("Usage: %s [...] <firmware>\n", app);
 	printf(
-	 "       [--help|-h|-?]      Display this usage message and exit\n"
-	 "       [--list-cores]      List all supported AVR cores and exit\n"
-	 "       [--list-irqs]       List all supported IRQs for given core "
+	 "       [--help|-h|-?]       Display this usage message and exit\n"
+	 "       [--list-cores]       List all supported AVR cores and exit\n"
+	 "       [--list-irqs]        List all supported IRQs for given core "
          "and exit\n"
-	 "       [-v]                Raise verbosity level\n"
-	 "                           (can be passed more than once)\n"
-	 "       [--freq|-f <freq>]  Sets the frequency (in Hz) for an .hex firmware\n"
-	 "       [--mcu|-m <device>] Sets the MCU type for an .hex firmware\n"
-	 "       [--gdb|-g [<port>]] Listen for gdb connection on <port> "
+	 "       [-v]                 Raise verbosity level\n"
+	 "                             (can be passed more than once)\n"
+	 "       [--freq|-f <freq>]   Sets the frequency (in Hz) for an .hex firmware\n"
+	 "       [--mcu|-m <device>]  Sets the MCU type for an .hex firmware\n"
+	 "       [--gdb|-g [<port>]]  Listen for gdb connection on <port> "
 	 "(default 1234)\n"
 #ifdef CONFIG_SIMAVR_TRACE
-	 "       [--trace, -t]       Run full scale decoder trace\n"
+	 "       [--trace, -t]        Run full scale decoder trace\n"
 #else
-	 "       [--trace, -t]       Run full scale decoder trace (Disabled)\n"
+	 "       [--trace, -t]        Run full scale decoder trace (Disabled)\n"
 #endif //CONFIG_SIMAVR_TRACE
-	 "       [-ti <vector>]      Add traces for IRQ vector <vector>\n"
-	 "       [--input|-i <file>] A VCD file to use as input signals\n"
-	 "       [--output|-o <file>] A VCD file to save the traced signals\n"
-	 "       [--add-trace|-at    <name=[portpin|irq|trace]@addr/mask>] or \n"
-	 "                           <name=[sram8|sram16]@addr>] or \n"
-	 "                           <name=ioirq@XXXX/N\n"
-	 "                           Add signal to be included in VCD output\n"
-	 "       [-ff <.hex file>]   Load next .hex file as flash\n"
-	 "       [-ee <.hex file>]   Load next .hex file as eeprom\n"
-	 "       <firmware>          A .hex or an ELF file. ELF files are\n"
-	 "                           preferred, and can include "
+	 "       [-ti <vector>]       Add traces for IRQ vector <vector>\n"
+	 "       [--input|-i <file>]  A VCD file to use as input signals\n"
+	 "       [--output|-o <file>] A VCD file to save traced signals\n"
+	 "                             or \"--output -\" shows them as text\n"
+	 "       [--add-trace|-at     Add signal to be included in VCD output:\n"
+	 "                             <name=[portpin|irq|trace]@addr/mask>] or\n"
+	 "                             <name=[sram8|sram16]@addr>] or\n"
+	 "                             <name=ioirq@XXXX/N\n"
+	 "       [-ff <.hex file>]    Load next .hex file as flash\n"
+	 "       [-ee <.hex file>]    Load next .hex file as eeprom\n"
+	 "       <firmware>           A .hex or an ELF file. ELF files are\n"
+	 "                             preferred, and can include "
 	 "debugging syms\n");
 	exit(1);
 }
@@ -160,7 +161,10 @@ main(
 				fprintf(stderr, "%s: missing mandatory argument for %s.\n", argv[0], argv[pi]);
 				exit(1);
 			}
-			snprintf(f.tracename, sizeof(f.tracename), "%s", argv[++pi]);
+			if (argv[++pi][0] == '-' && !argv[pi][1])
+				f.text_trace = 1;
+			else
+				snprintf(f.tracename, sizeof(f.tracename), "%s", argv[pi]);
 		} else if (!strcmp(argv[pi], "-t") ||
 				   !strcmp(argv[pi], "--trace")) {
 #ifdef CONFIG_SIMAVR_TRACE

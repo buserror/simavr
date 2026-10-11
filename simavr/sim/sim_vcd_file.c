@@ -53,7 +53,8 @@ avr_vcd_init(
 {
 	memset(vcd, 0, sizeof(avr_vcd_t));
 	vcd->avr = avr;
-	vcd->filename = strdup(filename);
+	if (filename)
+		vcd->filename = strdup(filename);
 	vcd->period = avr_usec_to_cycles(vcd->avr, period);
 	return 0;
 }
@@ -506,18 +507,23 @@ _avr_vcd_notify(
 		uint32_t value,
 		void * param)
 {
-	avr_vcd_t * vcd = (avr_vcd_t *)param;
+	avr_vcd_t        * vcd = (avr_vcd_t *)param;
 
+	if (vcd->text) {
+		avr_t *avr = vcd->avr;
+
+		printf("%g %s: %#x -> %#x\n",
+			   ((double)avr->cycle * 1000) / avr->frequency,
+			   vcd->signal[irq->irq].name, irq->value, value);
+	}
 	if (!vcd->output) {
-		AVR_LOG(vcd->avr, LOG_WARNING,
-				"%s: no output\n",
-				__FUNCTION__);
+		if (!vcd->text)
+			AVR_LOG(vcd->avr, LOG_WARNING, "%s: no output\n", __FUNCTION__);
 		return;
 	}
 
-	avr_vcd_signal_t * s = (avr_vcd_signal_t*)irq;
 	avr_vcd_log_t l = {
-		.sigindex = s->irq.irq,
+		.sigindex = irq->irq,
 		.when = vcd->avr->cycle,
 		.value = value,
 		.floating = !!(avr_irq_get_flags(irq) & IRQ_FLAG_FLOATING),
@@ -597,10 +603,14 @@ avr_vcd_start_with_comment(
 	}
 	if (vcd->output)
 		avr_vcd_stop(vcd);
-	vcd->output = fopen(vcd->filename, "w");
-	if (vcd->output == NULL) {
-		perror(vcd->filename);
-		return -1;
+	if (vcd->filename) {
+		vcd->output = fopen(vcd->filename, "w");
+		if (vcd->output == NULL) {
+			perror(vcd->filename);
+			return -1;
+		}
+	} else {
+		return 0; // Text output.
 	}
 
     if (comment)
@@ -609,6 +619,7 @@ avr_vcd_start_with_comment(
 	fprintf(vcd->output, "$date %s$end\n", ctime(&now));
 	fprintf(vcd->output,
 		"$version Simavr " CONFIG_SIMAVR_VERSION " $end\n");
+	fprintf(vcd->output, "$comment MCU: %s $end\n", vcd->avr->mmcu);
 	fprintf(vcd->output, "$timescale 1ns $end\n");	// 10ns base, aka 100MHz
 	fprintf(vcd->output, "$scope module logic $end\n");
 
@@ -624,6 +635,7 @@ avr_vcd_start_with_comment(
 	for (int i = 0; i < vcd->signal_count; i++) {
 		avr_vcd_signal_t * s = &vcd->signal[i];
 		char out[48];
+
 		fprintf(vcd->output, "%s\n",
 				_avr_vcd_get_float_signal_text(s, out));
 	}
