@@ -153,6 +153,7 @@ avr_raise_interrupt(
 				printf("IRQ%d Waking CPU due to interrupt\n",
 					vector->vector);
 			avr->state = cpu_Running;	// in case we were sleeping
+			table->woke = 1;
 		}
 	}
 	// return 'raised' even if it was already pending
@@ -234,8 +235,10 @@ void
 avr_service_interrupts(
 		avr_t * avr)
 {
-	if (!avr->sreg[S_I] || !avr->interrupt_state)
+	if (!avr->sreg[S_I] || !avr->interrupt_state) {
+		avr->interrupts.woke = 0;	// woken, but carrying on after the SLEEP
 		return;
+	}
 
 	if (avr->interrupt_state < 0) {
 		avr->interrupt_state++;
@@ -282,6 +285,13 @@ avr_service_interrupts(
 		_avr_push_addr(avr, avr->pc);
 		avr_sreg_set(avr, S_I, 0);
 		avr->pc = vector->vector * avr->vector_size;
+		/*
+		 * The response time, from the datasheets: 4 cycles to push the PC
+		 * and jump to the vector, 5 with a 3-byte PC, and 4 more when the
+		 * interrupt woke the core from sleep (start-up time not counted).
+		 */
+		avr->cycle += 2 + avr->address_size + (table->woke ? 4 : 0);
+		table->woke = 0;
 
 		avr_raise_irq(vector->irq + AVR_INT_IRQ_RUNNING, 1);
 		avr_raise_irq(table->irq + AVR_INT_IRQ_RUNNING, vector->vector);

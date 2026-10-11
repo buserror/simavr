@@ -62,6 +62,7 @@ typedef struct  avr_int_table_t {
 	uint8_t			vector_count;
 	avr_int_pending_t pending;
 	uint8_t			running_ptr;
+	uint8_t			woke;	// the pending interrupt woke the core from sleep
 	avr_int_vector_t *running[64]; // stack of nested interrupts
 	// global status for pending + running in interrupt context
 	avr_irq_t		irq[AVR_INT_IRQ_COUNT];
