@@ -102,6 +102,8 @@ static void avr_watchdog_write(
 	uint8_t old_wde = avr_regbit_get(avr, p->wde);
 	uint8_t old_wdie = avr_regbit_get(avr, p->watchdog.enable);
 	uint8_t old_wdce = avr_regbit_get(avr, p->wdce);
+	/* before the write, or a new prescaler goes unnoticed */
+	uint8_t old_wdp = avr_regbit_get_array(avr, p->wdp, 4);
 	
 	uint8_t was_enabled = (old_wde || old_wdie);
 
@@ -109,8 +111,6 @@ static void avr_watchdog_write(
 	avr_core_watch_write(avr, addr, v);
 
 	if (old_wdce) {
-		uint8_t old_wdp = avr_regbit_get_array(avr, p->wdp, 4);
-
 		// wdrf (watchdog reset flag) must be cleared before wde can be cleared.
 		if (avr_regbit_get(avr, p->wdrf))
 			avr_regbit_set(avr, p->wde);
