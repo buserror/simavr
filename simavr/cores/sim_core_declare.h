@@ -32,7 +32,7 @@
 #define _SFR_IO8(v) ((v)+32)
 #define _SFR_IO16(v) ((v)+32)
 #define _SFR_MEM8(v) (v)
-#define _BV(v) (v)
+#define _BV(v) (1 << (v))
 #define _VECTOR(v) (v)
 
 /*
@@ -59,14 +59,16 @@
 #  define FUSE5_DEFAULT 0xFF
 # endif
 
-# define _FUSE_HELPER { FUSE1_DEFAULT, FUSE1_DEFAULT, FUSE2_DEFAULT, \
-	FUSE3_DEFAULT, FUSE4_DEFAULT, FUSE5_DEFAULT }
+# define _FUSE_HELPER { (uint8_t)(FUSE0_DEFAULT), (uint8_t)(FUSE1_DEFAULT), \
+	(uint8_t)(FUSE2_DEFAULT), (uint8_t)(FUSE3_DEFAULT), \
+	(uint8_t)(FUSE4_DEFAULT), (uint8_t)(FUSE5_DEFAULT) }
 #elif FUSE_MEMORY_SIZE == 3
-# define _FUSE_HELPER { LFUSE_DEFAULT, HFUSE_DEFAULT, EFUSE_DEFAULT }
+# define _FUSE_HELPER { (uint8_t)(LFUSE_DEFAULT), (uint8_t)(HFUSE_DEFAULT), \
+	(uint8_t)(EFUSE_DEFAULT) }
 #elif FUSE_MEMORY_SIZE == 2
-# define _FUSE_HELPER { LFUSE_DEFAULT, HFUSE_DEFAULT }
+# define _FUSE_HELPER { (uint8_t)(LFUSE_DEFAULT), (uint8_t)(HFUSE_DEFAULT) }
 #elif FUSE_MEMORY_SIZE == 1
-# define _FUSE_HELPER { FUSE_DEFAULT }
+# define _FUSE_HELPER { (uint8_t)(FUSE_DEFAULT) }
 #else
 # define _FUSE_HELPER { 0 }
 #endif
