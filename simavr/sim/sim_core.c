@@ -302,10 +302,10 @@ static inline void _avr_set_r(avr_t * avr, uint16_t r, uint8_t v)
 	}
 	if (r > 31) {
 		avr_io_addr_t io = AVR_DATA_TO_IO(r);
+		avr->data[r] = v;
 		if (avr->io[io].w.c) {
 			avr->io[io].w.c(avr, r, v, avr->io[io].w.param);
 		} else {
-			avr->data[r] = v;
 			if (avr->io[io].irq) {
 				avr_raise_irq(avr->io[io].irq + AVR_IOMEM_IRQ_ALL, v);
 				for (int i = 0; i < 8; i++)

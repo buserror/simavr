@@ -736,11 +736,11 @@ avr_timer_gtccr_write(
 {
 	avr_timer_t * p = (avr_timer_t *)param;
 
-	uint8_t psr_mask = (1 << 0) | (1 << 1); // PSRSYNC / PSR10 / PSRASY / PSR2 (bits 0 and 1)
+	uint8_t psr_mask = p->as2.reg ? (1 << 1) : (1 << 0); // PSRASY (bit 1) for Timer 2, PSRSYNC (bit 0) for Timer 0/1/3
 	if (v & psr_mask) {
 		avr_timer_reconfigure(p, 1);
 		// Strobe bit automatically cleared by hardware
-		avr->data[p->r_gtccr] &= ~psr_mask;
+		avr->data[p->r_gtccr] &= ~((1 << 0) | (1 << 1));
 	}
 }
 

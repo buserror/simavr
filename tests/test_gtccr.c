@@ -53,6 +53,22 @@ int main(int argc, char **argv) {
 		fail("GTCCR PSRASY bit was not cleared after OUT instruction, got 0x%02x", avr->data[gtccr_addr]);
 	}
 
+	// 3. Assembly sequence test: IN r24, 0x23; ORI r24, 2; OUT 0x23, r24; IN r25, 0x23
+	avr->flash[0] = 0x83; avr->flash[1] = 0xb5; // in r24, 0x23
+	avr->flash[2] = 0x82; avr->flash[3] = 0x60; // ori r24, 0x02
+	avr->flash[4] = 0x83; avr->flash[5] = 0xbd; // out 0x23, r24
+	avr->flash[6] = 0x93; avr->flash[7] = 0xb5; // in r25, 0x23
+
+	avr->pc = 0;
+	avr_run_one(avr); // IN r24, 0x23
+	avr_run_one(avr); // ORI r24, 0x02
+	avr_run_one(avr); // OUT 0x23, r24
+	avr_run_one(avr); // IN r25, 0x23
+
+	if (avr->data[25] != 0) {
+		fail("GTCCR was read into r25 as 0x%02x after OUT 0x23, r24 (expected 0)", avr->data[25]);
+	}
+
 	tests_success();
 	return 0;
 }

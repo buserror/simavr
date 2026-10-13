@@ -91,7 +91,6 @@ _avr_io_mux_write(
 		uint8_t v,
 		void * param)
 {
-	avr_core_watch_write(avr, addr, v);
 	int io = (intptr_t)param;
 	for (int i = 0; i < avr->io_shared_io[io].used; i++) {
 		avr_io_write_t c = avr->io_shared_io[io].io[i].c;
