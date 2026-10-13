@@ -168,6 +168,9 @@ const struct mcu_t {
 	},
 	.timer0 = {
 		.name = '0',
+#ifdef GTCCR
+		.r_gtccr = GTCCR,
+#endif
 		.wgm = { AVR_IO_REGBIT(TCCR0, WGM00), AVR_IO_REGBIT(TCCR0, WGM01) },
 		.wgm_op = {
 			[0] = AVR_TIMER_WGM_NORMAL8(),
@@ -204,6 +207,9 @@ const struct mcu_t {
 	},
 	.timer1 = {
 		.name = '1',
+#ifdef GTCCR
+		.r_gtccr = GTCCR,
+#endif
 		.wgm = { AVR_IO_REGBIT(TCCR1A, WGM10), AVR_IO_REGBIT(TCCR1A, WGM11),
 					AVR_IO_REGBIT(TCCR1B, WGM12), AVR_IO_REGBIT(TCCR1B, WGM13) },
 		WGM_OPS_16,
@@ -268,6 +274,9 @@ const struct mcu_t {
 	},
 	.timer2 = {
 		.name = '2',
+#ifdef GTCCR
+		.r_gtccr = GTCCR,
+#endif
 		.wgm = { AVR_IO_REGBIT(TCCR2, WGM20), AVR_IO_REGBIT(TCCR2, WGM21) },
 		.wgm_op = {
 			[0] = AVR_TIMER_WGM_NORMAL8(),
@@ -301,6 +310,9 @@ const struct mcu_t {
 	},
 	.timer3 = {
 		.name = '3',
+#ifdef GTCCR
+		.r_gtccr = GTCCR,
+#endif
 		.wgm = { AVR_IO_REGBIT(TCCR3A, WGM30), AVR_IO_REGBIT(TCCR3A, WGM31),
 					AVR_IO_REGBIT(TCCR3B, WGM32), AVR_IO_REGBIT(TCCR3B, WGM33) },
 		WGM_OPS_16,

@@ -723,6 +723,28 @@ avr_timer_write(
 }
 
 /*
+ * write to GTCCR register (General Timer/Counter Control Register)
+ * Handles prescaler reset bits (e.g. PSRASY, PSRSYNC, PSR10, PSR2) which are hardware strobe bits
+ * that reset the prescaler and then automatically clear themselves.
+ */
+static void
+avr_timer_gtccr_write(
+		struct avr_t * avr,
+		avr_io_addr_t addr,
+		uint8_t v,
+		void * param)
+{
+	avr_timer_t * p = (avr_timer_t *)param;
+
+	uint8_t psr_mask = (1 << 0) | (1 << 1); // PSRSYNC / PSR10 / PSRASY / PSR2 (bits 0 and 1)
+	if (v & psr_mask) {
+		avr_timer_reconfigure(p, 1);
+		// Strobe bit automatically cleared by hardware
+		avr->data[p->r_gtccr] &= ~psr_mask;
+	}
+}
+
+/*
  * write to the "force output compare" bits
  */
 static void avr_timer_write_foc(struct avr_t * avr, avr_io_addr_t addr, uint8_t v, void * param)
@@ -958,6 +980,9 @@ avr_timer_init(
 
 	if (p->as2.reg) // as2 signifies timer/counter 2... therefore must check for register.
 		avr_register_io_write(avr, p->as2.reg, avr_timer_write, p);
+
+	if (p->r_gtccr)
+		avr_register_io_write(avr, p->r_gtccr, avr_timer_gtccr_write, p);
 
 	// this assumes all the "pending" interrupt bits are in the same
 	// register. Might not be true on all devices ?

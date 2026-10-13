@@ -166,6 +166,9 @@ const struct mcu_t SIM_CORENAME = {
 	},
 	.timer0 = {
 		.name = '0',
+#ifdef GTCCR
+		.r_gtccr = GTCCR,
+#endif
 #ifdef OC0_PORT
 		.wgm = { AVR_IO_REGBIT(TCCR0, WGM00), AVR_IO_REGBIT(TCCR0, WGM01)},
 		WGM_OPS_4,
@@ -206,6 +209,9 @@ const struct mcu_t SIM_CORENAME = {
 	},
 	.timer1 = {
 		.name = '1',
+#ifdef GTCCR
+		.r_gtccr = GTCCR,
+#endif
 		.wgm = { AVR_IO_REGBIT(TCCR1A, WGM10), AVR_IO_REGBIT(TCCR1A, WGM11),
 					AVR_IO_REGBIT(TCCR1B, WGM12), AVR_IO_REGBIT(TCCR1B, WGM13) },
 		WGM_OPS_16,
@@ -260,6 +266,9 @@ const struct mcu_t SIM_CORENAME = {
 	},
 	.timer2 = {
 		.name = '2',
+#ifdef GTCCR
+		.r_gtccr = GTCCR,
+#endif
 		.wgm = { AVR_IO_REGBIT(TCCR2, WGM20), AVR_IO_REGBIT(TCCR2, WGM21) },
 		WGM_OPS_4,
 		.cs = { AVR_IO_REGBIT(TCCR2, CS20), AVR_IO_REGBIT(TCCR2, CS21), AVR_IO_REGBIT(TCCR2, CS22) },

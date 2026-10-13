@@ -177,6 +177,7 @@ typedef struct avr_timer_t {
 
 	avr_io_addr_t	r_tcnt, r_icr;
 	avr_io_addr_t	r_tcnth, r_icrh;
+	avr_io_addr_t	r_gtccr;
 
 	avr_regbit_t	wgm[4];
 	avr_timer_wgm_t	wgm_op[16];

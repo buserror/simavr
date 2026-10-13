@@ -172,6 +172,9 @@ const struct mcu_t SIM_CORENAME = {
 	},
 	.timer0 = {
 		.name = '0',
+#ifdef GTCCR
+		.r_gtccr = GTCCR,
+#endif
 		.wgm = { AVR_IO_REGBIT(TCCR0A, WGM00), AVR_IO_REGBIT(TCCR0A, WGM01), AVR_IO_REGBIT(TCCR0B, WGM02) },
 		WGM_OPS_8,
 		.cs = { AVR_IO_REGBIT(TCCR0B, CS00), AVR_IO_REGBIT(TCCR0B, CS01), AVR_IO_REGBIT(TCCR0B, CS02) },
@@ -209,6 +212,9 @@ const struct mcu_t SIM_CORENAME = {
 	},
 	.timer1 = {
 		.name = '1',
+#ifdef GTCCR
+		.r_gtccr = GTCCR,
+#endif
 		// timer1 has no wgm bits, but we still need to define a wgm op so that
 		// we can set a proper kind/size to the timer
 		.wgm_op = {
