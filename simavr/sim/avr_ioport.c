@@ -270,10 +270,13 @@ avr_ioport_reset(
 		avr_io_t * port)
 {
 	avr_ioport_t * p = (avr_ioport_t *)port;
-	for (int i = 0; i < IOPORT_IRQ_PIN_ALL; i++)
-		avr_irq_register_notify(p->io.irq + i, avr_ioport_irq_notify, p);
-	avr_irq_register_notify(p->io.irq + IOPORT_IRQ_PIN_ALL_IN,
-					avr_ioport_irq_notify, p);
+
+	if (p->io.irq) { // PORTA is dummy in atmega8
+		for (int i = 0; i < IOPORT_IRQ_PIN_ALL; i++)
+			avr_irq_register_notify(p->io.irq + i, avr_ioport_irq_notify, p);
+		avr_irq_register_notify(p->io.irq + IOPORT_IRQ_PIN_ALL_IN,
+								avr_ioport_irq_notify, p);
+	}
 }
 
 static int
@@ -367,7 +370,8 @@ static	avr_io_t	_io = {
 void avr_ioport_init(avr_t * avr, avr_ioport_t * p)
 {
 	if (!p->r_port) {
-		printf("skipping PORT%c for core %s\n", p->name, avr->mmcu);
+		AVR_LOG(avr, LOG_TRACE, "Skipping PORT%c for core %s.\n",
+				p->name, avr->mmcu);
 		return;
 	}
 	p->io = _io;

@@ -182,7 +182,6 @@ avr_init(
 	avr->sleep = avr_callback_sleep_raw;
 	// number of address bytes to push/pull on/off the stack
 	avr->address_size = avr->eind ? 3 : 2;
-	avr->log = LOG_ERROR;
 	avr_regbit_set(avr, avr->reset_flags.porf);  // Power-on reset flag.
 	avr_reset(avr);
 	return 0;
@@ -568,8 +567,12 @@ avr_make_mcu_by_name(
 	}
 
 	avr_t * avr = maker->make();
-	AVR_LOG(avr, LOG_TRACE, "Starting %s - flashend %04x ramend %04x e2end %04x\n",
+	avr->log = LOG_ERROR;
+#if 0
+	AVR_LOG(avr, LOG_TRACE,
+			"Starting %s - flashend %04x ramend %04x e2end %04x\n",
 			avr->mmcu, avr->flashend, avr->ramend, avr->e2end);
+#endif
 	return avr;
 }
 

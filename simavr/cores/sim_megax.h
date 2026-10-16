@@ -44,6 +44,8 @@ void mx_reset(struct avr_t * avr);
  */
 struct mcu_t {
 	avr_t			core;
+	// PORTA exists on m16 and 32, but not on 8 or 48.
+	avr_ioport_t	porta;
 	avr_ioport_t	portb, portc, portd;
 	avr_eeprom_t 	eeprom;
 	avr_flash_t 	selfprog;
@@ -55,10 +57,6 @@ struct mcu_t {
 	avr_timer_t		timer0,timer1,timer2;
 	avr_spi_t		spi;
 	avr_twi_t		twi;
-	// PORTA exists on m16 and 32, but not on 8. 
-	// It is still necessary to declare this as otherwise
-	// the core_megax shared constructor will be confused
-	avr_ioport_t	porta;
 };
 
 #ifdef SIM_CORENAME
@@ -87,6 +85,8 @@ const struct mcu_t SIM_CORENAME = {
 	},
 #ifdef PORTA
 	AVR_IOPORT_DECLARE(a, 'A', A),
+#else
+	.porta = { .name = 'A' }, // For message in avr_ioport_init().
 #endif
 	AVR_IOPORT_DECLARE(b, 'B', B),
 	AVR_IOPORT_DECLARE(c, 'C', C),
