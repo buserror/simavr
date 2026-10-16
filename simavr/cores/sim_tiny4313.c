@@ -38,16 +38,13 @@ static void reset(struct avr_t * avr);
 
 #include "sim_core_declare.h"
 
-/*
- * This is a template for all of the tinyx5 devices, hopefully
- */
 static const struct mcu_t {
 	avr_t			core;
+	avr_ioport_t	porta, portb, portd;
 	avr_eeprom_t 	eeprom;
 	avr_watchdog_t	watchdog;
 	avr_flash_t 	selfprog;
 	avr_extint_t	extint;
-	avr_ioport_t	porta, portb, portd;
 	avr_uart_t		uart;
 	avr_timer_t		timer0,timer1;
 	avr_acomp_t		acomp;
@@ -232,13 +229,13 @@ static void init(struct avr_t * avr)
 {
 	struct mcu_t * mcu = (struct mcu_t*)avr;
 
+	avr_ioport_init(avr, &mcu->porta);
+	avr_ioport_init(avr, &mcu->portb);
+	avr_ioport_init(avr, &mcu->portd);
 	avr_eeprom_init(avr, &mcu->eeprom);
 	avr_watchdog_init(avr, &mcu->watchdog);
 	avr_flash_init(avr, &mcu->selfprog);
 	avr_extint_init(avr, &mcu->extint);
-	avr_ioport_init(avr, &mcu->porta);
-	avr_ioport_init(avr, &mcu->portb);
-	avr_ioport_init(avr, &mcu->portd);
 	avr_uart_init(avr, &mcu->uart);
 	avr_timer_init(avr, &mcu->timer0);
 	avr_timer_init(avr, &mcu->timer1);

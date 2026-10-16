@@ -37,10 +37,6 @@ void m2560_init(struct avr_t * avr)
 {
 	struct mcu_t * mcu = (struct mcu_t*)avr;
 	
-	avr_eeprom_init(avr, &mcu->eeprom);
-	avr_flash_init(avr, &mcu->selfprog);
-	avr_extint_init(avr, &mcu->extint);
-	avr_watchdog_init(avr, &mcu->watchdog);
 	avr_ioport_init(avr, &mcu->porta);
 	avr_ioport_init(avr, &mcu->portb);
 	avr_ioport_init(avr, &mcu->portc);
@@ -53,6 +49,10 @@ void m2560_init(struct avr_t * avr)
 	avr_ioport_init(avr, &mcu->portk);
 	avr_ioport_init(avr, &mcu->portl);
 
+	avr_eeprom_init(avr, &mcu->eeprom);
+	avr_flash_init(avr, &mcu->selfprog);
+	avr_extint_init(avr, &mcu->extint);
+	avr_watchdog_init(avr, &mcu->watchdog);
 	avr_uart_init(avr, &mcu->uart0);
 	avr_uart_init(avr, &mcu->uart1);
 	avr_uart_init(avr, &mcu->uart2);

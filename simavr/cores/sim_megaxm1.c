@@ -27,14 +27,14 @@ void mxm1_init(struct avr_t * avr)
 {
 	struct mcu_t * mcu = (struct mcu_t*)avr;
 
-	avr_eeprom_init(avr, &mcu->eeprom);
-	avr_flash_init(avr, &mcu->selfprog);
-	avr_watchdog_init(avr, &mcu->watchdog);
-	avr_extint_init(avr, &mcu->extint);
 	avr_ioport_init(avr, &mcu->portb);
 	avr_ioport_init(avr, &mcu->portc);
 	avr_ioport_init(avr, &mcu->portd);
 	avr_ioport_init(avr, &mcu->porte);
+	avr_eeprom_init(avr, &mcu->eeprom);
+	avr_flash_init(avr, &mcu->selfprog);
+	avr_watchdog_init(avr, &mcu->watchdog);
+	avr_extint_init(avr, &mcu->extint);
 	avr_lin_init( avr, &mcu->lin);
 	avr_adc_init(avr, &mcu->adc);
 	avr_timer_init(avr, &mcu->timer0);

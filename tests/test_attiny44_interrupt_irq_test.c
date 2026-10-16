@@ -85,11 +85,11 @@ static void gpior1_change(struct avr_t *avr, avr_io_addr_t addr,
 }
 
 static const char *expected =
-    "PX-1 P-1 PC-1 P-3 PA-1 P-13 "		// Raise three interrupts.
+    "PC-1 P-3 PX-1 P-1 PA-1 P-13 "		// Raise three interrupts.
     "RX-1 R-1 PX-0 P-3f *-1 RX-0 R-0 "  // External (INT0) interrupt runs.
     "RC-1 R-3 PC-0 P-13f *-2 RC-0 R-0 " // Pin change interrupt runs.
     "RA-1 R-13 PA-0 P-0 *-3 RA-0 R-0 "  // ADC interrupt runs.
-    "PX-1 P-1 PC-1 P-3 PA-1 P-13 "		// Second round: raise three.
+    "PC-1 P-3 PX-1 P-1 PA-1 P-13 "		// Second round: raise three.
     "RX-1 R-1 PX-0 P-3f *-1 "			// External (INT0) interrupt runs.
     "RC-1 R-3 PC-0 P-13f *-2 "			// Pin change interrupt runs.
     "RA-1 R-13 PA-0 P-0 *-3 RA-0 "		// ADC interrupt runs.
