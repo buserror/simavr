@@ -353,16 +353,20 @@ avr_load_firmware(
 						"(0x20 < 0x%04x < 0x%04x) or trace table overflow.\n",
 						firmware->trace[ti].addr, avr->ramend);
 			} else {
+				unsigned int width;
+
+				width =
+					(firmware->trace[ti].kind == AVR_MMCU_TAG_VCD_SRAM_8) ?
+						8 : 16;
 				AVR_LOG(avr, LOG_OUTPUT,
 						"ELF: SRAM tracepoint added at '0x%04x' "
 						"(%s, %d bits)\n",
 						firmware->trace[ti].addr, firmware->trace[ti].name,
-						firmware->trace[ti].kind == AVR_MMCU_TAG_VCD_SRAM_8 ?
-							8 : 16);
+						width);
 				avr_vcd_add_signal(
 					avr->vcd,
 					irq,
-					avr->sram_tracepoint[avr->sram_tracepoint_count].width,
+					width,
 					firmware->trace[ti].name[0] ?
 					firmware->trace[ti].name : irq->name);
 			}
@@ -509,6 +513,12 @@ elf_parse_mmcu_section(
 				firmware->tracecount++;
 			}	break;
 			case AVR_MMCU_TAG_VCD_FILENAME: {
+				if (next <= 2 || !*src) {
+					// Missing or empty filename requests text output.
+
+					firmware->text_trace = 1;
+					break;
+				}
 				strcpy(firmware->tracename, (char*)src);
 			}	break;
 			case AVR_MMCU_TAG_VCD_PERIOD: {

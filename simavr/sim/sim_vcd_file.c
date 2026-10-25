@@ -512,8 +512,8 @@ _avr_vcd_notify(
 	if (vcd->text) {
 		avr_t *avr = vcd->avr;
 
-		printf("%g %s: %#x -> %#x\n",
-			   ((double)avr->cycle * 1000) / avr->frequency,
+		printf("%.5f %s: %#x -> %#x\n",
+			   ((double)avr->cycle * 1000) / avr->frequency, // mS
 			   vcd->signal[irq->irq].name, irq->value, value);
 	}
 	if (!vcd->output) {

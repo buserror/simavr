@@ -106,7 +106,7 @@ struct avr_mmcu_long_t {
 struct avr_mmcu_string_t {
 	uint8_t tag;
 	uint8_t len;
-	char string[64];
+	char string[];
 } __attribute__((__packed__));
 
 struct avr_mmcu_addr_t {
@@ -120,7 +120,7 @@ struct avr_mmcu_vcd_trace_t {
 	uint8_t len;
 	uint8_t mask;
 	void * what;
-	char name[32];
+	char name[];
 } __attribute__((__packed__));
 
 struct avr_mmcu_vcd_ioirq_t {
@@ -128,13 +128,13 @@ struct avr_mmcu_vcd_ioirq_t {
 	uint8_t len;
 	uint8_t irqno;
 	char ioctl[5];	// Allow for null in string initialiser.
-	char name[32];
+	char name[];
 } __attribute__((__packed__));
 
 #define AVR_MCU_STRING(_tag, _str) \
 	const struct avr_mmcu_string_t _##_tag _MMCU_ = {\
 		.tag = _tag,\
-		.len = sizeof(struct avr_mmcu_string_t) - 2,\
+		.len = sizeof (struct avr_mmcu_string_t) + sizeof _str - 2,\
 		.string = _str,\
 	}
 /*
@@ -171,7 +171,7 @@ struct avr_mmcu_vcd_ioirq_t {
  */
 #define AVR_MCU_VCD_SYMBOL(_name) \
 	.tag = AVR_MMCU_TAG_VCD_TRACE, \
-	.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
+	.len = sizeof(struct avr_mmcu_vcd_trace_t) + sizeof name - 2,\
 	.name = _name
 
 /*!
@@ -182,7 +182,7 @@ struct avr_mmcu_vcd_ioirq_t {
 	const struct avr_mmcu_vcd_trace_t \
 	  DO_CONCAT(_REG_##_register##_, __LINE__) _MMCU_ = {	\
 		.tag = AVR_MMCU_TAG_VCD_TRACE, \
-		.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2, \
+		.len = sizeof(struct avr_mmcu_vcd_trace_t) + sizeof #_register - 2, \
 		.mask = 0xff, \
 		.what = (void*)&_register, \
 		.name = #_register, \
@@ -194,27 +194,36 @@ struct avr_mmcu_vcd_ioirq_t {
 
 #define AVR_MCU_VCD_REGISTER_BIT(_register, _bit) \
 	const struct avr_mmcu_vcd_trace_t \
-	  DO_CONCAT(_REGBIT_##_register##_##_bit##_, __LINE__) _MMCU_ = {	\
+	  DO_CONCAT(_REGBIT_##_register##_##_bit##_, __LINE__) _MMCU_ = { \
 		.tag = AVR_MMCU_TAG_VCD_TRACE, \
-		.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2, \
+		.len = sizeof(struct avr_mmcu_vcd_trace_t) + \
+			sizeof STRINGIFY(_register##_##_bit) - 2, \
 		.mask = (1 << _bit), \
 		.what = (void*)&_register, \
 		.name = STRINGIFY(_register##_##_bit),	\
-	}
+	  }
 
 /*!
  * Set traces on a RAM location, 8 or 15-bit.
  */
 
-#define AVR_MCU_VCD_SRAM_8(_name) \
-	.tag = AVR_MMCU_TAG_VCD_SRAM_8, \
-	.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
-	.name = _name
+#define AVR_MCU_VCD_SRAM_8(_name, _addr) \
+	const struct avr_mmcu_vcd_trace_t \
+	  DO_CONCAT(_ADDR8_##_name##_##_, __LINE__) _MMCU_ = { \
+		.tag = AVR_MMCU_TAG_VCD_SRAM_8, \
+		.len = sizeof(struct avr_mmcu_vcd_trace_t) + sizeof #_name - 2,\
+		.what = _addr, \
+		.name = #_name \
+	  }
 
 #define AVR_MCU_VCD_SRAM_16(_name) \
-	.tag = AVR_MMCU_TAG_VCD_SRAM_16, \
-	.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
-	.name = _name
+	const struct avr_mmcu_vcd_trace_t \
+	  DO_CONCAT(_ADDR16_##_name##_##_, __LINE__) _MMCU_ = { \
+		.tag = AVR_MMCU_TAG_VCD_SRAM_16, \
+		.len = sizeof(struct avr_mmcu_vcd_trace_t) + sizeof #_name - 2,\
+		.what = _addr, \
+		.name = #_name \
+	  }
 
 /*!
  * Specifies the name and wanted period (in usec) for a VCD file
@@ -276,7 +285,7 @@ struct avr_mmcu_vcd_ioirq_t {
 	const struct avr_mmcu_vcd_trace_t \
 	  DO_CONCAT(_PORTPIN_##_##_pin, __LINE__) _MMCU_ = {	\
 		.tag = AVR_MMCU_TAG_VCD_PORTPIN, \
-		.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
+		.len = sizeof(struct avr_mmcu_vcd_trace_t) + sizeof _name - 2,\
 		.mask = _port, \
 		.what = (void*)_pin, \
 		.name = _name, \
@@ -290,9 +299,10 @@ struct avr_mmcu_vcd_ioirq_t {
 
 #define AVR_MCU_VCD_IRQ_TRACE(_vect_number, __what, _trace_name) \
 	const struct avr_mmcu_vcd_trace_t \
-	  DO_CONCAT(_IRQ_##__what##_##_vect_number##_, __LINE__) _MMCU_ = {	\
+	  DO_CONCAT(_IRQ_##__what##_##_vect_number##_, __LINE__) _MMCU_ = { \
 		.tag = AVR_MMCU_TAG_VCD_IRQ, \
-		.len = sizeof(struct avr_mmcu_vcd_trace_t) - 2,\
+		.len = sizeof(struct avr_mmcu_vcd_trace_t) + \
+			sizeof _trace_name - 2, \
 		.mask = _vect_number, \
 		.what = (void*)__what, \
 		.name = _trace_name, \
@@ -315,7 +325,7 @@ struct avr_mmcu_vcd_ioirq_t {
 	const struct avr_mmcu_vcd_ioirq_t \
 	  DO_CONCAT(_IO_IRQ_##_ioctl##_##_select##_, __LINE__) _MMCU_ = {	\
 		.tag = AVR_MMCU_TAG_VCD_IO_IRQ, \
-		.len = sizeof(struct avr_mmcu_vcd_ioirq_t) - 2,\
+		.len = sizeof(struct avr_mmcu_vcd_ioirq_t) + sizeof _trace_name - 2, \
 		.irqno = _select, \
 		.ioctl = #_ioctl, \
 		.name = _trace_name, \
@@ -347,6 +357,7 @@ struct avr_mmcu_vcd_ioirq_t {
 	AVR_MCU_STRING(AVR_MMCU_TAG_NAME, _name);\
 	AVR_MCU_LONG(AVR_MMCU_TAG_FREQUENCY, _speed);
 
+#if 0 // Currently unused
 /*
  * The following MAP macros where copied from
  * https://github.com/swansontec/map-macro/blob/master/map.h
@@ -414,6 +425,7 @@ struct avr_mmcu_vcd_ioirq_t {
 		_MAP_1(_SEND_SIMAVR_CMD_BYTE, reg, __VA_ARGS__) \
 	} while(0)
 
+#endif // Currently unused
 #endif /* __AVR__ */
 
 #ifdef __cplusplus
