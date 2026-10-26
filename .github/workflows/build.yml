@@ -9,7 +9,7 @@ jobs:
         shell: msys2 {0}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: buserror/simavr
           ref: master
@@ -53,7 +53,7 @@ jobs:
   build-lin64:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: buserror/simavr
           ref: master
@@ -85,7 +85,7 @@ jobs:
   build-lin32:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: buserror/simavr
           ref: master
@@ -120,6 +120,10 @@ jobs:
           patchelf --set-rpath '$ORIGIN/../lib/' simavr_installed/bin/simavr
           ldd simavr_installed/bin/*
           simavr_installed/bin/simavr --list-cores || true
+      - name: Tests
+        run: |
+          cd tests
+          make run_tests
       - name: Tar files
         run: tar -cvf simavr.tar.gz -C simavr_installed .
       - uses: actions/upload-artifact@v6
@@ -129,11 +133,11 @@ jobs:
   build-armv7l:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: buserror/simavr
           ref: master
-      - uses: pguyot/arm-runner-action@v2
+      - uses: gatk555/arm-runner-action@v2
         id: build_image
         with:
           cpu: cortex-a7
@@ -163,11 +167,11 @@ jobs:
   build-armv6l:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: buserror/simavr
           ref: master
-      - uses: pguyot/arm-runner-action@v2
+      - uses: gatk555/arm-runner-action@v2
         id: build_image
         with:
           cpu: arm1176
@@ -197,7 +201,7 @@ jobs:
   build-aarch64:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: buserror/simavr
           ref: master
@@ -231,7 +235,7 @@ jobs:
     # macos-latest is an ARM architecture runner, you need to use the suffix -intel
     runs-on: macos-15-intel
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: buserror/simavr
           ref: master
@@ -259,7 +263,7 @@ jobs:
   build-darwin-arm64:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: buserror/simavr
           ref: master
