@@ -11,7 +11,7 @@ This is a guide to getting started with
 </A>
 "a lean and mean Atmel AVR simulator".
 It describes how to load and run AVR firmware in the simulator
-and how to begin writing code that simulates the rest of your circuit.
+and how to begin writing code that simulates the rest of the circuit.
 <P>
 Before using
 <I>simavr,</I>
@@ -31,15 +31,14 @@ will be unavailable, or require extra work.
 The GNU version of Make and GCC are required for building from source.
 On Windows, the MINGW64 flavour of the MSYS2 environment is currently
 preferred for building, but other tools may work.  Install these packages:
-<CODE>
-  make mingw-w64-x86_64-toolchain mingw-w64-x86_64-libelf
-  mingw-w64-x86_64-libdwarf mingw-w64-x86_64-avr-toolchain
-  mingw-w64-x86_64-freeglut
-</CODE>
+<PRE>
+  make mingw-w64-x86_64-toolchain mingw-w64-x86_64-libelf mingw-w64-x86_64-libdwarf
+  mingw-w64-x86_64-avr-toolchain mingw-w64-x86_64-freeglut
+</PRE>
 On a Macintosh, use Homebrew and install:
-<CODE>
+<PRE>
   make libelf freeglut patchelf osx-cross/avr avr-gcc@9 avr-binutils
-</CODE>
+</PRE>
 With the right tools installed building is then just "make" in the top-level
 source directory.
 <P>
@@ -52,7 +51,7 @@ Now what?
 <P>
 You have a program called <I>run_avr</I>, or possibly <I>simavr</I>
 that can load and run AVR programs (firmware).
-You also have the simulator built as a library
+The simulator was also built as a library
 that can be combined with your own software
 in a more complete circuit simulation.
 The source tree contains some examples of using the library
@@ -65,18 +64,19 @@ including LCD display panels.
 This guide is mostly an introduction to the library.
 
 <H4 id="using">Using <I>run-avr</I>.</H4>
-An easy way to get your firmware compiled and running
+An easy way to get firmware compiled and running
 with <I>gcc-avr</I> is to create a new sub-directory of
 <I>simavr/examples</I>
-containing your firmware source and a short Makefile
+containing the firmware source and a short Makefile (
 <A href="https://raw.githubusercontent.com/buserror/simavr/refs/heads/master/examples/board_ds1338/Makefile">
-(example).
+example
 </A>
+).
 The simavr convention is that C source files with names beginning
 "attiny_" or "atmega_" are firmware:
 the first component of the name identifies the target AVR part
 and is used to select the appropriate compiler options.
-If your new directory has a name beginning "board_",
+If the new directory has a name beginning "board_",
 the Makefile will be called by those higher in the directory tree.
 <P>
 If compiling outside the tree, the ability to set simulator options within
@@ -84,26 +84,138 @@ the source code (described
 <A href="#mmcu">below</A>)
 depends on using the gcc option,
 "-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000".
-To execute your firmware, invoke
+To execute the firmware, invoke
 <I>run-avr</I>
 with the compiled firmware as the only non-option argument.
 <P>
 Now the firmware is running, but what is it doing?
-There are two ways to monitor outputs, one to send inputs.
+There are two ways to get outputs and one to send inputs.
 The simple output method is that the firmware sends back messages:
 by default bytes written by a UART peripheral are copied into
 run_avr's output (stdout).
 If there is no free UART and firmware is in ELF format, any otherwise
 unused I/O register may become an output device that is treated the same way.
 Use the AVR_MCU_SIMAVR_CONSOLE macro from the set described
-<A href="#mmcu">below</A>.
+<A href="#mmcu">below</A> to set the register.
+However, creating output in the firmware may use too much time
+or flash space,
+making another method preferable.
 <P>
-Otherwise, the interface from your firmware program to the world is
-a simulation of the interface of real AVR microcontrollers:
-voltages input and output on the device's pins.
-The simulator can emulate these voltages by reading and writing
-Value Change Dump (VCD) files,
-controlled by command line options and data in the firmware file.
+Output may also come from the simulator itself,
+sent to a file (for later display) or as readable text.
+Usually, the most important items are changes
+to the voltages on the AVR device's pins,
+but many others are possible.
+An immediate example (in the
+<I>tests</I>
+subdirectory):
+<PRE>
+	run_avr -o - -at D1=portpin@D1 -at D3=portpin@D3 atmega168_ioport.axf
+</PRE>
+will show
+<PRE>
+0.06788 D1: 0 -> 0x1
+0.06788 D3: 0 -> 0x1
+0.19225 D1: 0x1 -> 0
+0.19275 D3: 0x1 -> 0
+0.58225 D1: 0 -> 0x1
+0.71050 D1: 0x1 -> 0
+</PRE>
+Here state changes for two output pins are traced.
+The text format shows the simulation time in milliseconds,
+the name of a traced item and both old and new values.
+<P>
+The file format used is VCD (Value Change Dump),
+the standard used by digital logic simulators:
+it is also used for input.
+The VCD filename and the traced items may be specified
+<A href="#mmcu">in the firmware,</A>
+by function calls in a controlling program
+(<I><A href="https://raw.githubusercontent.com/buserror/simavr/refs/heads/master/simavr/sim/sim_vcd_file.h">
+    sim_vcd_file.h
+</A></I>)
+or by the
+<I>--output</I> and <I>--add_trace</I>
+options of
+<I>run_avr.</I>
+Using "-" as a file name with
+<I>--output</I>
+enables text output for all items with VCD tracing specified.
+Text and VCD file output may be used together by giving
+<I>--output</I>
+twice.
+<P>
+The
+<I>--add_trace</I>
+option provides a name for the traced item, a keyword
+and two hexadecimal numbers in the form
+<I>name=kind@addr/mask</I> or <I>name=mem_kind@addr</I>.
+For example,
+<PRE>
+  --add-trace ucsr0a=trace@0xc0/0xff
+</PRE>
+will add a trace named "ucsr0a" on all bits of the register at address 0xc0.
+There are four keywords that may substitute for "kind":
+for
+<I>portpin</I>
+the
+<I>addr/mask</I>
+parameters are a GPIO port pin number and
+the ASCII value for the capital letter that identifies the port;
+for
+<I>trace</I>
+an I/O register address and a mask to set which bits will be traced;
+for
+<I>ioirq</I>
+the addr value is reinterpreted as four ASCII characters and the mask as a
+number to select any of the
+<A href="#irqs">"output IRQs"</A>
+described below;
+and for
+<I>irq</I>
+an interrupt event index and an interrupt vector number.
+The event index is 0 for interrupt pending events
+(the interrupt is enabled and raised)
+or 1 for interrupt handler execution.
+The
+<I>addr/mask</I>
+values are always hexadecimal with leading "0x".
+<P>
+For
+<I>portpin</I> and <I>ioirq</I>
+more friendly formats may also be used:
+for
+<I>portpin</I>
+use a single capital and a digit in place of
+<I>addr/mask</I>;
+for
+<I>ioirq</I>
+the addr field can be any four characters and the mask is a decimal number.
+Those provide the
+<A href="#ioctls">IOCTL key</A>
+and IRQ number that select the traced
+<A href="#irqs">IRQ</A>.
+<P>
+For the form of the option without the mask, the keywords are
+<I>sram8</I> and <I>sram16</I>
+to select byte or 16-bit word locations in the AVR's RAM.
+<P>
+So
+<PRE>
+  --add-trace pwm=portpin@B2 --add-trace interrupt=irq@0x1/0x3 --add-trace X=sram8@0x200
+</PRE>
+will trace the state of pin 2 on port B,
+execution of the interrupt handler for vector 3
+and a variable at RAM address 0x200.
+(The
+<I>--ti</I>
+option offers another way to trace interrupt events.)
+This will trace ADC input sampling and the high byte of ADC output (ATtiny25):
+<PRE>
+  --add-trace sample=ioirq@adc0/17 --add-trace ADCH=trace@0x25/0xff
+</PRE>
+
+<H4 id="input">Input from VCD.</H4>
 VCD files are formatted text files
 and it is fairly easy to create test input with a text editor,
 but they are not really intended to be read directly.
@@ -125,66 +237,6 @@ They are both larger graphical circuit designer/emulator that include simavr
 as a component and have various input devices whose actions can be captured
 as VCD files.
 <P>
-The filename and included items for VCD output may be specified
-<A href="#mmcu">in the firmware,</A>
-by function calls in a controlling program
-(<I><A href="https://raw.githubusercontent.com/buserror/simavr/refs/heads/master/simavr/sim/sim_vcd_file.h">
-    sim_vcd_file.h
-</A></I>)
-or by the
-<I>--output</I> and <I>--add_trace</I>
-options of
-<I>run_avr.</I>
-The
-<I>--add_trace</I>
-option value contains a name for the traced item, a keyword
-and two hexadecimal numbers in the form
-<I>name=kind@addr/mask</I> or <I>name=mem_kind@addr/mask</I>.
-For example,
-<PRE>
-  --add-trace ucsr0a=trace@0xc0/0xff
-</PRE>
-will add a trace named "ucsr0a" on the register at address 0xc0.
-There are four keywords that may substitute for "kind":
-for
-<I>trace</I>
-the parameters are an I/O register address and a mask to set which bits will be traced;
-for
-<I>portpin</I>
-a GPIO port pin number and the ASCII value for the capital letter that identifies the port;
-for
-<I>ioirq</I>
-the addr value is reinterpreted as four ASCII characters and the mask as a
-number to select any of the
-<A href="#irqs">"output IRQs"</A>
-described below;
-and for
-<I>irq</I>
-an interrupt event index and an interrupt vector number.
-The event index is 0 for interrupt pending events
-(the interrupt is enabled and raised)
-or 1 for interrupt handler execution.
-<P>
-For
-<I>ioirq</I>
-a more friendly format may also be used:
-the addr field can be any four characters and the mask is a decimal number.
-They provide the
-<A href="#ioctls">IOCTL key</A>
-and IRQ number that select the traced
-<A href="#irqs">IRQ</A>.
-<P>
-For the form of the option without the mask, the keywords are
-<I>sram8</I> and <I>sram16</I>
-to select byte or 16-bit word locations in the AVR's RAM.
-<P>
-So
-<PRE>
-  --add-trace pwm=portpin@0x2/0x42 --add-trace interrupt=irq@0x1/0x3
-</PRE>
-will trace the state of pin 2 on port B, and execution of the
-interrupt handler for vector 3.
-<P>
 VCD files for input must follow a convention for variable names
 so that they match the
 <I>printf()</I>
@@ -194,7 +246,9 @@ The inserted values correspond to the last two arguments to
 <I><A href="#irqs">avr_io_getirq()</A>,</I>
 described below.
 An example VCD file for input,
+<A href="https://raw.githubusercontent.com/buserror/simavr/refs/heads/master/tests/stimulus_attiny1634.in">
 <I>tests/stimulus_attiny1634.in</I>,
+</A>
 can be found in the source code.
 <P>
 If input files require translation,
@@ -205,13 +259,14 @@ another program,
 may be useful.
 It is a utility for extracting information from various log files
 and generating VCD data.
-<P>
-While your firmware is running,
+
+<H4 id="itrace">Instruction tracing.</H4>
+While firmware is running,
 <I>run-avr</I>
 can show the instructions being executed, using the
 <I>"--trace"</I>
 option.
-This tracing option is normally disabled for best preformance
+This tracing option is normally disabled for best performance
 and is enabled by modifying
 <I>simavr/Makefile</I> to turn on CONFIG_SIMAVR_TRACE and recompiling.
 
@@ -226,8 +281,8 @@ as usual, with the extra option
 and put the process in the background.
 Then start
 <I>avr-gdb</I>
-with your firmware binary (ELF format with debugging symbols is best)
-as argument.
+with the firmware binary as argument
+(ELF format with debugging symbols is best).
 The first gdb command should be:
 <PRE>
   target remote :1234

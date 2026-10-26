@@ -24,6 +24,7 @@
 #include <libgen.h>
 #include <string.h>
 #include <signal.h>
+#include <ctype.h>
 #include "sim_avr.h"
 #include "sim_elf.h"
 #include "sim_core.h"
@@ -207,6 +208,14 @@ main(
 				}
 				break;
 			case 2:
+				if (!strcmp(trace.kind, "portpin") &&
+					sscanf(argv[pi], "%63[^=]=%63[^@]@%c%d",
+						   trace.name, trace.kind, ioctl, &index) == 4 &&
+					isupper(ioctl[0])) {
+					trace.addr = index;
+					trace.mask = ioctl[0];
+					ok = 1;
+				}
 				if (!strcmp(trace.kind, "ioirq") &&
 					sscanf(argv[pi], "%63[^=]=%63[^@]@%4c/%d",
 						   trace.name, trace.kind, ioctl, &index) == 4) {
