@@ -228,6 +228,8 @@ void
 avr_service_interrupts(
 		avr_t * avr)
 {
+	int cnt, min, mini;
+
 	if (!avr->sreg[S_I] || !avr->interrupt_state)
 		return;
 
@@ -242,10 +244,10 @@ avr_service_interrupts(
 
 another:
 	// how many are pending...
-	int cnt = avr_int_pending_get_read_size(&table->pending);
+	cnt = avr_int_pending_get_read_size(&table->pending);
 	// locate the highest priority one
-	int min = 0xff;
-	int mini = 0;
+	min = 0xff;
+	mini = 0;
 	for (int ii = 0; ii < cnt; ii++) {
 		avr_int_vector_t * v = avr_int_pending_read_at(&table->pending, ii);
 		if (v->vector < min) {
