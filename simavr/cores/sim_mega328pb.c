@@ -21,7 +21,6 @@
  */
 
 #include "sim_avr.h"
-#include "sim_core_declare.h"
 #include "avr_eeprom.h"
 #include "avr_flash.h"
 #include "avr_watchdog.h"
@@ -43,7 +42,7 @@ void m328pb_reset(struct avr_t * avr);
 #define __AVR_ATmega328pb__
 #endif
 #include "avr/iom328pb.h"
-
+#include "sim_core_declare.h"
 
 const struct mcu_t {
 	avr_t			core;
