@@ -50,6 +50,15 @@ struct avr_io_usb {
 #define AVR_IOCTL_USB_STALL -3
 #define AVR_IOCTL_USB_OK 0
 
+/*
+ * AVR_IOCTL_USB_VBUS takes the VBUS level as the ioctl parameter,
+ * (void*)1 when the host powers the port, (void*)0 when it does not.
+ * It only changes registers on parts with a VBUS pad (see 'vbus' below).
+ */
+
+// EPNUM is 3 bits wide, parts implement up to 7 of these
+#define AVR_USB_MAX_ENDPOINTS	8
+
 typedef struct avr_usb_t {
 	avr_io_t	io;
 	char name;
@@ -61,6 +70,25 @@ typedef struct avr_usb_t {
 
 	uint8_t usb_com_vect;
 	uint8_t usb_gen_vect;
+
+	/*
+	 * Endpoint geometry. Zero values select the AT90USB82/162 layout:
+	 * 5 endpoints of up to 64 bytes and no DPRAM allocation check.
+	 */
+	uint8_t		ep_count;	// implemented endpoints, EP0..ep_count-1
+	uint16_t	dpram_size;	// endpoint DPRAM bytes, 0 = not checked
+	uint16_t	ep_size_max[AVR_USB_MAX_ENDPOINTS];	// bytes per bank
+	uint8_t		ep_banks_max[AVR_USB_MAX_ENDPOINTS];	// 1 or 2
+
+	/*
+	 * VBUS pad (ATmega16U4/32U4). Leave reg 0 on parts without one,
+	 * they attach as soon as DETACH is cleared.
+	 */
+	avr_regbit_t	vbus;		// USBSTA.VBUS
+	avr_regbit_t	id;			// USBSTA.ID, reads as 1
+	avr_regbit_t	vbusti;		// USBINT.VBUSTI
+	avr_regbit_t	vbuste;		// USBCON.VBUSTE
+	avr_regbit_t	otgpade;	// USBCON.OTGPADE
 
 	struct usb_internal_state * state;
 } avr_usb_t;
