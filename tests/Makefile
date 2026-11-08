@@ -37,6 +37,9 @@ axf: ${sources:.c=.axf}
 
 hex: atmega88_example.hex
 
+# the USB test firmwares share usb_test_fw.h, %.axf only depends on %.c
+${patsubst %.c,%.axf,${filter %_usb.c,${sources}}}: usb_test_fw.h
+
 ${OBJ}/%.tst: tests.c %.c
 ifneq ($(E),)
 	@echo TST $@
