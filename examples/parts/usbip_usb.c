@@ -47,6 +47,11 @@
 #include "avr_usb.h"
 #include "usbip_usb.h"
 
+// macOS has no MSG_NOSIGNAL, SO_NOSIGPIPE is set on the socket instead
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL	0
+#endif
+
 #define TICK_US			100		// socket and URB polling period
 #define STEPS_PER_TICK	64		// IOCTLs per tick, at most
 
@@ -280,6 +285,9 @@ conn_accept(usbip_usb_t * p)
 		return;
 	}
 	setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+#ifdef SO_NOSIGPIPE
+	setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one));
+#endif
 	p->conn_fd = fd;
 	p->imported = 0;
 	p->rx_len = 0;
