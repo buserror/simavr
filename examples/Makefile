@@ -1,9 +1,8 @@
 
 boards_base=${wildcard board_*}
-# Remove simduino until FileMapping is implemented to work around missing mmap in Win32,
-# and board_usbip, which uses mmap and POSIX sockets
+# Remove simduino until FileMapping is implemented to work around missing mmap in Win32
 ifeq (${shell uname -o}, Msys)
-boards=$(filter-out board_simduino board_usbip,$(boards_base))
+boards=$(filter-out board_simduino,$(boards_base))
 else
 boards=$(boards_base)
 endif

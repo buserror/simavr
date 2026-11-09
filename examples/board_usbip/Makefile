@@ -47,4 +47,4 @@ ${target}: ${board}
 	@echo $@ done
 
 clean: clean-${OBJ}
-	rm -rf *.a *.axf *.hex ${target} *.vcd simusbip_flash.bin
+	rm -rf *.a *.axf *.hex ${target} *.vcd

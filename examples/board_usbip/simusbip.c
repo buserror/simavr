@@ -22,13 +22,11 @@
 	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <sys/mman.h>
 #include <unistd.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <signal.h>
 #include <libgen.h>
 
 #include "sim_avr.h"
@@ -37,87 +35,87 @@
 #include "sim_gdb.h"
 #include "usbip_usb.h"
 
-avr_t * avr = NULL;
+static volatile sig_atomic_t stop;
 
-struct avr_flash {
-	char avr_flash_path[1024];
-	int avr_flash_fd;
-};
-
-// avr special flash initalization
-// here: open and map a file to enable a persistent storage for the flash memory
-void avr_special_init( avr_t* avr, void *data)
+static void
+sig_stop(int sig)
 {
-	struct avr_flash *flash_data = (struct avr_flash *)data;
-	// release flash memory if allocated
-	if(avr->flash) free(avr->flash);
-	// open the file
-	flash_data->avr_flash_fd = open(flash_data->avr_flash_path,
-            O_RDWR|O_CREAT, 0644);
-	if (flash_data->avr_flash_fd < 0) {
-		perror(flash_data->avr_flash_path);
-		exit(1);
-	}
-	// resize and map the file the file
-	(void)ftruncate(flash_data->avr_flash_fd, avr->flashend + 1);
-	avr->flash = (uint8_t*)mmap(NULL, avr->flashend + 1, // 32k is multiple of 4096
-            PROT_READ|PROT_WRITE, MAP_SHARED, flash_data->avr_flash_fd, 0);
-	if (avr->flash == MAP_FAILED) {
-		fprintf(stderr, "unable to map memory\n");
-		perror(flash_data->avr_flash_path);
-		exit(1);
-	}
+	stop = 1;
 }
 
-// avr special flash deinitalization
-// here: cleanup the persistent storage
-void avr_special_deinit( avr_t* avr, void *data)
+/*
+ * Persistent flash: read when the core starts and written back when the
+ * simulation ends, so that a bootloader finds the application it was
+ * given last time. Plain stdio, so that it works on Windows too.
+ */
+static void
+flash_load(avr_t * avr, const char * path)
 {
-	struct avr_flash *flash_data = (struct avr_flash *)data;
-	// unmap and close the file
-	munmap( avr->flash, avr->flashend + 1);
-	close(flash_data->avr_flash_fd);
-	// signal that cleanup is done
-	avr->flash = NULL;
+	FILE * f = fopen(path, "rb");
+
+	if (!f)
+		return;	// first run
+	size_t n = fread(avr->flash, 1, avr->flashend + 1, f);
+	fclose(f);
+	printf("Flash: %zu bytes from %s\n", n, path);
+}
+
+static void
+flash_save(avr_t * avr, const char * path)
+{
+	FILE * f = fopen(path, "wb");
+
+	if (!f || fwrite(avr->flash, 1, avr->flashend + 1, f) != avr->flashend + 1)
+		perror(path);
+	if (f)
+		fclose(f);
 }
 
 static void
 usage(const char * name)
 {
 	fprintf(stderr,
-		"Usage: %s [-m mcu] [-f hz] [-p port] [-b boot_address] [-g] [-v] [firmware]\n"
+		"Usage: %s [-m mcu] [-f hz] [-a addr] [-p port] [-b boot_address]\n"
+		"          [-F flash.bin] [-g] [-v] [firmware]\n"
 		"  firmware  .hex or .elf, default ../extra_board_usb/at90usb162_cdc_loopback.hex\n"
 		"  -m mcu    part, default at90usb162 or the one named in the .elf\n"
 		"  -f hz     clock, default 8000000 or the one named in the .elf\n"
+		"  -a addr   USB/IP listening address, default 127.0.0.1,\n"
+		"            0.0.0.0 lets other machines attach the device\n"
 		"  -p port   USB/IP TCP port, default %d\n"
 		"  -b addr   reset vector, e.g. 0x7000 for a 4KB bootloader on a 32U4\n"
+		"  -F file   keep the flash in file between runs, the firmware is\n"
+		"            loaded over it, so a bootloader keeps its application\n"
 		"  -g        wait for gdb on port 1234\n"
-		"  -v        more logging, repeat for more\n"
-		"The flash is kept in simusbip_flash.bin between runs, so that a\n"
-		"bootloader finds the application it was given last time.\n",
+		"  -v        more logging, repeat for more\n",
 		name, USBIP_USB_DEFAULT_PORT);
 	exit(1);
 }
 
 int main(int argc, char *argv[])
 {
-	struct avr_flash flash_data;
-	elf_firmware_t fw = {{0}};
+	elf_firmware_t fw;
 	const char * mmcu = NULL;
 	char path[1024];
 	const char * firmware = NULL;
+	const char * flash_file = NULL;
+	const char * addr = NULL;
 	uint32_t frequency = 0;
 	uint32_t boot = 0;
 	uint16_t port = 0;
 	int gdb = 0, elf = 0, verbose = 0;
 	int opt;
+	avr_t * avr;
 
-	while ((opt = getopt(argc, argv, "m:f:p:b:gvh")) != -1) {
+	memset(&fw, 0, sizeof(fw));
+	while ((opt = getopt(argc, argv, "m:f:a:p:b:F:gvh")) != -1) {
 		switch (opt) {
 			case 'm': mmcu = optarg; break;
 			case 'f': frequency = strtoul(optarg, NULL, 0); break;
+			case 'a': addr = optarg; break;
 			case 'p': port = strtoul(optarg, NULL, 0); break;
 			case 'b': boot = strtoul(optarg, NULL, 0); break;
+			case 'F': flash_file = optarg; break;
 			case 'g': gdb = 1; break;
 			case 'v': verbose++; break;
 			default: usage(argv[0]);
@@ -151,20 +149,12 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%s: Error creating the AVR core %s\n", argv[0], mmcu);
 		exit(1);
 	}
-	strcpy(flash_data.avr_flash_path,  "simusbip_flash.bin");
-	flash_data.avr_flash_fd = 0;
-	// register our own functions
-	avr->custom.init = avr_special_init;
-	avr->custom.deinit = avr_special_deinit;
-	avr->custom.data = &flash_data;
 	avr_init(avr);
 	avr->frequency = frequency;
 	avr->log = LOG_WARNING + verbose;
 
-	// this trick creates a file that contains /and keep/ the flash
-	// in the same state as it was before. This allow the bootloader
-	// app to be kept, and re-run if the bootloader doesn't get a
-	// new one
+	if (flash_file)
+		flash_load(avr, flash_file);
 	if (elf) {
 		fw.frequency = frequency;
 		avr_load_firmware(avr, &fw);
@@ -191,19 +181,27 @@ int main(int argc, char *argv[])
 		avr_gdb_init(avr);
 	}
 
-	if (!usbip_usb_init(avr, NULL, port))
+	if (!usbip_usb_init(avr, addr, port))
 		exit(1);
-	printf("%s at %u Hz, USB/IP server on port %u. To attach it:\n"
-			"  sudo modprobe vhci-hcd\n"
-			"  sudo usbip attach -r 127.0.0.1 -b %s\n",
-			mmcu, frequency, port ? port : USBIP_USB_DEFAULT_PORT,
-			USBIP_USB_BUSID);
+	printf("%s at %u Hz, USB/IP server on %s port %u. To attach it:\n"
+			"  Linux:   sudo modprobe vhci-hcd\n"
+			"           sudo usbip attach -r 127.0.0.1 -b %s\n"
+			"  Windows: usbip attach -r 127.0.0.1 -b %s (usbip-win2,"
+			" from an administrator prompt)\n",
+			mmcu, frequency, addr ? addr : "127.0.0.1",
+			port ? port : USBIP_USB_DEFAULT_PORT,
+			USBIP_USB_BUSID, USBIP_USB_BUSID);
+	fflush(stdout);
 
-	for (;;) {
+	signal(SIGINT, sig_stop);
+	signal(SIGTERM, sig_stop);
+	while (!stop) {
 		int state = avr_run(avr);
 		if (state == cpu_Done || state == cpu_Crashed)
 			break;
 	}
+	if (flash_file)
+		flash_save(avr, flash_file);
 	avr_terminate(avr);
 	return 0;
 }
