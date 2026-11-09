@@ -34,18 +34,28 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <fcntl.h>
-#include <poll.h>
 #include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
 
 #include "sim_avr.h"
 #include "sim_time.h"
+#include "sim_network.h"
 #include "avr_usb.h"
 #include "usbip_usb.h"
+
+/*
+ * Sockets are blocking, and only read or accepted from once select()
+ * says they are ready, which works the same with POSIX and Winsock.
+ */
+#ifdef __MINGW32__
+#define sock_close(s)	closesocket(s)
+#define sock_error()	WSAGetLastError()
+#define SOCK_EINTR		WSAEINTR
+#else
+#include <sys/select.h>
+#define sock_close(s)	close(s)
+#define sock_error()	errno
+#define SOCK_EINTR		EINTR
+#endif
 
 // macOS has no MSG_NOSIGNAL, SO_NOSIGPIPE is set on the socket instead
 #ifndef MSG_NOSIGNAL
@@ -231,7 +241,7 @@ conn_close(usbip_usb_t * p, const char * why)
 	if (p->conn_fd < 0)
 		return;
 	AVR_LOG(p->avr, LOG_TRACE, "USBIP: closing connection: %s\n", why);
-	close(p->conn_fd);
+	sock_close(p->conn_fd);
 	p->conn_fd = -1;
 	p->imported = 0;
 	p->rx_len = 0;
@@ -254,13 +264,8 @@ conn_send(usbip_usb_t * p, const void * buf, size_t len)
 
 	while (len && p->conn_fd >= 0) {
 		ssize_t n = send(p->conn_fd, b, len, MSG_NOSIGNAL);
-		if (n < 0 && errno == EINTR)
+		if (n < 0 && sock_error() == SOCK_EINTR)
 			continue;
-		if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-			struct pollfd pfd = { p->conn_fd, POLLOUT, 0 };
-			poll(&pfd, 1, 100);
-			continue;
-		}
 		if (n <= 0) {
 			conn_close(p, "send failed");
 			return -1;
@@ -269,6 +274,17 @@ conn_send(usbip_usb_t * p, const void * buf, size_t len)
 		len -= n;
 	}
 	return p->conn_fd >= 0 ? 0 : -1;
+}
+
+static int
+sock_readable(int fd)
+{
+	fd_set set;
+	struct timeval tv = { 0, 0 };
+
+	FD_ZERO(&set);
+	FD_SET(fd, &set);
+	return select(fd + 1, &set, NULL, NULL, &tv) > 0;
 }
 
 static void
@@ -281,7 +297,7 @@ conn_accept(usbip_usb_t * p)
 		return;
 	if (p->conn_fd >= 0) {
 		// one client at a time, like a device that can be imported once
-		close(fd);
+		sock_close(fd);
 		return;
 	}
 	setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
@@ -294,25 +310,21 @@ conn_accept(usbip_usb_t * p)
 	AVR_LOG(p->avr, LOG_TRACE, "USBIP: client connected\n");
 }
 
+// one recv() per tick, once select() says there is something to read
 static void
 conn_read(usbip_usb_t * p)
 {
-	for (;;) {
-		if (p->rx_size - p->rx_len < 4096) {
-			p->rx_size = p->rx_size ? p->rx_size * 2 : 16384;
-			p->rx = realloc(p->rx, p->rx_size);
-		}
-		ssize_t n = recv(p->conn_fd, p->rx + p->rx_len,
-				p->rx_size - p->rx_len, MSG_DONTWAIT);
-		if (n > 0) {
-			p->rx_len += n;
-			continue;
-		}
-		if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR))
-			return;
-		conn_close(p, n == 0 ? "client closed" : "recv failed");
-		return;
+	ssize_t n;
+
+	if (p->rx_size - p->rx_len < 4096) {
+		p->rx_size = p->rx_size ? p->rx_size * 2 : 16384;
+		p->rx = realloc(p->rx, p->rx_size);
 	}
+	n = recv(p->conn_fd, p->rx + p->rx_len, p->rx_size - p->rx_len, 0);
+	if (n > 0)
+		p->rx_len += n;
+	else if (n == 0 || sock_error() != SOCK_EINTR)
+		conn_close(p, n == 0 ? "client closed" : "recv failed");
 }
 
 static void
@@ -770,7 +782,6 @@ usbip_tick(
 		void * param)
 {
 	usbip_usb_t * p = param;
-	struct pollfd pfd;
 
 	if (p->detach_pending) {
 		p->detach_pending = 0;
@@ -784,16 +795,10 @@ usbip_tick(
 		enum_start(p);
 	}
 
-	if (p->conn_fd < 0) {
-		pfd = (struct pollfd){ p->listen_fd, POLLIN, 0 };
-		if (poll(&pfd, 1, 0) > 0)
-			conn_accept(p);
-	}
-	if (p->conn_fd >= 0) {
-		pfd = (struct pollfd){ p->conn_fd, POLLIN, 0 };
-		if (poll(&pfd, 1, 0) > 0)
-			conn_read(p);
-	}
+	if (p->conn_fd < 0 && sock_readable(p->listen_fd))
+		conn_accept(p);
+	if (p->conn_fd >= 0 && sock_readable(p->conn_fd))
+		conn_read(p);
 	// requests wait while the device is being (re)enumerated
 	if (p->conn_fd >= 0 && p->dev_state != DEV_ENUMERATING) {
 		if (p->imported)
@@ -832,15 +837,25 @@ usbip_usb_init(
 {
 	usbip_usb_t * p = calloc(1, sizeof(*p));
 	struct sockaddr_in sa = { 0 };
-	int one = 1;
 	avr_irq_t * irq;
 
 	p->avr = avr;
 	p->conn_fd = -1;
+	if (network_init()) {
+		fprintf(stderr, "usbip: can't initialise the network\n");
+		free(p);
+		return NULL;
+	}
 	p->listen_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (p->listen_fd < 0)
 		goto fail;
-	setsockopt(p->listen_fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+#ifndef __MINGW32__
+	{	// restart without waiting for TIME_WAIT. On Windows this would let
+		// another program bind the same port, and isn't needed there.
+		int one = 1;
+		setsockopt(p->listen_fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+	}
+#endif
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(port ? port : USBIP_USB_DEFAULT_PORT);
 	sa.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -850,10 +865,10 @@ usbip_usb_init(
 	}
 	if (bind(p->listen_fd, (struct sockaddr *)&sa, sizeof(sa)) < 0 ||
 			listen(p->listen_fd, 1) < 0) {
-		perror("usbip: listen");
+		fprintf(stderr, "usbip: can't listen on port %u, error %d\n",
+				ntohs(sa.sin_port), sock_error());
 		goto fail;
 	}
-	fcntl(p->listen_fd, F_SETFL, fcntl(p->listen_fd, F_GETFL) | O_NONBLOCK);
 
 	irq = avr_io_getirq(avr, AVR_IOCTL_USB_GETIRQ(), USB_IRQ_ATTACH);
 	if (!irq) {
@@ -866,7 +881,8 @@ usbip_usb_init(
 	return p;
 fail:
 	if (p->listen_fd >= 0)
-		close(p->listen_fd);
+		sock_close(p->listen_fd);
+	network_release();
 	free(p);
 	return NULL;
 }
@@ -880,7 +896,8 @@ usbip_usb_free(
 	avr_cycle_timer_cancel(p->avr, usbip_tick, p);
 	urbs_flush(p);
 	conn_close(p, "shutdown");
-	close(p->listen_fd);
+	sock_close(p->listen_fd);
+	network_release();
 	free(p->cfg);
 	free(p->rx);
 	free(p);
