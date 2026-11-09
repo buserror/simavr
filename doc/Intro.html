@@ -730,9 +730,14 @@ and exchanges bulk data.
 Suspend and resume, OTG and host mode, double-buffered endpoints
 and data toggle checking are not simulated.
 <P>
-<I>examples/extra_board_usb</I> connects the simulated device to Linux
-through the out-of-tree usb-vhci kernel module, so that it appears as a real
-USB device.
+Two parts play the host for you and connect the simulated device to a real
+USB stack, where it appears as an ordinary USB device.
+<I>examples/parts/usbip_usb.c</I> exports it over USB/IP.
+On Linux it is attached with the mainline vhci-hcd driver and the
+<I>usbip</I> tool, as shown in <I>examples/board_usbip</I>,
+which runs any USB firmware this way.
+<I>examples/parts/vhci_usb.c</I>, used by <I>examples/extra_board_usb</I>,
+does the same through the out-of-tree usb-vhci kernel module.
 That module is no longer maintained and does not build on current kernels
 without patches.
 

@@ -1,0 +1,40 @@
+simusbip runs USB device firmware on a simulated AVR and exports the
+device over USB/IP, so a USB/IP client can attach it to a real USB stack.
+It is an alternative to extra_board_usb that needs no out-of-tree kernel
+module: on Linux the client side is the mainline vhci-hcd driver
+(USBIP_VHCI_HCD in the kernel configuration) and the usbip tool,
+packaged as usbip, linux-tools or net-misc/usbip depending on the
+distribution.
+
+The default firmware is extra_board_usb's at90usb162_cdc_loopback, a CDC
+serial port that echoes what it receives.
+
+	make
+	./obj-*/simusbip.elf &
+	sudo modprobe vhci-hcd
+	usbip list -r 127.0.0.1
+	sudo usbip attach -r 127.0.0.1 -b 1-1
+
+The device then shows up in lsusb and, for the loopback firmware, as a
+/dev/ttyACM device. "sudo usbip port" lists attached devices and
+"sudo usbip detach -p <port>" removes one. Stopping simusbip detaches it
+too.
+
+Other firmware can be given on the command line, as .hex or .elf. An .elf
+with an AVR_MCU section selects the part and clock itself:
+
+	./obj-*/simusbip.elf -m atmega32u4 -f 16000000 firmware.hex
+	./obj-*/simusbip.elf ch.elf
+
+simusbip.elf -h lists the options. The flash is kept in simusbip_flash.bin,
+so that a bootloader finds the application it was given last time.
+
+When the firmware disconnects from the bus, for instance when a bootloader
+starts the application, the USB/IP connection is closed and the device has
+to be attached again.
+
+usbip_check.py exercises the server without a kernel: it imports the
+device, enumerates it and sends data through the loopback firmware, the
+way vhci-hcd and cdc-acm would.
+
+USB/IP: https://docs.kernel.org/usb/usbip_protocol.html
