@@ -995,14 +995,7 @@ avr_usb_ioctl(
 			ret = ep_fifo_usb_read(p, epstate, d->buf, d->sz);
 			if (ret < 0) {
 				raise_ep_interrupt(io->avr, p, ep, nakini);
-				// is this correct? It makes the cdc example work.
-				// Linux stops polling the data ep if we send naks,but
-				// according to usb spec nak'ing should be ok.
-				if (epstate->uecfg0x.eptype == 2) {
-					d->sz = 0;
-					return 0;
-				} else
-					return ret;
+				return ret;
 			}
 			d->sz = ret;
 			epstate->ueintx.fifocon = 1;

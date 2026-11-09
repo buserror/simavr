@@ -46,7 +46,6 @@ enum {
  *   WRITE: OUT data, sz bytes. More than the endpoint size is
  *          truncated and flagged as an overflow to the firmware.
  *   READ:  IN data, sz is the buffer size in, the byte count out.
- *          A bulk endpoint with no data returns OK with sz 0, not NAK.
  *   A zero length READ or WRITE on EP0 is a control status stage.
  * RESET: bus reset, NULL parameter. -1 while detached.
  * VBUS:  VBUS level as the parameter, (void*)1 when the host powers the

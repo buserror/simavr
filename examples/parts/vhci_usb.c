@@ -367,6 +367,14 @@ vhci_usb_thread(
 						res = avr_ioctl(p->avr, AVR_IOCTL_USB_READ, &pkt);
 						wrk.work.urb.buffer_actual = pkt.sz;
 					}
+					// Linux stops polling a bulk IN endpoint that times out,
+					// so a NAK there is given back as an empty transfer.
+					if (res == AVR_IOCTL_USB_NAK
+							&& usb_vhci_is_in(wrk.work.urb.epadr)
+							&& usb_vhci_is_bulk(wrk.work.urb.type)) {
+						wrk.work.urb.buffer_actual = 0;
+						res = 0;
+					}
 					if (res == AVR_IOCTL_USB_STALL)
 						wrk.work.urb.status = USB_VHCI_STATUS_STALL;
 					else if (res == AVR_IOCTL_USB_NAK)
