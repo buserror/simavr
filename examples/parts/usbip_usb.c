@@ -82,6 +82,11 @@
 
 #define URB_ZERO_PACKET		0x0040
 
+// URB status codes are Linux errno values, whatever the host's are
+#define USBIP_EINVAL		22
+#define USBIP_EPIPE			32
+#define USBIP_ECONNRESET	104
+
 #define USB_SPEED_FULL		2
 #define BUSNUM				1
 #define DEVNUM				1
@@ -603,7 +608,7 @@ urb_step(usbip_usb_t * p, urb_t * u, int * status)
 			return 1;
 	}
 failed:
-	*status = -EPIPE;	// STALL, or an endpoint the part doesn't have
+	*status = -USBIP_EPIPE;	// STALL, or an endpoint the part doesn't have
 	return 1;
 }
 
@@ -741,7 +746,7 @@ handle_cmd(usbip_usb_t * p)
 			if (iso) {
 				AVR_LOG(p->avr, LOG_WARNING,
 						"USBIP: isochronous transfers are not supported\n");
-				ret_submit(p, u, -EINVAL);
+				ret_submit(p, u, -USBIP_EINVAL);
 				urb_free(u);
 				continue;
 			}
@@ -767,7 +772,7 @@ handle_cmd(usbip_usb_t * p)
 				urb_free(found);
 			}
 			// -ECONNRESET: unlinked before completion, 0: already completed
-			ret_unlink(p, seqnum, found ? -ECONNRESET : 0);
+			ret_unlink(p, seqnum, found ? -USBIP_ECONNRESET : 0);
 		} else {
 			conn_close(p, "unknown command");
 			return;
