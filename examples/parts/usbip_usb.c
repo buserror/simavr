@@ -863,7 +863,7 @@ usbip_usb_init(
 #endif
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(port ? port : USBIP_USB_DEFAULT_PORT);
-	sa.sin_addr.s_addr = htonl(INADDR_ANY);
+	sa.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 	if (addr && inet_pton(AF_INET, addr, &sa.sin_addr) != 1) {
 		fprintf(stderr, "usbip: bad address %s\n", addr);
 		goto fail;

@@ -41,9 +41,11 @@ struct usbip_usb_t;
 #define USBIP_USB_BUSID			"1-1"
 
 /*
- * Starts listening on addr:port (NULL for all addresses, port 0 for the
- * default 3240) and asserts VBUS, as if the device were plugged into a
- * powered port. Returns NULL if the socket can't be set up.
+ * Starts listening on addr:port and asserts VBUS, as if the device were
+ * plugged into a powered port. addr NULL listens on 127.0.0.1 only,
+ * "0.0.0.0" on all interfaces, which lets other machines attach the
+ * device. Port 0 is the default 3240. Returns NULL if the socket can't
+ * be set up.
  */
 struct usbip_usb_t *
 usbip_usb_init(
