@@ -26,7 +26,12 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <pthread.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#else
+#include <netinet/in.h>
+#endif
+
 #include "sim_avr.h"
 #include "sim_core.h" // for SET_SREG_FROM, READ_SREG_INTO
 #include "sim_hex.h"
@@ -974,6 +979,7 @@ avr_gdb_init(
 
 	struct sockaddr_in address = { 0 };
 	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 	address.sin_port = htons (avr->gdb_port);
 
 	if (bind(g->listen, (struct sockaddr *) &address, sizeof(address))) {
@@ -984,7 +990,7 @@ avr_gdb_init(
 		perror("listen");
 		goto error;
 	}
-	printf("avr_gdb_init listening on port %d\n", avr->gdb_port);
+	printf("avr_gdb_init listening on localhost:%d\n", avr->gdb_port);
 	g->avr = avr;
 	g->s = -1;
 	avr->gdb = g;
