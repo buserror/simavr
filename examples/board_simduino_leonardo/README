@@ -1,0 +1,88 @@
+simduino_leonardo is an Arduino Leonardo: an ATmega32U4 at 16MHz running
+Arduino's Caterina bootloader, with the board's USB port exported over
+USB/IP. Once a USB/IP client attaches it, it is a Leonardo plugged into
+the host, and avrdude, the Arduino IDE or arduino-cli upload sketches to
+it the same way.
+
+	make
+	./obj-*/simduino_leonardo.elf
+
+Linux
+-----
+The client is the mainline vhci-hcd driver (USBIP_VHCI_HCD in the kernel
+configuration) and the usbip tool, packaged as usbip, linux-tools or
+net-misc/usbip depending on the distribution:
+
+	sudo modprobe vhci-hcd
+	usbip list -r 127.0.0.1
+	sudo usbip attach -r 127.0.0.1 -b 1-1
+
+The bootloader shows up as 2341:0036 and a /dev/ttyACM device, which
+avrdude programs:
+
+	avrdude -c avr109 -p m32u4 -P /dev/ttyACM0 -U flash:w:sketch.hex
+
+"sudo usbip port" lists attached devices and "sudo usbip detach -p
+<port>" removes one.
+
+If opening the port fails with an I/O error, and the kernel log shows the
+board being reset and reconnected under a new device number, USB
+autosuspend is enabled (power/control is "auto", often set by a power
+management tool). Caterina is built without the answer to GET_STATUS for
+the device, which Linux asks for when it resumes a suspended device; it
+then resets the board and takes it for a new one. A real Leonardo in its
+bootloader does the same. Turn autosuspend off for devices that appear
+from then on, until the next boot:
+
+	echo -1 | sudo tee /sys/module/usbcore/parameters/autosuspend
+
+or for the attached board only, until it re-enumerates:
+
+	echo on | sudo tee /sys/bus/usb/devices/<port>/power/control
+
+Windows
+-------
+Build simavr in MSYS2 as usual. The client is usbip-win2
+(https://github.com/vadimgrn/usbip-win2, or "winget install
+vadimgrn.usbip-win2"), Windows 10 1903 or later. From an administrator
+prompt:
+
+	usbip list -r 127.0.0.1
+	usbip attach -r 127.0.0.1 -b 1-1
+
+The board then has a COM port.
+
+Resets and reattaching
+----------------------
+As on the board, the flash starts erased, and Caterina waits in the
+bootloader until it is given a sketch. After a power-on with a sketch in
+the flash, Caterina starts it at once. After the reset button, it waits
+8 seconds for an upload first. -r starts the simulation as after the
+reset button, and Ctrl-\ presses it while it runs (not on Windows). A
+sketch built with the Arduino core resets into the bootloader when the
+port is opened at 1200 baud and closed, the usual way to upload, through
+a watchdog reset.
+
+Each time the firmware disconnects from the bus, when the bootloader
+starts the sketch, at a reset, or when a sketch is reset into the
+bootloader, the USB/IP connection is closed and the board has to be
+attached again, which is when a real board re-enumerates.
+
+The flash and the EEPROM are kept in simduino_leonardo_memory.hex in the
+current directory, an Intel HEX file with the EEPROM at simavr's 0x810000
+offset. It is written back when simduino_leonardo stops (Ctrl-C included),
+so the next run finds the sketch uploaded last and what it stored. -F
+names another .hex file, -n starts erased and keeps nothing. A sketch
+given on the command line, .hex or .elf, is programmed over it at start.
+
+simduino_leonardo.elf -h lists the options. The server only listens on
+127.0.0.1 unless given another address with -a; "-a 0.0.0.0" lets other
+machines attach the board.
+
+The bootloader
+--------------
+Caterina-Leonardo-bootloader.hex is Arduino's Caterina-Leonardo.hex with
+the records below 0x7000 removed, which hold a demonstration sketch, so
+that only the bootloader remains, at 0x7000 to 0x7FD9. See LICENSE.
+
+USB/IP: https://docs.kernel.org/usb/usbip_protocol.html

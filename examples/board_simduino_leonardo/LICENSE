@@ -1,0 +1,40 @@
+Caterina-Leonardo-bootloader.hex
+================================
+
+Arduino's Caterina bootloader, built for the Leonardo, is a modified
+version of the CDC class bootloader of Dean Camera's LUFA library, built
+against LUFA 111009. The image comes from Arduino's ArduinoCore-avr
+repository, https://github.com/arduino/ArduinoCore-avr:
+
+	bootloaders/caterina/Caterina-Leonardo.hex
+	commit 11b9130371e8447920edb65a75706a6c951e51fc
+	git blob 47053bc531df86341eb31c361e1ac42f7ef8ad56
+
+The records below address 0x7000 were removed. They hold a sketch built
+with the Arduino core, which is not part of the bootloader and is not
+covered by the notice below. The bootloader sources,
+bootloaders/caterina/Caterina.c and the files next to it, carry LUFA's
+license, which LUFA's documentation calls the MIT license. Its notice,
+as it appears in those sources:
+
+  Copyright 2011  Dean Camera (dean [at] fourwalledcubicle [dot] com)
+
+  Permission to use, copy, modify, distribute, and sell this
+  software and its documentation for any purpose is hereby granted
+  without fee, provided that the above copyright notice appear in
+  all copies and that both that the copyright notice and this
+  permission notice and warranty disclaimer appear in supporting
+  documentation, and that the name of the author not be used in
+  advertising or publicity pertaining to distribution of the
+  software without specific, written prior permission.
+
+  The author disclaim all warranties with regard to this
+  software, including all implied warranties of merchantability
+  and fitness.  In no event shall the author be liable for any
+  special, indirect or consequential damages or any damages
+  whatsoever resulting from loss of use, data or profits, whether
+  in an action of contract, negligence or other tortious action,
+  arising out of or in connection with the use or performance of
+  this software.
+
+The USB vendor and product IDs in the image (2341:0036) are Arduino's.
