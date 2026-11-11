@@ -33,7 +33,28 @@ enum {
 	USB_IRQ_COUNT
 };
 
-// add port number to get the real IRQ
+/*
+ * Host side interface. The code calling these plays the USB host,
+ * see doc/Intro.html and tests/test_usb_host.h.
+ *
+ * WRITE, READ and SETUP take a struct avr_io_usb and return
+ * AVR_IOCTL_USB_OK, AVR_IOCTL_USB_NAK (firmware not ready, run it and
+ * retry), AVR_IOCTL_USB_STALL, or -1 for an endpoint the part does not
+ * have. They NAK while the device is detached or the endpoint is not
+ * configured.
+ *   SETUP: 8 byte SETUP packet to a control endpoint.
+ *   WRITE: OUT data, sz bytes. More than the endpoint size is
+ *          truncated and flagged as an overflow to the firmware.
+ *   READ:  IN data, sz is the buffer size in, the byte count out.
+ *          A bulk endpoint with no data returns OK with sz 0, not NAK.
+ *   A zero length READ or WRITE on EP0 is a control status stage.
+ * RESET: bus reset, NULL parameter. -1 while detached.
+ * VBUS:  VBUS level as the parameter, (void*)1 when the host powers the
+ *        port, (void*)0 when it does not. It only changes registers on
+ *        parts with a VBUS pad (see 'vbus' below).
+ * GETIRQ: base of the USB_IRQ_* IRQs. USB_IRQ_ATTACH is raised with 1
+ *        when the firmware connects to the bus, 0 when it disconnects.
+ */
 #define AVR_IOCTL_USB_WRITE AVR_IOCTL_DEF('u','s','b','w')
 #define AVR_IOCTL_USB_READ AVR_IOCTL_DEF('u','s','b','r')
 #define AVR_IOCTL_USB_SETUP AVR_IOCTL_DEF('u','s','b','s')
@@ -42,19 +63,13 @@ enum {
 #define AVR_IOCTL_USB_GETIRQ() AVR_IOCTL_DEF('u','s','b',' ')
 
 struct avr_io_usb {
-	uint8_t pipe;	//[in]
+	uint8_t pipe;	//[in] endpoint number, the direction bit is ignored
 	uint32_t  sz;		//[in/out]
 	uint8_t * buf;	//[in/out]
 };
 #define AVR_IOCTL_USB_NAK -2
 #define AVR_IOCTL_USB_STALL -3
 #define AVR_IOCTL_USB_OK 0
-
-/*
- * AVR_IOCTL_USB_VBUS takes the VBUS level as the ioctl parameter,
- * (void*)1 when the host powers the port, (void*)0 when it does not.
- * It only changes registers on parts with a VBUS pad (see 'vbus' below).
- */
 
 // EPNUM is 3 bits wide, parts implement up to 7 of these
 #define AVR_USB_MAX_ENDPOINTS	8

@@ -680,6 +680,12 @@ That simplifies both the simulator and external code,
 and the omission should only be visible if the pins used
 are also linked to unrelated external circuitry.
 
+<H5 id="usb">USB.</H5>
+The USB device controller is like the other communication peripherals:
+the firmware sees its registers, and the program using <I>libsimavr</I>
+plays the USB host, moving packets in and out of the endpoints with IOCTLs.
+See <A href="USB.html">USB in simavr</A>.
+
 <H5>Simavr Timers.</H5>
 The implementation of peripherals such as serial communications and the ADC
 (and the AVR's own timers!) requires timed events that are independent
