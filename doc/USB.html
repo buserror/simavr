@@ -53,6 +53,12 @@ and exchanges bulk data.
 <P>
 Suspend and resume, OTG and host mode, double-buffered endpoints
 and data toggle checking are not simulated.
+<P>
+<I>examples/parts/usbip_usb.c</I> plays the host for you and exports the
+simulated device over USB/IP, so that a USB/IP client attaches it to a
+real USB stack, where it appears as an ordinary USB device.
+On Linux the client is the mainline vhci-hcd driver and the <I>usbip</I>
+tool, on Windows usbip-win2.
 
 </BODY>
 </HTML>
