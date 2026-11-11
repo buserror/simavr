@@ -37,6 +37,8 @@ axf: ${sources:.c=.axf}
 
 hex: atmega88_example.hex
 
+at90usb162_usb.axf atmega32u2_usb.axf atmega32u4_usb.axf: usb_test_fw.h
+
 ${OBJ}/%.tst: tests.c %.c
 ifneq ($(E),)
 	@echo TST $@
