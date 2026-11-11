@@ -1,0 +1,64 @@
+usbserial is the USB side of an Arduino Uno R3: its ATmega16U2 at 16MHz
+running Arduino-usbserial, the board's USB to serial firmware, with the
+USB port exported over USB/IP. Once a USB/IP client attaches it, the host
+sees the Uno's serial port (2341:0043).
+
+	make
+	./obj-*/usbserial.elf
+
+On the board, USART1 of the 16U2 goes to the ATmega328P and DTR pulls the
+328P's RESET low (PD7). Here USART1 is looped back, TX to RX, so what is
+written to the serial port comes back, at the baud rate the host set.
+With -t (not on Windows) USART1 is connected to a pty instead, linked
+from /tmp/simavr-uart1, where another program can play the 328P. Changes
+of the RESET line are printed.
+
+Other firmware for the part can be given on the command line, as .hex or
+.elf; an .elf with an AVR_MCU section selects the part and clock itself.
+
+	./obj-*/usbserial.elf -t
+	./obj-*/usbserial.elf firmware.elf
+
+Linux
+-----
+The client is the mainline vhci-hcd driver (USBIP_VHCI_HCD in the kernel
+configuration) and the usbip tool, packaged as usbip, linux-tools or
+net-misc/usbip depending on the distribution:
+
+	sudo modprobe vhci-hcd
+	usbip list -r 127.0.0.1
+	sudo usbip attach -r 127.0.0.1 -b 1-1
+
+The device then shows up in lsusb and as a /dev/ttyACM device. "sudo usbip
+port" lists attached devices and "sudo usbip detach -p <port>" removes
+one. Stopping usbserial detaches it too.
+
+Windows
+-------
+Build simavr in MSYS2 as usual. The client is usbip-win2
+(https://github.com/vadimgrn/usbip-win2, or "winget install
+vadimgrn.usbip-win2"), Windows 10 1903 or later. From an administrator
+prompt:
+
+	usbip list -r 127.0.0.1
+	usbip attach -r 127.0.0.1 -b 1-1
+
+"usbip port" and "usbip detach -p <port>" work as on Linux.
+
+Options
+-------
+usbserial.elf -h lists them. The server only listens on 127.0.0.1 unless
+given another address with -a; "-a 0.0.0.0" lets other machines attach
+the device. When the firmware disconnects from the bus, the USB/IP
+connection is closed and the device has to be attached again.
+
+usbip_check.py exercises the server without a kernel: it imports the
+device, enumerates it and sends data through the loopback, the way
+vhci-hcd and cdc-acm would.
+
+The firmware
+------------
+Arduino-usbserial-atmega16u2-Uno-Rev3.hex is Arduino's image, unchanged.
+See LICENSE.
+
+USB/IP: https://docs.kernel.org/usb/usbip_protocol.html
