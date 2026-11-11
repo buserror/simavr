@@ -1,0 +1,66 @@
+<HTML>
+<TITLE>
+USB in simavr.
+</TITLE>
+<BODY style="max-width:700px; margin:auto;">
+
+<H3>USB in simavr.</H3>
+The USB device controller is simulated on the AT90USB82/162,
+ATmega8U2/16U2/32U2 and ATmega16U4/32U4, in device mode only.
+There is no simulated cable or host controller.
+Instead the program using <I>libsimavr</I> acts as the USB host,
+moving packets in and out of the endpoints with the IOCTLs in
+<I><A href="https://raw.githubusercontent.com/buserror/simavr/refs/heads/master/simavr/sim/avr_usb.h">
+    avr_usb.h
+</A></I>.
+<P>
+AVR_IOCTL_USB_SETUP, AVR_IOCTL_USB_WRITE and AVR_IOCTL_USB_READ
+take a <I>struct avr_io_usb</I> with an endpoint number, a size and a buffer.
+They return 0, AVR_IOCTL_USB_NAK if the firmware is not ready
+(try again after running it for a while) or AVR_IOCTL_USB_STALL.
+After a read, the size field holds the number of bytes received.
+A control transfer is a SETUP followed by its data and status stages,
+which are ordinary reads and writes on endpoint 0,
+the status stage being a transfer of zero bytes.
+AVR_IOCTL_USB_RESET signals a bus reset and AVR_IOCTL_USB_VBUS,
+with a parameter of 1 or 0, plugs or unplugs the cable.
+That matters on the ATmega16U4/32U4: as on real hardware,
+firmware that waits for VBUS before connecting needs it.
+The USB_IRQ_ATTACH IRQ reports when the firmware connects to or
+disconnects from the bus.
+<PRE>
+	avr_irq_register_notify(
+		avr_io_getirq(avr, AVR_IOCTL_USB_GETIRQ(), USB_IRQ_ATTACH),
+		attach_hook, NULL);
+	avr_ioctl(avr, AVR_IOCTL_USB_VBUS, (void *)1);
+
+	... run until attach_hook() sees 1 ...
+
+	avr_ioctl(avr, AVR_IOCTL_USB_RESET, NULL);
+
+	uint8_t setup[8] = { 0x80, 6, 0, 1, 0, 0, 18, 0 }; // GET_DESCRIPTOR(device)
+	uint8_t desc[18];
+	struct avr_io_usb pkt = { 0, sizeof setup, setup };
+
+	avr_ioctl(avr, AVR_IOCTL_USB_SETUP, &pkt);
+	pkt.sz = sizeof desc;
+	pkt.buf = desc;
+	while (avr_ioctl(avr, AVR_IOCTL_USB_READ, &pkt) == AVR_IOCTL_USB_NAK)
+		... run the firmware for a little, restore pkt.sz ...
+</PRE>
+<I>tests/test_usb_host.h</I> is a complete example that enumerates a device
+and exchanges bulk data.
+<P>
+When no data is ready, a read from a bulk IN endpoint returns 0 with a size
+of zero rather than AVR_IOCTL_USB_NAK.
+Suspend and resume, OTG and host mode, double-buffered endpoints
+and data toggle checking are not simulated.
+<P>
+<I>examples/extra_board_usb</I> connects the simulated device to Linux
+through the out-of-tree usb-vhci kernel module, so that it appears as a real
+USB device.
+That module is no longer maintained and does not build on current kernels
+without patches.
+
+</BODY>
+</HTML>
