@@ -55,12 +55,6 @@ When no data is ready, a read from a bulk IN endpoint returns 0 with a size
 of zero rather than AVR_IOCTL_USB_NAK.
 Suspend and resume, OTG and host mode, double-buffered endpoints
 and data toggle checking are not simulated.
-<P>
-<I>examples/extra_board_usb</I> connects the simulated device to Linux
-through the out-of-tree usb-vhci kernel module, so that it appears as a real
-USB device.
-That module is no longer maintained and does not build on current kernels
-without patches.
 
 </BODY>
 </HTML>
