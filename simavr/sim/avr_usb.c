@@ -254,12 +254,21 @@ ueint_value(
 	return v;
 }
 
+/*
+ * USB_COM and USB_GEN have no flag of their own: they trigger for as long
+ * as an enabled flag is set (datasheet "Reset and Interrupt Handling",
+ * second type of interrupt), and the flags are only cleared by software.
+ * The vectors are sticky, raised while the condition holds and cleared
+ * when it goes away. Called whenever a flag or an enable bit changes.
+ */
 static void
 update_com_irq(
 		avr_usb_t * p)
 {
 	if (ueint_value(p))
 		avr_raise_interrupt(p->io.avr, &p->state->com_vect);
+	else
+		avr_clear_sticky_interrupt(p->io.avr, &p->state->com_vect);
 }
 
 static void
@@ -275,6 +284,8 @@ update_gen_irq(
 		pending = 1;
 	if (pending)
 		avr_raise_interrupt(avr, &p->state->gen_vect);
+	else
+		avr_clear_sticky_interrupt(avr, &p->state->gen_vect);
 }
 
 /*
@@ -1130,6 +1141,8 @@ register_vectors(
 
 	p->state->com_vect.vector = p->usb_com_vect;
 	p->state->gen_vect.vector = p->usb_gen_vect;
+	p->state->com_vect.raise_sticky = 1;
+	p->state->gen_vect.raise_sticky = 1;
 
 	avr_register_vector(avr, &p->state->com_vect);
 	avr_register_vector(avr, &p->state->gen_vect);
