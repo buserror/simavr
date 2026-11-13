@@ -966,7 +966,7 @@ avr_usb_ioctl(
 	struct avr_io_usb * d = (struct avr_io_usb*) io_param;
 	struct _epstate * epstate = 0;
 	int ret;
-	uint8_t ep;
+	uint8_t ep = 0;
 
 	switch (ctl) {
 		case AVR_IOCTL_USB_READ:
