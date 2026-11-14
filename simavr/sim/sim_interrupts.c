@@ -293,6 +293,8 @@ another:
 		_avr_push_addr(avr, avr->pc);
 		avr_sreg_set(avr, S_I, 0);
 		avr->pc = vector->vector * avr->vector_size;
+		if (avr_regbit_get(avr, avr->ivsel))
+			avr->pc += avr->boot_start;
 
 		avr_raise_irq(vector->irq + AVR_INT_IRQ_RUNNING, 1);
 		avr_raise_irq(table->irq + AVR_INT_IRQ_RUNNING, vector->vector);

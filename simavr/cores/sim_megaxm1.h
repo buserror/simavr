@@ -67,6 +67,12 @@ const struct mcu_t SIM_CORENAME = {
 	.core = {
 		.mmcu = SIM_MMCU,
 		DEFAULT_CORE(SIM_VECTOR_SIZE),
+#if FLASHEND == 0x3fff	// ATmega16M1
+		.boot_min_words = 256,		// smallest boot section, BOOTSZ = 11
+#else					// ATmega64M1
+		.boot_min_words = 512,
+#endif
+		.boot_fuse = AVR_FUSE_HIGH,	// with BOOTRST and BOOTSZ
 
 		.init = mxm1_init,
 		.reset = mxm1_reset,

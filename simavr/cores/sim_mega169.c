@@ -48,6 +48,8 @@ const struct mcu_t {
 	.core = {
 		.mmcu = "atmega169p",
 		DEFAULT_CORE(4),
+		.boot_min_words = 128,		// smallest boot section, BOOTSZ = 11
+		.boot_fuse = AVR_FUSE_HIGH,	// with BOOTRST and BOOTSZ
 
 		.init = m169p_init,
 		.reset = m169p_reset,

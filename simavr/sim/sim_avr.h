@@ -190,6 +190,12 @@ typedef void (*avr_run_t)(
 #define AVR_FUSE_HIGH	1
 #define AVR_FUSE_EXT	2
 
+// BOOTRST and BOOTSZ, in fuse[boot_fuse], 0 when programmed
+#define AVR_FUSE_BOOTRST	(1 << 0)
+#define AVR_FUSE_BOOTSZ0	(1 << 1)
+#define AVR_FUSE_BOOTSZ1	(1 << 2)
+#define AVR_FUSE_BOOTSZ		(AVR_FUSE_BOOTSZ1 | AVR_FUSE_BOOTSZ0)
+
 /*
  * Main AVR instance. Some of these fields are set by the AVR "Core" definition files
  * the rest is runtime data (as little as possible)
@@ -308,6 +314,16 @@ typedef struct avr_t {
 	 * allow support for bootloaders
 	 */
 	avr_flashaddr_t	reset_pc;
+	/*
+	 * Boot section, on cores that give its smallest size (BOOTSZ = 11) and
+	 * the fuse byte with BOOTRST and BOOTSZ: at every reset
+	 * boot_start comes from BOOTSZ, and reset_pc is boot_start if BOOTRST
+	 * is programmed, 0 otherwise. IVSEL moves the vectors to boot_start.
+	 */
+	uint8_t			boot_fuse;		// AVR_FUSE_HIGH or AVR_FUSE_EXT
+	uint16_t		boot_min_words;
+	avr_flashaddr_t	boot_start;
+	avr_regbit_t	ivsel;
 
 	/* Callback for single-bit instructions (SBI, CBI) on the low 32
 	 * I/O registers.  If not set, or the function returns zero, a normal

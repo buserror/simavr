@@ -85,6 +85,8 @@ const struct mcu_t SIM_CORENAME = {
 	.core = {
 	.mmcu = SIM_MMCU,
 	DEFAULT_CORE(4),
+	.boot_min_words = 256,		// smallest boot section, BOOTSZ = 11
+	.boot_fuse = AVR_FUSE_HIGH,	// with BOOTRST and BOOTSZ
 
 	.init = mxu4_init,
 	.reset = mxu4_reset,

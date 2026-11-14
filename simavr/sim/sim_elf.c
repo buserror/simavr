@@ -134,6 +134,7 @@ avr_load_firmware(
 		elf_firmware_t * firmware)
 {
 	fw_chunk_t *chunk, *ochunk;
+	int fuses = 0;
 
 	if (firmware->frequency)
 		avr->frequency = firmware->frequency;
@@ -275,6 +276,7 @@ avr_load_firmware(
 			break;
 		case FUSES:
 			do_chunk(chunk, avr->fuse, sizeof avr->fuse, NULL);
+			fuses = 1;
 			break;
 		case LOCK:
 			do_chunk(chunk, &avr->lockbits, sizeof avr->lockbits, NULL);
@@ -288,6 +290,8 @@ avr_load_firmware(
 		chunk = chunk->next;
 		free(ochunk);
 	}
+	if (fuses)	// programmed before power-on
+		avr_reset(avr);
 	// load the default pull up/down values for ports
 	for (int i = 0; i < 8 && firmware->external_state[i].port; i++) {
 		avr_ioport_external_t e = {

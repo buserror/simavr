@@ -89,6 +89,8 @@ const struct mcu_t {
 	.core = {
 		.mmcu = "atmega128rfr2",
 		DEFAULT_CORE(4),
+		.boot_min_words = 512,		// smallest boot section, BOOTSZ = 11
+		.boot_fuse = AVR_FUSE_HIGH,	// with BOOTRST and BOOTSZ
 
 		.init = m128rfr2_init,
 		.reset = m128rfr2_reset,

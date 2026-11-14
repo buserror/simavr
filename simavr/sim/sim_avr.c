@@ -234,6 +234,14 @@ avr_reset(
 	for(int i = 0x20; i <= avr->ioend; i++)
 		avr->data[i] = 0;
 	_avr_sp_set(avr, avr->ramend);
+	if (avr->boot_min_words) {
+		uint8_t f = avr->fuse[avr->boot_fuse];
+		// BOOTSZ 11 is the smallest section, each step down doubles it
+		uint8_t doublings = (~f & AVR_FUSE_BOOTSZ) / AVR_FUSE_BOOTSZ0;
+		avr->boot_start = avr->flashend + 1 -
+				(avr->boot_min_words * 2 << doublings);	// in bytes
+		avr->reset_pc = (f & AVR_FUSE_BOOTRST) ? 0 : avr->boot_start;
+	}
 	avr->pc = avr->reset_pc;	// Likely to be zero
 	for (int i = 0; i < 8; i++)
 		avr->sreg[i] = 0;
