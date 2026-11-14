@@ -196,7 +196,8 @@ static void avr_watchdog_reset(avr_io_t * port)
 	}
 	/* TODO could now use the two pending/running IRQs to do the same
 	 * as before */
-	avr_irq_register_notify(p->watchdog.irq, avr_watchdog_irq_notify, p);
+	if (p->watchdog.vector)	// none on the ATmega8/16/32, its IRQ isn't set up
+		avr_irq_register_notify(p->watchdog.irq, avr_watchdog_irq_notify, p);
 }
 
 static	avr_io_t	_io = {

@@ -38,6 +38,7 @@ axf: ${sources:.c=.axf}
 hex: atmega88_example.hex
 
 at90usb162_usb.axf atmega32u2_usb.axf atmega32u4_usb.axf: usb_test_fw.h
+atmega328p_ivsel_boot.axf: AVR_LDFLAGS = -Wl,--section-start=.text=0x7800
 
 ${OBJ}/%.tst: tests.c %.c
 ifneq ($(E),)

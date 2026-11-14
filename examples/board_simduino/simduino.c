@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%s: Unable to load %s\n", argv[0], boot_path);
 		exit(1);
 	}
-	if (boot_base > 32*1024*1024) {
+	if (boot_base >= 32*1024) {	// past an ATmega328's flash
 		mmcu = "atmega2560";
 		freq = 20000000;
 	}
@@ -134,12 +134,17 @@ int main(int argc, char *argv[])
 	avr->custom.init = avr_special_init;
 	avr->custom.deinit = avr_special_deinit;
 	avr->custom.data = &flash_data;
+	// the board's BOOTRST and BOOTSZ, programmed: the boot section of its
+	// bootloader, 4096 words on a Mega, 1024 on a Duemilanove
+	uint8_t * fuse = &avr->fuse[avr->boot_fuse];
+	*fuse &= ~(AVR_FUSE_BOOTRST | AVR_FUSE_BOOTSZ);
+	if (strcmp(mmcu, "atmega2560"))
+		*fuse |= AVR_FUSE_BOOTSZ0;
 	avr_init(avr);
 	avr->frequency = freq;
 
 	memcpy(avr->flash + boot_base, boot, boot_size);
 	free(boot);
-	avr->pc = boot_base;
 	/* end of flash, remember we are writing /code/ */
 	avr->codeend = avr->flashend;
 	avr->log = 1 + verbose;
