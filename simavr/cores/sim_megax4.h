@@ -78,6 +78,14 @@ const struct mcu_t SIM_CORENAME = {
 	.core = {
 		.mmcu = SIM_MMCU,
 		DEFAULT_CORE(4),
+#if FLASHEND == 0x3fff	// ATmega164
+		.boot_min_words = 128,
+#elif FLASHEND == 0x7fff	// ATmega324
+		.boot_min_words = 256,
+#else					// ATmega644/1284
+		.boot_min_words = 512,
+#endif
+		.boot_fuse = AVR_FUSE_HIGH,
 
 		.init = mx4_init,
 		.reset = mx4_reset,

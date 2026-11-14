@@ -214,6 +214,23 @@ avr_terminate(
 }
 
 void
+avr_update_reset_vector(
+		avr_t * avr)
+{
+	if (avr->boot_min_words) {
+		uint8_t fuse = avr->fuse[avr->boot_fuse];
+		// inverted as fuses read 0 when programmed, 0 is the smallest section
+		uint8_t bootsz = (~fuse & AVR_FUSE_BOOTSZ_MASK) >> AVR_FUSE_BOOTSZ0;
+		uint32_t boot_bytes = (avr->boot_min_words * 2) << bootsz;
+		avr->boot_start = avr->flashend + 1 - boot_bytes;
+		if (!(fuse & (1 << AVR_FUSE_BOOTRST))) {
+			avr->reset_pc = avr->boot_start;
+			avr->pc = avr->reset_pc;
+		}
+	}
+}
+
+void
 avr_reset(
 		avr_t * avr)
 {
@@ -234,6 +251,7 @@ avr_reset(
 	for(int i = 0x20; i <= avr->ioend; i++)
 		avr->data[i] = 0;
 	_avr_sp_set(avr, avr->ramend);
+	avr_update_reset_vector(avr);
 	avr->pc = avr->reset_pc;	// Likely to be zero
 	for (int i = 0; i < 8; i++)
 		avr->sreg[i] = 0;
