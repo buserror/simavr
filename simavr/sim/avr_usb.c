@@ -1006,14 +1006,7 @@ avr_usb_ioctl(
 			ret = ep_fifo_usb_read(p, epstate, d->buf, d->sz);
 			if (ret < 0) {
 				raise_ep_interrupt(io->avr, p, ep, nakini);
-				// is this correct? It makes the cdc example work.
-				// Linux stops polling the data ep if we send naks,but
-				// according to usb spec nak'ing should be ok.
-				if (epstate->uecfg0x.eptype == 2) {
-					d->sz = 0;
-					return 0;
-				} else
-					return ret;
+				return ret;
 			}
 			d->sz = ret;
 			epstate->ueintx.fifocon = 1;
@@ -1026,6 +1019,11 @@ avr_usb_ioctl(
 			if (epstate->ueconx.stallrq) {
 				raise_ep_interrupt(io->avr, p, ep, stalledi);
 				return AVR_IOCTL_USB_STALL;
+			}
+			// the bank still holds a SETUP the firmware hasn't read
+			if (epstate->ueintx.rxstpi) {
+				raise_ep_interrupt(io->avr, p, ep, nakouti);
+				return AVR_IOCTL_USB_NAK;
 			}
 
 			ret = ep_fifo_usb_write(p, ep, d->buf, d->sz);

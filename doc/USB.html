@@ -51,8 +51,6 @@ disconnects from the bus.
 <I>tests/test_usb_host.h</I> is a complete example that enumerates a device
 and exchanges bulk data.
 <P>
-When no data is ready, a read from a bulk IN endpoint returns 0 with a size
-of zero rather than AVR_IOCTL_USB_NAK.
 Suspend and resume, OTG and host mode, double-buffered endpoints
 and data toggle checking are not simulated.
 
