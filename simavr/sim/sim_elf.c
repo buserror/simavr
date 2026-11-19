@@ -134,6 +134,7 @@ avr_load_firmware(
 		elf_firmware_t * firmware)
 {
 	fw_chunk_t *chunk, *ochunk;
+	int fuses = 0;
 
 	if (firmware->frequency)
 		avr->frequency = firmware->frequency;
@@ -275,6 +276,7 @@ avr_load_firmware(
 			break;
 		case FUSES:
 			do_chunk(chunk, avr->fuse, sizeof avr->fuse, NULL);
+			fuses = 1;
 			break;
 		case LOCK:
 			do_chunk(chunk, &avr->lockbits, sizeof avr->lockbits, NULL);
@@ -287,6 +289,16 @@ avr_load_firmware(
 		ochunk = chunk;
 		chunk = chunk->next;
 		free(ochunk);
+	}
+	if (fuses) {
+		/*
+		 * avr_init() set the boot section and the reset vector from the
+		 * default fuses of the part, before the firmware's were loaded
+		 * here. Update them, as on a part programmed before power-on, so
+		 * that BOOTRST and BOOTSZ give the reset vector and the boot
+		 * section the firmware asked for.
+		 */
+		avr_update_reset_vector(avr);
 	}
 	// load the default pull up/down values for ports
 	for (int i = 0; i < 8 && firmware->external_state[i].port; i++) {

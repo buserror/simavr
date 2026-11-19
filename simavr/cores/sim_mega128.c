@@ -61,6 +61,8 @@ const struct mcu_t {
 	.core = {
 		.mmcu = "atmega128",
 		DEFAULT_CORE(4),
+		.boot_min_words = 512,
+		.boot_fuse = AVR_FUSE_HIGH,
 
 		.init = m128_init,
 		.reset = m128_reset,

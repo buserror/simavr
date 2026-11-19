@@ -63,6 +63,8 @@ const struct mcu_t {
 	.core = {
 		.mmcu = "atmega128rfa1",
 		DEFAULT_CORE(4),
+		.boot_min_words = 512,
+		.boot_fuse = AVR_FUSE_HIGH,
 
 		.init = m128rfa1_init,
 		.reset = m128rfa1_reset,

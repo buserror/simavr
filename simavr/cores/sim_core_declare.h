@@ -32,7 +32,7 @@
 #define _SFR_IO8(v) ((v)+32)
 #define _SFR_IO16(v) ((v)+32)
 #define _SFR_MEM8(v) (v)
-#define _BV(v) (v)
+#define _BV(v) (1 << (v))
 #define _VECTOR(v) (v)
 
 /*
@@ -62,13 +62,21 @@
 # define _FUSE_HELPER { FUSE1_DEFAULT, FUSE1_DEFAULT, FUSE2_DEFAULT, \
 	FUSE3_DEFAULT, FUSE4_DEFAULT, FUSE5_DEFAULT }
 #elif FUSE_MEMORY_SIZE == 3
-# define _FUSE_HELPER { LFUSE_DEFAULT, HFUSE_DEFAULT, EFUSE_DEFAULT }
+# define _FUSE_HELPER { (uint8_t)LFUSE_DEFAULT, (uint8_t)HFUSE_DEFAULT, (uint8_t)EFUSE_DEFAULT }
 #elif FUSE_MEMORY_SIZE == 2
 # define _FUSE_HELPER { LFUSE_DEFAULT, HFUSE_DEFAULT }
 #elif FUSE_MEMORY_SIZE == 1
 # define _FUSE_HELPER { FUSE_DEFAULT }
 #else
 # define _FUSE_HELPER { 0 }
+#endif
+
+#if defined(IVSEL) && defined(GICR)
+# define _IVSEL_HELPER .ivsel = AVR_IO_REGBIT(GICR, IVSEL),
+#elif defined(IVSEL)
+# define _IVSEL_HELPER .ivsel = AVR_IO_REGBIT(MCUCR, IVSEL),
+#else
+# define _IVSEL_HELPER
 #endif
 
 #ifdef MCUCSR
@@ -85,6 +93,7 @@
 	.e2end = E2END, \
 	.vector_size = _vector_size, \
 	.fuse = _FUSE_HELPER, \
+	_IVSEL_HELPER \
 	.signature = { SIGNATURE_0,SIGNATURE_1,SIGNATURE_2 }, \
 	.lockbits = 0xFF, \
 	.reset_flags = {\
