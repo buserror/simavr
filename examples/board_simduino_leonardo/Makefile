@@ -1,5 +1,5 @@
-# 
-# 	Copyright 2012 Torbjorn Tyridal <ttyridal@gmail.com>
+#
+#	Arduino Leonardo with the Caterina bootloader over USB/IP, see README.
 #
 #	This file is part of simavr.
 #
@@ -16,46 +16,28 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
-target=	simusb
-firm_src = at90usb162_cdc_loopback.c
-firmware = ${firm_src:.c=.hex}
+target=	simduino_leonardo
 simavr = ../../
 
 IPATH = .
 IPATH += ../parts
-IPATH += ../vhci/include
-IPATH += ../vhci
 IPATH += ${simavr}/include
 IPATH += ${simavr}/simavr/sim
-#IPATH += /usr/local/include
 
 VPATH = .
 VPATH += ../parts
 
-LDFLAGS += -lpthread -lusb_vhci -L../vhci/lib
-
-all: obj ${firmware} ${target}
+all: obj ${target}
 
 include ${simavr}/Makefile.common
 
 board = ${OBJ}/${target}.elf
 
-${board} : ${OBJ}/vhci_usb.o
+${board} : ${OBJ}/usbip_usb.o
 ${board} : ${OBJ}/${target}.o
 
-../vhci/lib/libusb_vhci.a:
-	@echo -n "BUILDIN $@ "
-	@{ export CC=;export CFLAGS=; $(MAKE) -j -C ../vhci >/tmp/vhci.build.log 2>&1 || \
-		{ echo "ERROR check /tmp/vhci.build.log"; exit 1; }; } && \
-			echo " Done" 
-
-vhci : ../vhci/lib/libusb_vhci.a 
-
-clean-vhci:
-	$(MAKE) -C ../vhci clean
-
-${target}: vhci ${board}
+${target}: ${board}
 	@echo $@ done
 
-clean: clean-${OBJ} clean-vhci
-	rm -rf *.a *.axf *.hex ${target} *.vcd
+clean: clean-${OBJ}
+	rm -rf *.a *.axf ${target} *.vcd

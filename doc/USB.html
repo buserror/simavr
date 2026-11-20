@@ -51,16 +51,19 @@ disconnects from the bus.
 <I>tests/test_usb_host.h</I> is a complete example that enumerates a device
 and exchanges bulk data.
 <P>
-When no data is ready, a read from a bulk IN endpoint returns 0 with a size
-of zero rather than AVR_IOCTL_USB_NAK.
 Suspend and resume, OTG and host mode, double-buffered endpoints
 and data toggle checking are not simulated.
 <P>
-<I>examples/extra_board_usb</I> connects the simulated device to Linux
-through the out-of-tree usb-vhci kernel module, so that it appears as a real
-USB device.
-That module is no longer maintained and does not build on current kernels
-without patches.
+<I>examples/parts/usbip_usb.c</I> plays the host for you and exports the
+simulated device over USB/IP, so that a USB/IP client attaches it to a
+real USB stack, where it appears as an ordinary USB device.
+On Linux the client is the mainline vhci-hcd driver and the <I>usbip</I>
+tool, on Windows usbip-win2.
+<I>examples/board_simduino_leonardo</I> is an Arduino Leonardo this way,
+an ATmega32U4 with Arduino's Caterina bootloader that avrdude uploads
+sketches to.
+<I>examples/board_usbserial</I> is the Arduino Uno R3's USB to
+serial adapter, an ATmega16U2 with its USART looped back or on a pty.
 
 </BODY>
 </HTML>
